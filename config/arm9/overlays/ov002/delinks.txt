@@ -1089,7 +1089,7 @@ src/func_ov002_020bd600.c:
 src/func_ov002_020bd664.cpp:
     .text start:0x020bd664 end:0x020bd828
 
-src/actors/Player.cpp:
+mods/waluigi/Player.cpp:
     complete
     .text start:0x020bd828 end:0x020cfea4
 
