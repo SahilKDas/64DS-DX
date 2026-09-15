@@ -28,7 +28,33 @@
 /* the geometry-engine polygon buffer, for the tongue render self-check
    (SM64DS_WINGS_PROBE); same forward decl cxxname_bridge.cpp uses so the
    header's wider surface does not have to come in here */
-namespace ntr { struct GxTriangle; const GxTriangle *gx_polygons(std::size_t &n); }
+namespace ntr {
+struct GxTriangle;
+const GxTriangle *gx_polygons(std::size_t &n);
+void gx_waluigi_skin_begin();
+void gx_waluigi_skin_end();
+}
+
+static unsigned char g_port_logical_character[kPortMaxPlayers] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
+static bool port_player_is_waluigi(const char *player) {
+    const unsigned slot = *(const unsigned char *)(player + 0x6d8);
+    return slot < kPortMaxPlayers &&
+           g_port_logical_character[slot] == PORT_CHARACTER_WALUIGI;
+}
+
+struct WaluigiSkinScope {
+    bool active;
+    explicit WaluigiSkinScope(bool on) : active(on) {
+        if (active) ntr::gx_waluigi_skin_begin();
+    }
+    ~WaluigiSkinScope() {
+        if (active) ntr::gx_waluigi_skin_end();
+    }
+};
 
 /* how many times hal_call_state_fn fell off the end of its switch this run --
    read by the F3 overlay in port/tests/walk_window.cpp */
@@ -1607,6 +1633,7 @@ void hal_render_player_world(void *player)
     unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
+    WaluigiSkinScope waluigi_skin(port_player_is_waluigi(c));
     /* THE BODY MATRIX IS THE ONE THE SEAT ALREADY WROTE, and this function
        must not build its own. That is the whole of the Yoshi head-vs-body
        separation the field report described as the head coming off at speed
@@ -1826,6 +1853,7 @@ void hal_render_player_body_ex(void *player, int with_head)
     unsigned id = _ZNK6Player14GetBodyModelIDEjb(c, *(int *)(c + 8) & 0xff, 0);
     ModelAnim *ma = ((ModelAnim **)(c + 0xdc))[id];
     if (!ma) return;
+    WaluigiSkinScope waluigi_skin(port_player_is_waluigi(c));
     for (int i = 0; i < 12; ++i) ((int *)&ma->mat4x3)[i] = 0;
     ((int *)&ma->mat4x3)[0] = 0x1000;
     ((int *)&ma->mat4x3)[4] = 0x1000;
@@ -2506,6 +2534,11 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
 {
     const unsigned logical = (unsigned)port_character_normalize((int)ch);
     const unsigned resource = port_character_resource(logical);
+    if (player) {
+        const unsigned slot = *(const unsigned char *)((char *)player + 0x6d8);
+        if (slot < kPortMaxPlayers)
+            g_port_logical_character[slot] = (unsigned char)logical;
+    }
     static int legacy = -1;
     if (legacy < 0) legacy = std::getenv("SM64DS_SWAP_LEGACY") ? 1 : 0;
     if (legacy) { port_legacy_set_character(player, resource); return; }

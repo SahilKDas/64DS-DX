@@ -998,8 +998,36 @@ void gx_set_light(int index, float dx, float dy, float dz, uint32_t bgr555) {
 
 void gx_enable_lights(uint32_t mask) { g.light_mask = mask & 0xF; }
 
+static int g_waluigi_skin_depth;
+static std::map<const uint32_t *, std::vector<uint32_t>> g_waluigi_textures;
+
+void gx_waluigi_skin_begin() { ++g_waluigi_skin_depth; }
+void gx_waluigi_skin_end() { if (g_waluigi_skin_depth) --g_waluigi_skin_depth; }
+
+static const uint32_t *waluigi_texture(const uint32_t *src, int width, int height) {
+    if (!src || width <= 0 || height <= 0) return src;
+    auto it = g_waluigi_textures.find(src);
+    if (it != g_waluigi_textures.end()) return it->second.data();
+    std::vector<uint32_t> dst(src, src + width * height);
+    for (uint32_t &pixel : dst) {
+        const unsigned a = pixel >> 24, r = (pixel >> 16) & 255;
+        const unsigned green = (pixel >> 8) & 255, b = pixel & 255;
+        unsigned nr = r, ng = green, nb = b;
+        // Palette targets sampled from SM64CoopDX custom_waluigi_head.
+        if (r > 105 && green > 75 && r > b * 3 / 2 && green > b * 3 / 2) {
+            const unsigned light = (r + green) / 2;
+            nr = light * 39 / 160; ng = light * 25 / 160; nb = light * 88 / 160;
+        } else if (b > r * 5 / 4 && b > green * 5 / 4 && b > 45) {
+            const unsigned light = (r + green + b) / 3;
+            nr = ng = nb = light / 3;
+        }
+        pixel = (a << 24) | (nr << 16) | (ng << 8) | nb;
+    }
+    return g_waluigi_textures.emplace(src, std::move(dst)).first->second.data();
+}
+
 void gx_bind_texture(const uint32_t *rgba, int width, int height) {
-    g.tex_rgba = rgba;
+    g.tex_rgba = g_waluigi_skin_depth ? waluigi_texture(rgba, width, height) : rgba;
     g.tw = width;
     g.th = height;
     // The direct entry (the BMD harness path) carries no TEXIMAGE_PARAM, so it
@@ -1233,7 +1261,10 @@ void gx_write_port(uint32_t addr, uint32_t value) {
    probe can tell apart, or that just want the memory back, say so here; the
    soaks do, once per model. SM64DS_TEX_NOCACHE=1 restores the old
    clear-every-reset behaviour for an A/B. */
-void gx_invalidate_textures() { g_vram_tex_cache.clear(); }
+void gx_invalidate_textures() {
+    g_vram_tex_cache.clear();
+    g_waluigi_textures.clear();
+}
 
 void gx_reset() {
     ++g_resets;

@@ -7473,6 +7473,8 @@ int main(void)
        guarantee worth leaning on. */
     g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
     g_character_pending = g_character;
+    if (g_character == PORT_CHARACTER_WALUIGI)
+        port_player_set_character(c, PORT_CHARACTER_WALUIGI);
 
     /* SKIP THE CHARACTER INTRO CUTSCENE, which the other three spawn with and
        Mario does not. func_ov002_020c4188 is that cutscene's state machine,
@@ -8125,6 +8127,8 @@ int main(void)
                handoff does off the entrance-spawned one */
             g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
             g_character_pending = g_character;
+    if (g_character == PORT_CHARACTER_WALUIGI)
+        port_player_set_character(c, PORT_CHARACTER_WALUIGI);
         }
         cam = nc;
         an_pivot_live = 0;
@@ -10343,6 +10347,8 @@ int main(void)
                    the save byte too), so read it back with everything else */
                 g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
                 g_character_pending = g_character;
+    if (g_character == PORT_CHARACTER_WALUIGI)
+        port_player_set_character(c, PORT_CHARACTER_WALUIGI);
                 cam = data_0209f318;
                 level_shift = 0;
                 if (real_boot) {

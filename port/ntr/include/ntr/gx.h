@@ -77,6 +77,11 @@ void gx_invalidate_textures();
 // Bind a decoded texture for subsequent geometry. Pass null for untextured.
 void gx_bind_texture(const uint32_t *rgba, int width, int height);
 
+// Scope a host-only Waluigi skin over DS textures. The fifth logical player
+// reuses Wario''s fixed ROM model slot, keeping this outside the four-entry ABI.
+void gx_waluigi_skin_begin();
+void gx_waluigi_skin_end();
+
 // The game path: TEXIMAGE_PARAM / PLTT_BASE writes (ports 0x2A/0x2B) bind by
 // decoding lazily out of the mapped VRAM texture/palette slot windows.
 void gx_teximage_param(uint32_t value);
