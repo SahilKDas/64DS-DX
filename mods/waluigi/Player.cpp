@@ -79,7 +79,7 @@
 #include "dBgCh_Gnd.h"
 #include "dBgCh_Lin.h"
 #include "dBgCh_Actr.h"
-#include "include/waluigi/character.h"
+#include "waluigi/character.h"
 
 static inline u32 WaluigiResourceCharacter(u32 character)
 {
