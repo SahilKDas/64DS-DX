@@ -2999,7 +2999,10 @@ static void padlearn_frame(int *pad_live)
    Yoshi is a separate caveat: St_YoshiPower and St_InYoshiMouth are matched in
    src but are not wired into player_states.inc, so his tongue is a loud no-op.
    Walking, running, jumping and the dust are character-agnostic code. */
-static const char *const CHAR_NAME[4] = { "Mario", "Luigi", "Wario", "Yoshi" };
+#include "../waluigi.h"
+static const char *const CHAR_NAME[PORT_CHARACTER_COUNT] = {
+    "Mario", "Luigi", "Wario", "Yoshi", "Waluigi"
+};
 static int g_character;                     /* what the boot actually spawned */
 static int g_character_pending;             /* what the next boot will spawn */
 
@@ -3008,16 +3011,16 @@ static int g_character_pending;             /* what the next boot will spawn */
    why this casts rather than indexing the int view. */
 static void character_set_pending(int ch)
 {
-    g_character_pending = ch & 3;
+    g_character_pending = port_character_normalize(ch);
     ((unsigned char *)data_0209caa0)[0x41] =
-        (unsigned char)g_character_pending;
+        (unsigned char)port_character_resource(g_character_pending);
 }
 
 /* Changes character on the spot by re-running Player::InitResources with a
    rewritten spawn param, carrying position and speed across. Port code, not
    the game's: the game's own in-place change is the CAP path, and there is no
    Yoshi cap for it to run. The reasoning is in hal/player_bridges.cpp, where
-   it lives because it wants Player.h. SM64DS_SWITCH=<0..3> drives it headless. */
+   it lives because it wants Player.h. SM64DS_SWITCH=<0..4> drives it headless. */
 extern "C" void port_player_set_character(void *player, unsigned ch);
 /* SM64DS_VS_CHARS: the game side of VS character selection. Reads a per-slot
    character pick (mirrors SM64DS_VS_NAMES/SM64DS_VS_COLORS) and applies it once,
@@ -3782,7 +3785,7 @@ static void menu_draw(const OvlSurface &fb)
              "exit course       ExitLevel() -> level 1 entrance 13   "
              "(here: level %d)", (int)data_0209f2f8);
     snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
-             CHAR_NAME[g_character_pending & 3],
+             CHAR_NAME[port_character_normalize(g_character_pending)],
              g_character_pending == g_character ? "" : "   enter to switch");
     snprintf(ln[MENU_SNAP], sizeof ln[0], "fake snap         %s",
              g_fake_snap ? "ON (collider owner set at boot)" : "off");
@@ -4328,15 +4331,14 @@ static void menu_input(int pad_live, const XPad *pad)
                    as the warp row above */
                 if (edge & (1u << 5)) {
                     fprintf(stderr, "[menu] becoming %s\n",
-                            CHAR_NAME[g_character_pending & 3]);
+                            CHAR_NAME[port_character_normalize(g_character_pending)]);
                     port_player_set_character(g_menu_host.player,
                                               g_character_pending);
                     g_character = g_character_pending;
                     an_pivot_live = 0;   /* do not ease across it */
                 } else {
-                    g_character_pending =
-                        (dec ? g_character_pending + 3
-                             : g_character_pending + 1) & 3;
+                    g_character_pending = port_character_normalize(
+                        g_character_pending + (dec ? -1 : 1));
                 }
                 break;
             case MENU_SNAP:
@@ -7359,7 +7361,7 @@ int main(void)
            sub-table is dropped, which is stage A1: geometry only. */
         if (boot_spawns)
             port_stage_a2_seat();
-        /* SM64DS_CHARACTER=0..3 (Mario, Luigi, Wario, Yoshi). It goes in HERE,
+        /* SM64DS_CHARACTER=0..4 (Mario, Luigi, Wario, Yoshi, Waluigi). It goes in HERE,
            before the boot, because LoadEntranceObjects reads the save byte to
            build the Player's spawn param and Player::InitResources loads that
            character's models and no others. Setting it after the spawn gets a
@@ -7367,7 +7369,7 @@ int main(void)
         if (const char *cs = getenv("SM64DS_CHARACTER")) {
             character_set_pending(atoi(cs));
             fprintf(stderr, "[char] spawning %s\n",
-                    CHAR_NAME[g_character_pending & 3]);
+                    CHAR_NAME[port_character_normalize(g_character_pending)]);
         }
         void *lvl = port_stage_a_boot(g_mc, boot_spawns);
         level_bmd = *(unsigned short *)((char *)lvl + 8);
@@ -7469,7 +7471,7 @@ int main(void)
        rather than assuming the save byte got through. Zeroed storage gives 0,
        which IS Mario, but that is a property of the entrance param and not a
        guarantee worth leaning on. */
-    g_character = *(unsigned char *)(c + 0x6d9) & 3;
+    g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
     g_character_pending = g_character;
 
     /* SKIP THE CHARACTER INTRO CUTSCENE, which the other three spawn with and
@@ -8121,7 +8123,7 @@ int main(void)
             c = (char *)player;
             /* read the character back off the restored Player, exactly as the
                handoff does off the entrance-spawned one */
-            g_character = *(unsigned char *)(c + 0x6d9) & 3;
+            g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
             g_character_pending = g_character;
         }
         cam = nc;
@@ -8343,7 +8345,7 @@ int main(void)
                             "only (link=%d players=%d) and would desync the "
                             "session\n", cr.link_state, cr.players);
                 } else {
-                    const int nxt = (g_character + 1) & 3;
+                    const int nxt = port_character_normalize(g_character + 1);
                     fprintf(stderr, "[chr] F4 becoming %s\n", CHAR_NAME[nxt]);
                     port_player_set_character(c, nxt);
                     g_character = g_character_pending = nxt;
@@ -9432,16 +9434,19 @@ int main(void)
                         fprintf(stderr, "[chr] f%d selftest swap -> %d\n",
                                 frame, want);
                         port_player_set_character(c, want);
-                        g_character = g_character_pending = want & 3;
+                        g_character = g_character_pending =
+                            port_character_normalize(want);
                         /* prove the swap TOOK: param1 (Player+8) is the live
                            character index every downstream read keys off, so a
                            mismatch here is the whole point of the chain failing.
                            Prints PASS/FAIL so a headless run is a gate, not just
                            a sequence of fire-and-forget pokes. */
                         const int got = *(int *)((char *)c + 8) & 3;
+                        const int expected = (int)port_character_resource(
+                            (unsigned)port_character_normalize(want));
                         fprintf(stderr, "[chr] f%d swap %s: param1=%d want=%d\n",
-                                frame, got == (want & 3) ? "PASS" : "FAIL",
-                                got, want & 3);
+                                frame, got == expected ? "PASS" : "FAIL",
+                                got, want);
                     }
                 }
             }
@@ -9454,13 +9459,14 @@ int main(void)
             if (selftest && frame == 210) {
                 const char *mv = getenv("SM64DS_SELFTEST_SWAPMOVE");
                 if (mv && *mv) {
-                    const int want = atoi(mv) & 3;
+                    const int want = port_character_normalize(atoi(mv));
                     fprintf(stderr, "[chr] f210 mid-run swap -> %d\n", want);
                     port_player_set_character(c, (unsigned)want);
                     g_character = g_character_pending = want;
                     const int got = *(int *)((char *)c + 8) & 3;
+                    const int expected = (int)port_character_resource((unsigned)want);
                     fprintf(stderr, "[chr] f210 swapmove %s: param1=%d want=%d\n",
-                            got == want ? "PASS" : "FAIL", got, want);
+                            got == expected ? "PASS" : "FAIL", got, want);
                 }
             }
             /* camera orbit through the game's own reader: func_02009e70
@@ -10335,7 +10341,7 @@ int main(void)
                 /* the character state was read off the boot's Player; across
                    a warp the entrance spawned a fresh one (ExitLevel wipes
                    the save byte too), so read it back with everything else */
-                g_character = *(unsigned char *)(c + 0x6d9) & 3;
+                g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
                 g_character_pending = g_character;
                 cam = data_0209f318;
                 level_shift = 0;
@@ -11716,7 +11722,7 @@ int main(void)
                    is called from there (port_particle_render, below the level
                    pass). Drawing translucent particles ahead of the opaque
                    level loses them all to the ground drawn over them. */
-                /* SM64DS_SWITCH=<0..3> drives the cap-block character change
+                /* SM64DS_SWITCH=<0..4> drives the cap-block character change
                    from a headless run, at frame 90, so the live path has a
                    regression probe instead of only being reachable by hand
                    through the F5 row. */
@@ -11728,9 +11734,10 @@ int main(void)
                     }
                     if (sw >= 0 && frame == 90) {
                         fprintf(stderr, "[char] SM64DS_SWITCH becoming %s\n",
-                                CHAR_NAME[sw & 3]);
+                                CHAR_NAME[port_character_normalize(sw)]);
                         port_player_set_character(c, sw);
-                        g_character = g_character_pending = sw & 3;
+                        g_character = g_character_pending =
+                            port_character_normalize(sw);
                     }
                 }
                 /* SM64DS_VS_CHARS: the game side of VS character selection. Each

@@ -15,6 +15,7 @@
 #include "NestedHeapIterator.h"
 #include "Player.h"
 #include "player_fields.h"   /* run mg16 lane MP4: the one place field offsets live */
+#include "../waluigi.h"
 #include "host_settings.h"   /* port::adventure_ghost_mode() for the ghost pass */
 #include "comms_seam.h"      /* port::sync_stats(): the local-write witness */
 #include "ShadowModel.h"
@@ -2503,16 +2504,18 @@ static void port_legacy_set_character(void *player, unsigned ch)
    SM64DS_SWAP_LEGACY=1 forces the old InitResources rebuild for an A/B. */
 extern "C" void port_player_set_character(void *player, unsigned ch)
 {
+    const unsigned logical = (unsigned)port_character_normalize((int)ch);
+    const unsigned resource = port_character_resource(logical);
     static int legacy = -1;
     if (legacy < 0) legacy = std::getenv("SM64DS_SWAP_LEGACY") ? 1 : 0;
-    if (legacy) { port_legacy_set_character(player, (int)(ch & 3)); return; }
+    if (legacy) { port_legacy_set_character(player, resource); return; }
 
-    int rc = port_door_swap((char *)player, (int)(ch & 3));
+    int rc = port_door_swap((char *)player, (int)resource);
     /* the door path can decline (no player, already that character); the codes
        are informational, but on an outright "no player" fall back to the legacy
        rebuild rather than leaving the caller with nothing happening. */
     if (rc == 1)
-        port_legacy_set_character(player, (int)(ch & 3));
+        port_legacy_set_character(player, resource);
 }
 
 /* ---- SM64DS_VS_CHARS: the lobby's per-slot character pick, applied post-boot -
