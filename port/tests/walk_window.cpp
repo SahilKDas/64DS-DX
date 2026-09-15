@@ -8320,7 +8320,7 @@ int main(void)
            first press) the parent cycled ONCE and the child cycled FOUR
            times, and the two consoles finished the session disagreeing about
            who was who. The SIZE of the gap is one step, not four: the cycle
-           is (g_character + 1) & 3, so the child's four presses wrap it back
+           was (g_character + 1) & 3, so the child's four presses wrapped it back
            to where it started and the parent's single press is the whole of
            the divergence. One press is enough -- the point is that the peer
            is never told, not how far it drifted. That run is what this gate

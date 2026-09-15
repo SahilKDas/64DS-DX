@@ -2570,12 +2570,11 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
  * nothing between. Each field is ONE of:
  *     empty  -> that slot keeps its Yoshi default (no swap)
  *     '0'    -> Yoshi, the default (no swap)
- *     '1' Mario     '2' Luigi     '3' Wario
- * so "1,2,3,0" is Mario / Luigi / Wario / Yoshi in slots 0..3 and slot 3 is
- * left untouched. The env value is NOT the engine's own character index: 0 is
- * Yoshi so "leave it at the VS default" is the natural zero, and 1..3 are the
- * three non-Yoshi bodies, mapped to the engine's 0..2 (Mario/Luigi/Wario) when
- * the swap is applied.
+ *     '1' Mario     '2' Luigi     '3' Wario     '4' Waluigi
+ * so "1,2,3,4" is Mario / Luigi / Wario / Waluigi in slots 0..3, while 0
+ * leaves a slot as Yoshi. The env value is NOT the engine's own character index:
+ * values 1..3 map to the engine's Mario/Luigi/Wario IDs; 4 remains logical
+ * Waluigi and borrows Wario's resource slot only when the swap reaches the DS object.
  *
  * IGNORED WHOLESALE ON ANY VIOLATION, the contract names/colours keep: a
  * malformed variable is dropped, not partly salvaged, and every slot stays
@@ -2585,7 +2584,7 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
  *
  * This is the seam the lobby character picker feeds: lobby -> plan ->
  * SM64DS_VS_CHARS env -> this apply, the same shape as names and colours. */
-static int g_vs_chars[kPortMaxPlayers];   /* engine char 0..2, or -1 = no swap */
+static int g_vs_chars[kPortMaxPlayers];   /* logical char 0..2/4, -1 = Yoshi */
 static int g_vs_chars_read;
 static int g_vs_chars_fields;
 
@@ -2635,20 +2634,23 @@ static void vs_chars_load(void)
                     "longer than one character\n", slot);
             return;
         }
-        if (ch < '0' || ch > '3') {
+        if (ch < '0' || ch > '4') {
             std::fprintf(stderr, "[vs] SM64DS_VS_CHARS ignored: field %d byte "
-                    "%02x is not one of 0..3 (0/blank Yoshi, 1 Mario, 2 Luigi, "
-                    "3 Wario)\n", slot, (unsigned char)ch);
+                    "%02x is not one of 0..4 (0/blank Yoshi, 1 Mario, 2 Luigi, "
+                    "3 Wario, 4 Waluigi)\n", slot, (unsigned char)ch);
             return;
         }
-        /* '0' is the default Yoshi = no swap; 1..3 map to engine 0..2 */
-        tmp[slot] = (ch == '0') ? -1 : (ch - '1');
+        /* '0' is Yoshi; 1..3 map to engine 0..2; 4 is logical Waluigi. */
+        tmp[slot] = (ch == '0') ? -1 :
+                    (ch == '4' ? PORT_CHARACTER_WALUIGI : ch - '1');
     }
 
     g_vs_chars_fields = nf;
     for (int i = 0; i < nf; ++i) g_vs_chars[i] = tmp[i];
 
-    static const char *const kName[3] = { "Mario", "Luigi", "Wario" };
+    static const char *const kName[PORT_CHARACTER_COUNT] = {
+        "Mario", "Luigi", "Wario", "Yoshi", "Waluigi"
+    };
     std::fprintf(stderr, "[vs] SM64DS_VS_CHARS accepted, %d fields:", nf);
     for (int i = 0; i < nf; ++i)
         std::fprintf(stderr, " [%s]",
@@ -2672,7 +2674,9 @@ extern "C" void port_vs_apply_chars(int frame)
     done = true;
     vs_chars_load();
 
-    static const char *const kName[3] = { "Mario", "Luigi", "Wario" };
+    static const char *const kName[PORT_CHARACTER_COUNT] = {
+        "Mario", "Luigi", "Wario", "Yoshi", "Waluigi"
+    };
     for (int i = 0; i < g_vs_chars_fields && i < kPortMaxPlayers; ++i) {
         const int chr = g_vs_chars[i];
         if (chr < 0) continue;           /* Yoshi/empty: left as the default */
