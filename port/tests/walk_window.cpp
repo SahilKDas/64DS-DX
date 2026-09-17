@@ -3005,6 +3005,25 @@ static const char *const CHAR_NAME[PORT_CHARACTER_COUNT] = {
 };
 static int g_character;                     /* what the boot actually spawned */
 static int g_character_pending;             /* what the next boot will spawn */
+static const char *character_state_path() { return getenv("SM64DS_CHARACTER_STATE"); }
+static int character_state_load() {
+    const char *path = character_state_path();
+    if (!path || !*path) return -1;
+    FILE *file = fopen(path, "rb");
+    if (!file) return -1;
+    int character = -1;
+    const int read = fscanf(file, "%d", &character);
+    fclose(file);
+    return read == 1 && character >= 0 && character < PORT_CHARACTER_COUNT ? character : -1;
+}
+static void character_state_save(int character) {
+    const char *path = character_state_path();
+    if (!path || !*path) return;
+    FILE *file = fopen(path, "wb");
+    if (!file) return;
+    fprintf(file, "%d\n", port_character_normalize(character));
+    fclose(file);
+}
 
 /* data_0209caa0 is declared int[] above (word 2 carries flag bits the boot
    sets); LoadEntranceObjects reads the character as a BYTE at 0x41, which is
@@ -3012,6 +3031,7 @@ static int g_character_pending;             /* what the next boot will spawn */
 static void character_set_pending(int ch)
 {
     g_character_pending = port_character_normalize(ch);
+    character_state_save(g_character_pending);
     ((unsigned char *)data_0209caa0)[0x41] =
         (unsigned char)port_character_resource(g_character_pending);
 }
@@ -7366,6 +7386,9 @@ int main(void)
            build the Player's spawn param and Player::InitResources loads that
            character's models and no others. Setting it after the spawn gets a
            Player whose model slot is null. */
+        const int persisted_character = character_state_load();
+        if (!getenv("SM64DS_CHARACTER") && persisted_character >= 0)
+            character_set_pending(persisted_character);
         if (const char *cs = getenv("SM64DS_CHARACTER")) {
             character_set_pending(atoi(cs));
             fprintf(stderr, "[char] spawning %s\n",

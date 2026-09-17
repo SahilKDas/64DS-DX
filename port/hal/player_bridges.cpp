@@ -2534,6 +2534,12 @@ extern "C" void port_player_set_character(void *player, unsigned ch)
 {
     const unsigned logical = (unsigned)port_character_normalize((int)ch);
     const unsigned resource = port_character_resource(logical);
+    if (const char *path = std::getenv("SM64DS_CHARACTER_STATE")) {
+        if (*path) if (FILE *file = std::fopen(path, "wb")) {
+            std::fprintf(file, "%u\n", logical);
+            std::fclose(file);
+        }
+    }
     if (player) {
         const unsigned slot = *(const unsigned char *)((char *)player + 0x6d8);
         if (slot < kPortMaxPlayers)

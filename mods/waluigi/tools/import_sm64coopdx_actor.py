@@ -16,14 +16,14 @@ from PIL import Image
 
 
 ARRAY_RE = re.compile(
-    r"(?:static\s+)?const\s+Vtx\s+(\w+)\s*\[[^]]*]\s*=\s*\{(.*?)\n\};",
+    r"(?:static\s+)?(?:const\s+)?Vtx\s+(\w+)\s*\[[^]]*]\s*=\s*\{(.*?)\n\};",
     re.S,
 )
 VERTEX_RE = re.compile(
-    r"\{\{\{\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\}\s*,\s*"
+    r"\{\{\s*\{\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\}\s*,\s*"
     r"-?\d+\s*,\s*\{\s*(-?\d+)\s*,\s*(-?\d+)\s*\}"
 )
-DL_RE = re.compile(r"const\s+Gfx\s+(\w+)\s*\[\]\s*=\s*\{(.*?)\n\};", re.S)
+DL_RE = re.compile(r"(?:const\s+)?Gfx\s+(\w+)\s*\[\]\s*=\s*\{(.*?)\n\};", re.S)
 LOAD_RE = re.compile(r"gsSPVertex\(\s*(\w+)(?:\s*\+\s*(\d+))?\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
 TRI1_RE = re.compile(r"gsSP1Triangle\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)")
 TRI2_RE = re.compile(
