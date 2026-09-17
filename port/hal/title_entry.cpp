@@ -750,8 +750,9 @@ extern "C" int port_title_entry_run(void)
     /* THE CENSUS IS WRITTEN OVER THE FRAMES THAT ACTUALLY RAN, not over the
        budget. A short run that reports the budget is how a capture ends up
        attributed to frames nobody ticked. */
+    const int entering = port_title_entry_commit();
     const int scene_rc = port_scene_finish(frame);
-    if (port_title_entry_commit())
+    if (entering)
         return 0;                /* the caller falls through; rc is the level's */
     return scene_rc;
 }

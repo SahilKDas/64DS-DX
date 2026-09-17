@@ -6896,11 +6896,12 @@ static int scene_window_run(void)
     click_test_finish();
 #endif
     fprintf(stderr, "[scene] window closed after %d frame(s)\n", frame);
-    const int scene_rc = port_scene_finish(frame);
-    /* AFTER the census, so a run that enters the adventure still leaves the
-       title's own slot hits, captures and trap counts behind. Answers 0 and
-       prints nothing unless the bridge is armed AND the handoff completed. */
+    /* Commit while StartFile's pending scene/level words are still intact.
+       port_scene_finish may consume the scene request as part of teardown;
+       after the early hosted stop boundary that is too late to identify the
+       handoff. The cleanup still runs before main enters the level path. */
     port_title_entry_commit();
+    const int scene_rc = port_scene_finish(frame);
     return scene_rc;
 }
 
@@ -7181,7 +7182,7 @@ int main(void)
                 ? scene_window_run()          /* carries the stop test itself */
                 : (port_title_entry_armed() ? port_title_entry_run()
                                             : port_scene_run());
-        if (g_window_user_close)
+        if (g_window_user_close && !port_title_entry_taken())
             return scene_rc;
         if (g_window_destroyed) {
             /* The scene transition destroyed its stacked title window. Do
