@@ -482,7 +482,18 @@ void func_02018efc(void);
    Nonzero while a fade is stepping. */
 static HalFaderWipe *port_fader_animating(void)
 {
-    return (HalFaderWipe *)(size_t)data_0209d4b0[0];
+    HalFaderWipe *f = (HalFaderWipe *)(size_t)data_0209d4b0[0];
+    if (!f) return 0;
+    const size_t p = (size_t)f;
+    const size_t first = (size_t)&hal_wipes[0];
+    const size_t after = (size_t)&hal_wipes[7];
+    const bool hosted_wipe = p >= first && p < after &&
+                             (p - first) % sizeof(HalFaderWipe) == 0;
+    const bool color_wipe = p == (size_t)data_0209f5e8;
+    if (hosted_wipe || color_wipe) return f;
+    std::fprintf(stderr, "[fade] discarded invalid animating fader %p\n", f);
+    data_0209d4b0[0] = 0;
+    return 0;
 }
 
 void port_fader_advance(void)
