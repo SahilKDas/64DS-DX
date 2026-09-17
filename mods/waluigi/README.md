@@ -45,3 +45,10 @@ python mods/waluigi/tools/audit_character_cardinality.py
 This is a candidate finder, not permission to replace every `4`: the Nintendo DS
 codebase also contains four-player, four-component, four-byte, and 4x4-matrix
 logic that must remain unchanged.
+## Developer-friendly renderer assets
+
+The host port accepts conventional Wavefront OBJ geometry and binary PPM
+textures through `ntr::HostMesh`. See [HOST_ASSETS.md](HOST_ASSETS.md). This is
+the preferred iteration path for new characters and QoL model replacements;
+it avoids expanding retail BMD tables or rebuilding the ROM for every mesh
+edit.

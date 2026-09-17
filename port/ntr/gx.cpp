@@ -997,35 +997,92 @@ void gx_set_light(int index, float dx, float dy, float dz, uint32_t bgr555) {
 }
 
 void gx_enable_lights(uint32_t mask) { g.light_mask = mask & 0xF; }
+void gx_submit_host_triangle(const float xyz[9], const float uv[6], uint32_t color) {
+    GxVertex vertex[3];
+    for (int i = 0; i < 3; ++i) {
+        float fx = xyz[i * 3] * 4096.0f, fy = xyz[i * 3 + 1] * 4096.0f;
+        float fz = xyz[i * 3 + 2] * 4096.0f;
+        if (fx < -32768) fx = -32768; if (fx > 32767) fx = 32767;
+        if (fy < -32768) fy = -32768; if (fy > 32767) fy = 32767;
+        if (fz < -32768) fz = -32768; if (fz > 32767) fz = 32767;
+        vertex[i] = project((int16_t)fx, (int16_t)fy, (int16_t)fz);
+        vertex[i].u = uv[i * 2]; vertex[i].v = uv[i * 2 + 1];
+        vertex[i].color = color;
+    }
+    emit_tri(vertex[0], vertex[1], vertex[2]);
+}
 
 static int g_waluigi_skin_depth;
 static std::map<const uint32_t *, std::vector<uint32_t>> g_waluigi_textures;
 
+struct WaluigiPackTexture { int width, height; const char *name; std::vector<uint16_t> pixels; };
+static WaluigiPackTexture g_waluigi_pack[] = {
+    {16, 16, "custom_waluigi_head.rgba16.rgb5a1", {}},
+    {32, 32, "custom_waluigi_cap.rgba16.rgb5a1", {}},
+    {64, 32, "custom_waluigi_eyes_center.rgba16.rgb5a1", {}},
+};
+static bool g_waluigi_pack_loaded;
+
+static void load_waluigi_pack() {
+    if (g_waluigi_pack_loaded) return;
+    g_waluigi_pack_loaded = true;
+    const char *dir = std::getenv("SM64DS_WALUIGI_TEXTURE_DIR");
+    if (!dir || !*dir) { std::fprintf(stderr, "[waluigi] texture directory unset; using palette fallback\n"); return; }
+    int loaded = 0;
+    for (WaluigiPackTexture &texture : g_waluigi_pack) {
+        char path[1024]; std::snprintf(path, sizeof path, "%s/%s", dir, texture.name);
+        FILE *file = std::fopen(path, "rb"); if (!file) continue;
+        texture.pixels.resize((size_t)texture.width * texture.height);
+        const size_t got = std::fread(texture.pixels.data(), sizeof(uint16_t), texture.pixels.size(), file);
+        std::fclose(file);
+        if (got != texture.pixels.size()) texture.pixels.clear(); else ++loaded;
+    }
+    std::fprintf(stderr, "[waluigi] loaded %d/%u SM64CoopDX textures from %s\n", loaded,
+                 (unsigned)(sizeof g_waluigi_pack / sizeof g_waluigi_pack[0]), dir);
+}
+
 void gx_waluigi_skin_begin() { ++g_waluigi_skin_depth; }
 void gx_waluigi_skin_end() { if (g_waluigi_skin_depth) --g_waluigi_skin_depth; }
 
+static const WaluigiPackTexture *waluigi_pack_for(int width, int height) {
+    load_waluigi_pack(); WaluigiPackTexture *best = nullptr; int best_score = 0x7fffffff;
+    for (WaluigiPackTexture &texture : g_waluigi_pack) {
+        if (texture.pixels.empty()) continue;
+        const int score = std::abs(texture.width - width) + std::abs(texture.height - height);
+        if (score < best_score) { best = &texture; best_score = score; }
+    }
+    return best;
+}
+
 static const uint32_t *waluigi_texture(const uint32_t *src, int width, int height) {
     if (!src || width <= 0 || height <= 0) return src;
-    auto it = g_waluigi_textures.find(src);
-    if (it != g_waluigi_textures.end()) return it->second.data();
+    auto it = g_waluigi_textures.find(src); if (it != g_waluigi_textures.end()) return it->second.data();
+    const WaluigiPackTexture *pack = waluigi_pack_for(width, height);
     std::vector<uint32_t> dst(src, src + width * height);
-    for (uint32_t &pixel : dst) {
+    for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
+        uint32_t &pixel = dst[(size_t)y * width + x];
         const unsigned a = pixel >> 24, r = (pixel >> 16) & 255;
         const unsigned green = (pixel >> 8) & 255, b = pixel & 255;
         unsigned nr = r, ng = green, nb = b;
-        // Palette targets sampled from SM64CoopDX custom_waluigi_head.
         if (r > 105 && green > 75 && r > b * 3 / 2 && green > b * 3 / 2) {
-            const unsigned light = (r + green) / 2;
-            nr = light * 39 / 160; ng = light * 25 / 160; nb = light * 88 / 160;
+            const unsigned light = (r + green) / 2; unsigned pr = 39, pg = 25, pb = 88;
+            if (pack) {
+                const int px = x * pack->width / width, py = y * pack->height / height;
+                const uint16_t t = pack->pixels[(size_t)py * pack->width + px];
+                if (t & 0x8000) {
+                    const unsigned tr = (t & 31) * 255 / 31, tg = ((t >> 5) & 31) * 255 / 31, tb = ((t >> 10) & 31) * 255 / 31;
+                    if (tb > tr || tr + tb > tg * 2) { pr = tr; pg = tg; pb = tb; }
+                }
+            }
+            const unsigned peak = pr > pg ? (pr > pb ? pr : pb) : (pg > pb ? pg : pb);
+            nr = peak ? light * pr / peak : 0; ng = peak ? light * pg / peak : 0; nb = peak ? light * pb / peak : 0;
         } else if (b > r * 5 / 4 && b > green * 5 / 4 && b > 45) {
-            const unsigned light = (r + green + b) / 3;
-            nr = ng = nb = light / 3;
+            const unsigned light = (r + green + b) / 3; nr = ng = nb = light / 3;
         }
         pixel = (a << 24) | (nr << 16) | (ng << 8) | nb;
     }
     return g_waluigi_textures.emplace(src, std::move(dst)).first->second.data();
 }
-
 void gx_bind_texture(const uint32_t *rgba, int width, int height) {
     g.tex_rgba = g_waluigi_skin_depth ? waluigi_texture(rgba, width, height) : rgba;
     g.tw = width;

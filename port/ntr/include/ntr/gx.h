@@ -77,6 +77,10 @@ void gx_invalidate_textures();
 // Bind a decoded texture for subsequent geometry. Pass null for untextured.
 void gx_bind_texture(const uint32_t *rgba, int width, int height);
 
+// Submit one OBJ-style model-space triangle through the live DS camera.
+// xyz is three float triplets; uv is three texel-coordinate pairs.
+void gx_submit_host_triangle(const float xyz[9], const float uv[6], uint32_t color);
+
 // Scope a host-only Waluigi skin over DS textures. The fifth logical player
 // reuses Wario''s fixed ROM model slot, keeping this outside the four-entry ABI.
 void gx_waluigi_skin_begin();

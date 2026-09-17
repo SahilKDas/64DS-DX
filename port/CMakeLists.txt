@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16)
 project(sm64ds-port C CXX)
 # Link the static CRT so shipped exes never depend on the VC++ redist (CMP0091).
 # Release 0.1.6 shipped dynamically linked because nothing pinned this and CMake
@@ -118,7 +118,7 @@ endif()
 # The ntr platform layer: imported host DS hardware (see ntr/README.md).
 # Compiled as its own lib so every gate binary can link the pieces it needs.
 add_library(ntr STATIC
-    ntr/io.cpp ntr/gx.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
+    ntr/io.cpp ntr/gx.cpp ntr/host_mesh.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
     ntr/rt.cpp ntr/runtime.cpp ntr/fs.cpp ntr/bmd.cpp)
 target_include_directories(ntr PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 # ntr/runtime.cpp hosts two DS DMA globals (data_020a60c4/data_020a6460) that
@@ -146,7 +146,7 @@ endif()
 # sources (ppu.h's dims, the runtime widescreen branches) exactly as the tier
 # defines above reach their targets.
 add_library(ntr_wide_rt STATIC
-    ntr/io.cpp ntr/gx.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
+    ntr/io.cpp ntr/gx.cpp ntr/host_mesh.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
     ntr/rt.cpp ntr/runtime.cpp ntr/fs.cpp ntr/bmd.cpp)
 target_include_directories(ntr_wide_rt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 target_include_directories(ntr_wide_rt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -158,7 +158,7 @@ endif()
 # The same layer at 1024x768 for the interactive window; the smokes keep
 # the DS-native lib (their reference pixel counts depend on 256x192).
 add_library(ntr_hires STATIC
-    ntr/io.cpp ntr/gx.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
+    ntr/io.cpp ntr/gx.cpp ntr/host_mesh.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
     ntr/rt.cpp ntr/runtime.cpp ntr/fs.cpp ntr/bmd.cpp)
 target_include_directories(ntr_hires PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 # ntr/runtime.cpp hosts two DS DMA globals (data_020a60c4/data_020a6460) that
