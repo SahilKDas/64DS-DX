@@ -151,9 +151,10 @@ add_library(ntr_wide_rt STATIC
 target_include_directories(ntr_wide_rt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 target_include_directories(ntr_wide_rt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_definitions(ntr_wide_rt PUBLIC NTR_WIDE_RT)
-if(MSVC)
-    target_compile_options(ntr_wide_rt PRIVATE /wd4311 /wd4312)
+if(MSVC)
+    target_compile_options(ntr_wide_rt PRIVATE /wd4311 /wd4312)
 endif()
+
 add_executable(host_mesh_test tests/host_mesh_test.cpp)
 target_link_libraries(host_mesh_test PRIVATE ntr_wide_rt)
 
