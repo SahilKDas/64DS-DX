@@ -1,1 +1,1 @@
-{"id":3,"name":"Yoshi","resourceCharacter":3,"gameplayProfile":"yoshi","model":"model-parts.obj","textureDirectory":"textures","voiceBank":"yoshi"}
+{"id":3,"name":"Yoshi","resourceCharacter":3,"gameplayProfile":"yoshi","model":"model.obj","partsModel":"model-parts.obj","textureDirectory":"textures","voiceBank":"yoshi"}

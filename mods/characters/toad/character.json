@@ -1,1 +1,1 @@
-{"id":5,"name":"Toad","resourceCharacter":0,"gameplayProfile":"toad","model":"model-parts.obj","textureDirectory":"textures","voiceBank":"custom_toad"}
+{"id":5,"name":"Toad","resourceCharacter":0,"gameplayProfile":"mario","model":"model.obj","partsModel":"model-parts.obj","textureDirectory":"textures","voiceBank":"custom_toad"}

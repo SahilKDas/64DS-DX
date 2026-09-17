@@ -1,1 +1,1 @@
-{"id":0,"name":"Mario","resourceCharacter":0,"gameplayProfile":"mario","model":"model-parts.obj","textureDirectory":"textures","voiceBank":"mario"}
+{"id":0,"name":"Mario","resourceCharacter":0,"gameplayProfile":"mario","model":"model.obj","partsModel":"model-parts.obj","textureDirectory":"textures","voiceBank":"mario"}

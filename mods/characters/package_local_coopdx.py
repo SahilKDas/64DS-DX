@@ -12,7 +12,10 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1] / "waluigi" / "tools"
 sys.path.insert(0, str(TOOLS))
-from import_sm64coopdx_actor import convert_textures, parse_model, write_obj
+from import_sm64coopdx_actor import (
+    bind_pose, convert_textures, parse_geo, parse_model, resolved_groups,
+    write_bind_obj, write_obj,
+)
 
 PACKS = {
     "mario": ("mario", None),
@@ -47,8 +50,11 @@ def main() -> int:
         destination = args.output / pack
         destination.mkdir(parents=True, exist_ok=True)
         shutil.copy2(manifests / pack / "character.json", destination / "character.json")
-        arrays, groups = parse_model(actor_dir / "model.inc.c")
+        arrays, groups, calls = parse_model(actor_dir / "model.inc.c")
         faces = write_obj(destination / "model-parts.obj", arrays, groups)
+        placements = bind_pose(parse_geo(actor_dir / "geo.inc.c"),
+                               resolved_groups(groups, calls), actor)
+        bind_faces = write_bind_obj(destination / "model.obj", arrays, placements)
         textures = convert_textures(actor_dir, destination)
         voices = 0
         if voice_bank:
@@ -61,6 +67,7 @@ def main() -> int:
             "sourceCommit": "8cd6e5977d9f920d51ca71f2c61801d019ed79c6",
             "actor": actor,
             "faces": faces,
+            "bindPoseFaces": bind_faces,
             "textures": textures,
             "voices": voices,
             "redistribution": "local-import-only until upstream grants a license",
@@ -68,8 +75,9 @@ def main() -> int:
         (destination / "import.json").write_text(
             json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
         )
-        print(f"{pack}: {faces} faces, {textures} textures, {voices} voices")
-        failures += faces == 0
+        print(f"{pack}: {faces} part faces, {bind_faces} bind-pose faces, "
+              f"{textures} textures, {voices} voices")
+        failures += faces == 0 or (pack != "mario" and bind_faces == 0)
     return 1 if failures else 0
 
 

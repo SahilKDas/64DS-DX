@@ -1,1 +1,1 @@
-{"id":2,"name":"Wario","resourceCharacter":2,"gameplayProfile":"wario","model":"model-parts.obj","textureDirectory":"textures","voiceBank":"custom_wario"}
+{"id":2,"name":"Wario","resourceCharacter":2,"gameplayProfile":"wario","model":"model.obj","partsModel":"model-parts.obj","textureDirectory":"textures","voiceBank":"custom_wario"}

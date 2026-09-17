@@ -47,6 +47,16 @@ static bool port_player_is_waluigi(const char *player) {
            g_port_logical_character[slot] == PORT_CHARACTER_WALUIGI;
 }
 
+extern "C" int port_character_voice_logical(unsigned resource_character) {
+    for (unsigned slot = 0; slot < kPortMaxPlayers; ++slot) {
+        const unsigned logical = g_port_logical_character[slot];
+        if (logical < PORT_CHARACTER_COUNT &&
+            port_character_resource(logical) == resource_character)
+            return (int)logical;
+    }
+    return -1;
+}
+
 struct WaluigiSkinScope {
     bool active;
     explicit WaluigiSkinScope(bool on) : active(on) {
