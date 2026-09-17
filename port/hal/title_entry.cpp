@@ -665,7 +665,15 @@ extern "C" int port_title_entry_should_stop(void)
         return 0;
     if (data_02092664 != SCENE_STAGE)
         return 0;                    /* not the Stage: 2, 6 and 7 are not ours */
-    return data_02092660 == 0;       /* the title has finished tearing down */
+    /* The hosted title cannot finish the ROM's asynchronous teardown: two
+       remaining ov007 bodies on that path are explicit unmatched stubs, so
+       data_02092660 stays set forever after a valid file pick. Waiting for it
+       leaves the file-select window alive until the user closes it, at which
+       point main used to enter the staged level without a window. The host
+       runner already calls port_scene_finish() before committing the entry,
+       so its safe completion boundary is the pair of authoritative outputs
+       StartFile writes: Stage requested and a concrete level pending. */
+    return port_level_entry_latch() >= 0;
 }
 
 /* COMMIT, once, after the scene's own census has been written. Returns 1 if
