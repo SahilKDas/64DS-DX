@@ -24,3 +24,9 @@ The scale argument converts conventional modeling units into DS scene units,
 allowing artists to retain sensible OBJ units. This pipeline is host-only QoL:
 retail-matching `src/` remains untouched, and missing assets can fall back to
 the normal DS model.
+
+The CoopDX importer writes both `model-parts.obj` (raw bone-local display-list
+groups) and `model.obj` (an assembled neutral bind pose with GeoLayout
+translations, rotations, scales, branches, and default switch cases applied).
+The player-render preview consumes `model.obj`; the parts file remains useful
+for animation and rig tooling.

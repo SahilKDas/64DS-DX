@@ -22,7 +22,7 @@ Pack &load_pack(int character) {
     const char *root = std::getenv("SM64DS_CHARACTER_PACK_DIR");
     if (!root || !*root) return pack;
     char model[1024];
-    std::snprintf(model, sizeof model, "%s/%s/model-parts.obj", root,
+    std::snprintf(model, sizeof model, "%s/%s/model.obj", root,
                   g_names[character]);
     pack.loaded = pack.mesh.load(model);
     if (pack.loaded)
