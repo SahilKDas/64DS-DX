@@ -7415,6 +7415,26 @@ int main(void)
                     CHAR_NAME[port_character_normalize(g_character_pending)]);
         }
         void *lvl = port_stage_a_boot(g_mc, boot_spawns);
+        /* StartFile's title handoff has already been latched before this boot.
+           Stage::LoadClsnAndObjects can restage that same castle-grounds
+           request while it starts the opening script.  Letting the normal
+           level-change loop consume it on frame zero marks the entire freshly
+           spawned opening cast pending-destroy; teardown then cannot converge,
+           leaving the music and script alive but every character invisible.
+
+           This is deliberately narrow: only an in-process title entry, only
+           the level that is already up, and only immediately after its first
+           boot.  Real same-level exits later in play still use the ordinary
+           level-change path. */
+        if (port_title_entry_taken() &&
+            data_02092110 == data_0209f2f8) {
+            fprintf(stderr, "[title-entry] consumed duplicate post-boot level "
+                            "request %d; opening cast remains live\n",
+                    (int)data_02092110);
+            data_02092110 = -1;
+            port_scene_request_release("the title entry already booted this "
+                                       "level; preserving the opening cast");
+        }
         level_bmd = *(unsigned short *)((char *)lvl + 8);
         {
             const double t0 = port_lvlperf_now();
