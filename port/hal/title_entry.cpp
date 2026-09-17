@@ -673,7 +673,13 @@ extern "C" int port_title_entry_should_stop(void)
        runner already calls port_scene_finish() before committing the entry,
        so its safe completion boundary is the pair of authoritative outputs
        StartFile writes: Stage requested and a concrete level pending. */
-    return port_level_entry_latch() >= 0;
+    /* Do not call port_level_entry_latch() merely to ask this question.  It is
+       a consuming operation: it transfers the pending level into the boot
+       target and clears data_02092110.  Calling it here made the later commit
+       see -1 and silently decline the handoff.  The pending byte itself is the
+       non-destructive half of the same test; commit performs the one real
+       latch once the window loop has stopped. */
+    return data_02092110 >= 0;
 }
 
 /* COMMIT, once, after the scene's own census has been written. Returns 1 if
