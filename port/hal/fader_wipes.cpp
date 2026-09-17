@@ -450,6 +450,8 @@ extern "C" void _ZN9FaderWipe14LoadAndSetFileEt(void *thiz, unsigned short fileI
    gates that test `data_0209d4b0 == 0` come back true. */
 extern "C" {
 extern int data_0209d4b0[8];
+extern int data_0209d4ac[8];
+extern int data_0209f61c[];
 
 /* PHASE 2 ADVANCES TWO FADERS, NOT ONE, and this port only ever ran the
    second. Run link60 Stage 5 lane SEAT8.
@@ -496,6 +498,17 @@ static HalFaderWipe *port_fader_animating(void)
     return 0;
 }
 
+static bool port_fader_installed_valid(const void *f)
+{
+    if (!f) return true;
+    const size_t p = (size_t)f;
+    const size_t first = (size_t)&hal_wipes[0];
+    const size_t after = (size_t)&hal_wipes[7];
+    return (p >= first && p < after &&
+            (p - first) % sizeof(HalFaderWipe) == 0) ||
+           p == (size_t)data_0209f5e8 || p == (size_t)data_0209f61c;
+}
+
 void port_fader_advance(void)
 {
     /* Phase 2's FIRST advance, the ROM's own body, on the INSTALLED fader.
@@ -509,9 +522,16 @@ void port_fader_advance(void)
        target once a frame. That was measured, not reasoned: the first cut of
        this line sat above the bracket and level 1's selftest started printing
        the host stub's AdvanceFade note. */
-    g_hal_fader_stepping = 1;
-    func_02018efc();
-    g_hal_fader_stepping = 0;
+    void *installed = (void *)(size_t)data_0209d4ac[0];
+    if (!port_fader_installed_valid(installed)) {
+        std::fprintf(stderr, "[fade] discarded invalid installed fader %p\n",
+                     installed);
+        data_0209d4ac[0] = 0;
+    } else {
+        g_hal_fader_stepping = 1;
+        func_02018efc();
+        g_hal_fader_stepping = 0;
+    }
 
     HalFaderWipe *f = port_fader_animating();
     if (!f)
