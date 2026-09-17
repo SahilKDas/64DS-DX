@@ -5421,9 +5421,12 @@ static int g_user_sized;
    it must not be mistaken for a successful title-entry scene completion and
    fall through into a headless level boot. */
 static int g_window_destroyed;
+static int g_window_user_close;
 
 static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
+    if (m == WM_CLOSE)
+        g_window_user_close = 1;
     /* the capture is dropped here as well as on the frame test, because a
        window being destroyed has no more frames to test on */
     if (m == WM_DESTROY) {
@@ -7178,8 +7181,17 @@ int main(void)
                 ? scene_window_run()          /* carries the stop test itself */
                 : (port_title_entry_armed() ? port_title_entry_run()
                                             : port_scene_run());
-        if (g_window_destroyed)
+        if (g_window_user_close)
             return scene_rc;
+        if (g_window_destroyed) {
+            /* The scene transition destroyed its stacked title window. Do
+               not reuse its dead HWND/HDC for the adventure; the ordinary
+               level path below will create a fresh visible window. */
+            g_entry_hwnd = 0;
+            g_entry_hdc = 0;
+            g_present_hwnd = 0;
+            g_present_hdc = 0;
+        }
         if (!port_title_entry_taken())
             return scene_rc;
         fprintf(stderr, "[title-entry] scene run over; falling through to the "
