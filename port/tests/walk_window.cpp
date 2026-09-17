@@ -3001,7 +3001,7 @@ static void padlearn_frame(int *pad_live)
    Walking, running, jumping and the dust are character-agnostic code. */
 #include "../waluigi.h"
 static const char *const CHAR_NAME[PORT_CHARACTER_COUNT] = {
-    "Mario", "Luigi", "Wario", "Yoshi", "Waluigi"
+    "Mario", "Luigi", "Wario", "Yoshi", "Waluigi", "Toad"
 };
 static int g_character;                     /* what the boot actually spawned */
 static int g_character_pending;             /* what the next boot will spawn */
@@ -3020,7 +3020,7 @@ static void character_set_pending(int ch)
    rewritten spawn param, carrying position and speed across. Port code, not
    the game's: the game's own in-place change is the CAP path, and there is no
    Yoshi cap for it to run. The reasoning is in hal/player_bridges.cpp, where
-   it lives because it wants Player.h. SM64DS_SWITCH=<0..4> drives it headless. */
+   it lives because it wants Player.h. SM64DS_SWITCH=<0..5> drives it headless. */
 extern "C" void port_player_set_character(void *player, unsigned ch);
 /* SM64DS_VS_CHARS: the game side of VS character selection. Reads a per-slot
    character pick (mirrors SM64DS_VS_NAMES/SM64DS_VS_COLORS) and applies it once,
@@ -7361,7 +7361,7 @@ int main(void)
            sub-table is dropped, which is stage A1: geometry only. */
         if (boot_spawns)
             port_stage_a2_seat();
-        /* SM64DS_CHARACTER=0..4 (Mario, Luigi, Wario, Yoshi, Waluigi). It goes in HERE,
+        /* SM64DS_CHARACTER=0..5 (Mario, Luigi, Wario, Yoshi, Waluigi, Toad). It goes in HERE,
            before the boot, because LoadEntranceObjects reads the save byte to
            build the Player's spawn param and Player::InitResources loads that
            character's models and no others. Setting it after the spawn gets a
@@ -7471,10 +7471,10 @@ int main(void)
        rather than assuming the save byte got through. Zeroed storage gives 0,
        which IS Mario, but that is a property of the entrance param and not a
        guarantee worth leaning on. */
-    g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
+    g_character = g_character_pending >= PORT_CHARACTER_WALUIGI ? g_character_pending : *(unsigned char *)(c + 0x6d9) & 3;
     g_character_pending = g_character;
-    if (g_character == PORT_CHARACTER_WALUIGI)
-        port_player_set_character(c, PORT_CHARACTER_WALUIGI);
+    if (g_character >= PORT_CHARACTER_WALUIGI)
+        port_player_set_character(c, (unsigned)g_character);
 
     /* SKIP THE CHARACTER INTRO CUTSCENE, which the other three spawn with and
        Mario does not. func_ov002_020c4188 is that cutscene's state machine,
@@ -8125,10 +8125,10 @@ int main(void)
             c = (char *)player;
             /* read the character back off the restored Player, exactly as the
                handoff does off the entrance-spawned one */
-            g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
+            g_character = g_character_pending >= PORT_CHARACTER_WALUIGI ? g_character_pending : *(unsigned char *)(c + 0x6d9) & 3;
             g_character_pending = g_character;
-    if (g_character == PORT_CHARACTER_WALUIGI)
-        port_player_set_character(c, PORT_CHARACTER_WALUIGI);
+    if (g_character >= PORT_CHARACTER_WALUIGI)
+        port_player_set_character(c, (unsigned)g_character);
         }
         cam = nc;
         an_pivot_live = 0;
@@ -10345,10 +10345,10 @@ int main(void)
                 /* the character state was read off the boot's Player; across
                    a warp the entrance spawned a fresh one (ExitLevel wipes
                    the save byte too), so read it back with everything else */
-                g_character = g_character_pending == PORT_CHARACTER_WALUIGI ? PORT_CHARACTER_WALUIGI : *(unsigned char *)(c + 0x6d9) & 3;
+                g_character = g_character_pending >= PORT_CHARACTER_WALUIGI ? g_character_pending : *(unsigned char *)(c + 0x6d9) & 3;
                 g_character_pending = g_character;
-    if (g_character == PORT_CHARACTER_WALUIGI)
-        port_player_set_character(c, PORT_CHARACTER_WALUIGI);
+    if (g_character >= PORT_CHARACTER_WALUIGI)
+        port_player_set_character(c, (unsigned)g_character);
                 cam = data_0209f318;
                 level_shift = 0;
                 if (real_boot) {
@@ -11728,7 +11728,7 @@ int main(void)
                    is called from there (port_particle_render, below the level
                    pass). Drawing translucent particles ahead of the opaque
                    level loses them all to the ground drawn over them. */
-                /* SM64DS_SWITCH=<0..4> drives the cap-block character change
+                /* SM64DS_SWITCH=<0..5> drives the cap-block character change
                    from a headless run, at frame 90, so the live path has a
                    regression probe instead of only being reachable by hand
                    through the F5 row. */

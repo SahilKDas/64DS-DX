@@ -2634,22 +2634,23 @@ static void vs_chars_load(void)
                     "longer than one character\n", slot);
             return;
         }
-        if (ch < '0' || ch > '4') {
+        if (ch < '0' || ch > '5') {
             std::fprintf(stderr, "[vs] SM64DS_VS_CHARS ignored: field %d byte "
-                    "%02x is not one of 0..4 (0/blank Yoshi, 1 Mario, 2 Luigi, "
-                    "3 Wario, 4 Waluigi)\n", slot, (unsigned char)ch);
+                    "%02x is not one of 0..5 (0/blank Yoshi, 1 Mario, 2 Luigi, "
+                    "3 Wario, 4 Waluigi, 5 Toad)\n", slot, (unsigned char)ch);
             return;
         }
         /* '0' is Yoshi; 1..3 map to engine 0..2; 4 is logical Waluigi. */
         tmp[slot] = (ch == '0') ? -1 :
-                    (ch == '4' ? PORT_CHARACTER_WALUIGI : ch - '1');
+                    (ch == '4' ? PORT_CHARACTER_WALUIGI :
+                     ch == '5' ? PORT_CHARACTER_TOAD : ch - '1');
     }
 
     g_vs_chars_fields = nf;
     for (int i = 0; i < nf; ++i) g_vs_chars[i] = tmp[i];
 
     static const char *const kName[PORT_CHARACTER_COUNT] = {
-        "Mario", "Luigi", "Wario", "Yoshi", "Waluigi"
+        "Mario", "Luigi", "Wario", "Yoshi", "Waluigi", "Toad"
     };
     std::fprintf(stderr, "[vs] SM64DS_VS_CHARS accepted, %d fields:", nf);
     for (int i = 0; i < nf; ++i)
@@ -2675,7 +2676,7 @@ extern "C" void port_vs_apply_chars(int frame)
     vs_chars_load();
 
     static const char *const kName[PORT_CHARACTER_COUNT] = {
-        "Mario", "Luigi", "Wario", "Yoshi", "Waluigi"
+        "Mario", "Luigi", "Wario", "Yoshi", "Waluigi", "Toad"
     };
     for (int i = 0; i < g_vs_chars_fields && i < kPortMaxPlayers; ++i) {
         const int chr = g_vs_chars[i];
