@@ -5417,12 +5417,17 @@ static int mo_capture_want(int selftest, int stacked)
    Set by the window procedure below; read by stack_present_arm, which is the
    one thing that would otherwise re-size a running window. */
 static int g_user_sized;
+/* A destroyed host window is an unconditional process exit. In particular,
+   it must not be mistaken for a successful title-entry scene completion and
+   fall through into a headless level boot. */
+static int g_window_destroyed;
 
 static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
     /* the capture is dropped here as well as on the frame test, because a
        window being destroyed has no more frames to test on */
     if (m == WM_DESTROY) {
+        g_window_destroyed = 1;
         mo_capture_set(h, 0);
         mo_release();
         W.PostQuitMessage_(0);
@@ -7173,6 +7178,8 @@ int main(void)
                 ? scene_window_run()          /* carries the stop test itself */
                 : (port_title_entry_armed() ? port_title_entry_run()
                                             : port_scene_run());
+        if (g_window_destroyed)
+            return scene_rc;
         if (!port_title_entry_taken())
             return scene_rc;
         fprintf(stderr, "[title-entry] scene run over; falling through to the "
