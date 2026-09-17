@@ -17,6 +17,7 @@
 #include "player_fields.h"   /* run mg16 lane MP4: the one place field offsets live */
 #include "../waluigi.h"
 #include "host_settings.h"   /* port::adventure_ghost_mode() for the ghost pass */
+#include "character_pack.h"
 #include "comms_seam.h"      /* port::sync_stats(): the local-write witness */
 #include "ShadowModel.h"
 #include "TextureSequence.h"
@@ -1720,13 +1721,20 @@ void hal_render_player_world(void *player)
        what the first one did. */
     std::size_t hsink_t0 = 0;
     if (hsink_on()) ntr::gx_polygons(hsink_t0);
-    ma->Model::Render((const Vector3 *)(c + 0x80));
+    const unsigned slot = *(const unsigned char *)(c + 0x6d8);
+    const int logical = slot < kPortMaxPlayers &&
+                        g_port_logical_character[slot] != 0xff
+                            ? g_port_logical_character[slot]
+                            : (int)*(const unsigned char *)(c + 0x6db);
+    const bool host_character = port_character_pack_draw(logical, scene);
+    if (!host_character)
+        ma->Model::Render((const Vector3 *)(c + 0x80));
     std::size_t hsink_t1 = hsink_t0;
     if (hsink_on()) ntr::gx_polygons(hsink_t1);
     hal_player_texseq_body(c);
 
     unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
-    if (hid != 8 && hid != 9) {
+    if (!host_character && hid != 8 && hid != 9) {
         char *head = ((char **)(c + 0x154))[hid];
         if (head) {
             yhd_probe(c, scene, head);

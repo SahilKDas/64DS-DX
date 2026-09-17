@@ -80,6 +80,8 @@ void gx_bind_texture(const uint32_t *rgba, int width, int height);
 // Submit one OBJ-style model-space triangle through the live DS camera.
 // xyz is three float triplets; uv is three texel-coordinate pairs.
 void gx_submit_host_triangle(const float xyz[9], const float uv[6], uint32_t color);
+void gx_submit_host_triangle_model(const float xyz[9], const float uv[6],
+                                   uint32_t color, const int model[12]);
 
 // Scope a host-only Waluigi skin over DS textures. The fifth logical player
 // reuses Wario''s fixed ROM model slot, keeping this outside the four-entry ABI.

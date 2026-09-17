@@ -97,4 +97,21 @@ void HostMesh::draw(float scale) const {
     }
 }
 
+void HostMesh::draw_model(const int model[12], float scale) const {
+    if (!model) return;
+    gx_bind_texture(texture_.empty() ? nullptr : texture_.data(),
+                    texture_width_, texture_height_);
+    for (const Triangle &triangle : triangles_) {
+        float xyz[9], uv[6];
+        for (int i = 0; i < 3; ++i) {
+            xyz[i * 3] = triangle.v[i].x * scale;
+            xyz[i * 3 + 1] = triangle.v[i].y * scale;
+            xyz[i * 3 + 2] = triangle.v[i].z * scale;
+            uv[i * 2] = triangle.v[i].u * texture_width_;
+            uv[i * 2 + 1] = triangle.v[i].v * texture_height_;
+        }
+        gx_submit_host_triangle_model(xyz, uv, 0xffffffffu, model);
+    }
+}
+
 } // namespace ntr

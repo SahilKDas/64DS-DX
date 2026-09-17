@@ -1011,6 +1011,24 @@ void gx_submit_host_triangle(const float xyz[9], const float uv[6], uint32_t col
     }
     emit_tri(vertex[0], vertex[1], vertex[2]);
 }
+void gx_submit_host_triangle_model(const float xyz[9], const float uv[6],
+                                   uint32_t color, const int model[12]) {
+    GxVertex vertex[3];
+    for (int i = 0; i < 3; ++i) {
+        const float x = xyz[i * 3], y = xyz[i * 3 + 1], z = xyz[i * 3 + 2];
+        const Vec4 world{
+            (x * model[0] + y * model[3] + z * model[6] + model[9]) * FX12,
+            (x * model[1] + y * model[4] + z * model[7] + model[10]) * FX12,
+            (x * model[2] + y * model[5] + z * model[8] + model[11]) * FX12,
+            1.0f
+        };
+        Vec4 clip = mul(world, g.proj);
+        if (g.proj.m[3] != 0.0f || g.proj.m[7] != 0.0f || g.proj.m[11] != 0.0f)
+            clip.x *= (4.0f / 3.0f) * ((float)active_h / (float)active_w);
+        vertex[i] = {clip.x, clip.y, clip.z, clip.w, uv[i * 2], uv[i * 2 + 1], color};
+    }
+    emit_tri(vertex[0], vertex[1], vertex[2]);
+}
 
 static int g_waluigi_skin_depth;
 static std::map<const uint32_t *, std::vector<uint32_t>> g_waluigi_textures;

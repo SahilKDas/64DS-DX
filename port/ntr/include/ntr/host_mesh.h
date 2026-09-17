@@ -14,6 +14,7 @@ class HostMesh {
 public:
     bool load(const char *obj_path, const char *texture_path = nullptr);
     void draw(float scale = 1.0f) const;
+    void draw_model(const int model[12], float scale = 1.0f) const;
     bool empty() const { return triangles_.empty(); }
     const std::string &error() const { return error_; }
 
