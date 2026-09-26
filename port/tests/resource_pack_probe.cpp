@@ -5,12 +5,25 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 2) {
-        std::fprintf(stderr, "usage: resource_pack_probe <pack-root>\n");
+    if (argc < 2 || argc > 3) {
+        std::fprintf(stderr, "usage: resource_pack_probe <pack-root> [--expect-errors]\n");
         return 2;
     }
+    const bool expect_errors = argc == 3 &&
+                               std::string(argv[2]) == "--expect-errors";
     std::string error;
-    if (!sm64ds::packs::load_all(argv[1], error)) {
+    const bool loaded = sm64ds::packs::load_all(argv[1], error);
+    if (expect_errors) {
+        int good = 0, bad = 0;
+        for (const auto &pack : sm64ds::packs::packs())
+            pack.loaded ? ++good : ++bad;
+        if (loaded || good != 1 || bad != 1 ||
+            sm64ds::packs::diagnostics().empty())
+            return 8;
+        std::puts("resource_pack_probe: independent rejection PASS");
+        return 0;
+    }
+    if (!loaded) {
         std::fprintf(stderr, "%s", error.c_str());
         return 1;
     }
