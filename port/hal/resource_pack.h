@@ -86,6 +86,7 @@ const std::vector<PackIssue> &diagnostics();
 ReloadState reload_state();
 const std::string &selected_character_key();
 const Character *selected_character();
+int selected_base_character();
 std::string registry_fingerprint();
 const std::string &root_path();
 

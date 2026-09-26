@@ -3298,7 +3298,11 @@ enum {
     MENU_VS_MODE,       /* the ROM's single mode, stated; enter goes too      */
     MENU_EXIT,
     MENU_CHARACTER,
+    MENU_PACK_CHARACTER,
     MENU_MODS,
+    MENU_MOD_INFO,
+    MENU_MOD_ORDER,
+    MENU_MOD_DIAG,
     MENU_MOD_RELOAD,
     MENU_SNAP,
     MENU_OVERLAY,
@@ -4048,6 +4052,7 @@ static int menu_at = -1;   /* SM64DS_MENU_AT, see where it is read */
 static int menu_b_swallow;
 static int menu_sel;
 static int menu_pack;
+static int menu_pack_character;
 static int menu_entrance;             /* the entrance the warp row is showing */
 /* THE LEVEL ROW IS THE DEBUG LEVEL SELECT'S OWN LIST. dScTitle_c (ov003,
    scene 2) picks a row out of data_ov003_020b1180 -- 0x36 eight-byte rows,
@@ -4809,6 +4814,22 @@ static void menu_draw(const OvlSurface &fb)
              CHAR_NAME[g_character_pending & 3],
              g_character_pending == g_character ? "" : "   enter to switch");
     {
+        const auto &characters = sm64ds::packs::characters();
+        if (characters.empty())
+            snprintf(ln[MENU_PACK_CHARACTER], sizeof ln[0],
+                     "pack character    none installed");
+        else {
+            menu_pack_character %= (int)characters.size();
+            const auto &item = characters[menu_pack_character];
+            snprintf(ln[MENU_PACK_CHARACTER], sizeof ln[0],
+                     "pack character    %d/%d %.28s  base %s%s",
+                     menu_pack_character + 1, (int)characters.size(),
+                     item.name.c_str(), CHAR_NAME[item.base_character & 3],
+                     sm64ds::packs::selected_character_key() == item.key
+                         ? " [selected]" : "");
+        }
+    }
+    {
         const auto &packs = sm64ds::packs::packs();
         if (packs.empty())
             snprintf(ln[MENU_MODS], sizeof ln[0], "mods              no packs installed");
@@ -4821,6 +4842,27 @@ static void menu_draw(const OvlSurface &fb)
                      pack.enabled ? "ON" : "off",
                      pack.loaded ? "loaded" : "not loaded",
                      pack.errors.empty() ? "" : " ERROR");
+            snprintf(ln[MENU_MOD_INFO], sizeof ln[0],
+                     "mod info          v%s by %.28s  license %.24s",
+                     pack.version.empty() ? "?" : pack.version.c_str(),
+                     pack.author.empty() ? "unknown" : pack.author.c_str(),
+                     pack.license.empty() ? "UNSPECIFIED" : pack.license.c_str());
+            snprintf(ln[MENU_MOD_ORDER], sizeof ln[0],
+                     "mod order         %d   left/right moves selected pack",
+                     pack.order + 1);
+            if (pack.errors.empty())
+                snprintf(ln[MENU_MOD_DIAG], sizeof ln[0],
+                         "mod diagnostics   no validation errors");
+            else
+                snprintf(ln[MENU_MOD_DIAG], sizeof ln[0],
+                         "mod error         %.20s: %.55s",
+                         pack.errors[0].field.c_str(),
+                         pack.errors[0].message.c_str());
+        }
+        if (packs.empty()) {
+            snprintf(ln[MENU_MOD_INFO], sizeof ln[0], "mod info          -");
+            snprintf(ln[MENU_MOD_ORDER], sizeof ln[0], "mod order         -");
+            snprintf(ln[MENU_MOD_DIAG], sizeof ln[0], "mod diagnostics   -");
         }
         const char *state = sm64ds::packs::reload_state() ==
                                     sm64ds::packs::ReloadState::Queued
@@ -5393,6 +5435,38 @@ static void menu_input(int pad_live, const XPad *pad)
                              : g_character_pending + 1) & 3;
                 }
                 break;
+            case MENU_PACK_CHARACTER:
+                {
+                    const auto &characters = sm64ds::packs::characters();
+                    if (characters.empty()) {
+                        ss_note("no pack characters are available");
+                        break;
+                    }
+                    menu_pack_character %= (int)characters.size();
+                    if (edge & (1u << 5)) {
+                        const auto item = characters[menu_pack_character];
+                        std::string error;
+                        if (!sm64ds::packs::select_character(item.key, error))
+                            ss_note(error.c_str());
+                        else if (g_menu_host.player) {
+                            /* Gameplay remains on one of the four retail
+                               profiles. The resource bridge replaces native
+                               assets; it never creates a fifth ROM slot. */
+                            port_player_set_character(g_menu_host.player,
+                                                      item.base_character);
+                            g_character = g_character_pending = item.base_character;
+                            ss_note("pack character selected");
+                        } else {
+                            ss_note("pack character saved for the next level");
+                        }
+                    } else {
+                        menu_pack_character = dec
+                            ? (menu_pack_character + (int)characters.size() - 1) %
+                                  (int)characters.size()
+                            : (menu_pack_character + 1) % (int)characters.size();
+                    }
+                }
+                break;
             case MENU_MODS:
                 {
                     const auto &packs = sm64ds::packs::packs();
@@ -5413,6 +5487,36 @@ static void menu_input(int pad_live, const XPad *pad)
                         menu_pack = dec
                             ? (menu_pack + (int)packs.size() - 1) % (int)packs.size()
                             : (menu_pack + 1) % (int)packs.size();
+                    }
+                }
+                break;
+            case MENU_MOD_INFO:
+            case MENU_MOD_DIAG:
+                {
+                    const auto &packs = sm64ds::packs::packs();
+                    if (!packs.empty() && !packs[menu_pack % packs.size()].errors.empty()) {
+                        const auto &issue = packs[menu_pack % packs.size()].errors[0];
+                        fprintf(stderr, "[resource-pack:%s] %s: %s\n",
+                                issue.pack_id.c_str(), issue.field.c_str(),
+                                issue.message.c_str());
+                        ss_note(issue.message.c_str());
+                    }
+                }
+                break;
+            case MENU_MOD_ORDER:
+                {
+                    const auto &packs = sm64ds::packs::packs();
+                    if (!packs.empty()) {
+                        menu_pack %= (int)packs.size();
+                        std::string error;
+                        const std::string id = packs[menu_pack].id;
+                        if (!sm64ds::packs::move_pack(id, dec ? -1 : 1, error))
+                            ss_note(error.c_str());
+                        else {
+                            menu_pack = std::max(0, std::min((int)packs.size() - 1,
+                                                           menu_pack + (dec ? -1 : 1)));
+                            ss_note("pack order saved; reload mods to apply");
+                        }
                     }
                 }
                 break;
@@ -8915,6 +9019,8 @@ int main(void)
                 sm64ds::packs::characters().size(),
                 sm64ds::packs::textures().size());
         resource_pack_register_textures();
+        if (!sm64ds::packs::selected_character_key().empty())
+            character_set_pending(sm64ds::packs::selected_base_character());
     }
     /* A stale file from an earlier run must never be read as this run's verdict.
        Clear it before the decision, write it only if the decision goes badly. */
