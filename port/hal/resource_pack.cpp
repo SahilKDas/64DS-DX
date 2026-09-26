@@ -601,4 +601,21 @@ std::string registry_fingerprint()
     return out.str();
 }
 
+std::uint64_t character_key_hash(const std::string &key)
+{
+    std::uint64_t hash = 1469598103934665603ULL;
+    for (unsigned char ch : key) { hash ^= ch; hash *= 1099511628211ULL; }
+    return key.empty() ? 0 : hash;
+}
+
+const Character *character_by_hash(std::uint64_t hash)
+{
+    if (!hash) return nullptr;
+    const auto found = std::find_if(g_characters.begin(), g_characters.end(),
+        [hash](const Character &item) {
+            return character_key_hash(item.key) == hash;
+        });
+    return found == g_characters.end() ? nullptr : &*found;
+}
+
 }  // namespace sm64ds::packs
