@@ -406,6 +406,11 @@ void hdtex_register(uint64_t name, const char *png_path)
     g_enabled = 1;
 }
 
+void hdtex_clear_registered(void)
+{
+    if (g_registered) g_registered->clear();
+}
+
 // THE PARKED EDITION'S NAME, kept for one reason: the dump's index carries it
 // beside the port's own, so anyone holding a pack built for that edition can
 // read the mapping off a table instead of matching pixels. Nothing in the bind

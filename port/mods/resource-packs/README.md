@@ -1,5 +1,59 @@
 # Lua resource packs
 
+Resource packs use the sandboxed declarative Lua API. They cannot open files,
+use the network, start processes, inspect game memory, or run general gameplay
+scripts. Models and animations must use the port's native BMD/BCA renderer;
+texture replacements are PNG files consumed by the existing HD-texture path.
+
+## API v2
+
+Each pack lives in `mods/resource-packs/<pack-id>/pack.lua`. The directory name
+is its stable ID. IDs and character-local keys contain only letters, digits,
+`-`, and `_`.
+
+```lua
+sm64ds.pack {
+  id = "example-pack",
+  name = "Example Pack",
+  author = "Example Author",
+  version = "1.0.0",
+  license = "CC-BY-4.0",
+  provenance = "https://example.invalid/revision/abc123"
+}
+
+sm64ds.character {
+  key = "waluigi",              -- stable network/save key is example-pack:waluigi
+  name = "Waluigi",
+  base = 2,                      -- retail gameplay profile; 0..3 only
+  body = "models/body.bmd",
+  head_cap = "models/head_cap.bmd",
+  head_no_cap = "models/head_no_cap.bmd",
+  hitbox = { radius = 48, height = 116, hurt_radius = 48, hurt_height = 116 },
+  animations = { idle = "anims/idle.bca", run = "anims/run.bca" },
+  preview = { animation = "idle", icon = "icon.png", yaw = 15, distance = 320 }
+}
+```
+
+Numeric `id` remains accepted for v1 packs, but stable keys are authoritative.
+The loader assigns runtime IDs 4..255 in enabled pack order and permanently
+reserves 0..3 for Mario, Luigi, Wario, and Yoshi. Duplicate keys, texture
+hashes, invalid paths, missing assets, oversized scripts, and runaway scripts
+reject only the offending pack.
+
+The in-game F5 menu's **mods** rows browse packs, save enable state, and reload.
+Reload requests made in a level are queued until a safe menu. State is written
+atomically to `resource-packs.state` beside `settings.json` and the executable.
+
+## CoopDX intake
+
+`python port/tools/import_coopdx_characters.py <checkout> --dry-run --report report.json`
+inventories Waluigi first and then the remaining roster deterministically. Add
+`--output <local-pack-root>` to emit packs. Assets are emitted only when their
+manifest has an explicitly permitted SPDX license and already supplies native
+BMD/BCA files plus the required animation set. Everything else is reported
+with a local-import recipe; the importer never invents a renderer or silently
+degrades a rig.
+
 This is the supported high-level mod format in 64DS-DX. It is asset-oriented,
 not a general gameplay scripting API, and it contains no Zig component.
 

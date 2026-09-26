@@ -106,13 +106,17 @@ jobs:
         run: |
           mkdir -p build
           python tools/port_refcheck.py --json build/port_refcheck.json
+          python port/tools/check_pack_boundaries.py
+          python port/tools/import_coopdx_characters.py port/mods --dry-run --report build/coopdx-compatibility.json
 
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: port-refcheck
-          path: build/port_refcheck.json
+          path: |
+            build/port_refcheck.json
+            build/coopdx-compatibility.json
           if-no-files-found: ignore
 
   build:
@@ -161,4 +165,8 @@ jobs:
           SM64DS_LINK_ONLY: "1"
         run: |
           call "%VSINSTALL%\VC\Auxiliary\Build\vcvars32.bat" >nul || exit /b 1
-          cmake --build build\portci --target smoke smoke_gx smoke_heap smoke_roots smoke_fs -- -k 0
+          cmake --build build\portci --target resource_pack_probe smoke smoke_gx smoke_heap smoke_roots smoke_fs -- -k 0
+
+      - name: Probe sandboxed Lua v2 registry
+        shell: cmd
+        run: build\portci\resource_pack_probe.exe port\tests\resource_pack_fixture
