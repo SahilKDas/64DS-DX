@@ -3298,6 +3298,8 @@ enum {
     MENU_VS_MODE,       /* the ROM's single mode, stated; enter goes too      */
     MENU_EXIT,
     MENU_CHARACTER,
+    MENU_MODS,
+    MENU_MOD_RELOAD,
     MENU_SNAP,
     MENU_OVERLAY,
     MENU_CAMERA,
@@ -4045,6 +4047,7 @@ static int menu_at = -1;   /* SM64DS_MENU_AT, see where it is read */
    back up. See the block below the menu's input, where it is spent. */
 static int menu_b_swallow;
 static int menu_sel;
+static int menu_pack;
 static int menu_entrance;             /* the entrance the warp row is showing */
 /* THE LEVEL ROW IS THE DEBUG LEVEL SELECT'S OWN LIST. dScTitle_c (ov003,
    scene 2) picks a row out of data_ov003_020b1180 -- 0x36 eight-byte rows,
@@ -4691,6 +4694,13 @@ struct MenuHost {
 };
 static MenuHost g_menu_host;
 
+static void resource_pack_register_textures(void)
+{
+    ntr::hdtex_clear_registered();
+    for (const auto &texture : sm64ds::packs::textures())
+        ntr::hdtex_register(texture.target_hash, texture.source.c_str());
+}
+
 static void menu_draw(const OvlSurface &fb)
 {
     /* 96, not 72: the level-select row now carries a name as well as the row,
@@ -4798,6 +4808,27 @@ static void menu_draw(const OvlSurface &fb)
     snprintf(ln[MENU_CHARACTER], sizeof ln[0], "character         %s%s",
              CHAR_NAME[g_character_pending & 3],
              g_character_pending == g_character ? "" : "   enter to switch");
+    {
+        const auto &packs = sm64ds::packs::packs();
+        if (packs.empty())
+            snprintf(ln[MENU_MODS], sizeof ln[0], "mods              no packs installed");
+        else {
+            menu_pack %= (int)packs.size();
+            const auto &pack = packs[menu_pack];
+            snprintf(ln[MENU_MODS], sizeof ln[0],
+                     "mods              %d/%d %s [%s] %s%s",
+                     menu_pack + 1, (int)packs.size(), pack.name.c_str(),
+                     pack.enabled ? "ON" : "off",
+                     pack.loaded ? "loaded" : "not loaded",
+                     pack.errors.empty() ? "" : " ERROR");
+        }
+        const char *state = sm64ds::packs::reload_state() ==
+                                    sm64ds::packs::ReloadState::Queued
+                                ? "queued until a safe menu"
+                                : "enter to reload";
+        snprintf(ln[MENU_MOD_RELOAD], sizeof ln[0],
+                 "reload mods       %s", state);
+    }
     snprintf(ln[MENU_SNAP], sizeof ln[0], "fake snap         %s",
              g_fake_snap ? "ON (collider owner set at boot)" : "off");
     snprintf(ln[MENU_OVERLAY], sizeof ln[0], "stats overlay     %s",
@@ -4936,6 +4967,15 @@ static void menu_draw(const OvlSurface &fb)
 static void menu_input(int pad_live, const XPad *pad)
 {
     if (g_selftest) return;
+    if (!g_menu_host.player && sm64ds::packs::reload_state() ==
+                                   sm64ds::packs::ReloadState::Queued) {
+        std::string error;
+        if (!sm64ds::packs::apply_queued_reload(true, error))
+            fprintf(stderr, "[resource-pack] queued reload failed: %s\n",
+                    error.c_str());
+        else
+            resource_pack_register_textures();
+    }
     static unsigned menu_prev;
     unsigned held = 0;
     unsigned edge;
@@ -5351,6 +5391,42 @@ static void menu_input(int pad_live, const XPad *pad)
                     g_character_pending =
                         (dec ? g_character_pending + 3
                              : g_character_pending + 1) & 3;
+                }
+                break;
+            case MENU_MODS:
+                {
+                    const auto &packs = sm64ds::packs::packs();
+                    if (packs.empty()) {
+                        ss_note("no resource packs are installed");
+                        break;
+                    }
+                    menu_pack %= (int)packs.size();
+                    if (edge & (1u << 5)) {
+                        std::string error;
+                        const auto pack = packs[menu_pack];
+                        if (!sm64ds::packs::set_pack_enabled(
+                                pack.id, !pack.enabled, error))
+                            ss_note(error.c_str());
+                        else
+                            ss_note("pack setting saved; reload mods to apply");
+                    } else {
+                        menu_pack = dec
+                            ? (menu_pack + (int)packs.size() - 1) % (int)packs.size()
+                            : (menu_pack + 1) % (int)packs.size();
+                    }
+                }
+                break;
+            case MENU_MOD_RELOAD:
+                if (edge & (1u << 5)) {
+                    std::string error;
+                    const bool safe = !g_menu_host.player;
+                    if (!sm64ds::packs::request_reload(safe, error))
+                        ss_note(error.c_str());
+                    else if (safe) {
+                        resource_pack_register_textures();
+                        ss_note("resource packs reloaded");
+                    } else
+                        ss_note("reload queued until a safe menu");
                 }
                 break;
             case MENU_SNAP:
@@ -8838,8 +8914,7 @@ int main(void)
                         "%zu texture replacement(s)\n",
                 sm64ds::packs::characters().size(),
                 sm64ds::packs::textures().size());
-        for (const auto &texture : sm64ds::packs::textures())
-            ntr::hdtex_register(texture.target_hash, texture.source.c_str());
+        resource_pack_register_textures();
     }
     /* A stale file from an earlier run must never be read as this run's verdict.
        Clear it before the decision, write it only if the decision goes badly. */
