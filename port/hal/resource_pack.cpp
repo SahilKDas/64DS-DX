@@ -26,6 +26,7 @@ std::vector<PackSummary> g_packs;
 std::vector<PackIssue> g_diagnostics;
 std::string g_root;
 std::string g_selected_key;
+int g_selected_base = 0;
 ReloadState g_reload_state = ReloadState::Idle;
 
 struct Preference {
@@ -78,7 +79,7 @@ void read_state()
     std::ifstream input(state_path());
     std::string kind;
     while (input >> kind) {
-        if (kind == "selected") input >> std::quoted(g_selected_key);
+        if (kind == "selected") input >> std::quoted(g_selected_key) >> g_selected_base;
         else if (kind == "pack") {
             std::string id; int enabled = 1, order = 0;
             if (input >> std::quoted(id) >> enabled >> order)
@@ -96,7 +97,8 @@ bool write_state(std::string &error)
     fs::create_directories(path.parent_path(), ec);
     std::ofstream output(temporary, std::ios::trunc);
     if (!output) { error = "cannot write " + temporary.string(); return false; }
-    output << "selected " << std::quoted(g_selected_key) << '\n';
+    output << "selected " << std::quoted(g_selected_key) << ' '
+           << g_selected_base << '\n';
     for (const PackSummary &pack : g_packs)
         output << "pack " << std::quoted(pack.id) << ' ' << (pack.enabled ? 1 : 0)
                << ' ' << pack.order << '\n';
@@ -378,6 +380,10 @@ bool load_pack(const fs::path &directory, PackSummary &summary, std::string &err
     LoadContext ctx;
     ctx.directory = directory;
     ctx.id = directory.filename().string();
+    if (!valid_id(ctx.id)) {
+        error = ctx.id + ": directory name is not a valid pack id";
+        return false;
+    }
     ctx.summary = summary;
     LuaMemory memory;
     lua_State *L = lua_newstate(limited_alloc, &memory);
@@ -428,9 +434,10 @@ void assign_runtime_ids(std::ostringstream &errors, bool &ok)
     for (Character &item : g_characters) {
         if (item.legacy_id == -1) { item.id = -1; continue; }
         if (!used.insert(item.legacy_id).second) {
-            ok = false;
-            errors << item.pack_id << ": conflicting legacy character id "
-                   << item.legacy_id << "\n";
+            errors << item.pack_id << ": warning: legacy character id "
+                   << item.legacy_id << " conflicts; assigned by stable pack order\n";
+            g_diagnostics.push_back({item.pack_id, "id",
+                "legacy numeric ID conflicts; stable key and pack order were used"});
             item.id = -1;
         }
     }
@@ -548,6 +555,8 @@ bool select_character(const std::string &key, std::string &error)
         return false;
     }
     g_selected_key = key;
+    if (const Character *item = character(key))
+        g_selected_base = item->base_character;
     return write_state(error);
 }
 
@@ -570,13 +579,23 @@ const std::vector<PackIssue> &diagnostics() { return g_diagnostics; }
 ReloadState reload_state() { return g_reload_state; }
 const std::string &selected_character_key() { return g_selected_key; }
 const Character *selected_character() { return character(g_selected_key); }
+int selected_base_character()
+{
+    const Character *item = selected_character();
+    return item ? item->base_character : std::max(0, std::min(3, g_selected_base));
+}
 const std::string &root_path() { return g_root; }
 
 std::string registry_fingerprint()
 {
     std::uint64_t hash = 1469598103934665603ULL;
-    for (const Character &item : g_characters)
-        for (unsigned char ch : item.key) { hash ^= ch; hash *= 1099511628211ULL; }
+    std::vector<std::string> keys;
+    for (const Character &item : g_characters) keys.push_back(item.key);
+    std::sort(keys.begin(), keys.end());
+    for (const std::string &key : keys) {
+        for (unsigned char ch : key) { hash ^= ch; hash *= 1099511628211ULL; }
+        hash ^= 0xff; hash *= 1099511628211ULL;
+    }
     std::ostringstream out;
     out << std::hex << std::setw(16) << std::setfill('0') << hash;
     return out.str();
