@@ -169,4 +169,6 @@ jobs:
 
       - name: Probe sandboxed Lua v2 registry
         shell: cmd
-        run: build\portci\resource_pack_probe.exe port\tests\resource_pack_fixture
+        run: |
+          build\portci\resource_pack_probe.exe port\tests\resource_pack_fixture
+          build\portci\resource_pack_probe.exe port\tests\resource_pack_invalid_fixture --expect-errors
