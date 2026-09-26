@@ -88,6 +88,8 @@ const std::string &selected_character_key();
 const Character *selected_character();
 int selected_base_character();
 std::string registry_fingerprint();
+std::uint64_t character_key_hash(const std::string &key);
+const Character *character_by_hash(std::uint64_t hash);
 const std::string &root_path();
 
 }  // namespace sm64ds::packs

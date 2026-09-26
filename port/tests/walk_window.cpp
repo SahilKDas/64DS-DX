@@ -4698,12 +4698,22 @@ struct MenuHost {
     int   real_camera;  /* is there a game camera at all */
 };
 static MenuHost g_menu_host;
+extern "C" void port_sync_set_pack_characters(
+    const unsigned long long *, int, unsigned long long);
 
 static void resource_pack_register_textures(void)
 {
     ntr::hdtex_clear_registered();
     for (const auto &texture : sm64ds::packs::textures())
         ntr::hdtex_register(texture.target_hash, texture.source.c_str());
+    unsigned long long hashes[252];
+    int count = 0;
+    for (const auto &character : sm64ds::packs::characters())
+        if (count < 252)
+            hashes[count++] = sm64ds::packs::character_key_hash(character.key);
+    port_sync_set_pack_characters(
+        hashes, count, sm64ds::packs::character_key_hash(
+                           sm64ds::packs::selected_character_key()));
 }
 
 static void menu_draw(const OvlSurface &fb)
@@ -5449,6 +5459,7 @@ static void menu_input(int pad_live, const XPad *pad)
                         if (!sm64ds::packs::select_character(item.key, error))
                             ss_note(error.c_str());
                         else if (g_menu_host.player) {
+                            resource_pack_register_textures();
                             /* Gameplay remains on one of the four retail
                                profiles. The resource bridge replaces native
                                assets; it never creates a fifth ROM slot. */
@@ -5457,6 +5468,7 @@ static void menu_input(int pad_live, const XPad *pad)
                             g_character = g_character_pending = item.base_character;
                             ss_note("pack character selected");
                         } else {
+                            resource_pack_register_textures();
                             ss_note("pack character saved for the next level");
                         }
                     } else {
@@ -5513,8 +5525,10 @@ static void menu_input(int pad_live, const XPad *pad)
                         if (!sm64ds::packs::move_pack(id, dec ? -1 : 1, error))
                             ss_note(error.c_str());
                         else {
-                            menu_pack = std::max(0, std::min((int)packs.size() - 1,
-                                                           menu_pack + (dec ? -1 : 1)));
+                            menu_pack += dec ? -1 : 1;
+                            if (menu_pack < 0) menu_pack = 0;
+                            if (menu_pack >= (int)packs.size())
+                                menu_pack = (int)packs.size() - 1;
                             ss_note("pack order saved; reload mods to apply");
                         }
                     }
