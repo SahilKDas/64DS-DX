@@ -672,6 +672,7 @@ extern int data_0209f350[];    /* per-pad status */
 extern int data_020a1164[];    /* camera per-player block; +0 = angle
                                   (GetAngleToCamera reads it) */
 extern int data_0209caa0[];
+extern unsigned char data_02092128[];
 extern unsigned char data_0209d660;
 extern int data_0209fc48;
 extern unsigned char data_0209f2d8;
@@ -4716,6 +4717,17 @@ static void resource_pack_register_textures(void)
                            sm64ds::packs::selected_character_key()));
 }
 
+static void ovl_fill(const OvlSurface &fb, int x0, int y0, int w, int h,
+                     uint32_t color)
+{
+    for (int y = y0; y < y0 + h; ++y) {
+        if (y < 0 || y >= ntr::active_h) continue;
+        uint32_t *row = fb.px + (size_t)y * (size_t)fb.stride;
+        for (int x = x0; x < x0 + w; ++x)
+            if (x >= 0 && x < ntr::active_w) row[x] = color;
+    }
+}
+
 static void menu_draw(const OvlSurface &fb)
 {
     /* 96, not 72: the level-select row now carries a name as well as the row,
@@ -8135,6 +8147,176 @@ static int port_scene_want_window(void)
 static HWND g_entry_hwnd;
 static HDC  g_entry_hdc;
 
+/* ---- 64DS-DX FRONTEND ---------------------------------------------------
+   This is host UI over the ROM's title/file-select scene. It does not replace
+   or patch dScDSMT/dScTitle: their file buttons, fades, save loading and touch
+   handling continue underneath. F6 opens a modal character picker; while it
+   is open, the DS keypad is suppressed so one press cannot also activate a
+   file. The chosen base is applied after the ROM loads File A/B/C, at the
+   title-entry boundary below. Pack characters keep their stable key but still
+   use one of the four retail gameplay profiles. */
+static int g_frontend_character_open;
+static int g_frontend_character_cursor;
+static int g_frontend_character_seeded;
+static int g_frontend_character_swallow;
+
+static int frontend_character_count(void)
+{
+    return 4 + (int)sm64ds::packs::characters().size();
+}
+
+static const char *frontend_character_name(int cursor)
+{
+    if (cursor < 4) return CHAR_NAME[cursor & 3];
+    const auto &items = sm64ds::packs::characters();
+    const int index = cursor - 4;
+    return index >= 0 && index < (int)items.size()
+        ? items[index].name.c_str() : "Unavailable";
+}
+
+static int frontend_character_base(int cursor)
+{
+    if (cursor < 4) return cursor & 3;
+    const auto &items = sm64ds::packs::characters();
+    const int index = cursor - 4;
+    return index >= 0 && index < (int)items.size()
+        ? items[index].base_character & 3 : 0;
+}
+
+static void frontend_character_seed(void)
+{
+    if (g_frontend_character_seeded) return;
+    g_frontend_character_seeded = 1;
+    const std::string &key = sm64ds::packs::selected_character_key();
+    if (!key.empty()) {
+        const auto &items = sm64ds::packs::characters();
+        for (int i = 0; i < (int)items.size(); ++i)
+            if (items[i].key == key) {
+                g_frontend_character_cursor = i + 4;
+                return;
+            }
+    }
+    g_frontend_character_cursor = sm64ds::packs::selected_base_character() & 3;
+}
+
+static void frontend_character_commit(void)
+{
+    std::string error;
+    if (g_frontend_character_cursor < 4) {
+        if (!sm64ds::packs::select_retail_character(
+                g_frontend_character_cursor, error))
+            ss_note(error.c_str());
+    } else {
+        const auto &items = sm64ds::packs::characters();
+        const int index = g_frontend_character_cursor - 4;
+        if (index < 0 || index >= (int)items.size() ||
+            !sm64ds::packs::select_character(items[index].key, error))
+            ss_note(error.empty() ? "pack character is unavailable" : error.c_str());
+    }
+    character_set_pending(frontend_character_base(g_frontend_character_cursor));
+    resource_pack_register_textures();
+    ss_note("character selected; choose a save file to play");
+}
+
+static void frontend_input(int pad_live, const XPad *pad)
+{
+    if (!port_title_entry_armed() || port_title_entry_taken() || g_selftest) return;
+    frontend_character_seed();
+    static unsigned previous;
+    unsigned held = 0;
+    if (key_live(VK_F6)) held |= 1u;
+    if (key_act(HOST_KEY_LEFT) || key_act(HOST_KEY_LEFT_ALT)) held |= 2u;
+    if (key_act(HOST_KEY_RIGHT) || key_act(HOST_KEY_RIGHT_ALT)) held |= 4u;
+    if (key_act(HOST_KEY_START)) held |= 8u;
+    if (pad_live) {
+        if (pad->buttons & 0x0004) held |= 2u;
+        if (pad->buttons & 0x0008) held |= 4u;
+        if (pad_act(pad, HOST_PAD_START) || pad_act(pad, HOST_PAD_JUMP)) held |= 8u;
+    }
+    const unsigned edge = held & ~previous;
+    previous = held;
+    if (edge & 1u) g_frontend_character_open = !g_frontend_character_open;
+    if (!g_frontend_character_open) return;
+    const int count = frontend_character_count();
+    if (edge & 2u)
+        g_frontend_character_cursor =
+            (g_frontend_character_cursor + count - 1) % count;
+    if (edge & 4u)
+        g_frontend_character_cursor = (g_frontend_character_cursor + 1) % count;
+    if (edge & 8u) {
+        frontend_character_commit();
+        g_frontend_character_open = 0;
+        g_frontend_character_swallow = 1;
+    }
+}
+
+static void frontend_draw(const OvlSurface &fb)
+{
+    if (!port_title_entry_armed() || port_title_entry_taken() || menu_on) return;
+    frontend_character_seed();
+    const int x = 12, w = ntr::active_w - 24;
+    ovl_shade(fb, x, 10, w, 34);
+    ovl_fill(fb, x, 10, 5, 34, 0xFF8254FFu);
+    ovl_text(fb, x + 14, 16, "64DS-DX", 0xFFFFFFFFu);
+    ovl_text(fb, x + 82, 16, "ADVENTURE", 0xFF80C0FFu);
+    char status[128];
+    const char *selected = sm64ds::packs::has_selected_character()
+        ? (sm64ds::packs::selected_character()
+               ? sm64ds::packs::selected_character()->name.c_str()
+               : CHAR_NAME[sm64ds::packs::selected_base_character() & 3])
+        : "save default";
+    snprintf(status, sizeof status, "Character: %.28s   F6 Character Select", selected);
+    ovl_text(fb, x + 14, 29, status, 0xFFD0D0D0u);
+    if (!g_frontend_character_open) return;
+
+    const int pw = 390, ph = 142;
+    const int px = (ntr::active_w - pw) / 2;
+    const int py = (ntr::active_h - ph) / 2;
+    ovl_shade(fb, px, py, pw, ph);
+    ovl_shade(fb, px, py, pw, ph);
+    ovl_fill(fb, px, py, pw, 24, 0xFF312350u);
+    ovl_fill(fb, px, py, 6, ph, 0xFF8254FFu);
+    ovl_text(fb, px + 18, py + 7, "CHARACTER SELECT", 0xFFFFFFFFu);
+    const int base = frontend_character_base(g_frontend_character_cursor);
+    static const uint32_t accent[4] = {
+        0xFFDE4040u, 0xFF42B85Au, 0xFFE6B83Fu, 0xFF68C85Au
+    };
+    ovl_fill(fb, px + 20, py + 42, 76, 76, accent[base]);
+    ovl_shade(fb, px + 27, py + 49, 62, 62);
+    char initial[2] = { frontend_character_name(g_frontend_character_cursor)[0], 0 };
+    ovl_text(fb, px + 52, py + 72, initial, 0xFFFFFFFFu);
+    ovl_text(fb, px + 118, py + 45,
+             frontend_character_name(g_frontend_character_cursor), 0xFFFFFFFFu);
+    char detail[128];
+    snprintf(detail, sizeof detail, "%d / %d     Base profile: %s",
+             g_frontend_character_cursor + 1, frontend_character_count(),
+             CHAR_NAME[base]);
+    ovl_text(fb, px + 118, py + 64, detail, 0xFFB8C8E8u);
+    if (g_frontend_character_cursor >= 4) {
+        const auto &item = sm64ds::packs::characters()[g_frontend_character_cursor - 4];
+        snprintf(detail, sizeof detail, "Pack: %.34s", item.pack_id.c_str());
+        ovl_text(fb, px + 118, py + 82, detail, 0xFFB8C8E8u);
+        snprintf(detail, sizeof detail, "License: %.30s",
+                 item.license.empty() ? "not declared" : item.license.c_str());
+        ovl_text(fb, px + 118, py + 98, detail, 0xFFB8C8E8u);
+    }
+    ovl_text(fb, px + 20, py + 124,
+             "Left/Right choose    Enter/A confirm    F6 close",
+             0xFFFFE060u);
+}
+
+static void frontend_apply_selected_character(void)
+{
+    if (!sm64ds::packs::has_selected_character()) return;
+    const int base = sm64ds::packs::selected_base_character() & 3;
+    character_set_pending(base);
+    data_02092128[0] = (unsigned char)base;
+    fprintf(stderr, "[frontend] file entry uses %s profile%s%s\n",
+            CHAR_NAME[base], sm64ds::packs::selected_character_key().empty()
+                ? "" : " for ",
+            sm64ds::packs::selected_character_key().c_str());
+}
+
 /* ---- ONE COPY OF THE SCENE PATH'S PER-FRAME HOST DUTIES ------------------
  * (run link100, lane STARSEL5.)
  *
@@ -8190,6 +8372,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     /* the pad layout learn flow, the same call the level loop makes;
        inert unless the menu's row armed it */
     padlearn_frame(&pad_live);
+    frontend_input(pad_live, pad);
 #ifndef PORT_ROM_CLEAN
     /* SM64DS_CLICK_TEST: the scripted stylus, driven BEFORE the tick that
        polls it, so a press is in the OS's button state by the time
@@ -8220,7 +8403,8 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
     {
         static unsigned short btn_was;
         unsigned short btn = 0;
-        if (!menu_on) {
+        if (!menu_on && !g_frontend_character_open &&
+            !g_frontend_character_swallow) {
             btn = host_ds_buttons(pad_live, pad);
             /* the DS d-pad off the bound walk keys, either half of each
                pair (settings.json KeyRight / KeyRightAlt and siblings).
@@ -8310,6 +8494,7 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
         }
         btn_was = btn;
     }
+    g_frontend_character_swallow = 0;
     return 0;
 }
 
@@ -8333,6 +8518,7 @@ static void scene_host_present_frame(HWND hwnd, int stacked,
     const OvlSurface surf =
         stacked ? ovl_surface_stacked(stack_img, fb) : ovl_surface(fb);
 
+    frontend_draw(surf);
     if (menu_on) menu_draw(surf);
     if (!rb_skip_render())
         toast_draw(surf);
@@ -8519,7 +8705,8 @@ static int scene_window_run(void)
 
         /* the scene's own frame; the menu's pause is its second argument, the
            same switch the level loop's game_ticked is */
-        port_scene_tick(port_rom_frame_checked(frame, "scene-tick"), !menu_on);
+        port_scene_tick(port_rom_frame_checked(frame, "scene-tick"),
+                        !menu_on && !g_frontend_character_open);
 
         scene_host_present_frame(hwnd, stacked, fb);
         /* THE HOSTED ARM7, EXACTLY ONCE A FRAME -- and port_scene_tick above
@@ -8544,7 +8731,7 @@ static int scene_window_run(void)
            the 125ms ring drains and the speaker gets whatever the hardware
            repeats. So: the game's frames are pumped there, the paused frames
            are pumped here, and no frame is pumped twice. */
-        if (menu_on) sdat_host_tick();
+        if (menu_on || g_frontend_character_open) sdat_host_tick();
         /* THE ROM'S PHASE 6 on this path, for the level loop's reason: the
            frame's work is done and nothing of the next has started. The scene
            path has no rollback boundary, so there is no re-anchor here. */
@@ -8564,6 +8751,7 @@ static int scene_window_run(void)
            is set on a title run, so this costs an unarmed session one compare
            of a cached int. */
         if (port_title_entry_should_stop()) {
+            frontend_apply_selected_character();
             fprintf(stderr, "[title-entry] a save file was picked; leaving the "
                             "title after %d frame(s)\n",
                     port_rom_frame_checked(frame, "title-entry"));
