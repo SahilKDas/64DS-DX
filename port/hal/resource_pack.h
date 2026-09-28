@@ -75,6 +75,7 @@ bool apply_queued_reload(bool menu_safe, std::string &error);
 bool set_pack_enabled(const std::string &id, bool enabled, std::string &error);
 bool move_pack(const std::string &id, int delta, std::string &error);
 bool select_character(const std::string &key, std::string &error);
+bool select_retail_character(int base, std::string &error);
 void clear();
 
 const Character *character(int id);
@@ -87,6 +88,7 @@ ReloadState reload_state();
 const std::string &selected_character_key();
 const Character *selected_character();
 int selected_base_character();
+bool has_selected_character();
 std::string registry_fingerprint();
 std::uint64_t character_key_hash(const std::string &key);
 const Character *character_by_hash(std::uint64_t hash);

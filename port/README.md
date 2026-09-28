@@ -64,6 +64,14 @@ Two toggles, both of which the launcher exposes:
 | `SM64DS_SKIP_MENU` | boot straight to the file select. The player still picks A, B or C. |
 | `SM64DS_SKIP_INTRO` | no opening cutscene. The title still comes up. |
 
+The PC frontend adds a compact 64DS-DX status card to the title and file-select
+scene. Press **F6** there to open Character Select. Left/Right chooses Mario,
+Luigi, Wario, Yoshi, or any enabled Lua-pack character; Enter, controller Start,
+or controller A confirms. Pack characters retain their stable namespaced key
+and use their declared retail base profile without replacing a retail slot.
+The choice is applied after File A/B/C is loaded and persists beside
+`settings.json` in `resource-packs.state`.
+
 They compose. Both set is "file select, then straight into the game"; only
 `SKIP_MENU` still plays the cutscene, because the cutscene is downstream of the
 file pick rather than upstream of the title.

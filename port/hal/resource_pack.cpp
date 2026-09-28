@@ -27,6 +27,7 @@ std::vector<PackIssue> g_diagnostics;
 std::string g_root;
 std::string g_selected_key;
 int g_selected_base = 0;
+bool g_selected_configured = false;
 ReloadState g_reload_state = ReloadState::Idle;
 
 struct Preference {
@@ -76,10 +77,14 @@ void read_state()
 {
     g_preferences.clear();
     g_selected_key.clear();
+    g_selected_configured = false;
     std::ifstream input(state_path());
     std::string kind;
     while (input >> kind) {
-        if (kind == "selected") input >> std::quoted(g_selected_key) >> g_selected_base;
+        if (kind == "selected") {
+            if (input >> std::quoted(g_selected_key) >> g_selected_base)
+                g_selected_configured = true;
+        }
         else if (kind == "pack") {
             std::string id; int enabled = 1, order = 0;
             if (input >> std::quoted(id) >> enabled >> order)
@@ -557,6 +562,19 @@ bool select_character(const std::string &key, std::string &error)
     g_selected_key = key;
     if (const Character *item = character(key))
         g_selected_base = item->base_character;
+    g_selected_configured = true;
+    return write_state(error);
+}
+
+bool select_retail_character(int base, std::string &error)
+{
+    if (base < 0 || base > 3) {
+        error = "retail character must be Mario, Luigi, Wario, or Yoshi";
+        return false;
+    }
+    g_selected_key.clear();
+    g_selected_base = base;
+    g_selected_configured = true;
     return write_state(error);
 }
 
@@ -584,6 +602,7 @@ int selected_base_character()
     const Character *item = selected_character();
     return item ? item->base_character : std::max(0, std::min(3, g_selected_base));
 }
+bool has_selected_character() { return g_selected_configured; }
 const std::string &root_path() { return g_root; }
 
 std::string registry_fingerprint()
