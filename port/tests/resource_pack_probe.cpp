@@ -27,8 +27,13 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "%s", error.c_str());
         return 1;
     }
-    const auto *character = sm64ds::packs::character(4);
-    if (!character || character->name != "Probe" || character->base_character != 2)
+    const auto *waluigi = sm64ds::packs::character(4);
+    if (!waluigi || waluigi->name != "Waluigi" ||
+        waluigi->key != "64ds-dx:waluigi" || waluigi->base_character != 2)
+        return 9;
+    const auto *character = sm64ds::packs::character("probe:probe");
+    if (!character || character->id != 5 || character->name != "Probe" ||
+        character->base_character != 2)
         return 3;
     if (character->key.empty() ||
         sm64ds::packs::character(character->key) != character)

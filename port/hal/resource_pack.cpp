@@ -433,6 +433,38 @@ bool load_pack(const fs::path &directory, PackSummary &summary, std::string &err
     return true;
 }
 
+void reserve_waluigi_slot()
+{
+    auto found = std::find_if(g_characters.begin(), g_characters.end(),
+        [](const Character &item) {
+            const std::string suffix = ":waluigi";
+            return item.key == "64ds-dx:waluigi" ||
+                (item.key.size() > suffix.size() &&
+                 item.key.compare(item.key.size() - suffix.size(),
+                                  suffix.size(), suffix) == 0);
+        });
+    if (found == g_characters.end()) {
+        Character item;
+        item.pack_id = "64ds-dx";
+        item.key = "64ds-dx:waluigi";
+        item.name = "Waluigi";
+        item.author = "64DS-DX";
+        item.version = "1";
+        item.license = "local assets required";
+        item.base_character = 2; // Wario abilities until a pack supplies assets.
+        item.hitbox.radius = 48.0f;
+        item.hitbox.height = 116.0f;
+        item.hitbox.hurt_radius = 48.0f;
+        item.hitbox.hurt_height = 116.0f;
+        g_characters.insert(g_characters.begin(), std::move(item));
+    } else if (found != g_characters.begin()) {
+        std::rotate(g_characters.begin(), found, found + 1);
+    }
+    // Slot 4 is the fifth character. Pack order remains deterministic from 5 on.
+    g_characters.front().legacy_id = 4;
+    g_characters.front().id = 4;
+}
+
 void assign_runtime_ids(std::ostringstream &errors, bool &ok)
 {
     std::set<int> used;
@@ -512,6 +544,7 @@ bool load_all(const std::string &root, std::string &error)
         g_packs.push_back(std::move(summary));
     }
     if (ec) { ok = false; errors << root << ": " << ec.message() << '\n'; }
+    reserve_waluigi_slot();
     assign_runtime_ids(errors, ok);
     error = errors.str();
     g_reload_state = ok ? ReloadState::Idle : ReloadState::Failed;
