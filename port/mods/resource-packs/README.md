@@ -35,8 +35,11 @@ sm64ds.character {
 ```
 
 Numeric `id` remains accepted for v1 packs, but stable keys are authoritative.
-The loader assigns runtime IDs 4..255 in enabled pack order and permanently
-reserves 0..3 for Mario, Luigi, Wario, and Yoshi. Duplicate keys, texture
+Runtime ID 4 and the fifth character-select position are reserved for Waluigi.
+When no licensed Waluigi asset pack is installed, that entry safely uses the
+Wario gameplay/model fallback; a `*:waluigi` pack supplies its native BMD/BCA
+assets and metadata. The loader assigns other runtime IDs 5..255 in enabled
+pack order and permanently reserves 0..3 for Mario, Luigi, Wario, and Yoshi. Duplicate keys, texture
 hashes, invalid paths, missing assets, oversized scripts, and runaway scripts
 reject only the offending pack.
 
