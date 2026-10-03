@@ -1,6 +1,6 @@
 _ZN15daObjYajirusi_cD1Ev kind:function(arm,size=0x4c) addr:0x02137be0
 _ZN15daObjYajirusi_cD0Ev kind:function(arm,size=0x60) addr:0x02137c2c
-func_ov098_02137c8c kind:function(arm,size=0x40) addr:0x02137c8c
+_ZN15daObjYajirusi_c19func_ov098_02137c8cEv kind:function(arm,size=0x40) addr:0x02137c8c
 _ZN15daObjYajirusi_c4KillEv kind:function(arm,size=0x74) addr:0x02137ccc
 _ZN15daObjYajirusi_c11OnAttacked1ER8dActor_c kind:function(arm,size=0x40) addr:0x02137d40
 _ZN15daObjYajirusi_c15OnHitByMegaCharER6Player kind:function(arm,size=0x3c) addr:0x02137d80

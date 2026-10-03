@@ -41,7 +41,7 @@ struct daObjPile_c : dBgActor_c {
     s16 mPrevAngle;          /* 0x328 -- last frame's horizontal angle to player */
     u8  pad_32a[2];
     /* KINOKO_TAG backlink: daObjKinokoTag_c::Behavior stores itself here, and
-       func_ov091_02133498 reads it back. */
+       daObjPile_c::func_ov091_02133498 reads it back. */
     dActor_c *mLinkedTag;    /* 0x32c */
 
     virtual ~daObjPile_c();                     /* slots 16 (D1), 17 (D0) */
@@ -57,6 +57,11 @@ struct daObjPile_c : dBgActor_c {
        measured with tools/mangle.py, not assumed. */
     void OnGroundPounded(dActor_c &other);      /* slot 21 */
     void OnHitByMegaChar(Player &player);       /* slot 27 */
+
+    /* Non-virtual. The address is the method name. flag is int: the callee
+       compares the full register. */
+    void func_ov091_02133498();
+    void func_ov091_021334b8(int flag);
 };
 
 #ifndef SM64DS_PLATFORM_PC

@@ -34,14 +34,14 @@
       "ordinal": 1
     },
     {
-      "symbol": "func_ov091_02133498",
+      "symbol": "_ZN11daObjPile_c19func_ov091_02133498Ev",
       "address": "0x02133498",
       "size": "0x00000020",
       "legacy_source": "src/func_ov091_02133498.c",
       "ordinal": 2
     },
     {
-      "symbol": "func_ov091_021334b8",
+      "symbol": "_ZN11daObjPile_c19func_ov091_021334b8Ei",
       "address": "0x021334b8",
       "size": "0x0000011c",
       "legacy_source": "src/func_ov091_021334b8.cpp",

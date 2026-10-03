@@ -34,7 +34,7 @@
       "ordinal": 1
     },
     {
-      "symbol": "func_ov098_02137c8c",
+      "symbol": "_ZN15daObjYajirusi_c19func_ov098_02137c8cEv",
       "address": "0x02137c8c",
       "size": "0x00000040",
       "legacy_source": "src/func_ov098_02137c8c.c",

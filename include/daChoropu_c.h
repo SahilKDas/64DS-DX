@@ -119,6 +119,20 @@ struct daChoropu_c : dActor_c {
     virtual s32  Behavior();         /* slot  6 */
     virtual s32  Render();           /* slot  9 */
     virtual s32  OnAimedAtWithEgg();      /* slot 29 */
+
+    /* Non-virtual. The first parameter was this mole, so each is a member.
+       The cartridge keeps no English spelling; the ROM address is the name.
+       func_ov080_02124418 is not one of these: its first argument is a rock. */
+    void func_ov080_02123860();
+    void func_ov080_02123924();
+    void func_ov080_02123a34();
+    void func_ov080_02123c24();
+    void func_ov080_02123ecc();
+    void func_ov080_02123fcc();
+    void func_ov080_02124088();
+    void func_ov080_02124208();
+    void *func_ov080_02124360();
+    void func_ov080_021243d8();
 };
 
 #ifndef SM64DS_PLATFORM_PC

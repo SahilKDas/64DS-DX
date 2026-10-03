@@ -2515,6 +2515,16 @@ ov080	0x02123740	func_ov080_02123740	_ZN11daChoropu_cD1Ev	vtable slot 16
 ov080	0x02123778	func_ov080_02123778	_ZN11daChoropu_cD0Ev	vtable slot 17
 ov080	0x021237c4	func_ov080_021237c4	_ZN14daChoro_Rock_cD1Ev	vtable slot 16
 ov080	0x02123804	func_ov080_02123804	_ZN14daChoro_Rock_cD0Ev	vtable slot 17
+ov080	0x02123860	func_ov080_02123860	_ZN11daChoropu_c19func_ov080_02123860Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02123924	func_ov080_02123924	_ZN11daChoropu_c19func_ov080_02123924Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02123a34	func_ov080_02123a34	_ZN11daChoropu_c19func_ov080_02123a34Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02123c24	func_ov080_02123c24	_ZN11daChoropu_c19func_ov080_02123c24Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02123ecc	func_ov080_02123ecc	_ZN11daChoropu_c19func_ov080_02123eccEv	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02123fcc	func_ov080_02123fcc	_ZN11daChoropu_c19func_ov080_02123fccEv	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02124088	func_ov080_02124088	_ZN11daChoropu_c19func_ov080_02124088Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02124208	func_ov080_02124208	_ZN11daChoropu_c19func_ov080_02124208Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x02124360	func_ov080_02124360	_ZN11daChoropu_c19func_ov080_02124360Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
+ov080	0x021243d8	func_ov080_021243d8	_ZN11daChoropu_c19func_ov080_021243d8Ev	daChoropu_c method. The first argument is the mole, so the function is a member and the parameter is this. The address is kept as the method name.
 ov080	0x02124458	func_ov080_02124458	_ZN11daChoropu_c16CleanupResourcesEv	vtable slot 3
 ov080	0x021244b4	func_ov080_021244b4	_ZN14daChoro_Rock_c16CleanupResourcesEv	vtable slot 3
 ov080	0x021244d8	func_ov080_021244d8	_ZN11daChoropu_c6RenderEv	vtable slot 9
@@ -2872,6 +2882,8 @@ ov091	0x02133098	func_ov091_02133098	_ZN11daDsnBase_c19func_ov091_02133098Ev	daD
 ov091	0x021331b8	func_ov091_021331b8	_ZN11daDsnBase_c16CleanupResourcesEv	vtable slot 3
 ov091	0x02133210	func_ov091_02133210	_ZN11daDsnBase_c6RenderEv	vtable slot 9
 ov091	0x02133254	func_ov091_02133254	_ZN11daDsnBase_c4InitEv	shared Init helper both leaves' InitResources call with this; class ownership, inbound calls, body and layout proven; exact original English name is not
+ov091	0x02133498	func_ov091_02133498	_ZN11daObjPile_c19func_ov091_02133498Ev	daObjPile_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov091	0x021334b8	func_ov091_021334b8	_ZN11daObjPile_c19func_ov091_021334b8Ei	daObjPile_c method. The first argument is the object, so the function is a member and the parameter is this. The second parameter is int. The address is kept as the method name.
 ov091	0x02133938	func_ov091_02133938	Stump_Spawn	spawnfunc
 ov091	0x02133938	Stump_Spawn	daObjPile_c_classInit	reconstructed classInit; ROM RTTI+factory shape+unique class factory+later EAD lineage; exact SM64DS spelling not preserved
 ov091	0x02133968	func_ov091_02133968	_ZN10daHyuhyu_cD1Ev	vtable slot 16 (was _ZN5StumpD1Ev)
@@ -2929,6 +2941,20 @@ ov092	0x021322ac	ToxBox_SpawnInfo	g_profile_ONIMASU	reconstructed profile global
 ov092	0x021322d0	data_ov092_021322d0	_ZTV8daOnms_c	vtable alloc=?
 ov094	0x02135700	func_ov094_02135700	_ZN7daOwl_cD1Ev	vtable slot 16
 ov094	0x02135748	func_ov094_02135748	_ZN7daOwl_cD0Ev	vtable slot 17
+ov094	0x021357a4	func_ov094_021357a4	_ZN7daOwl_c19func_ov094_021357a4Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x021358b4	func_ov094_021358b4	_ZN7daOwl_c19func_ov094_021358b4Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x0213598c	func_ov094_0213598c	_ZN7daOwl_c19func_ov094_0213598cEv	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x021359d8	func_ov094_021359d8	_ZN7daOwl_c19func_ov094_021359d8Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02135bd4	func_ov094_02135bd4	_ZN7daOwl_c19func_ov094_02135bd4Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02135c28	func_ov094_02135c28	_ZN7daOwl_c19func_ov094_02135c28Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02135e64	func_ov094_02135e64	_ZN7daOwl_c19func_ov094_02135e64Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02135ee0	func_ov094_02135ee0	_ZN7daOwl_c19func_ov094_02135ee0Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02135fe0	func_ov094_02135fe0	_ZN7daOwl_c19func_ov094_02135fe0Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02136024	func_ov094_02136024	_ZN7daOwl_c19func_ov094_02136024Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02136150	func_ov094_02136150	_ZN7daOwl_c19func_ov094_02136150Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x02136188	func_ov094_02136188	_ZN7daOwl_c19func_ov094_02136188EPNS_5StateE	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name. The State pointer stays the second parameter.
+ov094	0x021361d8	func_ov094_021361d8	_ZN7daOwl_c19func_ov094_021361d8Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
+ov094	0x021362e0	func_ov094_021362e0	_ZN7daOwl_c19func_ov094_021362e0Ev	daOwl_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
 ov094	0x021363e0	func_ov094_021363e0	_ZN7daOwl_c16CleanupResourcesEv	vtable slot 3
 ov094	0x02136428	func_ov094_02136428	_ZN7daOwl_c16OnPendingDestroyEv	vtable slot 12
 ov094	0x0213642c	func_ov094_0213642c	_ZN7daOwl_c6RenderEv	vtable slot 9
@@ -3031,6 +3057,7 @@ ov096	0x02137a6c	Tornado_SpawnInfo	g_profile_TORNADO	reconstructed profile globa
 ov096	0x02137a90	data_ov096_02137a90	_ZTV7daTor_c	vtable alloc=0x370
 ov098	0x02137be0	func_ov098_02137be0	_ZN15daObjYajirusi_cD1Ev	vtable slot 16
 ov098	0x02137c2c	func_ov098_02137c2c	_ZN15daObjYajirusi_cD0Ev	vtable slot 17
+ov098	0x02137c8c	func_ov098_02137c8c	_ZN15daObjYajirusi_c19func_ov098_02137c8cEv	daObjYajirusi_c method. The first argument is the object, so the function is a member and the parameter is this. The address is kept as the method name.
 ov098	0x02137ccc	_ZN14ArrowSignRight4KillEv	_ZN15daObjYajirusi_c4KillEv	class renamed to its ROM RTTI name 15daObjYajirusi_c (_ZTS15daObjYajirusi_c at ov098 0x0213c36c, _ZTI at 0x0213c360, _ZTV at 0x0213c3d8); method name vtable-slot recovered (slot 31)
 ov098	0x02137d40	_ZN14ArrowSignRight11OnAttacked1ER8dActor_c	_ZN15daObjYajirusi_c11OnAttacked1ER8dActor_c	class renamed to its ROM RTTI name 15daObjYajirusi_c (_ZTS15daObjYajirusi_c at ov098 0x0213c36c, _ZTI at 0x0213c360, _ZTV at 0x0213c3d8); method name vtable-slot recovered (slot 22); the R8dActor_c reference spelling is a coined guess the bytes cannot distinguish from a pointer
 ov098	0x02137d80	_ZN14ArrowSignRight15OnHitByMegaCharER6Player	_ZN15daObjYajirusi_c15OnHitByMegaCharER6Player	class renamed to its ROM RTTI name 15daObjYajirusi_c (_ZTS15daObjYajirusi_c at ov098 0x0213c36c, _ZTI at 0x0213c360, _ZTV at 0x0213c3d8); method name vtable-slot recovered (slot 27); the R6Player reference spelling is a coined guess the bytes cannot distinguish from a pointer

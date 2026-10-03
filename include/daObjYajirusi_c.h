@@ -81,6 +81,9 @@ struct daObjYajirusi_c {
        all. */
     void DisappearPoofDustAt(const Vector3 &pos);
     void MarkForDestruction();
+
+    /* Shadow matrix at +0x348. The address is the name. */
+    void func_ov098_02137c8c();
 };
 
 static_assert(offsetof(daObjYajirusi_c, actorID) == 0x00c, "daObjYajirusi_c actorID");
@@ -135,6 +138,10 @@ struct daObjYajirusi_c : dBgActor_c {
        first slot where they differ. An override adds no field and no slot; the
        0x380 assertion below is unchanged. */
     virtual void Kill();                            /* slot 31 */
+
+    /* Shadow matrix at +0x348: yaw, then position >> 3 in the translation
+       words. Not virtual. The address is the name. */
+    void func_ov098_02137c8c();
 };
 
 typedef char daObjYajirusi_c_size_must_be_0x380[sizeof(daObjYajirusi_c) == 0x380 ? 1 : -1];

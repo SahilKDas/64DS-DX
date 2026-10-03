@@ -85,6 +85,23 @@ struct daOwl_c : dEnemyBase_c {
     int InitResources();
     void OnPendingDestroy();
     int Render();
+
+    /* Non-virtual. The first parameter was this actor, so each is a member.
+       The cartridge keeps no English spelling; the ROM address is the name. */
+    void func_ov094_021357a4();
+    int func_ov094_021358b4();
+    int func_ov094_0213598c();
+    int func_ov094_021359d8();
+    int func_ov094_02135bd4();
+    int func_ov094_02135c28();
+    int func_ov094_02135e64();
+    int func_ov094_02135ee0();
+    int func_ov094_02135fe0();
+    int func_ov094_02136024();
+    int func_ov094_02136150();
+    int func_ov094_02136188(State *state);
+    void func_ov094_021361d8();
+    void func_ov094_021362e0();
 };
 
 #ifndef SM64DS_PLATFORM_PC

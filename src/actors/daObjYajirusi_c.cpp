@@ -1,42 +1,51 @@
 //cpp
 /**
- * Arrow sign (YAJIRUSI_R / YAJIRUSI_L).
+ * Arrow sign (YAJIRUSI_L / YAJIRUSI_R).
  *
- * Signpost with mesh collision. The two registry variants select the model
- * and collision columns through mVariant (actor id 0x12b/0x12c); Kill and
- * the Mega handlers break it with a particle poof.
+ * Mesh-collision signpost. actorID 0x12b (YAJIRUSI_L) selects file-table
+ * column 0 and 0x12c (YAJIRUSI_R) selects column 1. Kill and OnHitByMegaChar
+ * break it; OnAttacked1 does the same when the other actor is a Bob-omb
+ * (actorID 0xce).
  *
- * daObjYajirusi_c_classInit_YAJIRUSI_R/_L are reconstructed (RTTI
- * daObjYajirusi_c at 0x0213c36c, YAJIRUSI_R/L registry). Retail does not
- * store those spellings. Historical aliases ArrowSignRight_Spawn /
+ * daObjYajirusi_c_classInit_YAJIRUSI_R and _L stay those names. They are one
+ * body (alloc 0x380, dBgActor_c C2, this vtable, ShadowModel C1 at +0x320)
+ * and sit contiguous at 0x02137fd0..0x02138040, so the TU is
+ * 0x02137be0..0x02138040 with no hole: 12 functions. Retail does not store
+ * the factory spellings. Historical aliases ArrowSignRight_Spawn /
  * ArrowSignLeft_Spawn.
  *
- * The two registry factories are the same body (alloc 896, dBgActor_c C2,
- * same vtable, ShadowModel C1 at +0x320) and are contiguous at
- * 0x02138008..0x02138040, so this TU spans 0x02137be0..0x02138040 with no
- * hole: 12 functions. The synthesized constructor reproduces the ROM init
- * sequence, and the inline destructor chain also emits a homeless
- * _ZN10dBgActor_cD2Ev, a licensed deadstrip in the manifest
- * (ov012/daObjC0Water_c precedent).
+ * SOURCE ORDER IS REVERSE ROM ORDER. mwccarm 2004/b56 emits one .text
+ * section per function in reverse source order. Do not reorder. The
+ * destructor is inline-first in daObjYajirusi_c.h, which is what puts D1
+ * ahead of D0, and the inline base destructor emits a homeless
+ * _ZN10dBgActor_cD2Ev (licensed deadstrip). The "// address (size)" line
+ * above each definition is its ROM location.
  *
- * Function order is the reverse of the ROM's (highest address first): mwccarm
- * 2004/b56 emits one .text section per function in reverse source order. Do
- * not reorder. The D1/D0 pair comes out in ROM order because the destructor is
- * inline-first in daObjYajirusi_c.h and the factories are real new-expressions.
- * The "// address (size)" line above each definition is its ROM location.
- *
- * Known limits:
- * - func_ov098_02137c8c keeps its ROM-unnamed spelling; it builds the
- *   collision/model matrix at +0x348/0x36c from yaw and pos>>3 for
- *   InitResources. No replacement name is coined.
- * - The OnAttacked1 / OnHitByMegaChar reference spellings are guesses (ref vs
- *   pointer is indistinguishable in ARM); the method names come from vtable
- *   slots, and ownership, bodies and relocations are proven. See
- *   daObjYajirusi_c.h and symbols/actor_renames.tsv.
- * - Particle::System::NewSimple, dBgActor_c::UpdateKillByMegaChar,
+ * Leftover: dBgW_KcMbg::SetFile, dBgActor_c::UpdateKillByMegaChar,
  *   dBgActor_c::IsClsnInRangeOnScreen, dActor_c::DropShadowScaleXYZ and
- *   dBgW_KcMbg::SetFile keep mangled extern-C spellings (Fix12<int> by value).
- * - g_profile_YAJIRUSI_R/L stay outside the TU.
+ *   Particle::System::NewSimple stay mangled extern "C" calls. Each takes
+ *   Fix12<int> by value, and a typed method call changes the caller's size.
+ *   Fix12<int>{0} does not compile.
+ * Leftover: func_02039394 / func_020393a4 store the collider words at +0x10
+ *   and +0x0c (0xc0000 / 0xe0000, the profile ranges). Those names belong
+ *   to dBgW.
+ * Leftover: func_02012694 is Sound::Play of bank 3 at a pointer
+ *   (src/func_02012694.cpp). OnHitByMegaChar passes &mCamSpacePosX. It is
+ *   not Sound::PlayBank3 at 0x02012664.
+ * Leftover: OnAttacked1 and OnHitByMegaChar take coined references. A
+ *   reference and a pointer mangle differently and generate the same ARM
+ *   for these bodies.
+ * Leftover: Kill copies dustPos memberwise. Vector3's destructor turns a
+ *   whole-object assignment into ldm/stm, four instructions where the ROM
+ *   stores six.
+ * Leftover: mShadowMat stays a u8 at +0x348. A Matrix4x3 member would run
+ *   Vector3's destructor from this class's D1. func_ov098_02137c8c stores
+ *   the translation at +0x24 of that marker, not through Matrix4x3::t.
+ * Leftover: data_ov098_0213c380 / 0213c384 / 0213c388 are overlapping
+ *   column views (model, KCL, CLPS, stride 0xc). One array would retarget
+ *   those relocations. g_profile_YAJIRUSI_R/L live outside this TU.
+ * Leftover: _ZN7Vector3D1Ev is vague linkage, licensed as a deadstrip
+ *   duplicate of arm9 0x020072c0. This TU does not rehome it.
  */
 
 #include "daObjYajirusi_c.h"
@@ -48,28 +57,27 @@
 #include "decl_Platform.h"
 #include "decl_ShadowModel.h"
 
-/* One row of the ov098 resource table at 0x0213c380 (model, KCL, CLPS). */
+/* One column of the table at 0x0213c380. Stride 0xc covers the other two
+ * words of the same row; only `value` is read. */
 struct ArrowSignFileColumn {
     void *value;
-    void *nextColumn1;
-    void *nextColumn2;
+    void *pad[2];
 };
 
 extern "C" {
-extern void Matrix4x3_FromRotationY(void *, int);
+extern void Matrix4x3_FromRotationY(void *mtx, int angle);
 void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(u32 id, Fix12i x, Fix12i y, Fix12i z);
-int func_02012694(int, void*);
-int _ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE(void* c, short a, short b, short d, int e);
-void func_02039394(int* p, int v);
-void func_020393a4(int* p, int v);
-void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(void* c, void* sm, void* mtx, int s, int x, int y, unsigned int j);
-int _ZN10dBgActor_c21IsClsnInRangeOnScreenE5Fix12IiES1_(void* c, int a, int b);
-void func_ov098_02137c8c(char *self);
+int func_02012694(int id, void *pos);
+int _ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE(void *self, short a, short b, short c, int d);
+void func_02039394(int *collider, int v);
+void func_020393a4(int *collider, int v);
+void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
+    void *self, void *shadow, void *mtx, int sy, int sx, int sz, unsigned int flags);
+int _ZN10dBgActor_c21IsClsnInRangeOnScreenE5Fix12IiES1_(void *self, int radius, int unused);
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
-void *self, void *kcl, void *mtx, int scale, short angle, void *clps);
-/* Each row is model/KCL/CLPS, but the ROM gives each column its own symbol.
-* These three overlapping stride-0xc views keep those relocation destinations
-* distinct while still indexing the table as rows. */
+    void *self, void *kcl, void *mtx, int scale, short angle, void *clps);
+/* Model, KCL and CLPS. Each column is its own symbol so the relocations
+ * stay on 0x0213c380 / 0x0213c384 / 0x0213c388. */
 extern ArrowSignFileColumn data_ov098_0213c380[];
 extern ArrowSignFileColumn data_ov098_0213c384[];
 extern ArrowSignFileColumn data_ov098_0213c388[];
@@ -99,6 +107,8 @@ int *daObjYajirusi_c_classInit_YAJIRUSI_R(void)
 // 0x02137eec (0xe4)
 int daObjYajirusi_c::InitResources()
 {
+    /* 0x12b YAJIRUSI_L -> column 0, 0x12c YAJIRUSI_R -> column 1.
+       Any other id leaves mVariant untouched. */
     u16 id = actorID;
     if (id != 0x12b) {
         if (id == 0x12c)
@@ -113,7 +123,7 @@ int daObjYajirusi_c::InitResources()
     mShadowModel.InitCuboid();
     UpdateModelPosAndRotY();
     UpdateClsnPosAndRot();
-    func_ov098_02137c8c((char *)this);
+    func_ov098_02137c8c();
 
     u32 collisionIndex = mVariant;
     void *kcl = dBgW_Kc::LoadFile(*(SharedFilePtr *)data_ov098_0213c384[collisionIndex].value);
@@ -127,13 +137,13 @@ int daObjYajirusi_c::InitResources()
 // @symbol _ZN15daObjYajirusi_c8BehaviorEv
 int daObjYajirusi_c::Behavior()
 {
-    if (_ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE(((char*)this), -0x2000, 0, 0, 0x96000))
+    if (_ZN10dBgActor_c20UpdateKillByMegaCharEsss5Fix12IiE(this, -0x2000, 0, 0, 0x96000))
         return 1;
-    func_02039394((int*)((char*)&(*(u8 *)&mMeshCollider)), 0xc0000);
-    func_020393a4((int*)((char*)&(*(u8 *)&mMeshCollider)), 0xe0000);
+    func_02039394((int *)&mMeshCollider, 0xc0000);
+    func_020393a4((int *)&mMeshCollider, 0xe0000);
     _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-        ((char*)this), (void*)((char*)&mShadowModel), (void*)((char*)&mShadowMat), 0x10e000, 0x64000, 0x46000, 0xf);
-    _ZN10dBgActor_c21IsClsnInRangeOnScreenE5Fix12IiES1_(((char*)this), 0x600000, 0);
+        this, &mShadowModel, &mShadowMat, 0x10e000, 0x64000, 0x46000, 0xf);
+    _ZN10dBgActor_c21IsClsnInRangeOnScreenE5Fix12IiES1_(this, 0x600000, 0);
     return 1;
 }
 
@@ -167,12 +177,13 @@ void daObjYajirusi_c::OnHitByMegaChar(Player &player)
 
 // 0x02137d40 (0x40)
 // @symbol _ZN15daObjYajirusi_c11OnAttacked1ER8dActor_c
-/* Vtable slot identity: Kill() is slot 31. The other actor's actorID (offset
- * 0xc) is read raw, as found. */
+/* Slot 22. A Bob-omb (actorID 0xce) breaks the sign. The slot's type is
+ * int, and neither path returns a value. */
 int daObjYajirusi_c::OnAttacked1(dActor_c &other)
 {
-    unsigned r = (*(unsigned short*)((char*)&other + 0xc) == 0xce) ? 1u : 0u;
-    if (r == 0) return;
+    unsigned r = (other.actorID == 0xce) ? 1u : 0u;
+    if (r == 0)
+        return;
     Kill();
 }
 
@@ -213,14 +224,15 @@ void daObjYajirusi_c::Kill()
 }
 
 // 0x02137c8c (0x40)
-extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov098_02137c8c(char *t)
+// @symbol _ZN15daObjYajirusi_c19func_ov098_02137c8cEv
+/* Shadow matrix at mShadowMat: rotation from mAngleY, translation
+ * mPos >> 3. The address is the name. */
+void daObjYajirusi_c::func_ov098_02137c8c()
 {
-    Matrix4x3_FromRotationY(t + 0x348, *(short *)(t + 0x8e));
-    *(int *)(t + 0x36c) = *(int *)(t + 0x5c) >> 3;
-    *(int *)(t + 0x370) = *(int *)(t + 0x60) >> 3;
-    *(int *)(t + 0x374) = *(int *)(t + 0x64) >> 3;
-}
+    Matrix4x3_FromRotationY(&mShadowMat, mAngleY);
+    *(int *)((char *)&mShadowMat + 0x24) = mPosX >> 3;
+    *(int *)((char *)&mShadowMat + 0x28) = mPosY >> 3;
+    *(int *)((char *)&mShadowMat + 0x2c) = mPosZ >> 3;
 }
 
 // 0x02137c2c (0x60), 0x02137be0 (0x4c)

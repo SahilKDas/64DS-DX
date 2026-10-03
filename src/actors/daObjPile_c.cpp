@@ -16,9 +16,28 @@
  * The registry factory daObjPile_c_classInit (0x02133938) abuts the rest
  * of the run and is written last.
  *
- * Known limits:
+ * Leftover, remeasured on this TU:
  * - dBgActor_c::IsClsnInRangeOnScreen, dActor_c::SpawnCoins and
- *   dBgW_KcMbg::SetFile take Fix12<int> by value, so they stay mangled.
+ *   dBgW_KcMbg::SetFile take Fix12<int> by value. Fix12<int>{0} does not
+ *   compile. The calls stay the scalar externs.
+ * - Behavior's SpawnCoins goes through V3 (copy ctor, empty dtor) by value.
+ *   func_ov091_021334b8 uses a two-Vector3 stack struct and a function-pointer
+ *   cast to const Vector3 &. Those are different calls; do not unify them.
+ * - func_ov091_021334b8 keeps the mPosY and mStepsLeft pointer
+ *   read-modify-writes and `*q = *q - 1`. The else path materializes offset
+ *   0x31e from the pool because that displacement is not an ARM immediate.
+ *   The early `if (mStepsLeft != 0) return` stays; wrapping the tail is a
+ *   different schedule.
+ * - OnHitByMegaChar and OnGroundPounded keep the reference-null tests
+ *   (`if (&player == 0)`, `if (&other == 0)`). OnGroundPounded's flag is int:
+ *   the callee compares the full register, and the caller materializes 0
+ *   then optionally 1. func_02012694 plays bank 3 at mCamSpacePos. It is not
+ *   Sound::PlayBank3 (that body is 0x02012664).
+ * - Shared file handles stay the decl_common int[] casts. Do not name mPos.
+ * - func_ov091_02133498 and func_ov091_021334b8 are members. The address is
+ *   the method name. A local `daObjPile_c *self = this` is not used:
+ *   func_ov091_02133498 is a leaf, and saving this in another register
+ *   would add a push.
  */
 
 #include "decl_common.h"
@@ -56,68 +75,64 @@ daObjPile_c::~daObjPile_c()
 {
 }
 
-// @symbol func_ov091_02133498
+// @symbol _ZN11daObjPile_c19func_ov091_02133498Ev
 /* Tells the linked KINOKO_TAG (actor 0x140) that its pile is gone. */
-extern "C" void func_ov091_02133498(char *c)
+void daObjPile_c::func_ov091_02133498()
 {
-    daObjPile_c *self = (daObjPile_c *)c;
-    dActor_c *tag = self->mLinkedTag;
+    dActor_c *tag = mLinkedTag;
     if (!tag)
         return;
     if (tag->actorID == 0x140)
         ((daObjKinokoTag_c *)tag)->mLinkedPileGone = 1;
 }
 
-// @symbol func_ov091_021334b8
+// @symbol _ZN11daObjPile_c19func_ov091_021334b8Ei
 /* Sinks the pile. With flag set it drops every remaining step (60 units each)
  * and zeroes mStepsLeft; otherwise it drops one step. It then arms the hit
  * cooldown and moves the model and collider, and once no steps are left it
  * drops 5 coins (unless mBusy or the death table says otherwise), records the
- * death and calls func_ov091_02133498.
- * Member calls to UpdateClsnPosAndRot and a single Vector3 move the relocs.
- * The plain position copy and the externs stay. */
-extern "C" void func_ov091_021334b8(char *c, int flag)
+ * death and calls func_ov091_02133498. */
+void daObjPile_c::func_ov091_021334b8(int flag)
 {
-    daObjPile_c *self = (daObjPile_c *)c;
     if (flag != 0) {
-        unsigned char n = self->mStepsLeft;
-        int *p = &self->mPosY;
+        unsigned char n = mStepsLeft;
+        int *p = &mPosY;
         int m = n * 0x3c;
         int y = *p;
         *p = y - (m << 12);
-        self->mStepsLeft = 0;
+        mStepsLeft = 0;
     } else {
-        int *p = &self->mPosY;
+        int *p = &mPosY;
         int y = *p;
         *p = y - 0x3c000;
-        unsigned char *q = &self->mStepsLeft;
+        unsigned char *q = &mStepsLeft;
         *q = *q - 1;
     }
-    self->mAttackCooldown = 0xf;
-    self->UpdateModelPosAndRotY();
-    self->UpdateClsnPosAndRot();
-    if (self->mStepsLeft != 0) return;
+    mAttackCooldown = 0xf;
+    UpdateModelPosAndRotY();
+    UpdateClsnPosAndRot();
+    if (mStepsLeft != 0) return;
 
     struct {
         int vx, vy, vz;
         int v2x, v2y, v2z;
     } st;
-    st.vx = self->mPosX;
-    st.vy = self->mPosY;
-    st.vz = self->mPosZ;
+    st.vx = mPosX;
+    st.vy = mPosY;
+    st.vz = mPosZ;
     st.vy = st.vy + 0x17c000;
-    if (self->mBusy == 0) {
-        if (self->GetBitInDeathTable() == 0) {
+    if (mBusy == 0) {
+        if (GetBitInDeathTable() == 0) {
             st.v2x = st.vx;
             st.v2y = st.vy;
             st.v2z = st.vz;
             typedef void (*SpawnRef)(void *, Vector3 const &, unsigned int, int, short);
             ((SpawnRef)_ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs)(
-                c, *(Vector3 *)&st.v2x, 5, 0x5000, 0);
+                this, *(Vector3 *)&st.v2x, 5, 0x5000, 0);
         }
     }
-    self->TrackInDeathTable();
-    func_ov091_02133498(c);
+    TrackInDeathTable();
+    func_ov091_02133498();
 }
 
 // @symbol _ZN11daObjPile_c15OnHitByMegaCharER6Player
@@ -134,7 +149,7 @@ void daObjPile_c::OnHitByMegaChar(Player &player)
     player.IncMegaKillCount();
     PoofDust();
     func_02012694(0x62, &mCamSpacePosX);
-    func_ov091_021334b8((char *)this, 1);
+    func_ov091_021334b8(1);
 }
 
 // @symbol _ZN11daObjPile_c15OnGroundPoundedER8dActor_c
@@ -150,7 +165,7 @@ void daObjPile_c::OnGroundPounded(dActor_c &other)
     int f = 0;
     if (other.param1 == 2 || ((Player &)other).mIsMega != 0)
         f = 1;
-    func_ov091_021334b8((char *)this, f);
+    func_ov091_021334b8(f);
 }
 
 // @symbol _ZN11daObjPile_c16CleanupResourcesEv
