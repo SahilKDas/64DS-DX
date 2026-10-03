@@ -76,7 +76,7 @@ src/_ZN9KoopaFlag6RenderEv.cpp
 # ---------------------------------------------------------------------------
 # THE REST (host copies were unmatched/ModelAnim_Renders.cpp)
 src/_ZN5Whomp6RenderEv.cpp
-src/_ZN9Butterfly6RenderEv.cpp
+src/actors/daBtfly_c.cpp
 src/_ZN4Fish6RenderEv.cpp
 src/_ZN13QuestionBlock6RenderEv.cpp
 src/actors/Scuttlebug.cpp
@@ -86,7 +86,7 @@ src/_ZN8BigBully6RenderEv.cpp
 src/_ZN15RotatingFirebar6RenderEv.cpp
 src/_ZN13UpDownLiftBbh6RenderEv.cpp
 src/_ZN12HealingHeart6RenderEv.cpp
-src/_ZN9SeesawBob6RenderEv.cpp
+src/actors/daObjSeesaw_c.cpp
 src/_ZN14UnchainedChomp6RenderEv.cpp
 src/_ZN11BabyPenguin6RenderEv.cpp
 src/_ZN10HootTheOwl6RenderEv.cpp

@@ -6,18 +6,178 @@
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "PARTIAL claim: ROM ordinals 25..58 of the 61-function contiguous linker run 0x02115ee0..0x0211a2e4 (build/tu_map.json). The run is cut, not the TU: six of its shards (ordinals 8, 16, 20, 22, 24, 59) reference the addresses 0x02112c08/c88/ca8/cc8/d48 under the spellings func_02112c08/c88/ca8/cc8/d48, which no module's symbols.txt defines, so they carry no `complete` marker in config/arm9/overlays/ov066/delinks.txt and dsd excludes them from the link (verified: neither src/func_ov066_021166c8.cpp nor src/_ZN6Eyerok13InitResourcesEv.cpp appears in build/tu/_baseline/link/objects.txt). Those five addresses lie BELOW this overlay's own base -- ov066 spans 0x02115ee0..0x0211b0ec -- in the lower overlay slot ov066 is co-resident with. ov066's symbols.txt names nothing there, but fourteen other overlays (ov009, ov010, ov018, ov019, ov022, ov024, ov025, ov027, ov032, ov035, ov036, ov045, ov056, ov060) each name an overlay-local symbol at the same addresses, nearly all flagged `ambiguous`, and they disagree on kind: func_ov060_02112d48 is a function where data_ov035_02112c88 is bss. So the blocker is not simply a missing name; it is an unresolved overlay-residency question -- which of those overlays is loaded alongside ov066. All six shards DO byte-match at 2004/b56 in isolation (tools/match.py, --strict-relocs on): the queue's `unmatched:6` blocker is a link blocker, not a matching one. A licensed .text claim cannot contain a hole, so this file takes the largest contiguous linkable side, 34 of 61 functions, 0x021184c0..0x02119ce8. The dropped ordinals are 0-24, 59 and 60.",
-    "Builder re-derivation of the structural claim, from config/arm9/overlays/ov066/delinks.txt rather than from build/tu_map.json: the run 0x02115ee0..0x0211a2e4 is covered contiguously by 28 .text blocks with no address gap; exactly 6 of them lack `complete`, and they are precisely the six shards named above. The contiguous complete-marked groups are 8, 7, 3, 1, 1, 34 and 1 blocks -- so 34 is the largest linkable side and this file claims it. The supporting invariant was re-derived at the same time: 0 of 10,005 delink entries tree-wide (106 delinks.txt files) and 0 of 142 TU manifests carry more than one .text run, which is why a licensed claim cannot span a hole.",
+    "contiguous linker run: 0x0211603c..0x0211a418, 62 function(s). Extended over three zero-gap neighbours past the old right edge 0x0211a2e4: func_ov066_0211a2e4, its arg-shifting veneer func_ov066_0211a35c, and the factory daIwante_c_classInit. tu_map cuts before them because the first two carry no class name. They are this class's, not new ones: the veneer is installed as a dBgW callback by seven places in this very TU (func_020393c4(..., (void *)func_ov066_0211a35c)), and the factory installs _ZTV6Eyerok, which is this unit's vtable. The module's sinit starts at 0x0211a418.",
     "class label(s): Eyerok (ROM RTTI name daIwante_c -- _ZTI10daIwante_c/_ZTS10daIwante_c at ov066:0x0211ad24/0x0211ad30; `Eyerok` is a coined name already spelled into every function symbol of this run in config/arm9/overlays/ov066/symbols.txt, and a text-only promotion does not repoint symbols.txt)"
   ],
   "sections": [
     {
       "name": ".text",
-      "start": "0x021184c0",
-      "end": "0x02119ce8"
+      "start": "0x0211603c",
+      "end": "0x0211a418"
     }
   ],
   "functions": [
+    {
+      "symbol": "func_ov066_0211603c",
+      "address": "0x0211603c",
+      "size": "0x000002ac",
+      "legacy_source": "src/func_ov066_0211603c.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov066_021162e8",
+      "address": "0x021162e8",
+      "size": "0x00000044",
+      "legacy_source": "src/func_ov066_021162e8.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov066_0211632c",
+      "address": "0x0211632c",
+      "size": "0x00000064",
+      "legacy_source": "src/func_ov066_0211632c.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov066_02116390",
+      "address": "0x02116390",
+      "size": "0x0000015c",
+      "legacy_source": "src/func_ov066_02116390.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov066_021164ec",
+      "address": "0x021164ec",
+      "size": "0x000000e0",
+      "legacy_source": "src/func_ov066_021164ec.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov066_021165cc",
+      "address": "0x021165cc",
+      "size": "0x000000fc",
+      "legacy_source": "src/func_ov066_021165cc.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov066_021166c8",
+      "address": "0x021166c8",
+      "size": "0x000001e8",
+      "legacy_source": "src/func_ov066_021166c8.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov066_021168b0",
+      "address": "0x021168b0",
+      "size": "0x0000003c",
+      "legacy_source": "src/func_ov066_021168b0.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov066_021168ec",
+      "address": "0x021168ec",
+      "size": "0x0000017c",
+      "legacy_source": "src/func_ov066_021168ec.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov066_02116a68",
+      "address": "0x02116a68",
+      "size": "0x0000005c",
+      "legacy_source": "src/func_ov066_02116a68.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov066_02116ac4",
+      "address": "0x02116ac4",
+      "size": "0x000000b4",
+      "legacy_source": "src/func_ov066_02116ac4.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov066_02116b78",
+      "address": "0x02116b78",
+      "size": "0x000000f4",
+      "legacy_source": "src/func_ov066_02116b78.c",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov066_02116c6c",
+      "address": "0x02116c6c",
+      "size": "0x000000a8",
+      "legacy_source": "src/func_ov066_02116c6c.c",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov066_02116d14",
+      "address": "0x02116d14",
+      "size": "0x0000009c",
+      "legacy_source": "src/func_ov066_02116d14.cpp",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov066_02116db0",
+      "address": "0x02116db0",
+      "size": "0x000003e0",
+      "legacy_source": "src/func_ov066_02116db0.c",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov066_02117190",
+      "address": "0x02117190",
+      "size": "0x00000020",
+      "legacy_source": "src/func_ov066_02117190.c",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov066_021171b0",
+      "address": "0x021171b0",
+      "size": "0x0000040c",
+      "legacy_source": "src/func_ov066_021171b0.c",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov066_021175bc",
+      "address": "0x021175bc",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov066_021175bc.c",
+      "ordinal": 19
+    },
+    {
+      "symbol": "func_ov066_021175e8",
+      "address": "0x021175e8",
+      "size": "0x000005e8",
+      "legacy_source": "src/func_ov066_021175e8.c",
+      "ordinal": 20
+    },
+    {
+      "symbol": "func_ov066_02117bd0",
+      "address": "0x02117bd0",
+      "size": "0x00000020",
+      "legacy_source": "src/func_ov066_02117bd0.c",
+      "ordinal": 21
+    },
+    {
+      "symbol": "func_ov066_02117bf0",
+      "address": "0x02117bf0",
+      "size": "0x00000578",
+      "legacy_source": "src/func_ov066_02117bf0.c",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov066_02118168",
+      "address": "0x02118168",
+      "size": "0x00000020",
+      "legacy_source": "src/func_ov066_02118168.c",
+      "ordinal": 23
+    },
+    {
+      "symbol": "func_ov066_02118188",
+      "address": "0x02118188",
+      "size": "0x00000338",
+      "legacy_source": "src/func_ov066_02118188.c",
+      "ordinal": 24
+    },
     {
       "symbol": "func_ov066_021184c0",
       "address": "0x021184c0",
@@ -255,6 +415,41 @@
       "size": "0x000004b0",
       "legacy_source": "src/_ZN6Eyerok8BehaviorEv.cpp",
       "ordinal": 58
+    },
+    {
+      "symbol": "_ZN6Eyerok13InitResourcesEv",
+      "address": "0x02119ce8",
+      "size": "0x000005f4",
+      "legacy_source": "src/_ZN6Eyerok13InitResourcesEv.cpp",
+      "ordinal": 59
+    },
+    {
+      "symbol": "_ZN6Eyerok16OnAimedAtWithEggEv",
+      "address": "0x0211a2dc",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp",
+      "ordinal": 60
+    },
+    {
+      "symbol": "func_ov066_0211a2e4",
+      "address": "0x0211a2e4",
+      "size": "0x00000078",
+      "legacy_source": "src/func_ov066_0211a2e4.c",
+      "ordinal": 61
+    },
+    {
+      "symbol": "func_ov066_0211a35c",
+      "address": "0x0211a35c",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov066_0211a35c.c",
+      "ordinal": 62
+    },
+    {
+      "symbol": "daIwante_c_classInit",
+      "address": "0x0211a370",
+      "size": "0x000000a8",
+      "legacy_source": "src/d_a_iwante.cpp",
+      "ordinal": 63
     }
   ],
   "data": [],
@@ -389,8 +584,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov066-Eyerok/Eyerok.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 34,
-    "functions_declared": 34,
+    "functions_matched": 62,
+    "functions_declared": 62,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN7Vector3D1Ev",
@@ -401,8 +596,8 @@
         "_ZN7Vector3D1Ev"
       ],
       "droppedSections": [
-        42,
-        47
+        85,
+        90
       ],
       "data": [],
       "dataExternalized": []
@@ -492,7 +687,7 @@
     {
       "symbol": "_ZN7Vector3D1Ev",
       "disposition": "deadstrip-duplicate",
-      "reason": "Vector3's inline destructor, emitted as vague linkage because this TU odr-uses it: _ZN6Eyerok16CleanupResourcesEv and _ZN6Eyerok8BehaviorEv walk the class's Vector3 mDustPos[0x14] span at this+0x4dc. The cartridge homes it at arm9:0x020072c0 (config/arm9/symbols.txt), outside this entry's only licensed range (.text 0x021184c0-0x02119ce8), so dsd supplies that copy and production isolation discards ours.",
+      "reason": "Vector3's inline destructor, emitted as vague linkage because this TU odr-uses it: _ZN6Eyerok16CleanupResourcesEv and _ZN6Eyerok8BehaviorEv walk the class's Vector3 mDustPos[0x14] span at this+0x4dc, and _ZN6Eyerok13InitResourcesEv has two Vector3 locals. The cartridge homes it at arm9:0x020072c0 (config/arm9/symbols.txt), outside this entry's only licensed range (.text 0x0211603c-0x0211a418), so dsd supplies that copy and production isolation discards ours.",
       "canonical_module": "arm9",
       "canonical_address": "0x020072c0"
     },

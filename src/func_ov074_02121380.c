@@ -1,5 +1,5 @@
 // @symbol func_ov074_02121380
-/* recovered: daKuriKing_c (Goomboss) rebuilds his collision cylinders and reads
+/* recovered: daKuriKing_c (daKuriKing_c) rebuilds his collision cylinders and reads
  * the ground under them. Called unconditionally from the boss's Behavior after
  * the state dispatch, so the whole fight's collision runs through it.
  *
@@ -102,8 +102,8 @@
 // Counts as decompiled, not matched.
 #include "common.h"
 
-struct Goomboss;
-extern void func_ov074_02121270(struct Vector3* out, struct Goomboss* c, int i);
+struct daKuriKing_c;
+extern void func_ov074_02121270(struct Vector3* out, struct daKuriKing_c* c, int i);
 
 #define FX(a, b) (int)(((long long)(a) * (long long)(b) + 0x800) >> 12)
 
@@ -133,7 +133,7 @@ void func_ov074_02121380(char* c) {
     for (i = 0; i < 3; i++) {
         char* p;
         int ax, ay, az;
-        func_ov074_02121270(&v[2], (struct Goomboss*)c, bone[i]);
+        func_ov074_02121270(&v[2], (struct daKuriKing_c*)c, bone[i]);
         *(int*)(q + 0x3ac) = v[2].x;
         *(int*)(q + 0x3b0) = v[2].y;
         *(int*)(q + 0x3b4) = v[2].z;

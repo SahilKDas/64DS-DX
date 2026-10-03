@@ -1,0 +1,288 @@
+{
+  "id": "ov002/daPropeller_Heyho_Fire_c",
+  "module": "ov002",
+  "source": "src/actors/daPropeller_Heyho_Fire_c.cpp",
+  "promoted_source": "src/actors/daPropeller_Heyho_Fire_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x20feabc..0x20fefcc, 12 function(s), from build/tu_map.json (tools/tu_map.py) -- the whole unit. src/actors/dM3dGLin.cpp ends exactly at 0x020feabc below it.",
+    "class label(s): daPropeller_Heyho_Fire_c",
+    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit tail fold: daPropeller_Heyho_Fire_c_classInit (0x020fefcc..0x020ff014) abuts this TU's range with no gap and is now inside it; tu_map cuts on symbol name and left it out. The unit is 0x020feabc..0x020ff014, and 0x020ff014 is the end of ov002's .text section."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x020feabc",
+      "end": "0x020ff014"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_cD1Ev",
+      "address": "0x020feabc",
+      "size": "0x00000040",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_cD0Ev",
+      "address": "0x020feafc",
+      "size": "0x00000054",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov002_020feb50",
+      "address": "0x020feb50",
+      "size": "0x00000144",
+      "legacy_source": "src/func_ov002_020feb50.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov002_020fec94",
+      "address": "0x020fec94",
+      "size": "0x00000084",
+      "legacy_source": "src/func_ov002_020fec94.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov002_020fed18",
+      "address": "0x020fed18",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov002_020fed18.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov002_020fed2c",
+      "address": "0x020fed2c",
+      "size": "0x00000050",
+      "legacy_source": "src/func_ov002_020fed2c.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov002_020fed7c",
+      "address": "0x020fed7c",
+      "size": "0x00000074",
+      "legacy_source": "src/func_ov002_020fed7c.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_c16CleanupResourcesEv",
+      "address": "0x020fedf0",
+      "size": "0x00000024",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_c16CleanupResourcesEv.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_c16OnPendingDestroyEv",
+      "address": "0x020fee14",
+      "size": "0x00000004",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_c16OnPendingDestroyEv.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_c6RenderEv",
+      "address": "0x020fee18",
+      "size": "0x0000002c",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_c6RenderEv.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_c8BehaviorEv",
+      "address": "0x020fee44",
+      "size": "0x000000b0",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_c8BehaviorEv.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_c13InitResourcesEv",
+      "address": "0x020feef4",
+      "size": "0x000000d8",
+      "legacy_source": "src/_ZN24daPropeller_Heyho_Fire_c13InitResourcesEv.cpp",
+      "ordinal": 11
+    },
+    {
+      "symbol": "daPropeller_Heyho_Fire_c_classInit",
+      "address": "0x020fefcc",
+      "size": "0x00000048",
+      "legacy_source": "src/d_a_propeller_heyho_fire.c",
+      "ordinal": 12
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Thirteen-function unit 0x020feabc..0x020ff014: D1 and D0 from the out-of-line destructor, the five helpers func_ov002_020feb50..func_ov002_020fed7c, CleanupResources, OnPendingDestroy, Render, Behavior, InitResources, then the registry factory daPropeller_Heyho_Fire_c_classInit.",
+    "Written in ROM order under `#pragma defer_codegen off`, which keeps D1 ahead of D0.",
+    "func_ov002_020fed7c copies the scratch matrix data_020a0e68 as a local twelve-word struct, as its C shard did; a copy through the C++ Matrix4x3 DIFFs.",
+    "daPropeller_Heyho_Fire_c_classInit is written as `return new daPropeller_Heyho_Fire_c;`: the implicit constructor reproduces the loose file's fBase_c::operator new(0x35c), dEnemyBase_c base constructor, vptr store and the three member constructors byte for byte.",
+    "InitResources was the one complete=False shard in the run: it loaded the model through `func_0211d610`, a name no symbols.txt defines. ov002's relocs record that load and CleanupResources' as overlays(65,75); the TU names data_ov065_0211d610, ov065's unambiguous kind:bss row, which CleanupResources already used."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN24daPropeller_Heyho_Fire_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Homeless. One out-of-line destructor under #pragma defer_codegen off emits D1, D0, then D2. The cartridge has D1 at ov002:0x020feabc and D0 at 0x020feafc and no D2. Production isolation discards it. It is emitted after D0, and the licensed functions stay ROM-ascending."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "reason": "include/types.h defines Vector3::~Vector3() inline and empty. func_ov002_020feb50 takes a Vector3 local, so this TU emits that four-byte body once as vague linkage. The cartridge's copy is arm9:0x020072c0 (src/_ZN7Vector3D1Ev.cpp); this object is not its home.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0"
+    },
+    {
+      "symbol": "_ZTV24daPropeller_Heyho_Fire_c",
+      "disposition": "deadstrip-data",
+      "reason": "The out-of-line destructor is the key function, so this TU emits the vtable. ov002:0x0210d654 is in .data, outside the licensed text span 0x020feabc..0x020ff014. D1, D0 and the factory store this vptr; text-only production discards the emitted copy and retains cartridge data.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210d654"
+    },
+    {
+      "symbol": "_ZTI24daPropeller_Heyho_Fire_c",
+      "disposition": "deadstrip-data",
+      "reason": "This class's __si_class_type_info, dragged in with the vtable. Cartridge copy ov002:0x0210d608. Its base word is _ZTI12dEnemyBase_c.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210d608"
+    },
+    {
+      "symbol": "_ZTS24daPropeller_Heyho_Fire_c",
+      "disposition": "deadstrip-data",
+      "reason": "Type-name string 24daPropeller_Heyho_Fire_c at ov002:0x0210d614.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210d614"
+    },
+    {
+      "symbol": "_ZTI12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at ov002:0x021081c0, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081c0"
+    },
+    {
+      "symbol": "_ZTS12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at ov002:0x021081cc, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081cc"
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e390, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390"
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e384, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e78, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e54, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54"
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086d70, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e60, outside this TU's licensed range (.text 0x020feabc-0x020ff014), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60"
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov002-daPropeller_Heyho_Fire_c/daPropeller_Heyho_Fire_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 13,
+    "functions_declared": 13,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN24daPropeller_Heyho_Fire_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN24daPropeller_Heyho_Fire_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        13,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "data": [
+        "_ZTV24daPropeller_Heyho_Fire_c",
+        "_ZTI24daPropeller_Heyho_Fire_c",
+        "_ZTS24daPropeller_Heyho_Fire_c",
+        "_ZTI12dEnemyBase_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI12dEnemyBase_c",
+        "_ZTI24daPropeller_Heyho_Fire_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTS24daPropeller_Heyho_Fire_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV24daPropeller_Heyho_Fire_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

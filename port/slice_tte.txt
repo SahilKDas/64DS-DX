@@ -551,7 +551,7 @@ src/func_ov006_020ca7b8.c
 src/func_ov006_020ca840.c
 src/func_ov006_020ca8e0.cpp
 src/func_ov006_020caa08.c
-src/func_ov006_020caadc.c
+src/actors/dMgTrmpln2Mario_c.cpp
 src/func_ov006_020cac9c.c
 src/func_ov006_020cad3c.c
 src/func_ov006_020cae9c.c
@@ -652,7 +652,7 @@ src/func_ov006_020d01e0.cpp
 # THE MESH DRAW, seated by run mg13 lane TRAMP. Listed in BOTH trampoline
 # slices; see the note beside it in slice_tti.txt. A TT_SHARED_HOSTGEN symbol,
 # so the generated copy is what this target compiles.
-src/func_ov006_020cf2fc.c
+src/actors/unit020cd744.cpp
 # THE BOUNCE, seated by run mg13 lane BOUNCE, and the last floor between a drawn
 # trampoline and a character that lands on it. src/func_ov006_020cfa44.c -- one
 # of the record states this class dispatches, and a slice_tte line already --
@@ -694,7 +694,6 @@ src/func_ov006_020cfc74.c
 src/func_ov006_020cf040.c
 src/func_ov006_020cfa28.c
 src/func_ov006_020cfc58.c
-src/func_ov006_020d09e0.c
 src/func_ov006_020d0ac0.c
 src/func_ov006_020d0b04.c
 src/func_ov006_020d0b2c.cpp

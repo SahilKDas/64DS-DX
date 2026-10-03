@@ -3,7 +3,9 @@
 
 #include "types.h"
 
-/* daObjEmmYuka_c -- Tiny-Huge Island's square path lift. Actor 175 EMM_YUKA
+/* daObjEmmYuka_c -- square path lift from the ex_m_map stage (Emm; the ROM
+ * file table's data/stage/ex_m_map -- not Tiny-Huge Island, whose stage dirs
+ * are tibi_deka_*). Actor 175 EMM_YUKA
  * (ov052, SQUARE_PATH_LIFT). The low byte of param1 selects the path;
  * Behavior walks mNodeIndex along it, reversing at an open end.
  *

@@ -162,20 +162,20 @@ src/func_ov060_02117624.cpp
 src/func_ov060_02117a3c.c
 src/func_ov060_02117a64.c
 src/func_ov060_02117ae0.c
-src/_ZN9SpikeBombD1Ev.cpp
+src/actors/daKirai_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN9SpikeBombD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9SpikeBombD0Ev.cpp
 src/func_ov060_02117db8.c
 src/func_ov060_021180e0.cpp
 src/func_ov060_021181b4.c
-src/_ZN9SpikeBomb16CleanupResourcesEv.cpp
-src/_ZN9SpikeBomb6RenderEv.cpp
+src/actors/daKirai_c.cpp
+src/actors/daKirai_c.cpp
 # src/_ZN9SpikeBomb8BehaviorEv.cpp -- HELD OUT by lane w6-A: SKY PLATFORM's Behavior dispatches its state
 #   table through an MSVC pointer-to-member whose stride is not the ROM's 8
 #   (measured 16 -- re-measured at the wave-6 close; the lane banked 4).
 #   Host copy in port/unmatched/Ov060_StateDispatch.cpp.
 # src/_ZN9SpikeBomb8BehaviorEv.cpp
-src/_ZN9SpikeBomb13InitResourcesEv.cpp
+src/actors/daKirai_c.cpp
 src/func_ov060_021183cc.c
 src/func_ov060_021183f4.c
 src/func_ov060_021184bc.c

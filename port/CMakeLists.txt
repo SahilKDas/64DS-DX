@@ -405,7 +405,7 @@ set(PORT_HOSTGEN_TU
     src/actors/dMgJump3DMario_c.cpp
     src/_ZN9TowerStep13InitResourcesEv.cpp
     src/game/actors/d_a_star_gate.cpp
-    src/_ZN10LavaSeesaw16CleanupResourcesEv.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
     src/_ZN11ShadowModelD1Ev.cpp
     # DATA_C_LINKAGE again, run link100 lane HOSTGEN4, the dBgW collision
     # callbacks. These thirteen translation units never CALL dBgW's two
@@ -423,16 +423,16 @@ set(PORT_HOSTGEN_TU
     # carries its own extern "C" instead.
     src/func_ov002_020b5e58.cpp
     src/_ZN13TTC_MovingBar13InitResourcesEv.cpp
-    src/_ZN16RotatingCogSmall13InitResourcesEv.cpp
+    src/actors/daObjCtMecha10_c.cpp
     src/func_ov002_020b676c.cpp
-    src/_ZN25RotatingUpDownPlatformUtm13InitResourcesEv.cpp
+    src/actors/daObjRotateUpdownLift_c.cpp
     src/func_ov091_02133254.cpp
-    src/_ZN6ToxBox13InitResourcesEv.cpp
-    src/_ZN11PyramidLift13InitResourcesEv.cpp
-    src/_ZN11PyramidStep13InitResourcesEv.cpp
+    src/actors/daOnms_c.cpp
+    src/actors/daDpLift_c.cpp
+    src/actors/daObjDpBrock_c.cpp
     src/game/actors/d_a_obj_wc_obj04.cpp
-    src/_ZN8CccArena13InitResourcesEv.cpp
-    src/_ZN9SeesawBob13InitResourcesEv.cpp
+    src/actors/daObjEwbIce_c.cpp
+    src/actors/daObjSeesaw_c.cpp
     src/_ZN6ShipUp13InitResourcesEv.cpp
     # VIRTUAL_CALL, run link100 lane HOSTGEN4: the WaterfallMist duplicate, one
     # of the six LNK2005 rows still on walk_window's link. Lane CAPSHOW's host
@@ -554,7 +554,7 @@ set(PORT_HOSTGEN_TU
     # than counted by eye. Compiled raw they would latch in the mapped I/O
     # window and never reach the PPU, which is what the substitution exists to
     # prevent and the same reason dScMgD3DBase_c is on this list.
-    src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp
+    src/minigames/d_s_mg_base.cpp
     # HOST_COPY_PARK, run link100 lane DUPES: the last three of walk_window's
     # five duplicate symbols. Each of these translation units defines a body
     # port/unmatched/ also defines under a standing PORT_HOST_ABI ruling, and
@@ -1028,8 +1028,8 @@ set(SAMECLASS_GX_TU
     src/func_ov075_0211afb0.c
     src/func_ov080_02125460.c
     src/func_ov080_02125fd0.c
-    src/func_ov080_0212677c.c
-    src/_ZN11dScMiniGm_c13InitResourcesEv.cpp)
+    src/actors/daPicGate_c.cpp
+    src/actors/dScMiniGm_c.cpp)
 set(SAMECLASS_BOOT_TU
     src/Initialise3dGraphics.cpp
     src/func_0205583c.c
@@ -2421,10 +2421,8 @@ set(PORT_SMOKE_ACTOR_SRC
     # fBase_c's OWN VIRTUALS, the ones the actor world dispatches through
     # hal/actor_vtables.cpp and the fBase_c vtable fills.  InitResources is not
     # here: it is the one forward face in port/faces_sync_smoke_actor.txt.
-    src/_ZN7fBase_c16CleanupResourcesEv.cpp
-    src/_ZN7fBase_c18MarkForDestructionEv.cpp
-    src/_ZN7fBase_c6RenderEv.cpp
-    src/_ZN7fBase_c8BehaviorEv.cpp
+    src/actors/ActorBase.cpp
+    src/actors/ActorBase.cpp
     # dActor_c's SURFACE.  Thirty rows, and they are one class's virtuals plus
     # two of its non-virtual helpers: every Before/After hook the processing
     # lists call, every On* damage and interaction hook the vtable holds, its
@@ -2537,10 +2535,7 @@ set(PORT_SMOKE_ACTOR_SRC
     # fBase_c's and dActor_c's own remaining bodies, plus the two fBase_c
     # virtuals whose non-virtual spelling the alias rows point at
     # (hal/cxx_aliases.cpp:2988-2989 join U to Q; Q is defined by these two).
-    src/_ZN7fBase_c13InitResourcesEv.cpp
-    src/_ZN7fBase_c9Virtual34Ejj.cpp
-    src/_ZN7fBase_c9Virtual38Ejj.cpp
-    src/_ZN7fBase_cD1Ev.cpp
+    src/actors/ActorBase.cpp
     src/_ZN8dActor_c18GetBitInDeathTableEv.cpp
     src/_ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c.cpp
     src/_ZN8dActor_c24KillAndTrackInDeathTableEv.cpp
@@ -2737,7 +2732,7 @@ set(PORT_SMOKE_ACTOR_SRC
     src/func_02043180.c
     src/func_020433b8.c
     src/func_0204335c.c
-    src/_ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE.cpp
+    src/actors/ActorBase.cpp
     # SMOKELINK5 section F: __ZN5Sound4PlayEjjRK7Vector3 is NOT placed. See
     # out/SMOKELINK5/bugs.md -- the coordinator's ruling measured the matched
     # TU's cost against its own six one-function dependencies only. Traced
@@ -4606,7 +4601,7 @@ list(APPEND PORT_ACTOR_OVERLAYS ov029)
 # hal/actor_classes_ov_link100.cpp fills. Derivation in
 # port/ov039_syms.txt, slice in port/slice_gate217.txt.
 list(APPEND PORT_ACTOR_OVERLAYS ov039)
-set(ACTOR_OV_SYMS "")
+set(ACTOR_OV_GENERATED_SOURCES "")
 foreach(ovn IN LISTS PORT_ACTOR_OVERLAYS)
     set(ovn_out "${CMAKE_BINARY_DIR}/host-src/${ovn}_syms.c")
     add_custom_command(OUTPUT "${ovn_out}" "${ovn_out}.map"
@@ -4619,7 +4614,7 @@ foreach(ovn IN LISTS PORT_ACTOR_OVERLAYS)
                 "${CMAKE_CURRENT_SOURCE_DIR}/tools/link_only.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}/${ovn}_syms.txt"
         COMMENT "ovdata ${ovn} (per symbol, packed)")
-    list(APPEND ACTOR_OV_SYMS "${ovn_out}")
+    list(APPEND ACTOR_OV_GENERATED_SOURCES "${ovn_out}")
     list(APPEND OV_DATA_MAPS "${ovn_out}.map")
     if(PORT_ROM_CLEAN)
         list(APPEND ROMCLEAN_PARTS "${ovn_out}.blobmap")
@@ -4684,7 +4679,7 @@ if(PORT_ROM_CLEAN)
     # to build) and mark the parts GENERATED. Depending on the parts directly
     # would be "no rule to make target" -- they are side-effects, not OUTPUTs.
     set(ROMCLEAN_C_OUTPUTS "${ROMDATA_C}" "${OV002DATA_C}" ${LEVEL_OV_DATA}
-        "${OV009SYMS_C}" ${ACTOR_OV_SYMS})
+        "${OV009SYMS_C}" ${ACTOR_OV_GENERATED_SOURCES})
     set_source_files_properties(${ROMCLEAN_PARTS} PROPERTIES GENERATED TRUE)
     add_custom_command(
         OUTPUT "${ROMDATA_BIN}" "${ROMDATA_MANIFEST}" "${ROMDATA_DISPATCH_C}"
@@ -4964,7 +4959,7 @@ endforeach()
 # The two colliding names are themselves on this slice and BOTH define
 # themselves `(void*)`, which is the other half of why the header is the odd one
 # out here rather than the TU.
-set(SLICE_W3A_HOSTGEN_SYMS _ZN15TtcRotatingCube13InitResourcesEv)
+set(SLICE_W3A_HOSTGEN_SYMS _ZN20daObjCtRotateBlock_c13InitResourcesEv)
 set(SLICE_W3A_HOSTGEN_GEN "")
 foreach(sym IN LISTS SLICE_W3A_HOSTGEN_SYMS)
     set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
@@ -5825,7 +5820,7 @@ endforeach()
 # the null path for the handles this extraction does not carry. The
 # `u8 GetHealth()` shadow declaration is bridged by name in the same file.
 # See status/HUDINITRES.md.
-set(GATE27_SYMS _ZN3HUD13InitResourcesEv)
+set(GATE27_SYMS _ZN8dMeter_c13InitResourcesEv)
 set(GATE27_GEN "")
 foreach(sym IN LISTS GATE27_SYMS)
     set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
@@ -8440,9 +8435,10 @@ endforeach()
 # if this symbol ever stops being a hostgen symbol, the configure fails loudly
 # instead of the force-include silently evaporating.
 set(PORT_DTORCALL_HOSTABI_SYM _ZN7fBase_c21AfterCleanupResourcesEj)
-if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/src/${PORT_DTORCALL_HOSTABI_SYM}.cpp")
+set(PORT_DTORCALL_HOSTABI_SOURCE "${PORT_REPO_ROOT_ABS}/src/actors/ActorBase.cpp")
+if(NOT EXISTS "${PORT_DTORCALL_HOSTABI_SOURCE}")
     message(FATAL_ERROR "actor-teardown host-ABI row names a source that "
-            "does not exist: src/${PORT_DTORCALL_HOSTABI_SYM}.cpp")
+            "does not exist: ${PORT_DTORCALL_HOSTABI_SOURCE}")
 endif()
 list(FIND GATE9_SYMS "${PORT_DTORCALL_HOSTABI_SYM}" _dtorcall_gate9_idx)
 if(_dtorcall_gate9_idx LESS 0)
@@ -10378,17 +10374,12 @@ endforeach()
 # through two double loops.  Compiled from src/ every one of them lands in the
 # mapped I/O window and stops there, which is a trampoline that is built, gated
 # on, walked, and invisible -- exactly the shape Tango reported.
-set(TT_SHARED_HOSTGEN_SYMS func_ov006_020d09e0 func_ov006_020cf2fc)
+set(TT_SHARED_HOSTGEN_SYMS func_ov006_020d09e0)
 set(TT_SHARED_HOSTGEN_GEN "")
 set(TT_SHARED_HOSTGEN_SKIP "")
 foreach(sym IN LISTS TT_SHARED_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        list(APPEND TT_SHARED_HOSTGEN_SKIP "src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-        list(APPEND TT_SHARED_HOSTGEN_SKIP "src/${sym}.cpp")
-    endif()
+    set(sym_src "${PORT_REPO_ROOT_ABS}/src/actors/unit020cd744.cpp")
+    list(APPEND TT_SHARED_HOSTGEN_SKIP "src/actors/unit020cd744.cpp")
     set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
@@ -10413,13 +10404,8 @@ set(TTI_HOSTGEN_SYMS func_ov006_020cd270)
 set(TTI_HOSTGEN_GEN "")
 set(TTI_HOSTGEN_SKIP "")
 foreach(sym IN LISTS TTI_HOSTGEN_SYMS)
-    if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
-        list(APPEND TTI_HOSTGEN_SKIP "src/${sym}.c")
-    else()
-        set(sym_src "${PORT_REPO_ROOT_ABS}/src/${sym}.cpp")
-        list(APPEND TTI_HOSTGEN_SKIP "src/${sym}.cpp")
-    endif()
+    set(sym_src "${PORT_REPO_ROOT_ABS}/src/actors/dMgTrmpln2Mario_c.cpp")
+    list(APPEND TTI_HOSTGEN_SKIP "src/actors/dMgTrmpln2Mario_c.cpp")
     set(sym_out "${CMAKE_BINARY_DIR}/host-src/src/${sym}.cpp")
     add_custom_command(OUTPUT "${sym_out}"
         COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/hostgen.py"
@@ -10725,9 +10711,9 @@ set_source_files_properties(
 # is commented out of every slice that named it. hostgen rewrites MMIO accesses
 # and nothing else, so widening the substitution from one body to its TU keeps
 # every other body in the link unchanged.
-set(TTE_HOSTGEN_SRCS src/func_ov006_020caadc.c src/minigames/d_s_mg_trampoline2.cpp)
+set(TTE_HOSTGEN_SRCS src/minigames/d_s_mg_trampoline2.cpp)
 set(TTE_HOSTGEN_GEN "")
-set(TTE_HOSTGEN_SKIP "")
+set(TTE_HOSTGEN_SKIP src/actors/dMgTrmpln2Mario_c.cpp)
 foreach(rel IN LISTS TTE_HOSTGEN_SRCS)
     if(NOT EXISTS "${PORT_REPO_ROOT_ABS}/${rel}")
         message(FATAL_ERROR "slice_tte hostgen source ${rel} does not exist; the "
@@ -10747,6 +10733,7 @@ endforeach()
 
 port_read_lines("${CMAKE_CURRENT_SOURCE_DIR}/slice_tte.txt" SLICE_TTE_LINES)
 set(SLICE_TTE_SOURCES hal/scene_mg_trampoline2.cpp
+                      ${TTI_HOSTGEN_GEN}
                       # The one pointer-to-member host copy: vtable SLOT 6.
                       # This class holds its member pointer in a FIELD at
                       # +0x5004 rather than in a table, which is the worse of
@@ -13085,7 +13072,7 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV16daObjKi_Hasira_c=_ZTV10RockPillar;_ZTV10dBgActor_c=_ZTV10dBgActor_c")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7SkiLiftD1Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSm_Lift_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "_ZTV14daObjSm_Lift_c=_ZTV7SkiLift;_ZTV10dBgActor_c=_ZTV10dBgActor_c")
 # ---- gate 214 (run link100, lane BOOT): THE ROM'S OWN BOOT CHAIN ------------
@@ -16217,7 +16204,7 @@ list(APPEND SLICE89_SOURCES
 # MSVC). _ZN11BillBlaster8BehaviorEv (BillBlaster::Behavior) declares its local struct's
 # members out of line as well as in-struct, which mwccarm tolerates and MSVC
 # rejects as C2761; hostgen's MEMBER_REDECL deletes the redundant copies.
-set(GATE64_SYMS _ZN5Whomp13InitResourcesEv _ZN11BillBlaster8BehaviorEv)
+set(GATE64_SYMS _ZN7daBtn_c13InitResourcesEv _ZN18daObjBkKillerdai_c8BehaviorEv)
 set(GATE64_GEN "")
 foreach(sym IN LISTS GATE64_SYMS)
     if(EXISTS "${PORT_REPO_ROOT_ABS}/src/${sym}.c")
@@ -17320,7 +17307,7 @@ add_executable(smoke_player EXCLUDE_FROM_ALL tests/smoke_player.cpp "${OV002DATA
     hal/actor_classes_ov_link100.cpp ${SLICE217_SOURCES}
     # run link100 wave 15, lane SEAT15E: LINK15 BATCH 4 seats (slice_l15ov7)
     ${SLICE_L15OV7_SOURCES}
-    "${ROMDATA_C}" "${OV009SYMS_C}" ${ACTOR_OV_SYMS} "${OVCROSS_C}")
+    "${ROMDATA_C}" "${OV009SYMS_C}" ${ACTOR_OV_GENERATED_SOURCES} "${OVCROSS_C}")
 target_include_directories(smoke_player PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../include")
@@ -17651,7 +17638,7 @@ add_executable(walk_window tests/walk_window.cpp tests/io_pressure.cpp
     "${PORT_GITTIP_C}"
     # run link100 wave 15, lane SEAT15E: LINK15 BATCH 4 seats (slice_l15ov7)
     ${SLICE_L15OV7_SOURCES}
-    "${ROMDATA_C}" "${OV009SYMS_C}" ${ACTOR_OV_SYMS} "${OVCROSS_C}")
+    "${ROMDATA_C}" "${OV009SYMS_C}" ${ACTOR_OV_GENERATED_SOURCES} "${OVCROSS_C}")
 target_include_directories(walk_window PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../include")
@@ -18045,7 +18032,7 @@ add_executable(walk_window_hires tests/walk_window.cpp hal/resource_pack.cpp
     "${PORT_GITTIP_C}"
     # run link100 wave 15, lane SEAT15E: LINK15 BATCH 4 seats (slice_l15ov7)
     ${SLICE_L15OV7_SOURCES}
-    "${ROMDATA_C}" "${OV009SYMS_C}" ${ACTOR_OV_SYMS} "${OVCROSS_C}")
+    "${ROMDATA_C}" "${OV009SYMS_C}" ${ACTOR_OV_GENERATED_SOURCES} "${OVCROSS_C}")
 target_include_directories(walk_window_hires PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../include")
@@ -18846,7 +18833,7 @@ set_source_files_properties(
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV18daObjClockHuriko_c;G0=data_020a0eac")
 set_source_files_properties(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../src/_ZN7SkiLiftD0Ev.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/actors/daObjSm_Lift_c.cpp"
     PROPERTIES COMPILE_DEFINITIONS
     "VT0=_ZTV7SkiLift;VT1=_ZTV10dBgActor_c;G0=data_020a0eac")
 set_source_files_properties(
@@ -21064,17 +21051,17 @@ message(STATUS "CONFIGURE DEPS: ${_PORT_CONFIGURE_DEPS_N} configure-time inputs 
 # NEW fall-off-the-end body still fails the build and gets looked at.
 set(PORT_FALLS_OFF_END_SOURCES
     src/_ZN10dScEntry_c19BeforeInitResourcesEv.cpp
-    src/_ZN11dScMgBase_c9Virtual50Ev.cpp
-    src/_ZN11dScMgBase_c9Virtual7CEv.cpp
-    src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp
-    src/_ZN12dScMgAmida_c9Virtual7CEv.cpp
+    src/minigames/d_s_mg_base.cpp
+    src/minigames/d_s_mg_base.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/dScMgAmida_c.cpp
     src/_ZN12dScMgSlot1_c19OnHitFromUnderneathEv.cpp
-    src/_ZN12dScMgSlot3_c16OnAimedAtWithEggEv.cpp
-    src/_ZN16dScMgSmartball_c9Virtual7CEv.cpp
-    src/_ZN21FloatingFloorLllSmall13InitResourcesEv.cpp
+    src/actors/dScMgSlots.cpp
+    src/actors/dScMgSmartball_c.cpp
+    src/actors/daObjFl_Ukiyuka_c.cpp
     src/_ZN3OAM12EnableSubOAMEv.cpp
     src/_ZN5Bully13InitResourcesEv.cpp
-    src/_ZN8SignPost11OnAttacked1ER8dActor_c.cpp
+    src/actors/daObjTatefuda_c.cpp
     src/_ZN8dActor_c11OnAttacked1ERS_.cpp
     src/_ZN8dActor_c11OnAttacked2ERS_.cpp
     src/_ZN8dActor_c19OnHitFromUnderneathERS_.cpp
@@ -21093,7 +21080,7 @@ set(PORT_FALLS_OFF_END_SOURCES
     # code reaches the closing brace with the result still in r0, exactly the
     # shape the twenty rows above cover. Nothing else in the batch raises
     # C4716.
-    src/_ZN19RotatingPlatformLll13InitResourcesEv.cpp
+    src/actors/daObjFl_Koma_D_c.cpp
     # Added by lane SYNC6 when today's main un-quarantined five TUs that lane
     # SYNC5 had held for C2561. main's #2663 spells their valueless early exits
     # as nested ifs instead of `return;`, which is the statement C2561 was
@@ -21102,7 +21089,7 @@ set(PORT_FALLS_OFF_END_SOURCES
     # register. Measured per source with the build's own flags before these
     # rows were written: these five are the only ones of the twenty-five
     # restored TUs that raise C4716.
-    src/_ZN11dScMgBase_c19OnHitFromUnderneathEv.cpp
+    src/minigames/d_s_mg_base.cpp
     src/_ZN13QuestionBlock11OnAttacked1ER8dActor_c.cpp
     src/_ZN13QuestionBlock19OnHitFromUnderneathER8dActor_c.cpp
     src/game/actors/daObjPushblock_c.cpp
@@ -21130,7 +21117,7 @@ set(PORT_FALLS_OFF_END_SOURCES
     # own note at the top of that file says the ROM leaves r0 holding whatever
     # the last call left there -- so MSVC raises C4716 on it. Measured on the
     # generated copy: that member and nothing else.
-    src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp
+    src/minigames/d_s_mg_base.cpp
     # Run link100 wave 9c, lane LINK21. ArrowSignRight::OnAttacked1 joins its two
     # already-seated siblings, SignPost::OnAttacked1 and QuestionBlock::OnAttacked1,
     # both of them a few rows above in this list. It could not join them before
@@ -22127,12 +22114,8 @@ set(PORT_TAILPAD_DBGACTOR_SOURCES
     port/hal/actor_classes_wf_enemy.cpp
     port/hal/dtor_forwarders_gen.cpp
     port/hal/except_faces.cpp
-    src/_ZN10BrickBlock8BehaviorEv.cpp
-    src/_ZN10LavaSeesaw13InitResourcesEv.cpp
-    src/_ZN10LavaSeesaw16CleanupResourcesEv.cpp
-    src/_ZN10LavaSeesaw6RenderEv.cpp
-    src/_ZN10LavaSeesaw8BehaviorEv.cpp
-    src/_ZN10LavaSeesawD1Ev.cpp
+    src/actors/daObjBlockItemTag_c.cpp
+    src/actors/daObjFl_Seesaw_c.cpp
     # StarSwitch is a 25th class with the same defect and the list missed it,
     # because the list was built from the 24 and StarSwitch was not one of them.
     # Its first own field is pad_31e[2], which IS the field that lives in
@@ -22154,79 +22137,29 @@ set(PORT_TAILPAD_DBGACTOR_SOURCES
     # hal/actorport_dtor_bridge.cpp and hal/actor_classes_bob_world.cpp, the last
     # of which this block already excludes by name.
     src/actors/daObjSwitch_c.cpp
-    src/_ZN10SlidingIce13InitResourcesEv.cpp
-    src/_ZN10SlidingIce15OnHitByMegaCharER6Player.cpp
-    src/_ZN10SlidingIce16CleanupResourcesEv.cpp
-    src/_ZN10SlidingIce6RenderEv.cpp
-    src/_ZN10SlidingIce8BehaviorEv.cpp
-    src/_ZN10SlidingIceD1Ev.cpp
-    src/_ZN10daKpa2Bg_c13InitResourcesEv.cpp
+    src/actors/daObjSlIceBlock_c.cpp
+    src/actors/daKpa2Bg_c.cpp
     src/_ZN10daKpa2Bg_c16CleanupResourcesEv.cpp
     src/_ZN10daKpa2Bg_c6RenderEv.cpp
     src/_ZN10daKpa2Bg_c8BehaviorEv.cpp
     src/_ZN10daKpa2Bg_cD1Ev.cpp
-    src/_ZN11VolcanoRing13InitResourcesEv.cpp
-    src/_ZN11VolcanoRing16CleanupResourcesEv.cpp
-    src/_ZN11VolcanoRing6RenderEv.cpp
-    src/_ZN11VolcanoRing8BehaviorEv.cpp
-    src/_ZN11VolcanoRingD1Ev.cpp
-    src/_ZN12FortressWall13InitResourcesEv.cpp
-    src/_ZN12FortressWall16CleanupResourcesEv.cpp
-    src/_ZN12FortressWall24OnHitByCannonBlastedCharER8dActor_c.cpp
-    src/_ZN12FortressWall4KillEv.cpp
-    src/_ZN12FortressWall6RenderEv.cpp
-    src/_ZN12FortressWall8BehaviorEv.cpp
-    src/_ZN12FortressWallD1Ev.cpp
-    src/_ZN13BigBrickBlock13InitResourcesEv.cpp
-    src/_ZN13BigBrickBlock15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN13BigBrickBlock15OnHitByMegaCharER6Player.cpp
-    src/_ZN13BigBrickBlock16CleanupResourcesEv.cpp
-    src/_ZN13BigBrickBlock16HasNonzeroAngleXEv.cpp
-    src/_ZN13BigBrickBlock17NotifyLinkedActorEv.cpp
-    src/_ZN13BigBrickBlock4KillEv.cpp
-    src/_ZN13BigBrickBlock6RenderEv.cpp
-    src/_ZN13BigBrickBlock8BehaviorEv.cpp
-    src/_ZN13BigBrickBlock8OnKickedER8dActor_c.cpp
-    src/_ZN13BigBrickBlockD1Ev.cpp
+    src/actors/daObjFl_Ring_c.cpp
+    src/actors/daObjBk_Kabe_c.cpp
+    src/actors/daObjBlockL_c.cpp
     src/_ZN13TTC_MovingBar13InitResourcesEv.cpp
     src/_ZN13TTC_MovingBar16CleanupResourcesEv.cpp
     src/_ZN13TTC_MovingBar6RenderEv.cpp
     src/_ZN13TTC_MovingBarD1Ev.cpp
-    src/_ZN16RotatingCogSmall13InitResourcesEv.cpp
-    src/_ZN16RotatingCogSmall16CleanupResourcesEv.cpp
-    src/_ZN16RotatingCogSmall6RenderEv.cpp
-    src/_ZN16RotatingCogSmall8BehaviorEv.cpp
-    src/_ZN16RotatingCogSmallD1Ev.cpp
-    src/_ZN16SpinningPlatform11UpdateModelEv.cpp
-    src/_ZN16SpinningPlatform12UpdateShadowEv.cpp
-    src/_ZN16SpinningPlatform13InitResourcesEv.cpp
-    src/_ZN16SpinningPlatform16CleanupResourcesEv.cpp
-    src/_ZN16SpinningPlatform6RenderEv.cpp
-    src/_ZN16SpinningPlatform8BehaviorEv.cpp
-    src/_ZN16SpinningPlatformD1Ev.cpp
-    src/_ZN17SlidingPlatformWf13InitResourcesEv.cpp
-    src/_ZN17SlidingPlatformWf16CleanupResourcesEv.cpp
-    src/_ZN17SlidingPlatformWf6RenderEv.cpp
-    src/_ZN17SlidingPlatformWf8BehaviorEv.cpp
-    src/_ZN17SlidingPlatformWfD1Ev.cpp
-    src/_ZN5Stump13InitResourcesEv.cpp
-    src/_ZN5Stump15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN5Stump15OnHitByMegaCharER6Player.cpp
-    src/_ZN5Stump16CleanupResourcesEv.cpp
-    src/_ZN5Stump6RenderEv.cpp
-    src/_ZN5Stump8BehaviorEv.cpp
-    src/_ZN5StumpD1Ev.cpp
+    src/actors/daObjCtMecha10_c.cpp
+    src/actors/daObjCtMecha11_c.cpp
+    src/actors/daObjSimpleLift_c.cpp
+    src/actors/daObjPile_c.cpp
     src/_ZN6ShipUp13InitResourcesEv.cpp
     src/_ZN6ShipUp16CleanupResourcesEv.cpp
     src/_ZN6ShipUp6RenderEv.cpp
     src/_ZN6ShipUp8BehaviorEv.cpp
     src/_ZN6ShipUpD1Ev.cpp
-    src/_ZN9SeesawBob13InitResourcesEv.cpp
-    src/_ZN9SeesawBob15OnGroundPoundedER8dActor_c.cpp
-    src/_ZN9SeesawBob16CleanupResourcesEv.cpp
-    src/_ZN9SeesawBob6RenderEv.cpp
-    src/_ZN9SeesawBob8BehaviorEv.cpp
-    src/_ZN9SeesawBobD1Ev.cpp
+    src/actors/daObjSeesaw_c.cpp
     src/actors/daObjCtMecha03_c.cpp
     src/actors/daObjFl_London_c.cpp
     src/game/actors/d_a_obj_bk_rotebar.cpp

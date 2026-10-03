@@ -141,12 +141,13 @@ def _strict(rows=None, exc=None):
 def test_bytes_matching_is_not_a_pass_when_a_relocation_points_elsewhere():
     """The observed failure, in miniature. `match.compare` treats every relocated word
     as a wildcard, so a call to the wrong function compares clean; only the link sees
-    it. src/func_ov006_020cb030.cpp passed a byte-only check, was enrolled, and the ROM
-    build reported ov006 mismatching at a `bl` going to func_ov006_020c9024 where the
-    ROM's relocation records 0x020cb134."""
+    it. func_ov006_020cb030 (then its own one-function file) passed a byte-only check,
+    was enrolled, and the ROM build reported ov006 mismatching at a `bl` going to
+    func_ov006_020c9024 where the ROM's relocation records 0x020cb134. It now lives
+    in the folded trampoline-Mario TU."""
     if not _toolchain():
         return
-    rel = "src/func_ov006_020cb030.cpp"
+    rel = "src/actors/dMgTrmpln2Mario_c.cpp"
     name, addr, size, label = "func_ov006_020cb030", 0x020cb030, 0x104, "ov006"
     ok, _ = BP.verify(REPO / rel, name, addr, size, label)
     assert ok, "precondition: this file's BYTES reproduce under the pinned compiler"
@@ -159,7 +160,7 @@ def test_bytes_matching_is_not_a_pass_when_a_relocation_points_elsewhere():
 def test_a_destination_check_that_could_not_run_is_not_a_pass():
     if not _toolchain():
         return
-    rel = "src/func_ov006_020cb030.cpp"
+    rel = "src/actors/dMgTrmpln2Mario_c.cpp"
     args = ("func_ov006_020cb030", 0x020cb030, 0x104, "ov006")
     for strict in (_strict(None), _strict(exc=RuntimeError("index unavailable"))):
         ok, why = BP.verify(REPO / rel, *args, strict=strict)

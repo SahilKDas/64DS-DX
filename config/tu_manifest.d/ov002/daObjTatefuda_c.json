@@ -1,0 +1,380 @@
+{
+  "id": "ov002/daObjTatefuda_c",
+  "module": "ov002",
+  "source": "src/actors/daObjTatefuda_c.cpp",
+  "promoted_source": "src/actors/daObjTatefuda_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "medium",
+  "boundary_evidence": [
+    "contiguous linker run: 0x020badd0..0x020bc3c8, 28 function(s), from build/tu_map.json (tools/tu_map.py, regenerated post-rename as ov002/daObjTatefuda_c). 27 carry complete delinks entries; func_ov002_020bb614 (the talk routine) verifies OK under the pin and is marked complete with this promotion. Boundaries medium on both sides; the daObjSwdoor_c run ends exactly where this one opens (0x020badd0), and daObjTatefuda_c_classInit (0x020bc3c8) abuts its end.",
+    "class label: daObjTatefuda_c (ROM RTTI triple homed at ov002 0x02109ab4/0x02109ac0/0x02109af8; the tree's former SignPost was coined). Kill (slot 31, overriding dBgActor_c) is the key function: it emits the vtable, RTTI and destructor variants, so D1/D0 need no bodies here.",
+    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide)"
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x020badd0",
+      "end": "0x020bc3c8"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN15daObjTatefuda_cD1Ev",
+      "address": "0x020badd0",
+      "size": "0x0000005c",
+      "legacy_source": "src/_ZN15daObjTatefuda_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_cD0Ev",
+      "address": "0x020bae2c",
+      "size": "0x00000070",
+      "legacy_source": "src/_ZN15daObjTatefuda_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov002_020bae9c",
+      "address": "0x020bae9c",
+      "size": "0x000000e4",
+      "legacy_source": "src/func_ov002_020bae9c.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov002_020baf80",
+      "address": "0x020baf80",
+      "size": "0x00000040",
+      "legacy_source": "src/func_ov002_020baf80.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov002_020bafc0",
+      "address": "0x020bafc0",
+      "size": "0x000000a0",
+      "legacy_source": "src/func_ov002_020bafc0.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov002_020bb060",
+      "address": "0x020bb060",
+      "size": "0x000001dc",
+      "legacy_source": "src/func_ov002_020bb060.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c11OnAttacked1ER8dActor_c",
+      "address": "0x020bb23c",
+      "size": "0x00000040",
+      "legacy_source": "src/_ZN15daObjTatefuda_c11OnAttacked1ER8dActor_c.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c15OnGroundPoundedER8dActor_c",
+      "address": "0x020bb27c",
+      "size": "0x000000f8",
+      "legacy_source": "src/_ZN15daObjTatefuda_c15OnGroundPoundedER8dActor_c.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c15OnHitByMegaCharER6Player",
+      "address": "0x020bb374",
+      "size": "0x00000044",
+      "legacy_source": "src/_ZN15daObjTatefuda_c15OnHitByMegaCharER6Player.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c4KillEv",
+      "address": "0x020bb3b8",
+      "size": "0x00000074",
+      "legacy_source": "src/_ZN15daObjTatefuda_c4KillEv.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov002_020bb42c",
+      "address": "0x020bb42c",
+      "size": "0x000000f4",
+      "legacy_source": "src/func_ov002_020bb42c.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov002_020bb520",
+      "address": "0x020bb520",
+      "size": "0x000000f4",
+      "legacy_source": "src/func_ov002_020bb520.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov002_020bb614",
+      "address": "0x020bb614",
+      "size": "0x000003dc",
+      "legacy_source": "src/func_ov002_020bb614.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov002_020bb9f0",
+      "address": "0x020bb9f0",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov002_020bb9f0.c",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov002_020bb9fc",
+      "address": "0x020bb9fc",
+      "size": "0x00000028",
+      "legacy_source": "src/func_ov002_020bb9fc.c",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov002_020bba24",
+      "address": "0x020bba24",
+      "size": "0x00000004",
+      "legacy_source": "src/func_ov002_020bba24.c",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov002_020bba28",
+      "address": "0x020bba28",
+      "size": "0x000000a0",
+      "legacy_source": "src/func_ov002_020bba28.cpp",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov002_020bbac8",
+      "address": "0x020bbac8",
+      "size": "0x0000004c",
+      "legacy_source": "src/func_ov002_020bbac8.c",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov002_020bbb14",
+      "address": "0x020bbb14",
+      "size": "0x00000164",
+      "legacy_source": "src/func_ov002_020bbb14.cpp",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov002_020bbc78",
+      "address": "0x020bbc78",
+      "size": "0x00000040",
+      "legacy_source": "src/func_ov002_020bbc78.c",
+      "ordinal": 19
+    },
+    {
+      "symbol": "func_ov002_020bbcb8",
+      "address": "0x020bbcb8",
+      "size": "0x00000098",
+      "legacy_source": "src/func_ov002_020bbcb8.cpp",
+      "ordinal": 20
+    },
+    {
+      "symbol": "func_ov002_020bbd50",
+      "address": "0x020bbd50",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov002_020bbd50.c",
+      "ordinal": 21
+    },
+    {
+      "symbol": "func_ov002_020bbd5c",
+      "address": "0x020bbd5c",
+      "size": "0x00000048",
+      "legacy_source": "src/func_ov002_020bbd5c.cpp",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov002_020bbda4",
+      "address": "0x020bbda4",
+      "size": "0x00000048",
+      "legacy_source": "src/func_ov002_020bbda4.cpp",
+      "ordinal": 23
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c16CleanupResourcesEv",
+      "address": "0x020bbdec",
+      "size": "0x00000044",
+      "legacy_source": "src/_ZN15daObjTatefuda_c16CleanupResourcesEv.cpp",
+      "ordinal": 24
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c6RenderEv",
+      "address": "0x020bbe30",
+      "size": "0x00000074",
+      "legacy_source": "src/_ZN15daObjTatefuda_c6RenderEv.cpp",
+      "ordinal": 25
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c8BehaviorEv",
+      "address": "0x020bbea4",
+      "size": "0x0000039c",
+      "legacy_source": "src/_ZN15daObjTatefuda_c8BehaviorEv.cpp",
+      "ordinal": 26
+    },
+    {
+      "symbol": "_ZN15daObjTatefuda_c13InitResourcesEv",
+      "address": "0x020bc240",
+      "size": "0x00000188",
+      "legacy_source": "src/_ZN15daObjTatefuda_c13InitResourcesEv.cpp",
+      "ordinal": 27
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Kill is the key function (first non-inline virtual): its real body emits _ZTV/_ZTI/_ZTS plus D1/D0; no D2 is emitted (nothing derives from this class). The file is ROM-ascending.",
+    "create CONFLICT warnings: extern-declaration clashes across the 28 legacy shards resolved to the definition- or use-matching forms (kept-first); the TUBUILD comment rows dropped. The v31/Obj pun resolves to Kill() through the documented slot; the M43 pun resolves to the structured Matrix4x3 (.t)."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov002-daObjTatefuda_c/daObjTatefuda_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 28,
+    "functions_declared": 28,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        32
+      ],
+      "data": [
+        "_ZTV15daObjTatefuda_c",
+        "_ZTI15daObjTatefuda_c",
+        "_ZTS15daObjTatefuda_c",
+        "_ZTI10dBgActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI10dBgActor_c",
+        "_ZTI15daObjTatefuda_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTS15daObjTatefuda_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV15daObjTatefuda_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  },
+  "compiler_only_output": [
+    {
+      "symbol": "_ZTV15daObjTatefuda_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02109af8",
+      "reason": "Own vtable, emitted because this TU defines the key function (Kill, the first non-inline virtual). Cartridge copy at ov002:0x02109af8 (address point), outside the .text run claimed."
+    },
+    {
+      "symbol": "_ZTI15daObjTatefuda_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02109ab4",
+      "reason": "Own typeinfo (__si_class_type_info over _ZTI10dBgActor_c). Cartridge copy at ov002:0x02109ab4."
+    },
+    {
+      "symbol": "_ZTS15daObjTatefuda_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02109ac0",
+      "reason": "Own type-name; bytes spell \"15daObjTatefuda_c\", source of the class name. Cartridge copy at ov002:0x02109ac0."
+    },
+    {
+      "symbol": "_ZTI10dBgActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021089ec",
+      "reason": "Immediate base typeinfo. Cartridge copy at ov002:0x021089ec."
+    },
+    {
+      "symbol": "_ZTS10dBgActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02108a04",
+      "reason": "Immediate base type-name. Cartridge copy at ov002:0x02108a04."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390",
+      "reason": "Inherited base typeinfo. Cartridge copy in arm9 at 0x0208e390."
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384",
+      "reason": "Inherited base type-name. Cartridge copy in arm9 at 0x0208e384."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "Inherited base typeinfo. Cartridge copy in arm9 at 0x02086e78."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Inherited base type-name. Cartridge copy in arm9 at 0x02086e54."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "Inherited base typeinfo. Cartridge copy in arm9 at 0x02086d70."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Inherited base type-name. Cartridge copy in arm9 at 0x02086e60."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0",
+      "reason": "func_ov002_020bbb14 holds a real Vector3 local (vec) and types.h gives Vector3 an inline destructor, so the compiler emits its own copy of the four-byte body. The ROM homes it in arm9:0x020072c0; this copy is discarded by text-only isolation."
+    }
+  ]
+}

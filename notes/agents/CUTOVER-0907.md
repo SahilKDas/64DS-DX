@@ -225,7 +225,7 @@ verify, then delete — in that order, and never the last two together.
   already has `daKpa3Bg_c_classInit` and `g_profile_KOOPA3BG`, and already carries
   an auto-generated `daKpa3Bg_c` header. The branch is also *behind*: it would
   rename six method addresses to `daKpa3Bg_c::*` that `main` has since settled as
-  `SpikeBomb::*`. Re-derive the `daKpa3Bg_c` half on top of `main`; do not restack.
+  `daKirai_c::*`. Re-derive the `daKpa3Bg_c` half on top of `main`; do not restack.
 - **`port-linux-fwd-sweep`** — unchanged by this re-measurement and still the only
   Linux host lane. See the port-lane paragraph below for what is on it.
 

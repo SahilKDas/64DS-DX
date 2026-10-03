@@ -15,7 +15,7 @@ This document describes this commit. The queue records its immutable output SHA.
 
 | Finding | Disposition in this candidate |
 | --- | --- |
-| TRAMP2-01 | Corrected the two callers of the real ov006 `void(void)` helper at `0x020cedf0`; the second helper at ov006 `0x020cac30` is also an ordinary `void(void)` call. Removed the counterfeit `Player` declaration. The old module-qualified numeric destinations already matched; this repairs false source identity/prototypes, not a demonstrated wrong destination. Actual `Player::St_Null_Init` is the unrelated ov002 function at the same RAM address. |
+| TRAMP2-01 | Corrected the two callers of the real [ov006](../../../config/arm9/overlays/ov006/symbols.txt) `void(void)` helper at `0x020cedf0`; the second helper at [ov006](../../../config/arm9/overlays/ov006/symbols.txt) `0x020cac30` is also an ordinary `void(void)` call. Removed the counterfeit `Player` declaration. The old module-qualified numeric destinations already matched; this repairs false source identity/prototypes, not a demonstrated wrong destination. Actual `Player::St_Null_Init` is the unrelated [ov002](../../../config/arm9/overlays/ov002/symbols.txt) function at the same RAM address. |
 | TRAMP2-02 | Replaced the artificial 19-slot `Base` interface with the existing `OnYoshiTryEat(-1)` virtual self-call; removed the unused scaffold. |
 | TRAMP2-03 | The local C++ `ApproachLinear(int&, int, int)` declaration now returns `int`, agreeing with its existing definition. This caller discards the result. |
 | TRAMP2-04 | Corrected live-storage/state availability, vtable-emission, naming, pragma and neighbor-boundary claims. Header executable tokens and layout are unchanged. The next class is `dScMgBSC_c`, not `dScMgTrampoline3_c`. Historical scratch-attempt records remain labeled as history. |
@@ -28,11 +28,11 @@ The shared minigame `Virtual50` return-contract correction remains the separate 
 
 ## Evidence and scope
 
-- TU: `src/minigames/d_s_mg_trampoline2.cpp`; own header: `include/dScMgTrampoline2_c.h`; manifest: `config/tu_manifest.d/ov006/dScMgTrampoline2_c.json`. Those three files plus this handoff are the complete tracked change.
-- Text: all 42 functions, 9,052 bytes, ov006 `0x021225ac..0x02124908`. Existing ten explicit class-method definitions plus generated D1/D0 and 30 free-function slots remain the same identities.
-- Owned data: all 328 bytes and 56 relocations, ov006 `0x0213fbc4..0x0213fd0c`. The existing intact-object policy, exact RTTI import checks, D1/D0 binding rewrites, vtable rebias, enrollment and layout are unchanged. No new data exclusions or aliases.
+- TU: `src/minigames/d_s_mg_trampoline2.cpp`; own header: `include/dScMgTrampoline2_c.h`; manifest: [config/tu_manifest.d/ov006/dScMgTrampoline2_c.json](../../../config/tu_manifest.d/ov006/dScMgTrampoline2_c.json). Those three files plus this handoff are the complete tracked change.
+- Text: all 42 functions, 9,052 bytes, [ov006](../../../config/arm9/overlays/ov006/symbols.txt) `0x021225ac..0x02124908`. Existing ten explicit class-method definitions plus generated D1/D0 and 30 free-function slots remain the same identities.
+- Owned data: all 328 bytes and 56 relocations, [ov006](../../../config/arm9/overlays/ov006/symbols.txt) `0x0213fbc4..0x0213fd0c`. The existing intact-object policy, exact RTTI import checks, D1/D0 binding rewrites, vtable rebias, enrollment and layout are unchanged. No new data exclusions or aliases.
 - RTTI evidences the class name/base relationship. English callback/factory spellings, component roles and original TU grouping remain reconstructed labels or structural inference, not recovered original source names.
-- Separate baseline and individual experiments verified each of the three natural alternatives before this combined candidate. All 42 function bytes remained identical; the helper repair changes one relocation's source spelling to the real ov006 helper while retaining its correct module-qualified destination. The combined candidate was freshly compiled and strictly checked after the final comment changes.
+- Separate baseline and individual experiments verified each of the three natural alternatives before this combined candidate. All 42 function bytes remained identical; the helper repair changes one relocation's source spelling to the real [ov006](../../../config/arm9/overlays/ov006/symbols.txt) helper while retaining its correct module-qualified destination. The combined candidate was freshly compiled and strictly checked after the final comment changes.
 
 ## Producer proof
 

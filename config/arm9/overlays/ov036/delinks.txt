@@ -17,19 +17,7 @@ src/game/actors/d_a_obj_rc_hane.cpp:
 
 src/actors/daObjRc_Tikuwa_c.cpp:
     complete
-    .text start:0x0211193c end:0x02111ca4
-
-src/func_ov036_02111ca4.cpp:
-    complete
-    .text start:0x02111ca4 end:0x02111cc4
-
-src/func_ov036_02111cc4.c:
-    complete
-    .text start:0x02111cc4 end:0x02111cd8
-
-src/d_a_obj_rc_tikuwa.c:
-    complete
-    .text start:0x02111cd8 end:0x02111d14
+    .text start:0x0211193c end:0x02111d14
 
 src/game/actors/d_a_obj_rc_guruguru.cpp:
     complete

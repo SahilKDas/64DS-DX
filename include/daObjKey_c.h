@@ -40,7 +40,7 @@ struct daObjKey_c : dEnemyBase_c {
     dCcAcPos_c  mdCcAcPos_c;        /* 0x220 */
     dBgCh_Actr  mWithMeshClsn;      /* 0x260 */
     Vector3     mHomePos;           /* 0x41c coined: mPos at InitResources */
-    u8          pad_428[0xc];
+    Vector3     mJumpTarget;        /* 0x428 coined: where the star jumps to */
     Vector3     mCamLookAt;         /* 0x434 coined: eased camera target */
     s16         mSpinSpeed;         /* 0x440 */
     u8          mStep;              /* 0x442 coined: step within the state */
@@ -62,9 +62,17 @@ struct daObjKey_c : dEnemyBase_c {
     int InitResources();
     int Render();
 
-    /* Coined names. StateDrop is reached only through the state table. */
-    void StateDrop();                   /* 0x02131b18 */
+    /* Coined names. The three states are reached only through the state table. */
+    void StateFlyToCenter();            /* 0x021311c0, kind 3 */
+    void StateStarJump();               /* 0x0213162c, kind 7 */
+    void StateDrop();                   /* 0x02131b18, the other six kinds */
     void UpdateModelTransform();        /* 0x02131f54 */
+
+    /* The address is the method name. The actor was the first parameter. */
+    void func_ov089_02130fb4(int *target, int height); /* 0x02130fb4 */
+    void func_ov089_0213115c(int anim);                /* 0x0213115c */
+    void func_ov089_02131dcc(char *player);            /* 0x02131dcc */
+    void func_ov089_02131df4(char *player);            /* 0x02131df4 */
 };
 
 #ifndef SM64DS_PLATFORM_PC

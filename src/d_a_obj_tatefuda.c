@@ -7,7 +7,7 @@
 #include "decl_dBgCh_Actr.h"
 #include "decl_common.h"
 /* recovered: vtable identified, globals resolved */
-/* resolved: VT0 = _ZTV8SignPost */
+/* resolved: VT0 = _ZTV15daObjTatefuda_c */
 /* Reconstructed source-style name: SM64DS proves daObjTatefuda_c through RTTI,
  * allocation size, vtable identity, and the TATEFUDA registry profile;
  * later EAD lineage supplies classInit. Exact original spelling is not
@@ -17,7 +17,7 @@ int *daObjTatefuda_c_classInit(void)
     int *p = (int *)_ZN7fBase_cnwEj(1444);
     if (p) {
         _ZN10dBgActor_cC2Ev(p);
-        p[0] = (int)_ZTV8SignPost;
+        p[0] = (int)_ZTV15daObjTatefuda_c;
         _ZN7dCcAc_cC1Ev((char *)p + 0x320);
         _ZN11ShadowModelC1Ev((char *)p + 0x358);
         _ZN10dBgCh_ActrC1Ev((char *)p + 0x3c8);

@@ -341,7 +341,7 @@ src/_ZN22RotatingUpDownPlatform8BehaviorEv.cpp
 src/_ZN6Cannon8BehaviorEv.cpp
 src/_ZN4Fish8BehaviorEv.cpp
 # ---- gate 2 ----
-src/_ZN12MetalNetLift8BehaviorEv.cpp
+src/actors/daObjFl_Amilift_c.cpp
 src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c8BehaviorEv.cpp
 src/func_ov006_0212a2e0.cpp
 # ---- gate 3: the trampoline pair ----

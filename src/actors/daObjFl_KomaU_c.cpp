@@ -1,6 +1,6 @@
 //cpp
 /* Production translation unit for ov064/daObjFl_KomaU_c.
- * 6 function(s), .text 0x02118138..0x02118564. The rotating fire bar
+ * 7 function(s), .text 0x02118138..0x021185c0. The rotating fire bar
  * (registry profile FL_KOMA_U).
  *
  * NAME: _ZTS15daObjFl_KomaU_c is "15daObjFl_KomaU_c" at ov064 0x0211bdd8;
@@ -12,8 +12,10 @@
  * _ZTS. Under `#pragma defer_codegen off` it comes out D1 (0x02118138), D0
  * (0x02118194), then a D2 the cartridge has no home for (manifest: deadstrip);
  * the same pragma lays .text down in source order, so this file is
- * ROM-ascending. The factory daObjFl_KomaU_c_classInit (0x02118564) stays in
- * its own source, src/d_a_obj_fl_koma_u.cpp.
+ * ROM-ascending. The last function is the registry factory
+ * daObjFl_KomaU_c_classInit (0x02118564), `new daObjFl_KomaU_c()`; the
+ * dCcPos_c array's user-declared constructor and destructor are what make
+ * the implicit constructor emit the ROM's __cxa_vec_ctor over mColliders.
  */
 
 #include "decl_common.h"
@@ -173,4 +175,14 @@ s32 daObjFl_KomaU_c::InitResources()
         &mClsnMat, 0x199, mAngleY, data_ov064_0211adbc.clps);
     func_020393d4(&mMeshCollider, (void *)&dBgW::UpdatePosAndAngs);
     return 1;
+}
+
+/* Reconstructed source-style name: SM64DS proves daObjFl_KomaU_c through
+ * RTTI, allocation size, vtable identity, and the FL_KOMA_U registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: RotatingFirebar_Spawn. */
+// @symbol daObjFl_KomaU_c_classInit
+extern "C" daObjFl_KomaU_c *daObjFl_KomaU_c_classInit()
+{
+    return new daObjFl_KomaU_c();
 }

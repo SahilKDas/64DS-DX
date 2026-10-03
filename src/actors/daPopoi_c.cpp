@@ -1,14 +1,38 @@
 //cpp
-/* Champignon foe (ov077/daPopoi_c), 22 functions: free helpers plus
+/* POPOI foe (ov077/daPopoi_c, aliased HeaveHo_Spawn), 22 functions: free helpers plus
  * class members. Hand-assembled in REVERSE ROM order (highest address
  * first); the per-function include and declaration blocks are the
  * assembly scaffolding. Do not reorder.
  *
+ * What the actor does, as far as these functions show: it wanders around the
+ * spot it spawned at; when the Player comes within 1000 units of that spot (and
+ * is not Metal or Mega and GetHurtState() is negative) it chases; when its
+ * sensor touches the Player it enters the Grab state, which launches them
+ * (func_ov002_020db674 sets the Player's heading, horizontal speed 0x28000 and
+ * vertical speed 0x70000, then calls Player::ChangeState with
+ * data_ov002_02110094, which symbols/verified.tsv names _ZN6Player7ST_HURTE).
+ * It is driven by a five-record state table, described with the fields in
+ * include/daPopoi_c.h; the state names there and in the comments below say what
+ * the handlers do, they are not recovered labels. The records are
+ * data_ov077_02127ce8 Wander, 02127cf8 Pause, 02127d08 Chase, 02127d18 TurnAway,
+ * 02127cd8 Grab.
+ *
+ * The Wander, Chase and Pause handlers read mStateTimer as an UNSIGNED short
+ * through a cast of its address (dEnemyBase_c declares it s16); "heading" below means mPrevAngleY, which
+ * Behavior copies into mAngleY every frame.
+ *
  * Leftover: the func_ov077 helpers keep linker names; naming belongs
  *   at their definitions.
- * Leftover: the file homes keep decl_common.h's char spelling (shared
- *   header owns them); the Init loads stay mangled accordingly.
- * Leftover: unk_400 and friends are unrecovered header fields.
+ * Leftover: the state records 02127cd8, 02127ce8, 02127d08, 02127d18 and the four
+ *   file homes keep decl_common.h's char spelling (shared header owns them; 02127cf8
+ *   is declared locally here), so they are addressed by symbol and the Init loads
+ *   stay mangled accordingly.
+ * Leftover: unk_41c is only ever zeroed here, and nothing reads it in this file.
+ * Leftover: the Grab enter handler passes flags 0x40000000 to ModelAnim::SetAnim
+ *   where every other state passes 0; what that bit does is not recovered.
+ * Leftover: the flag words passed to dCcAc_c::Init / dCcAcPos_c::Init
+ *   (0x800004 and 0x200004) are not decoded here.
+ * Leftover: pad_3cc (0x30 bytes at 0x3cc) is untouched by any function in this file.
  */
 
 extern "C" {
@@ -44,6 +68,17 @@ extern int func_ov077_02126d5c(void*, void*);
 extern Vector3 data_ov077_02127a5c;
 }
 
+/* Loads the four files (data_ov077_02127c88 = file 0x40d, the model; 02127ca0 =
+ * 0x40e, 02127c90 = 0x40f and 02127c98 = 0x410, the three animations, the way
+ * __sinit_ov077_021275fc constructs them), sets gravity (-1.0 per frame squared)
+ * and terminal fall speed (-30 units per frame), and initialises the three
+ * collision objects:
+ *   mdCcAc_c      radius 82, height 82 (0x52000), flags 0x800004
+ *   mdCcAcPos_c   radius 84, height 50 (0x54000, 0x32000), flags 0x200004, offset
+ *                 data_ov077_02127a5c = (0, 0, 44 units)
+ *   mWithMeshClsn both size arguments 100 units (0x64000)
+ * then copies the spawn position into mHomePos and mSavedPos, starts the
+ * animation at normal speed, and installs the Wander state. */
 int daPopoi_c::InitResources()
 {
   Vector3 v;
@@ -60,58 +95,68 @@ int daPopoi_c::InitResources()
   _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(&mdCcAcPos_c, this, &v, 0x54000, 0x32000, 0x200004, 0);
   mAngleY = mPrevAngleY;
   _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, this, 0x64000, 0x64000, 0, 0);
-  unk_400 = 0;
-  unk_404 = mPosX;
-  unk_408 = mPosY;
-  unk_40c = mPosZ;
+  mCaughtPlayer = 0;
+  mHomePosX = mPosX;
+  mHomePosY = mPosY;
+  mHomePosZ = mPosZ;
   mModelAnim.speed = 0x1000;
-  unk_410 = mPosX;
-  unk_414 = mPosY;
-  unk_418 = mPosZ;
-  func_ov077_02126d5c(((char*)this), &data_ov077_02127ce8);
+  mSavedPosX = mPosX;
+  mSavedPosY = mPosY;
+  mSavedPosZ = mPosZ;
+  func_ov077_02126d5c(((char*)this), &data_ov077_02127ce8);   /* start in Wander */
   return 1;
 }
 
 #include "types.h"
 // @symbol _ZN9daPopoi_c8BehaviorEv
-/* The state machine, as this member sees it. unk_3fc points at a record whose
- * third word is the handler. StateOwner is deliberately incomplete: mwccarm
- * 2004/b56 picks the pointer-to-member representation from class completeness.
- * Do not substitute daPopoi_c without a byte check. */
+/* The state machine, as this member sees it. mState points at a record whose
+ * third word (offset 8) is the UPDATE handler; the first two words are the ENTER
+ * handler, which func_ov077_02126d5c runs. StateOwner is deliberately incomplete:
+ * mwccarm 2004/b56 picks the pointer-to-member representation from class
+ * completeness. Do not substitute daPopoi_c without a byte check. */
 struct StateOwner;
 typedef void (StateOwner::*StateFn)();
-struct StateRecord { char pad[8]; StateFn handler; };
+struct daPopoi_StateRecord { char pad[8]; StateFn handler; };
 struct dCc_c;
 struct dBgCh_Actr;
 extern "C" {
 unsigned short DecIfAbove0_Short(unsigned short *p);
 void *_ZNK10dBgCh_Actr14GetFloorResultEv(void *self);
 int func_02010844(void *unused, Vector3 *v, s16 angle);
-void func_ov077_02126dac(char *t);
-void func_ov077_02126528(char *c);
-extern int data_0209f32c;
+void func_ov077_02126dac(daPopoi_c *c);
+void func_ov077_02126528(daPopoi_c *c);
+extern int data_0209f32c;   /* WATER_HEIGHT */
 }
 
+/* The per-frame update (vtable slot 6).
+ *
+ * Below the water surface (data_0209f32c, WATER_HEIGHT) the actor is put back at its
+ * spawn position and the frame ends. Otherwise: count down mStateTimer and
+ * mCooldown, run the current state's update handler, UpdatePos with the sensor
+ * (mdCcAcPos_c), measure the slope under the feet, undo the step if it would go
+ * off a ledge or onto steep ground, refresh the model matrix, look for a Player to
+ * grab (unless already in Grab), then refresh both collision objects and step the
+ * animation. */
 int daPopoi_c::Behavior()
 {
     int goingOffCliff;
     Vector3 floorNormal;
     int slope;
-    StateRecord *state;
+    daPopoi_StateRecord *state;
 
     /* Below the water surface (data_0209f32c): snap back to the spawn position
      * and skip the frame. */
     if (mPosY < data_0209f32c) {
-        mPosX = unk_404;
-        mPosY = unk_408;
-        mPosZ = unk_40c;
+        mPosX = mHomePosX;
+        mPosY = mHomePosY;
+        mPosZ = mHomePosZ;
         return 1;
     }
 
     DecIfAbove0_Short((unsigned short *)((char *)&mStateTimer));
-    DecIfAbove0_Short((unsigned short *)((char *)&unk_426));
+    DecIfAbove0_Short((unsigned short *)((char *)&mCooldown));
 
-    state = *(StateRecord **)((char *)&unk_3fc);
+    state = mState;
     if (state->handler != 0)
         (((StateOwner *)((char *)this))->*(state->handler))();
 
@@ -126,7 +171,10 @@ int daPopoi_c::Behavior()
     }
 
     /* Roll back to last frame's position if this step would walk off a ledge,
-     * or onto ground tilted more than 0x100 either way. */
+     * or onto ground tilted more than 0x100 either way (0x100 = 1.4 degrees).
+     * IsGoingOffCliff gets a downward probe of 60 units (0x3c000), a steepest
+     * acceptable slope of 0x2888 (57 degrees), detectWater 0, skipPipeCheck 1 and an
+     * upward probe of 50 units (0x32000). */
     goingOffCliff = IsGoingOffCliff(mWithMeshClsn, 0x3c000, (s16)0x2888, 0, 1, 0x32000);
     if (goingOffCliff == 0) {
         if (slope < 0)
@@ -134,20 +182,22 @@ int daPopoi_c::Behavior()
         if (slope <= 0x100)
             goto writeback;
     }
-    mPosX = unk_410;
-    mPosY = unk_414;
-    mPosZ = unk_418;
+    mPosX = mSavedPosX;
+    mPosY = mSavedPosY;
+    mPosZ = mSavedPosZ;
 writeback:
-    unk_410 = mPosX;
-    unk_414 = mPosY;
-    unk_418 = mPosZ;
+    mSavedPosX = mPosX;
+    mSavedPosY = mPosY;
+    mSavedPosZ = mPosZ;
     UpdateWMClsn(mWithMeshClsn, 2);
 
     mAngleY = mPrevAngleY;
-    func_ov077_02126dac(((char *)this));
+    func_ov077_02126dac(this);
 
-    if (mWithMeshClsn.IsOnGround() && *(void **)((char *)&unk_3fc) != (void *)data_ov077_02127cd8) {
-        func_ov077_02126528(((char *)this));
+    /* On the ground and not already in Grab (data_ov077_02127cd8): see whether the
+     * sensor is touching a Player to grab. */
+    if (mWithMeshClsn.IsOnGround() && mState != (daPopoi_StateRecord *)data_ov077_02127cd8) {
+        func_ov077_02126528(this);
     }
     mdCcAc_c.Clear();
     mdCcAc_c.Update();
@@ -214,19 +264,28 @@ int daPopoi_c::CleanupResources()
 }
 
 // @symbol func_ov077_02126dac
+/* Rebuilds the model's matrix (mModelAnim.mat4x3): a rotation about Y by mAngleY,
+ * with the translation (words 9..11 of the flat 12-word spelling this TU sees) set
+ * to the actor's position >> 3. */
 extern "C" {
 extern void Matrix4x3_FromRotationY(void *, int);
-void func_ov077_02126dac(char *t)
+void func_ov077_02126dac(daPopoi_c *c)
 {
-    Matrix4x3_FromRotationY(t + 0x35c, *(short *)(t + 0x8e));
-    *(int *)(t + 0x380) = *(int *)(t + 0x5c) >> 3;
-    *(int *)(t + 0x384) = *(int *)(t + 0x60) >> 3;
-    *(int *)(t + 0x388) = *(int *)(t + 0x64) >> 3;
+    Matrix4x3_FromRotationY(&c->mModelAnim.mat4x3, c->mAngleY);
+    c->mModelAnim.mat4x3.m[9] = c->mPosX >> 3;
+    c->mModelAnim.mat4x3.m[10] = c->mPosY >> 3;
+    c->mModelAnim.mat4x3.m[11] = c->mPosZ >> 3;
 }
 }
 
 // @symbol func_ov077_02126d5c
 /* Install a state and run its entry action on the same frame.
+ *
+ * `vc` is the actor, `vp` a state record (data_ov077_02127cd8..02127d18, see
+ * include/daPopoi_c.h); the store goes to mState (+0x3fc, which StateHost's pad
+ * puts `state` at). The record's first pointer-to-member word is the ENTER
+ * handler: a null one returns 1 without calling anything, otherwise its result is
+ * returned.
  *
  * The handler is read back out of the field after the store rather than reused
  * from the argument -- mwccarm emits the str and then an ldr of the same slot,
@@ -251,84 +310,109 @@ extern "C" int func_ov077_02126d5c(void *vc, void *vp)
 }
 
 // @symbol func_ov077_02126cd4
+/* Wander, ENTER handler (record data_ov077_02127ce8). Picks a random heading (one of
+ * 16 multiples of 0x1000 = 22.5 degrees) as the target angle, a random duration of
+ * 170..233 frames (0xaa + 0..63) in mStateTimer, sets the animation to normal
+ * speed and plays file 0x40f's animation (data_ov077_02127c90), and starts walking
+ * at 8 units/frame (0x8000). Always returns 1. */
 extern "C" {
 extern unsigned int RandomIntInternal(void* s);
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void* self, void* bca, int a, int fix, unsigned int j);
 extern int data_0209e650[];
-int func_ov077_02126cd4(char* c){
-  *(short*)(c+0x400+0x20) = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0xf) << 0xc);
-  *(short*)(c+0x100) = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0x3f) + 0xaa);
-  *(int*)(c+0x39c) = 0x1000;
-  *(int*)(c+0x98) = 0x8000;
-  *(int*)(c+0x41c) = 0;
-  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c+0x340, (void*)((int*)&data_ov077_02127c90)[1], 0, 0x1000, 0);
+int func_ov077_02126cd4(daPopoi_c* c){
+  c->mTargetAngleY = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0xf) << 0xc);
+  c->mStateTimer = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0x3f) + 0xaa);
+  c->mModelAnim.speed = 0x1000;
+  c->mHorzSpeed = 0x8000;
+  c->unk_41c = 0;
+  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void*)((int*)&data_ov077_02127c90)[1], 0, 0x1000, 0);
   return 1;
 }
 }
+
+bool ApproachLinear(short &value, short target, short step);
 
 extern "C" {
 // @symbol func_ov077_02126ad0
 #include "decl_Player.h"
 #include "common.h"
+
 extern int Vec3_Dist(void* a, void* b);
 extern unsigned int _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned int a, unsigned int b, unsigned int cc, void* v, unsigned int d);
-extern int func_ov077_02126300(void* c);
+extern int func_ov077_02126300(daPopoi_c* c);
 extern int func_ov077_02126d5c(void* c, void* p);
 extern short Vec3_HorzAngle(void* a, void* b);
-extern void _Z14ApproachLinearRsss(short* a, short b, short cc);
 
 extern char data_ov077_02127cf8[];
 
-int func_ov077_02126ad0(char* c)
+/* Wander, UPDATE handler (record data_ov077_02127ce8). Each frame:
+ *   - distance from the actor to its home position, and the movement sound
+ *     (daPopoi_SND_MOVE_LOOP) kept alive through mSoundHandle;
+ *   - the ahead probe (func_ov077_02126300) firing -> TurnAway (data_ov077_02127d18),
+ *     return;
+ *   - against a wall -> position restored from mSavedPos;
+ *   - more than 500 units (0x1f4000) from home -> the target heading becomes the
+ *     direction to home, mStateTimer is raised to at least 20 frames, and the
+ *     heading is stepped toward it by 0x400 (5.6 degrees);
+ *   - the heading is stepped toward mTargetAngleY by 0x100 (1.4 degrees);
+ *   - mStateTimer below 100: the animation speed becomes 0x1000 / (100 - timer)
+ *     (raw fixed point, so it tapers from 1.0 over the last 99 frames);
+ *   - mStateTimer == 0 -> Pause (data_ov077_02127cf8), return;
+ *   - mCooldown nonzero -> return;
+ *   - otherwise take the nearest Player; if that Player is within 1000 units
+ *     (0x3e8000) of the HOME position (not of the actor), is not Metal or Mega,
+ *     and GetHurtState() is negative -> Chase (data_ov077_02127d08).
+ * Always returns 1. */
+int func_ov077_02126ad0(daPopoi_c* c)
 {
     int dist;
-    char* player;
+    Player* player;
     struct Vector3 pp;
 
-    dist = Vec3_Dist(c + 0x5c, c + 0x404);
-    *(unsigned int*)(c + 0x428) = _ZN5Sound8PlayLongEjjjRK7Vector3s(*(unsigned int*)(c + 0x428), 3, 0x186, c + 0x74, 0);
+    dist = Vec3_Dist(&c->mPosX, &c->mHomePosX);
+    c->mSoundHandle = _ZN5Sound8PlayLongEjjjRK7Vector3s(c->mSoundHandle, 3, daPopoi_SND_MOVE_LOOP, &c->mCamSpacePosX, 0);
 
     if (func_ov077_02126300(c) != 0) {
-        func_ov077_02126d5c(c, data_ov077_02127d18);
+        func_ov077_02126d5c(c, data_ov077_02127d18);   /* TurnAway */
         return 1;
     }
 
-    if (((dBgCh_Actr *)(c + 0x184))->IsOnWall() != 0) {
-        *(int*)(c + 0x5c) = *(int*)(c + 0x410);
-        *(int*)(c + 0x60) = *(int*)(c + 0x414);
-        *(int*)(c + 0x64) = *(int*)(c + 0x418);
+    if (c->mWithMeshClsn.IsOnWall() != 0) {
+        c->mPosX = c->mSavedPosX;
+        c->mPosY = c->mSavedPosY;
+        c->mPosZ = c->mSavedPosZ;
     }
 
     if (dist > 0x1f4000) {
-        *(short*)(c + 0x420) = Vec3_HorzAngle(c + 0x5c, c + 0x404);
-        if (*(unsigned short*)(c + 0x100) < 0x14)
-            *(unsigned short*)(c + 0x100) = 0x14;
-        _Z14ApproachLinearRsss((short*)(c + 0x94), *(short*)(c + 0x420), 0x400);
+        c->mTargetAngleY = Vec3_HorzAngle(&c->mPosX, &c->mHomePosX);
+        if (*(unsigned short*)&c->mStateTimer < 0x14)
+            *(unsigned short*)&c->mStateTimer = 0x14;
+        ApproachLinear(c->mPrevAngleY, c->mTargetAngleY, 0x400);
     }
-    _Z14ApproachLinearRsss((short*)(c + 0x94), *(short*)(c + 0x420), 0x100);
+    ApproachLinear(c->mPrevAngleY, c->mTargetAngleY, 0x100);
 
-    if (*(unsigned short*)(c + 0x100) < 0x64)
-        *(int*)(c + 0x39c) = 0x1000 / (0x64 - *(unsigned short*)(c + 0x100));
+    if (*(unsigned short*)&c->mStateTimer < 0x64)
+        c->mModelAnim.speed = 0x1000 / (0x64 - *(unsigned short*)&c->mStateTimer);
 
-    if (*(unsigned short*)(c + 0x100) == 0) {
-        func_ov077_02126d5c(c, data_ov077_02127cf8);
+    if (*(unsigned short*)&c->mStateTimer == 0) {
+        func_ov077_02126d5c(c, data_ov077_02127cf8);   /* Pause */
         return 1;
     }
 
-    if (*(unsigned short*)(c + 0x426) != 0)
+    if (c->mCooldown != 0)
         return 1;
 
-    player = (char*)((dActor_c *)c)->ClosestPlayer();
+    player = c->ClosestPlayer();
     if (player != 0) {
-        struct Vector3* src = (struct Vector3*)(((long)(player + 0x5c)));
+        struct Vector3* src = (struct Vector3*)(((long)&player->mPosX));
         pp.x = src->x;
         pp.y = src->y;
         pp.z = src->z;
-        if (Vec3_Dist(c + 0x404, &pp) < 0x3e8000
-            && *(unsigned char*)(player + 0x6f9) == 0
-            && *(unsigned char*)(player + 0x703) == 0
-            && ((Player *)player)->GetHurtState() < 0) {
-            func_ov077_02126d5c(c, data_ov077_02127d08);
+        if (Vec3_Dist(&c->mHomePosX, &pp) < 0x3e8000
+            && player->mIsMetal == 0
+            && player->mIsMega == 0
+            && player->GetHurtState() < 0) {
+            func_ov077_02126d5c(c, data_ov077_02127d08);   /* Chase */
             return 1;
         }
     }
@@ -336,142 +420,189 @@ int func_ov077_02126ad0(char* c)
 }
 }
 
+/* Pause, ENTER handler (record data_ov077_02127cf8): stop (horizontal speed 0),
+ * stand for 70 frames (mStateTimer = 0x46), normal animation speed, and play file
+ * 0x410's animation (data_ov077_02127c98). Returns 1. */
 extern "C" {
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void* self, void* bca, int frame, int speed, unsigned int flags);
-int func_ov077_02126a84(char *c) {
-    *(int*)(c + 0x98) = 0;
-    *(short*)(c + 0x100) = 0x46;
-    *(int*)(c + 0x39c) = 0x1000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x340, (void*)((void**)&data_ov077_02127c98)[1], 0, 0x1000, 0);
+int func_ov077_02126a84(daPopoi_c *c) {
+    c->mHorzSpeed = 0;
+    c->mStateTimer = 0x46;
+    c->mModelAnim.speed = 0x1000;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void*)((void**)&data_ov077_02127c98)[1], 0, 0x1000, 0);
     return 1;
 }
 }
 
+/* Pause, UPDATE handler (record data_ov077_02127cf8): when mStateTimer reaches 0,
+ * go back to Wander (data_ov077_02127ce8). Returns 1. */
 extern "C" {
 extern int func_ov077_02126d5c(void*, void*);
 
-int func_ov077_02126a50(char *c) {
-    unsigned short h = *(unsigned short*)(c + 0x100);
+int func_ov077_02126a50(daPopoi_c *c) {
+    unsigned short h = *(unsigned short*)&c->mStateTimer;
     if (h == 0) {
-        func_ov077_02126d5c(c, &data_ov077_02127ce8);
+        func_ov077_02126d5c(c, &data_ov077_02127ce8);   /* Wander */
     }
     return 1;
 }
 }
 
+/* TurnAway, ENTER handler (record data_ov077_02127d18): the target heading becomes
+ * mAngleY + 0x4000 (a quarter turn), animation at normal speed, file 0x40f's
+ * animation (data_ov077_02127c90). Returns 1. */
 extern "C" {
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void*, void*, int, int, unsigned int);
 
-int func_ov077_02126a04(char *c) {
-    *(short*)(c + 0x420) = *(short*)(c + 0x8e) + 0x4000;
-    *(int*)(c + 0x39c) = 0x1000;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x340, ((void**)&data_ov077_02127c90)[1], 0, 0x1000, 0);
+int func_ov077_02126a04(daPopoi_c *c) {
+    c->mTargetAngleY = c->mAngleY + 0x4000;
+    c->mModelAnim.speed = 0x1000;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, ((void**)&data_ov077_02127c90)[1], 0, 0x1000, 0);
     return 1;
 }
 }
 
+/* TurnAway, UPDATE handler (record data_ov077_02127d18): step the heading toward
+ * mTargetAngleY by 0x500 (7.0 degrees) per frame; once AngleDiff of the two is below
+ * 0x100 (1.4 degrees), set mCooldown to 30 frames and go back to Wander
+ * (data_ov077_02127ce8). Returns 1. */
 extern "C" {
-extern void _Z14ApproachLinearRsss(short*, short, short);
 extern int func_ov077_02126d5c(void*, void*);
-int func_ov077_021269a8(char* c) {
+int func_ov077_021269a8(daPopoi_c* c) {
     extern int AngleDiff(short, short); /* this file's own view (decl_common says int,int); short is byte-load-bearing here */
-    short tgt = *(short*)(c + 0x420);
-    _Z14ApproachLinearRsss((short*)(c + 0x94), tgt, 0x500);
-    int diff = AngleDiff(*(short*)(c + 0x94), *(short*)(c + 0x420));
+    short tgt = c->mTargetAngleY;
+    ApproachLinear(c->mPrevAngleY, tgt, 0x500);
+    int diff = AngleDiff(c->mPrevAngleY, c->mTargetAngleY);
     if (diff < 0x100) {
-        *(short*)(c + 0x426) = 0x1e;
-        func_ov077_02126d5c(c, &data_ov077_02127ce8);
+        c->mCooldown = 0x1e;
+        func_ov077_02126d5c(c, &data_ov077_02127ce8);   /* Wander */
     }
     return 1;
 }
 }
 
+/* Chase, ENTER handler (record data_ov077_02127d08): random duration of 170..233
+ * frames in mStateTimer, horizontal speed 6 units/frame (0x6000), turn rate zeroed,
+ * and file 0x40f's animation (data_ov077_02127c90). The store of 0x2000 (2.0) to
+ * mModelAnim.speed is overwritten by SetAnim's speed argument 0x1000, so the
+ * animation ends up at speed 1.0. Returns 1. */
 extern "C" {
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void* self, void* bca, int a, int fix, unsigned int j);
 extern unsigned int RandomIntInternal(void* s);
 extern int data_0209e650[];
-int func_ov077_02126930(char* c){
-  *(short*)(c+0x100) = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0x3f) + 0xaa);
-  *(int*)(c+0x98) = 0x6000;
-  *(short*)(c+0x400+0x22) = 0;
-  *(int*)(c+0x41c) = 0;
-  *(int*)(c+0x39c) = 0x2000;
-  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c+0x340, (void*)((int*)&data_ov077_02127c90)[1], 0, 0x1000, 0);
+int func_ov077_02126930(daPopoi_c* c){
+  c->mStateTimer = (short)(((RandomIntInternal(data_0209e650) >> 8) & 0x3f) + 0xaa);
+  c->mHorzSpeed = 0x6000;
+  c->mTurnRate = 0;
+  c->unk_41c = 0;
+  c->mModelAnim.speed = 0x2000;
+  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void*)((int*)&data_ov077_02127c90)[1], 0, 0x1000, 0);
   return 1;
 }
 }
 
+/* Chase, UPDATE handler (record data_ov077_02127d08). Each frame:
+ *   - distance from the actor to its home position;
+ *   - the ahead probe firing -> TurnAway, return;
+ *   - against a wall -> position restored from mSavedPos;
+ *   - nearest Player (if any): the target heading becomes the direction to them;
+ *   - the heading is stepped toward mTargetAngleY by mTurnRate, and mTurnRate is
+ *     itself stepped toward 0x600 (8.4 degrees) by 0x100 -- so the turn tightens
+ *     over the first few frames of a chase;
+ *   - the movement sound (daPopoi_SND_MOVE_LOOP) through mSoundHandle;
+ *   - mStateTimer below 100: the animation speed becomes 0x1000 / (5 - timer / 20),
+ *     which falls from 1.0 to 0.2 in five 20-frame bands (1/1, 1/2, 1/3, 1/4, 1/5);
+ *   - more than 1500 units (0x5dc000) from home, or the timer at 0, or the ahead
+ *     probe firing -> Pause (data_ov077_02127cf8).
+ * Always returns 1. */
 extern "C" {
 // @symbol func_ov077_0212679c
 extern int Vec3_Dist(void *a, void *b);
-extern int func_ov077_02126300(void *c);
+extern int func_ov077_02126300(daPopoi_c *c);
 extern int func_ov077_02126d5c(void *c, void *p);
 extern short Vec3_HorzAngle(void *a, void *b);
-extern void _Z14ApproachLinearRsss(short *r, short a, short b);
 extern unsigned int _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned int a, unsigned int b, unsigned int c, void *v, unsigned int d);
 extern char data_ov077_02127cf8[];
 
-int func_ov077_0212679c(char *c)
+int func_ov077_0212679c(daPopoi_c *c)
 {
     struct Vector3 pv;
     struct Vector3 *pp;
     int dist;
-    char *p;
+    Player *p;
     unsigned short spd;
 
-    dist = Vec3_Dist((void *)(c + 0x5c), (void *)(c + 0x404));
+    dist = Vec3_Dist((void *)&c->mPosX, (void *)&c->mHomePosX);
 
     if (func_ov077_02126300(c) != 0) {
-        func_ov077_02126d5c(c, data_ov077_02127d18);
+        func_ov077_02126d5c(c, data_ov077_02127d18);   /* TurnAway */
         return 1;
     }
 
-    if (((dBgCh_Actr *)(c + 0x184))->IsOnWall() != 0) {
-        *(int *)(c + 0x5c) = *(int *)(c + 0x410);
-        *(int *)(c + 0x60) = *(int *)(c + 0x414);
-        *(int *)(c + 0x64) = *(int *)(c + 0x418);
+    if (c->mWithMeshClsn.IsOnWall() != 0) {
+        c->mPosX = c->mSavedPosX;
+        c->mPosY = c->mSavedPosY;
+        c->mPosZ = c->mSavedPosZ;
     }
 
-    p = (char *)((dActor_c *)c)->ClosestPlayer();
+    p = c->ClosestPlayer();
     if (p != 0) {
         /* u64 launder forces base materialization after the null cmp */
-        pp = (struct Vector3 *)(void *)(unsigned long long)(unsigned long)(p + 0x5c);
+        pp = (struct Vector3 *)(void *)(unsigned long long)(unsigned long)&p->mPosX;
         pv.x = pp->x;
         pv.y = pp->y;
         pv.z = pp->z;
-        *(short *)(c + 0x420) = Vec3_HorzAngle((void *)(c + 0x5c), &pv);
+        c->mTargetAngleY = Vec3_HorzAngle((void *)&c->mPosX, &pv);
     }
 
-    _Z14ApproachLinearRsss((short *)(c + 0x94), *(short *)(c + 0x420), *(short *)(c + 0x422));
-    _Z14ApproachLinearRsss((short *)(c + 0x422), 0x600, 0x100);
+    ApproachLinear(c->mPrevAngleY, c->mTargetAngleY, c->mTurnRate);
+    ApproachLinear(c->mTurnRate, 0x600, 0x100);
 
-    *(unsigned int *)(c + 0x428) = _ZN5Sound8PlayLongEjjjRK7Vector3s(
-        *(unsigned int *)(c + 0x428), 3, 0x186, c + 0x74, 0);
+    c->mSoundHandle = _ZN5Sound8PlayLongEjjjRK7Vector3s(
+        c->mSoundHandle, 3, daPopoi_SND_MOVE_LOOP, &c->mCamSpacePosX, 0);
 
-    spd = *(unsigned short *)(c + 0x100);
+    spd = *(unsigned short *)&c->mStateTimer;
     if (spd < 0x64) {
-        *(int *)(c + 0x39c) = __aeabi_idiv(0x1000, 5 - spd / 20);
+        c->mModelAnim.speed = __aeabi_idiv(0x1000, 5 - spd / 20);
     }
 
-    if (dist > 0x5dc000 || *(unsigned short *)(c + 0x100) == 0 || func_ov077_02126300(c) != 0)
-        func_ov077_02126d5c(c, data_ov077_02127cf8);
+    if (dist > 0x5dc000 || *(unsigned short *)&c->mStateTimer == 0 || func_ov077_02126300(c) != 0)
+        func_ov077_02126d5c(c, data_ov077_02127cf8);   /* Pause */
 
     return 1;
 }
 }
 
+/* Grab, ENTER handler (record data_ov077_02127cd8): stop (horizontal speed 0),
+ * normal animation speed, and play file 0x40e's animation (data_ov077_02127ca0) with
+ * SetAnim flags 0x40000000 (every other state passes 0). Returns 1. */
 extern "C" {
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void* c, void* f, int a, int b, unsigned int u);
-int func_ov077_02126758(char* c){
-  *(int*)(c+0x98)=0;
-  *(int*)(c+0x39c)=0x1000;
-  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c+0x340, ((void**)&data_ov077_02127ca0)[1], 0x40000000, 0x1000, 0);
+int func_ov077_02126758(daPopoi_c* c){
+  c->mHorzSpeed=0;
+  c->mModelAnim.speed=0x1000;
+  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, ((void**)&data_ov077_02127ca0)[1], 0x40000000, 0x1000, 0);
   return 1;
 }
 }
 
 // @symbol func_ov077_02126640
-/* daTgz_c::Kill - recovered from vtable slot identity */
+/* Grab, UPDATE handler (record data_ov077_02127cd8). Older note, kept as found:
+ * "daTgz_c::Kill - recovered from vtable slot identity". That label does not fit:
+ * this body is at 0x02126640, past the 0x0212624c end of daTgz_c's range (see
+ * daTgz_c.cpp), so it is daPopoi_c's.
+ * While mCaughtPlayer is set: re-seat the
+ * sensor (mdCcAcPos_c) at the (0, 0, 44 units) offset data_ov077_02127a5c; then,
+ * if the sensor's otherOwner names an actor, and that actor is the caught Player, and
+ * the Player is not Metal, not Mega, not mIsNoControl and has a negative
+ * GetHurtState(), launch them with func_ov002_020db674 (horizontal speed 0x28000 = 40
+ * units/frame, vertical speed 0x70000 = 112 units/frame, heading argument mAngleY +
+ * 0x8000; the callee stores that argument as the Player's mPrevAngleY and the argument
+ * + 0x8000 as the Player's mAngleY, so the Player ends up facing this actor's heading,
+ * and puts the Player in ST_HURT). If that call returns nonzero, mCaughtPlayer = 0 and
+ * daPopoi_SND_THROW_PLAYER plays at the actor's position.
+ * Whether or not anything was caught, once the animation has Finished the state goes
+ * to Pause (data_ov077_02127cf8). Returns 1. */
 /* (Vector3: real header type in scope) */
 extern "C" {
 int func_ov002_020db674(void *c, int a1, int a2, int a3);
@@ -480,29 +611,29 @@ int func_ov077_02126d5c(void *c, void *p);
 extern char data_ov077_02127cf8[];
 }
 
-extern "C" int func_ov077_02126640(char *c)
+extern "C" int func_ov077_02126640(daPopoi_c *c)
 {
     Vector3 v;
-    char *a;
+    Player *a;
     int t;
-    if (((daPopoi_c *)c)->unk_400 != 0) {
+    if (c->mCaughtPlayer != 0) {
         v.x = data_ov077_02127a5c.x;
         v.y = data_ov077_02127a5c.y;
         v.z = data_ov077_02127a5c.z;
-        ((daPopoi_c *)c)->mdCcAcPos_c.SetPosRelativeToActor(v);
-        if (*(int *)(c + 0x168) != 0) {
-            a = (char *)dActor_c::FindWithID(*(int *)(c + 0x168));
+        c->mdCcAcPos_c.SetPosRelativeToActor(v);
+        if (c->mdCcAcPos_c.otherOwner != 0) {
+            a = (Player *)dActor_c::FindWithID(c->mdCcAcPos_c.otherOwner);
             if (a != 0) {
-                if (a == (char *)((daPopoi_c *)c)->unk_400) {
-                    if (((Player *)a)->mIsMetal == 0) {
-                        if (((Player *)a)->mIsMega == 0) {
-                            t = (((Player *)a)->mIsNoControl != 0);
+                if (a == c->mCaughtPlayer) {
+                    if (a->mIsMetal == 0) {
+                        if (a->mIsMega == 0) {
+                            t = (a->mIsNoControl != 0);
                             if (t == 0) {
-                                if (((Player *)a)->GetHurtState() < 0) {
+                                if (a->GetHurtState() < 0) {
                                     if (func_ov002_020db674(a, 0x28000, 0x70000,
-                                            (int)(short)(*(short *)(c + 0x8e) + 0x8000)) != 0) {
-                                        ((daPopoi_c *)c)->unk_400 = 0;
-                                        func_02012694(0x10b, c + 0x74, 0);
+                                            (int)(short)(c->mAngleY + 0x8000)) != 0) {
+                                        c->mCaughtPlayer = 0;
+                                        func_02012694(daPopoi_SND_THROW_PLAYER, &c->mCamSpacePosX, 0);
                                     }
                                 }
                             }
@@ -512,8 +643,8 @@ extern "C" int func_ov077_02126640(char *c)
             }
         }
     }
-    if (((Animation *)(c + 0x390))->Finished() != 0) {
-        func_ov077_02126d5c(c, &data_ov077_02127cf8);
+    if (c->mModelAnim.Finished() != 0) {
+        func_ov077_02126d5c(c, &data_ov077_02127cf8);   /* Pause */
     }
     return 1;
 }
@@ -524,28 +655,35 @@ int func_ov077_02126d5c(void *c, void *p);
 extern char data_ov077_02127cd8[]; /* decl_common's view; only its address is taken here */
 }
 
-extern "C" void func_ov077_02126528(char *c)
+/* Looks for a Player to grab; called from Behavior while on the ground and not
+ * already in Grab. Re-seats the sensor (mdCcAcPos_c) at the (0, 0, 44 units) offset
+ * data_ov077_02127a5c, then returns without doing anything unless: the sensor's
+ * otherOwner is nonzero and names a live actor; that actor's actorID is PLAYER; it is
+ * not Metal and not Mega; mIsNoControl is zero; GetHurtState() is negative; and
+ * IsCollectingCap() is zero. If every test passes, mCaughtPlayer = that Player and
+ * the Grab state (data_ov077_02127cd8) is installed. */
+extern "C" void func_ov077_02126528(daPopoi_c *c)
 {
     Vector3 v;
-    char *a;
+    Player *a;
     int t;
     v.x = data_ov077_02127a5c.x;
     v.y = data_ov077_02127a5c.y;
     v.z = data_ov077_02127a5c.z;
-    ((daPopoi_c *)c)->mdCcAcPos_c.SetPosRelativeToActor(v);
-    if (*(int *)(c + 0x168) == 0) return;
-    a = (char *)dActor_c::FindWithID(*(int *)(c + 0x168));
+    c->mdCcAcPos_c.SetPosRelativeToActor(v);
+    if (c->mdCcAcPos_c.otherOwner == 0) return;
+    a = (Player *)dActor_c::FindWithID(c->mdCcAcPos_c.otherOwner);
     if (a == 0) return;
-    t = (*(unsigned short *)(a + 0xc) == 0xbf);
+    t = (a->actorID == daPopoi_ACTOR_PLAYER);
     if (t == 0) return;
-    if (*(unsigned char *)(a + 0x6f9) == 1) return;
-    if (*(unsigned char *)(a + 0x703) == 1) return;
-    t = (((Player *)a)->mIsNoControl != 0);
+    if (a->mIsMetal == 1) return;
+    if (a->mIsMega == 1) return;
+    t = (a->mIsNoControl != 0);
     if (t == 1) return;
-    if (((Player *)a)->GetHurtState() >= 0) return;
-    if (((Player *)a)->IsCollectingCap() != 0) return;
-    *(int *)(c + 0x400) = (int)a;
-    func_ov077_02126d5c(c, &data_ov077_02127cd8);
+    if (a->GetHurtState() >= 0) return;
+    if (a->IsCollectingCap() != 0) return;
+    c->mCaughtPlayer = a;
+    func_ov077_02126d5c(c, &data_ov077_02127cd8);   /* Grab */
 }
 
 extern "C" {
@@ -558,29 +696,30 @@ typedef struct dBgCh_LinPad {
 extern signed char data_0209f2f8;
 extern char data_020a0e68[];
 
-extern void _ZN9dBgCh_LinC1Ev(void *self);
+extern void *_ZN9dBgCh_LinC1Ev(void *self);
 extern void _ZN9dBgCh_LinD1Ev(void *self);
 extern void Matrix4x3_FromRotationY(void *m, int angle);
 extern void Matrix4x3_ApplyInPlaceToRotationX(void *m, int angle);
 extern void MulVec3Mat4x3(void *in, void *m, void *out);
 
 /* Probe ahead for a wall or a missing floor. Returns 1 if the way is blocked,
- * and in that case also rolls the actor back to last frame's position and zeroes
- * its horizontal speed (+0x98). Returns 0 when the path is clear.
+ * and in that case also rolls the actor back to last frame's position (mSavedPos)
+ * and zeroes its horizontal speed (mHorzSpeed). Returns 0 when the path is clear.
  *
- * Two rays leave the actor's head height (+0x28000): a long level one 0xc8000
- * ahead, and a short one 0x2c000 ahead pitched down 0x3000. Blocked means
- * "the level ray hit something, OR the pitched ray found no ground".
+ * Two rays leave 40 units (0x28000) above the actor's position: a long level one
+ * 200 units (0xc8000) ahead, and a short one 44 units (0x2c000) ahead pitched
+ * down 0x3000 (67.5 degrees). "Ahead" is the +Z direction rotated by mAngleY.
+ * Blocked means "the level ray hit something, OR the pitched ray found no ground".
  *
- * Guarded by data_0209f2f8 == 0x2a, so the probe only runs in one level.
+ * Guarded by data_0209f2f8 (LEVEL_ID) == 0x2a (42), so the probe only casts in
+ * that level; in every other level it returns 0 without casting anything.
  *
  * NOTE on the two `end.x = sx; end.x = sx + ox;` pairs below: the dead first
  * store is deliberate. mwccarm writes the base and then the sum, and folding
  * them into one assignment changes the store sequence this function's ROM bytes
  * record. Leave them. */
-int func_ov077_02126300(void *vc)
+int func_ov077_02126300(daPopoi_c *c)
 {
-    char *c = (char *)vc;
     dBgCh_LinPad ray1;
     dBgCh_LinPad ray2;
     Vector3 start;
@@ -606,13 +745,13 @@ int func_ov077_02126300(void *vc)
         out.y = 0;
         out.z = 0;
 
-        start.x = *(int *)(c + 0x5c);
-        y = *(int *)(c + 0x60);
+        start.x = c->mPosX;
+        y = c->mPosY;
         start.y = y;
-        start.z = *(int *)(c + 0x64);
+        start.z = c->mPosZ;
         start.y = y + 0x28000;
         dir.z = 0xc8000;
-        Matrix4x3_FromRotationY(data_020a0e68, *(short *)(c + 0x8e));
+        Matrix4x3_FromRotationY(data_020a0e68, c->mAngleY);
         MulVec3Mat4x3(&dir, data_020a0e68, &out);
         {
             int sx = start.x;
@@ -630,17 +769,17 @@ int func_ov077_02126300(void *vc)
             end.z = sz;
             end.z = sz + oz;
         }
-        ((dBgCh_Lin *)&ray1)->SetObjAndLine(start, end, (dActor_c *)c);
+        ((dBgCh_Lin *)&ray1)->SetObjAndLine(start, end, c);
 
-        start.x = *(int *)(c + 0x5c);
-        y = *(int *)(c + 0x60);
+        start.x = c->mPosX;
+        y = c->mPosY;
         start.y = y;
-        start.z = *(int *)(c + 0x64);
+        start.z = c->mPosZ;
         start.y = y + 0x28000;
         dir.x = 0;
         dir.y = 0;
         dir.z = 0x2c000;
-        Matrix4x3_FromRotationY(data_020a0e68, *(short *)(c + 0x8e));
+        Matrix4x3_FromRotationY(data_020a0e68, c->mAngleY);
         Matrix4x3_ApplyInPlaceToRotationX(data_020a0e68, 0x3000);
         MulVec3Mat4x3(&dir, data_020a0e68, &out);
         {
@@ -659,14 +798,14 @@ int func_ov077_02126300(void *vc)
             end.z = sz;
             end.z = sz + oz;
         }
-        ((dBgCh_Lin *)&ray2)->SetObjAndLine(start, end, (dActor_c *)c);
+        ((dBgCh_Lin *)&ray2)->SetObjAndLine(start, end, c);
 
         if (((dBgCh_Lin *)&ray1)->DetectClsn() != 0 ||
             ((dBgCh_Lin *)&ray2)->DetectClsn() == 0) {
-            *(int *)(c + 0x5c) = *(int *)(c + 0x410);
-            *(int *)(c + 0x60) = *(int *)(c + 0x414);
-            *(int *)(c + 0x64) = *(int *)(c + 0x418);
-            *(int *)(c + 0x98) = 0;
+            c->mPosX = c->mSavedPosX;
+            c->mPosY = c->mSavedPosY;
+            c->mPosZ = c->mSavedPosZ;
+            c->mHorzSpeed = 0;
             _ZN9dBgCh_LinD1Ev(&ray2);
             _ZN9dBgCh_LinD1Ev(&ray1);
             return 1;

@@ -15,7 +15,7 @@ This document describes this commit. The queue records any later immutable outpu
 - Task workflow and active Source policy pin:
   `18af52b49b9fb5663d417bdfa86109b7b157aaa3`.
 - Reserved classes Koopa, KoopaSmall, daNknk_c; half-open ROM range
-  ov062:0x021174cc..0x0211975c. Writes are limited to the existing shadow TU,
+  [ov062](../../../config/arm9/overlays/ov062/symbols.txt):0x021174cc..0x0211975c. Writes are limited to the existing shadow TU,
   this handoff, and `notes/experiments/koopa-2864-source-forms.md`.
 - Status: locally verified bounded shadow-source repair; **not formal source
   acceptance and not a promotion candidate**. Coordinator reviews the exact scope
@@ -67,9 +67,9 @@ must distinguish that production prerequisite from a false historical assertion.
   exit **1**, expected unresolved complete-output failures listed under KP2864-04.
   Repeated with `original-manifest.json` pointing to the unmodified input source:
   same failures. The real manifest was never written.
-- Four recorded incoming calls to `func_ov062_02118058` in three production files
+- Four recorded incoming calls to [func_ov062_02118058](../../../src/game/actors/d_a_nknk.cpp)(ROM Ordinal 15) in three production files
   all discard the result. ROM disassembly confirms no result read before return.
-  The former third argument to `func_ov062_02117994` is a preceding state-store
+  The former third argument to [func_ov062_02117994](../../../src/game/actors/d_a_nknk.cpp)(ROM Ordinal 5) is a preceding state-store
   register; its incoming value is overwritten by the callee before use.
 - Static checks: git diff --check passes; python tools/check_dead_references.py
   exits 0 with no new dead references or broken Markdown links.

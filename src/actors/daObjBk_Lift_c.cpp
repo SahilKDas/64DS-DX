@@ -19,35 +19,33 @@
  * include/daObjBk_Lift_c.h and lands ahead of everything, D1 then D0, which
  * is the order the cartridge has (0x02112290, then 0x021122dc).
  *
- * deslop
- * Leftover: dBgW_KcMbg::SetFile, dBgActor_c::IsClsnInRange,
- *   dActor_c::UpdatePos, Sound::PlayLong, Particle::System::NewSimple and
- *   dActor_c::DropShadowScaleXYZ stay spelled as mangled extern-C free
- *   functions. Each takes Fix12<int> by value, and a real method call homes
- *   the argument and size-DIFFs the caller (notes/mwccarm-codegen.md 6az).
- * Leftover: func_02039394 / func_020393a4 / func_020393c4 / func_020393d4
- *   are small stores into dBgW (range and the two collision callbacks).
- *   This TU calls them; naming belongs with dBgW in arm9.
- * Leftover: func_ov015_021128f8 keeps #pragma long_calls: the ROM veneer is
- *   the pooled `ldr ip,[pc,#8]; bx ip` absolute tail-call (size 0x14); a near
- *   `b` to func_ov015_021128e8 in this same TU is 0xc. The pragma is
- *   positional in 2004/b56, the same bracket
- *   src/game/actors/d_a_obj_b_swdoor.cpp uses.
- * Leftover: func_ov015_021128e8 keeps a second unused parameter: the veneer
- *   forwards two registers after dropping the collider, and a 1-arg callee
- *   drops `mov r1, r2`. Same shape as daObjFallBlock_c_RequestShake.
- * Leftover: func_ov015_021123c8 / func_ov015_021128e8 / func_ov015_021128f8
- *   keep their C-ABI cartridge names. They are this TU's own helpers, not
- *   vtable slots.
- * Leftover: data_ov015_02114a5c / data_ov015_02114a64 are this overlay's
- *   KCL and BMD handles. symbols.txt also coins MovingBarSmall_ClsnFile /
- *   MovingBarSmall_ModelFile on the same two addresses -- this class's
- *   retired coined name -- so this TU uses the address-true spelling, the
- *   way src/game/actors/d_a_obj_bk_rotebar.cpp does.
- * Leftover: data_ov015_02113594 is the CLPS block in overlay .data that
- *   this TU does not own; data_02082214 is arm9's sin/cos table and
- *   data_0209f220 / data_0209f2f8 are arm9 scene state.
- * Leftover: g_profile_BK_LIFT01 lives outside this TU.
+ * Leftover: dBgW_KcMbg::SetFile, dBgActor_c::IsClsnInRange, dActor_c::UpdatePos,
+ * Leftover: Sound::PlayLong, Particle::System::NewSimple and
+ * Leftover: dActor_c::DropShadowScaleXYZ stay mangled extern-C free functions.
+ * Leftover: Each takes Fix12<int> by value, and a real method call homes the
+ * Leftover: argument and size-DIFFs the caller (notes/mwccarm-codegen.md 6az).
+ * Leftover: func_02039394 / func_020393a4 / func_020393c4 / func_020393d4 are
+ * Leftover: small stores into dBgW. This TU calls them; naming belongs to dBgW.
+ * Leftover: func_ov015_021128f8 stays a free function. Its first argument is the
+ * Leftover: collider, not the lift. It keeps #pragma long_calls: the ROM veneer
+ * Leftover: is the pooled ldr ip,[pc,#8]; bx ip absolute tail-call (size 0x14);
+ * Leftover: a near b to func_ov015_021128e8 in this same TU is 0xc.
+ * Leftover: func_ov015_021128e8 keeps a second unused parameter. The veneer
+ * Leftover: forwards two registers after dropping the collider, and a 1-arg
+ * Leftover: callee drops mov r1, r2.
+ * Leftover: data_ov015_02114a5c / data_ov015_02114a64 are this overlay's KCL and
+ * Leftover: BMD handles. symbols.txt also coins MovingBarSmall_ClsnFile /
+ * Leftover: MovingBarSmall_ModelFile on those addresses, so this TU uses the
+ * Leftover: address-true spelling.
+ * Leftover: data_ov015_02113594 is the CLPS block this TU does not own.
+ * Leftover: data_02082214 is arm9's sin/cos table. data_0209f220 / data_0209f2f8
+ * Leftover: are arm9 scene state. g_profile_BK_LIFT01 lives outside this TU.
+ * Leftover: Behavior kind 1 writes the half-turn through s16 *p = &mPrevAngleY
+ * Leftover: and a u8 temporary for 0x87. A direct member add if-converts
+ * Leftover: (ldrsheq / addeq / strheq) and Behavior shrinks from 0x1cc to 0x1c4.
+ * Leftover: Behavior kind 2 keeps the 0/1 flag, the second compare, and the
+ * Leftover: equal-arm ternary. Direct mPosY < mMinPosY / mPosY > mMaxPosY
+ * Leftover: clamps compile to 0x1a4 against the ROM's 0x1cc.
  */
 
 /* MEASURED -- MUST STAY AHEAD OF daObjBk_Lift_c.h, which reaches math/Matrix.h
@@ -80,9 +78,7 @@ void func_02039394(void *collider, int v);
 void func_020393a4(void *collider, int v);
 void func_020393c4(dBgW *collider, void *callback);
 void func_020393d4(dBgW *collider, void *callback);
-int  func_ov015_021128e8(daObjBk_Lift_c *lift, void *unused);
 int  func_ov015_021128f8(void *collider, daObjBk_Lift_c *lift, void *unused);
-void func_ov015_021123c8(daObjBk_Lift_c *lift);
 
 int  _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
 unsigned _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned handle, unsigned a,
@@ -96,8 +92,6 @@ void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
     void *self, void *shadow, void *mat, int a, int b, int c, unsigned flags);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol daObjBk_Lift_c_classInit
 /* BK_LIFT01's registry factory. 0x394 is this class's size, and the calls the
    cartridge inlines here -- fBase_c::operator new, dBgActor_c's base
@@ -110,8 +104,6 @@ extern "C" daObjBk_Lift_c *daObjBk_Lift_c_classInit()
     return new daObjBk_Lift_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol func_ov015_021128f8
 /* dBgW callback veneer, armed by func_020393c4 in InitResources. Drops the
    collider and forwards the lift into func_ov015_021128e8. long_calls is the
@@ -120,27 +112,21 @@ extern "C" {
 #pragma long_calls on
 int func_ov015_021128f8(void *collider, daObjBk_Lift_c *lift, void *unused)
 {
-    return func_ov015_021128e8(lift, unused);
+    return lift->func_ov015_021128e8(unused);
 }
 #pragma long_calls off
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov015_021128e8
+// @symbol _ZN14daObjBk_Lift_c19func_ov015_021128e8EPv
 /* Marks the lift as stood on, which is what restarts a kind-2 ride in
    Behavior. Second parameter is the veneer's extra forwarded register -- a
    1-arg callee drops `mov r1, r2`. */
-extern "C" {
-int func_ov015_021128e8(daObjBk_Lift_c *lift, void *unused)
+int daObjBk_Lift_c::func_ov015_021128e8(void *unused)
 {
-    lift->mJustSteppedOn = 1;
-    lift->mMove = 1;
-}
+    mJustSteppedOn = 1;
+    mMove = 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjBk_Lift_c13InitResourcesEv
 int daObjBk_Lift_c::InitResources()
 {
@@ -176,7 +162,7 @@ int daObjBk_Lift_c::InitResources()
     int cosine = data_02082214[(angle >> 4) * 2 + 1];
     mShadowOffsetY = (int)(((s64)cosine * 0xc8000 + 0x800) >> 12);
 
-    func_ov015_021123c8(this);
+    func_ov015_021123c8();
 
     mPrevAngleY = mAngleY + 0x8000;
     mMoveTimer = 0x87;
@@ -199,12 +185,9 @@ int daObjBk_Lift_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjBk_Lift_c8BehaviorEv
 int daObjBk_Lift_c::Behavior()
 {
-    char *self = (char *)this;
     int kind = param1 & 0xff;
 
     if (kind == 1) {
@@ -218,7 +201,7 @@ int daObjBk_Lift_c::Behavior()
         }
         UpdatePos(0);
         UpdateModelPosAndRotY();
-        if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(self, 0x150000, 0x1000) != 0)
+        if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0x150000, 0x1000) != 0)
             UpdateClsnPosAndRot();
     } else if (kind == 2) {
         if (DecIfAbove0_Byte(&mMoveTimer) == 0) {
@@ -231,28 +214,26 @@ int daObjBk_Lift_c::Behavior()
                 bound = mMinPosY;
                 y = mPosY;
                 flag = (y >= bound);
-                if (flag != 0)
-                    goto c2_hi;
-                mPosY = (y < bound) ? bound : y;
-                mVertSpeed = 0xa000;
-                if (mJustSteppedOn == 0) {
-                    flag = 0;
-                    mMove = (u8)flag;
+                if (flag == 0) {
+                    mPosY = (y < bound) ? bound : y;
+                    mVertSpeed = 0xa000;
+                    if (mJustSteppedOn == 0) {
+                        flag = 0;
+                        mMove = (u8)flag;
+                    }
+                } else {
+                    bound = mMaxPosY;
+                    flag = (y <= bound);
+                    if (flag == 0) {
+                        mPosY = (y > bound) ? bound : y;
+                        mVertSpeed = -0xa000;
+                        mMoveTimer = 0x5a;
+                    }
                 }
-                goto c2_after;
-            c2_hi:
-                bound = mMaxPosY;
-                flag = (y <= bound);
-                if (flag != 0)
-                    goto c2_after;
-                mPosY = (y > bound) ? bound : y;
-                mVertSpeed = -0xa000;
-                mMoveTimer = 0x5a;
             }
         }
-    c2_after:
         UpdateModelPosAndRotY();
-        if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(self, 0x150000, 0x1000) != 0)
+        if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0x150000, 0x1000) != 0)
             UpdateClsnPosAndRot();
         if (Vec3_Dist(&mPosX, &mPrevPosX) != 0) {
             unsigned z = 0;
@@ -262,17 +243,15 @@ int daObjBk_Lift_c::Behavior()
         }
         mJustSteppedOn = 0;
     } else {
-        _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(self, 0x150000, 0x1000);
+        _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0x150000, 0x1000);
     }
 
     func_020393a4(&mMeshCollider, 0x150000);
     func_02039394(&mMeshCollider, 0x1000);
-    func_ov015_021123c8(this);
+    func_ov015_021123c8();
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjBk_Lift_c6RenderEv
 int daObjBk_Lift_c::Render()
 {
@@ -280,8 +259,6 @@ int daObjBk_Lift_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjBk_Lift_c16CleanupResourcesEv
 int daObjBk_Lift_c::CleanupResources()
 {
@@ -293,24 +270,19 @@ int daObjBk_Lift_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-// @symbol func_ov015_021123c8
+// @symbol _ZN14daObjBk_Lift_c19func_ov015_021123c8Ev
 /* Re-aims the cuboid shadow: the model's matrix, then the step's own position
    biased by mShadowOffsetX / mShadowOffsetY and flattened onto mFloorPosY. */
-extern "C" void func_ov015_021123c8(daObjBk_Lift_c *lift)
+void daObjBk_Lift_c::func_ov015_021123c8()
 {
-    char *c = (char *)lift;
-    *(Matrix4x3 *)(c + 0x348) = *(Matrix4x3 *)(c + 0xf0);
-    *(int *)(c + 0x36c) = (*(int *)(c + 0x5c) - *(int *)(c + 0x384)) >> 3;
-    *(int *)(c + 0x370) = *(int *)(c + 0x378) >> 3;
-    *(int *)(c + 0x374) = (*(int *)(c + 0x64) - *(int *)(c + 0x388)) >> 3;
+    mShadowMat = mModel.mat4x3;
+    mShadowMat.m[9] = (mPosX - mShadowOffsetX) >> 3;
+    mShadowMat.m[10] = mFloorPosY >> 3;
+    mShadowMat.m[11] = (mPosZ - mShadowOffsetY) >> 3;
     _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-        c, c + 0x320, c + 0x348, 0x190000, 0x28000, 0x258000, 0xf);
+        this, &mShadowModel, &mShadowMat, 0x190000, 0x28000, 0x258000, 0xf);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjBk_Lift_c15OnHitByMegaCharER6Player
 /* Slot 27. Player::IncMegaKillCount is a real method, and the trailing
    unqualified Kill() reaches this class's own slot-31 override. */
@@ -320,8 +292,6 @@ void daObjBk_Lift_c::OnHitByMegaChar(Player &player)
     Kill();
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjBk_Lift_c4KillEv
 /* Slot 31, attributed by the vtable: _ZTV14daObjBk_Lift_c (ov015 0x02114650)
    carries 0x0211233c at slot 31 -- config/arm9/overlays/ov015/relocs.txt has

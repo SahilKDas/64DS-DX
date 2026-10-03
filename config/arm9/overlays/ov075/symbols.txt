@@ -1,5 +1,5 @@
-_ZN14UnknownVsEntryD1Ev kind:function(arm,size=0x74) addr:0x02113ee0
-_ZN14UnknownVsEntryD0Ev kind:function(arm,size=0x88) addr:0x02113f54
+_ZN9dEntObj_cD1Ev kind:function(arm,size=0x74) addr:0x02113ee0
+_ZN9dEntObj_cD0Ev kind:function(arm,size=0x88) addr:0x02113f54
 _ZN15UnknownVsPlayerD1Ev kind:function(arm,size=0x34) addr:0x02113fdc
 func_ov075_02114010 kind:function(arm,size=0xd4) addr:0x02114010
 func_ov075_021140e4 kind:function(arm,size=0xd4) addr:0x021140e4
@@ -35,10 +35,10 @@ func_ov075_021151b4 kind:function(arm,size=0x98) addr:0x021151b4
 func_ov075_0211524c kind:function(arm,size=0x44) addr:0x0211524c
 func_ov075_02115290 kind:function(arm,size=0x44) addr:0x02115290
 func_ov075_021152d4 kind:function(arm,size=0xb4) addr:0x021152d4
-_ZN14UnknownVsEntry16CleanupResourcesEv kind:function(arm,size=0x144) addr:0x02115388
-_ZN14UnknownVsEntry6RenderEv kind:function(arm,size=0x90) addr:0x021154cc
-_ZN14UnknownVsEntry8BehaviorEv kind:function(arm,size=0x184) addr:0x0211555c
-_ZN14UnknownVsEntry13InitResourcesEv kind:function(arm,size=0x314) addr:0x021156e0
+_ZN9dEntObj_c16CleanupResourcesEv kind:function(arm,size=0x144) addr:0x02115388
+_ZN9dEntObj_c6RenderEv kind:function(arm,size=0x90) addr:0x021154cc
+_ZN9dEntObj_c8BehaviorEv kind:function(arm,size=0x184) addr:0x0211555c
+_ZN9dEntObj_c13InitResourcesEv kind:function(arm,size=0x314) addr:0x021156e0
 dEntObj_c_classInit kind:function(arm,size=0x94) addr:0x021159f4
 _ZN15UnknownVsPlayerC1Ev kind:function(arm,size=0x30) addr:0x02115a88
 _ZN10dScEntry_cD1Ev kind:function(arm,size=0x70) addr:0x02115ab8
@@ -178,7 +178,7 @@ data_ov075_0211c660 kind:data(any) addr:0x0211c660
 _ZTI9dEntObj_c kind:data(any) addr:0x0211c66c
 data_ov075_0211c678 kind:data(any) addr:0x0211c678
 data_ov075_0211c688 kind:data(any) addr:0x0211c688
-_ZTV14UnknownVsEntry kind:data(any) addr:0x0211c6a0
+_ZTV9dEntObj_c kind:data(any) addr:0x0211c6a0
 data_ov075_0211c6e8 kind:data(any) addr:0x0211c6e8
 data_ov075_0211c6ec kind:data(any) addr:0x0211c6ec
 data_ov075_0211c6f0 kind:data(any) addr:0x0211c6f0

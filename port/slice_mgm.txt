@@ -131,7 +131,7 @@ src/_ZN11dScMiniGm_c8BehaviorEv.cpp
 src/_ZN11dScMiniGm_c16CleanupResourcesEv.cpp
 src/func_ov005_020c1688.c
 src/func_ov005_020c16e4.c
-src/_ZN11dScMiniGm_c13InitResourcesEv.cpp
+src/actors/dScMiniGm_c.cpp
 src/d_s_mini_gm.c
 src/ExitMinigameMenu.c
 src/func_02013598.c

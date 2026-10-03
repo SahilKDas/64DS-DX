@@ -1,10 +1,11 @@
 #include "types.h"
-struct E { u8 pad[4]; u32 unk4; };
+/* The two leading words of one 0x44-byte save file (the rest is not read here). */
+struct FileSaveData { u32 magic8000; u32 flags1; };
 
 extern void SetSoundMode(int mode);
 extern void TurnBacklightOn(void);
 extern void TurnBacklightOff(void);
-extern struct E *func_ov007_020cc0cc(int idx);
+extern struct FileSaveData *func_ov007_020cc0cc(int idx);
 extern void _ZN8SaveData13EraseSaveFileEjPc(u32 a, char *b);
 extern int func_02013c84(u32 charID, void *dest, s32 fileIndex, void *src);
 extern int func_ov007_020cc118(int a, u32 b);
@@ -60,32 +61,32 @@ u8 func_ov007_020cc600(s32 arg)
         _ZN8SaveData13EraseSaveFileEjPc(2, (char *)func_ov007_020cc0cc(2));
         func_02013c84(2, func_ov007_020cc0cc(2), -1, (void *)data_0209caa0);
     } else if (arg == 11) {
-        struct E *p = func_ov007_020cc0cc(0);
+        struct FileSaveData *p = func_ov007_020cc0cc(0);
         if (func_02013c84(0, p, 1, func_ov007_020cc0cc(1)) == 0)
             r = 1;
         func_02013c84(1, func_ov007_020cc0cc(1), -1, (void *)data_0209caa0);
     } else if (arg == 12) {
-        struct E *p = func_ov007_020cc0cc(0);
+        struct FileSaveData *p = func_ov007_020cc0cc(0);
         if (func_02013c84(0, p, 2, func_ov007_020cc0cc(2)) == 0)
             r = 1;
         func_02013c84(2, func_ov007_020cc0cc(2), -1, (void *)data_0209caa0);
     } else if (arg == 13) {
-        struct E *p = func_ov007_020cc0cc(1);
+        struct FileSaveData *p = func_ov007_020cc0cc(1);
         if (func_02013c84(1, p, 0, func_ov007_020cc0cc(0)) == 0)
             r = 1;
         func_02013c84(0, func_ov007_020cc0cc(0), -1, (void *)data_0209caa0);
     } else if (arg == 14) {
-        struct E *p = func_ov007_020cc0cc(1);
+        struct FileSaveData *p = func_ov007_020cc0cc(1);
         if (func_02013c84(1, p, 2, func_ov007_020cc0cc(2)) == 0)
             r = 1;
         func_02013c84(2, func_ov007_020cc0cc(2), -1, (void *)data_0209caa0);
     } else if (arg == 15) {
-        struct E *p = func_ov007_020cc0cc(2);
+        struct FileSaveData *p = func_ov007_020cc0cc(2);
         if (func_02013c84(2, p, 0, func_ov007_020cc0cc(0)) == 0)
             r = 1;
         func_02013c84(0, func_ov007_020cc0cc(0), -1, (void *)data_0209caa0);
     } else if (arg == 16) {
-        struct E *p = func_ov007_020cc0cc(2);
+        struct FileSaveData *p = func_ov007_020cc0cc(2);
         if (func_02013c84(2, p, 1, func_ov007_020cc0cc(1)) == 0)
             r = 1;
         func_02013c84(1, func_ov007_020cc0cc(1), -1, (void *)data_0209caa0);
@@ -109,8 +110,8 @@ u8 func_ov007_020cc600(s32 arg)
     } else if (arg == 22) {
         s32 i;
         for (i = 0; i < 3; i++) {
-            struct E *e = func_ov007_020cc0cc(i);
-            if ((e->unk4 & 1) == 0)
+            struct FileSaveData *e = func_ov007_020cc0cc(i);
+            if ((e->flags1 & 1) == 0)
                 _ZN8SaveData13EraseSaveFileEjPc(i, (char *)e);
         }
     } else if (arg == 23) {

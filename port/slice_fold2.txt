@@ -309,7 +309,7 @@ src/game/actors/d_a_nknk.cpp
 #     hal/actor_classes_ov060.cpp:633.
 #     RECORD: kind:function(arm,size=0x50) addr:0x02115f0c, body e92d4010
 #     e1a04000 e5d4041c.
-src/_ZN6Bowser6RenderEv.cpp
+src/actors/daKpa_c.cpp
 
 # 16. src/_ZN16BowserShockwaves6RenderEv.cpp -- the SECOND body in the same host
 #     copy: six texture/material updates then two ModelAnim draws. Together with

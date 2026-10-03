@@ -32,6 +32,8 @@
 #include "SharedFilePtr.h"
 #include "PathPtr.h"
 
+bool ApproachLinear(short &value, short target, short step);
+
 extern "C" {
 void Vec3_Asr(Vector3 *d, Vector3 *s, int n);
 void Matrix4x3_FromTranslation(Matrix4x3 *m, int x, int y, int z);
@@ -46,12 +48,11 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     void *th, void *kf, void *mtx, int fx, short s, void *clps);
 void func_020393d4(int *p, int v);
 void func_020393c4(int *p, int v);
-void _ZN7PathPtrC1Ev(void *self);
+void *_ZN7PathPtrC1Ev(void *self);
 
 u8 DecIfAbove0_Byte(u8 *p);
 int Vec3_HorzDist(const void *a, const void *b);
 s16 Vec3_HorzAngle(const void *a, const void *b);
-void _Z14ApproachLinearRsss(s16 *dst, s16 target, s16 step);
 unsigned int _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned int a, unsigned int b, unsigned int c, void *pos, unsigned int d);
 void Math_Function_0203b14c(void *p, int a, int b, int c, int d);
 void Vec3_Sub(void *out, void *a, void *b);
@@ -141,7 +142,7 @@ int daObjSm_Lift_c::Behavior()
         }
         target = 0;
     }
-    _Z14ApproachLinearRsss(&mAngleX, target, 0xc0);
+    ApproachLinear(mAngleX, target, 0xc0);
 
     if (unk_330 != 0) {
         int idx2;

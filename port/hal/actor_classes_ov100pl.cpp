@@ -184,11 +184,11 @@ void port_pathlift_states_seat(void);
 /* ov002, the base */
 int _ZN16dPathLiftActor_cD1Ev(void *self);                  /* base slot 16 */
 int _ZN16dPathLiftActor_cD0Ev(void *self);                  /* base slot 17 */
-void func_ov002_020efa54(void *self, int state);   /* HOST COPY, installer */
+void _ZN16dPathLiftActor_c8SetStateEi(void *self, int state); /* HOST COPY, installer */
 void _ZN16dPathLiftActor_c12BaseBehaviorEv(void *self);     /* HOST COPY, tick      */
-void func_ov002_020efaf0(void *self);              /* the REAL base init   */
-void func_ov002_020efc74(void *self);              /* Render's base half   */
-void func_ov002_020efcf4(void *self);              /* Behavior's base half */
+void _ZN16dPathLiftActor_c17BaseInitResourcesEv(void *self); /* the REAL base init   */
+void _ZN16dPathLiftActor_c16RenderPathModelsEv(void *self);  /* Render's base half   */
+void _ZN16dPathLiftActor_c16UpdatePathModelsEv(void *self);  /* Behavior's base half */
 /* ov100, the leaf */
 int _ZN15daObjPathLift_c13InitResourcesEv(void *self);               /* slot 0  */
 int _ZN15daObjPathLift_c16CleanupResourcesEv(void *self);               /* slot 3  */

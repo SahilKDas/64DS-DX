@@ -561,7 +561,7 @@ src/func_ov006_020cce0c.c
 src/func_ov006_020ccfc8.cpp
 src/func_ov006_020cd158.c
 src/func_ov006_020cd1e0.c
-src/func_ov006_020cd270.c
+src/actors/dMgTrmpln2Mario_c.cpp
 src/func_ov006_020cd39c.c
 src/func_ov006_020cd424.c
 src/func_ov006_020cd510.c
@@ -612,7 +612,7 @@ src/func_ov006_020d01e0.cpp
 # An honest NONMATCHING seat -- 25 divergences against 258 ROM code words, frame
 # and all six call offsets exact, both of loop two's vertex packs matching the ROM
 # instruction for instruction -- and the banner in the file states every one.
-src/func_ov006_020cf2fc.c
+src/actors/unit020cd744.cpp
 # THE INSTALLER'S OWN THREE CALLEES, and none of them was in ANY slice before it
 # was seated -- the trap was hiding all three, and the first link with the real
 # body failed with exactly three LNK2019s. All three are matched src TUs with
@@ -631,7 +631,6 @@ src/func_ov006_020cf2fc.c
 src/func_ov006_020cf040.c
 src/func_ov006_020cfa28.c
 src/func_ov006_020cfc58.c
-src/func_ov006_020d09e0.c
 src/func_ov006_020d0ac0.c
 src/func_ov006_020d0b04.c
 src/func_ov006_020d0b2c.cpp

@@ -56,7 +56,7 @@ a table row, as history. `config/dead-reference-baseline.json` is not changed.
 - Reverted after class_rename: its edits to `include/decl_common.h`
   (reserved by another task), `notes/data/tu-merge-candidates.json`,
   `notes/experiments/pr2874-integration-0920.json`,
-  `config/tu_manifest.d/ov025/daDpLift_c.json` (another class's manifest),
+  [config/tu_manifest.d/ov025/daDpLift_c.json](../../../config/tu_manifest.d/ov025/daDpLift_c.json) (another class's manifest),
   `notes/bgobject-provenance.md` and `notes/plan-tu-merge-queue.md` (outside
   the reservation at the time). Only the one path line in
   `notes/bgobject-provenance.md` was later fixed by hand, as above. `--with-derived` was not used.
@@ -68,22 +68,22 @@ a table row, as history. `config/dead-reference-baseline.json` is not changed.
   mangled-name rule (`11PyramidStep` to `14daObjDpBrock_c`, inside `_Z`
   tokens only) was then applied to that one symbols.txt. The result has
   exactly one `_ZTV14daObjDpBrock_c` row and no `PyramidStep` text.
-- ROM observations: build/rtti.json records `_ZTI14daObjDpBrock_c` at ov025
+- ROM observations: build/rtti.json records `_ZTI14daObjDpBrock_c` at [ov025](../../../config/arm9/overlays/ov025/symbols.txt):
   0x021138d0 (kind si, name string at 0x021138dc) and names the vtable
-  at 0x02113914. ov025 relocs.txt relocates every word from 0x02113910 (the
-  typeinfo pointer) through 0x02113990 (slot 31, dBgActor_c::Kill). So the
+  at 0x02113914. [ov025 relocs.txt](../../../config/arm9/overlays/ov025/relocs.txt) relocates every word from 0x02113910 (the
+  typeinfo pointer) through 0x02113990 (slot 31, `dBgActor_c::Kill`). So the
   vtable is 2 header words plus 32 slots, 0x88 bytes. The next word,
   0x02113994, is `_ZTI10daDpLift_c`.
-- Structural inference: func_ov025_02111e30 puts the class's own model
+- Structural inference: [func_ov025_02111e30](../../../config/tu_manifest.d/ov025/daObjDpBrock_c.json)(current [_ZN14daObjDpBrock_c14UpdateModelPosAndRotYEv](../../../src/actors/daObjDpBrock_c.cpp)) puts the class's own model
   (mStepModel, 0x320) on the actor position scaled by 1/8, and
-  func_ov025_02111dec does the same for the collider matrix mClsnMat2 (0x374)
-  and calls dBgW_KcMbg::Transform. These are the class's counterparts of
-  dBgActor_c's UpdateModelPosAndRotY and UpdateClsnPosAndRot. mState 0 sinks
+  [func_ov025_02111dec](../../../config/tu_manifest.d/ov025/daObjDpBrock_c.json)(current [_ZN14daObjDpBrock_c23UpdateStepClsnPosAndRotEv](../../../src/actors/daObjDpBrock_c.cpp)) does the same for the collider matrix `mClsnMat2` (0x374)
+  and calls `dBgW_KcMbg::Transform`. These are the class's counterparts of
+  dBgActor_c's `UpdateModelPosAndRotY` and `UpdateClsnPosAndRot`. mState 0 sinks
   and 1 rises, and each state flips after 100 frames.
 - Not recovered facts: the helper roles and the state descriptions are
   inferred from the bodies. No original names are claimed for the two helpers.
   `daObjDpBrock_c_classInit` is the tree's reconstructed factory name.
-- Compiler experiments, each re-verified or measured to fail: InitResources
+- Compiler experiments, each re-verified or measured to fail: `InitResources`
   must read `param1 & 3` before its three initialising stores. Read inside the
   switch, 11 words differ. Every other member compiled byte-identical on its
   first clean spelling, with no int-cast field forms. The helpers' and
@@ -95,36 +95,36 @@ a table row, as history. `config/dead-reference-baseline.json` is not changed.
 - Coverage: 9/9 functions MATCH (tubuild verify), objisolate clean,
   relocation destinations clean. prepush_linkcheck VERIFIES all 9 again from
   the production file.
-- Genuine methods: InitResources, Behavior, Render and CleanupResources are
+- Genuine methods: `InitResources`, `Behavior`, `Render` and `CleanupResources` are
   real members. D1 and D0 come from the header's inline destructor, and the
   factory is `return new daObjDpBrock_c()`. Real calls replace the legacy
-  mangled externs: Model::LoadFile, ModelBase::SetFile, dBgW_Kc::LoadFile,
-  dBgW::Disable, dBgW_KcMbg::Transform, SharedFilePtr::Release and
-  Model::Render. ABI bridges: dBgW_KcMbg::SetFile and
-  dBgActor_c::IsClsnInRange stay mangled externs (Fix12 by value, wall 6az).
-  func_020393d4 is an unnamed arm9 helper. The two func_ov025 helpers stay
+  mangled externs: `Model::LoadFile`, `ModelBase::SetFile`, `dBgW_Kc::LoadFile`,
+  `dBgW::Disable`, `dBgW_KcMbg::Transform`, `SharedFilePtr::Release` and
+  `Model::Render`. ABI bridges: `dBgW_KcMbg::SetFile` and
+  `dBgActor_c::IsClsnInRange` stay mangled externs (Fix12 by value, wall 6az).
+  func_020393d4 is an unnamed [arm9](../../../config/arm9/symbols.txt) helper. The two `func_ov025` helpers stay
   `extern "C"`, taking `char *` as include/decl_common.h spells them.
 - Layout: every access goes through named fields. There are no raw offsets and
   no unk_ fields. The header now types the 0x374 tail as `Matrix4x3 mClsnMat2`,
   not a u8 marker, and types `mStateTimer` as u16, since the cartridge uses only
   ldrh and strh on it. The flat C twin is gone: no C file includes the header.
   Its comment credited a C destructor shard, but that shard was already C++.
-- Lifecycle and data: the inline empty destructor makes Behavior the key
+- Lifecycle and data: the inline empty destructor makes `Behavior` the key
   function. The TU emits `_ZTV14daObjDpBrock_c` (0x88), `_ZTI` and
   `_ZTS14daObjDpBrock_c` and the four inherited bases' RTTI records. All are
   licensed as deadstrip-data at their cartridge homes in
   `compiler_only_output`. The folded factory also materialises one homeless
-  `_ZN10dBgActor_cD2Ev`, deadstripped as in daDkk_c's manifest. D1 is at
+  `_ZN10dBgActor_cD2Ev`, deadstripped as in `daDkk_c`'s manifest. D1 is at
   0x02111d40 and D0 at 0x02111d8c, in ROM order, with no D2 of this class.
-  The two file handles and the CLPS block are unowned ov025 rows.
-- Factory: folded. The factory is the next function after InitResources, and
-  the following function starts daDpLift_c's own promoted run. The same shape
+  The two file handles and the CLPS block are unowned [ov025](../../../config/arm9/overlays/ov025/symbols.txt) rows.
+- Factory: folded. The factory is the next function after `InitResources`, and
+  the following function starts `daDpLift_c`'s own promoted run. The same shape
   as the promoted neighbour
   [config/tu_manifest.d/ov025/daDkk_c.json](../../../config/tu_manifest.d/ov025/daDkk_c.json).
   `return new daObjDpBrock_c()` reproduces it byte for byte through a leaf
   operator new in the class header.
 - Attribution: tu_promote added 9 `path#symbol` overrides carrying the base
-  credit (andrewboudreau for InitResources, which was already its first
+  credit (andrewboudreau for `InitResources`, which was already its first
   matcher at the input commit, and tangosdev for the other eight).
   prepush_attribution reports 9 consolidated with credit intact, 0 changed and
   0 lost. No credit went to github-actions[bot].

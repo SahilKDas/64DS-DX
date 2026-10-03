@@ -29,7 +29,7 @@
 
 #include "daObjIceBlock_c.h"
 #include "Player.h"
-#include "PowerStar.h"
+#include "daStar_c.h"
 #include "Sound.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
@@ -105,7 +105,7 @@ s32 daObjIceBlock_c::Behavior()
         if (DecIfAbove0_Byte(&mMeltTimer) == 0) {
             dActor_c *star = mContainedActor;
             if (star != 0 && star->actorID == kStarActorID)
-                ((PowerStar *)star)->unk_49f = 0;
+                ((daStar_c *)star)->unk_49f = 0;
             MarkForDestruction();
         } else {
             Vector3 pos;

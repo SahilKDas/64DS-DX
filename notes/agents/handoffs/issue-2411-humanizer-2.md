@@ -82,7 +82,7 @@ OneUp's `func_ov002_020af684` no longer has an `int` definition that
 falls through after a `void` call. Its two PMF forwarding helpers also return `void`,
 retaining the player lookup result, null test and actual argument. Key's helper
 and destruction prototype now agree with the existing `void` destruction method;
-Key and PowerStar forwarding declarations agree with their helper definitions.
+Key and daStar_c forwarding declarations agree with their helper definitions.
 Early `return void_expression;` control flow is retained. No arbitrary result,
 assembly, warning suppression, altered address or symbol name was introduced.
 
@@ -145,7 +145,7 @@ either way; only the narration was wrong.
   | row | old cell | refreshed | source file | lines base → here |
   |---|---|---|---|---|
   | `Crate` | 1431 | **1427** | `src/_ZN5Crate13OnTurnIntoEggER6Player.cpp` | 42 → 38 |
-  | `Coin` | 1148 | **1147** | `src/_ZN4Coin13OnTurnIntoEggER6Player.cpp` | 24 → 23 |
+  | `Coin` | 1148 | **1147** | `Coin::OnTurnIntoEgg` (since folded into `src/actors/daCoin_c.cpp`) | 24 → 23 |
   | `daGmch_c` | 1119 | **1120** | `src/actors/daGmch_c.cpp` | 1119 → 1120 |
 
   Each row delta matches its file delta exactly, so these three are this

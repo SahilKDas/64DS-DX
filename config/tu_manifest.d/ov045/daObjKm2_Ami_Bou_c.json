@@ -4,6 +4,7 @@
   "source": "src/game/actors/d_a_obj_km2_ami_bou.cpp",
   "promoted_source": "src/game/actors/d_a_obj_km2_ami_bou.cpp",
   "status": "promoted",
+  "production_mode": "intact-object",
   "boundary_confidence": "high",
   "boundary_evidence": [
     "contiguous linker run: 0x0211150c..0x02111840, seven functions with no foreign symbol inside the span",
@@ -17,6 +18,11 @@
       "name": ".text",
       "start": "0x0211150c",
       "end": "0x02111840"
+    },
+    {
+      "name": ".data",
+      "start": "0x02112d80",
+      "end": "0x02112e3c"
     }
   ],
   "functions": [
@@ -70,7 +76,28 @@
       "ordinal": 6
     }
   ],
-  "data": [],
+  "data": [
+    {
+      "symbol": "g_profile_KM2_AMI_BOU",
+      "address": "0x02112d98",
+      "size": "0x1c",
+      "evidence": "typed actor profile; the +0x00 classInit relocation is ov045 relocs.txt from:0x02112d98 to:0x02111808, this TU's own factory, and every field is word-equal to retail"
+    },
+    {
+      "symbol": "_ZTS18daObjKm2_Ami_Bou_c",
+      "address": "0x02112d80",
+      "size": "0x15",
+      "evidence": "ROM type-name string and exact compiler emission"
+    },
+    {
+      "symbol": "_ZTV18daObjKm2_Ami_Bou_c",
+      "address": "0x02112dbc",
+      "emitted_storage_address": "0x02112db4",
+      "address_point_bias": "0x8",
+      "size": "0x88",
+      "evidence": "compiler storage includes the two-word ABI preamble; the public address point remains 0x02112dbc"
+    }
+  ],
   "bss": [],
   "compiler_only_output": [
     {
@@ -140,20 +167,6 @@
       "canonical_module": "ov045",
       "canonical_address": "0x02112d74",
       "reason": "This class's own typeinfo record, vague-linkage. Cartridge copy at ov045:0x02112d74 is inside this module's .data but OUTSIDE the 0x0211150c..0x02111840 .text run this entry claims. MEASURED: __si_class_type_info whose base pointer is 0x021089ec = _ZTI10dBgActor_c."
-    },
-    {
-      "symbol": "_ZTS18daObjKm2_Ami_Bou_c",
-      "disposition": "deadstrip-data",
-      "canonical_module": "ov045",
-      "canonical_address": "0x02112d80",
-      "reason": "This class's own type-name string. Cartridge copy at ov045:0x02112d80 is the length-prefixed '18daObjKm2_Ami_Bou_c' -- the ROM's own spelling, not a coined one. Text-only TU; ROM blobs own the address (S25)."
-    },
-    {
-      "symbol": "_ZTV18daObjKm2_Ami_Bou_c",
-      "disposition": "deadstrip-data",
-      "canonical_module": "ov045",
-      "canonical_address": "0x02112dbc",
-      "reason": "This class's own vtable, emitted because the inline destructor makes the first declared non-inline virtual the key function. Cartridge address point at ov045:0x02112dbc, outside the .text run. Storage starts 8 bytes earlier at 0x02112db4. Address in symbols.txt is unchanged."
     }
   ],
   "verification": {
@@ -172,8 +185,8 @@
       "declared_function_set_equals_defined_function_set": "PASS",
       "functions_occur_in_expected_order": "PASS -- tools/tu_order_check.py ov045/daObjKm2_Ami_Bou_c reports ALL MATCH, ROM order, nothing unlicensed in .text",
       "no_constructor_or_destructor_variants": "PASS -- the destructor is defined in include/daObjKm2_Ami_Bou_c.h's class body, so mwccarm emits D1 and D0 only. No D2 is produced, which is what the cartridge shows.",
-      "no_unexpected_vtable_rtti_or_data_emission": "WAIVED -- not tested. The vtable and RTTI chain are emitted and inventoried below; nine of the eleven resolve to a configured ROM home, two do not.",
-      "all_content_sections_licensed": "WAIVED -- deferred to the data phase (plan section 11 difficulty 6 of 7)",
+      "no_unexpected_vtable_rtti_or_data_emission": "PASS -- after the 2026-10-01 profile fold the TU is intact-object. The vtable and RTTI chain are licensed data in .data (0x02112d80..0x02112e3c). The class's own _ZTS/_ZTV are in the data claim; base-class RTTI is deadstrip-data.",
+      "all_content_sections_licensed": "PASS -- .text 0x0211150c..0x02111840 (7 functions) + .data 0x02112d80..0x02112e3c (ZTS + profile + vtable, 0xbc). The linkcheck block proves both ranges byte-identical.",
       "relocation_destinations_verified": "PASS",
       "symbol_addresses_match": "NOT RUN",
       "module_reproduces": "NOT RUN",
@@ -181,96 +194,97 @@
     },
     "linkcheck": {
       "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
-      "result": "link-failed",
+      "result": "scratch-data-verified",
       "scratch": "build/tu/ov045-daObjKm2_Ami_Bou_c/link (gitignored)",
       "phases": {
         "delink": true,
         "lcf": true,
         "compile": true,
-        "link": false
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
       },
-      "tuRange": null,
+      "tuRange": {
+        "start": "0x0211150c",
+        "end": "0x02111840",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x0211150c",
+          "end": "0x02111840",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".data",
+          "start": "0x02112d80",
+          "end": "0x02112e3c",
+          "differingBytes": 0,
+          "firstDiff": null
+        }
+      ],
       "objectAudit": {
         "counts": {
-          "HOMELESS": 11,
-          "COLLIDES-GAP": 2,
-          "LICENSED": 7,
-          "COLLIDES-SRC": 2
+          "LICENSED": 10
         },
-        "emittedTextOrderIsRomAscending": false,
-        "nonLicensedSymbols": [
-          "HOMELESS _ZTS8dActor_c STB_LOPROC .data size=0x7",
-          "HOMELESS _ZTI7fBase_c STB_LOPROC .data size=0x8",
-          "HOMELESS _ZTS7fBase_c STB_LOPROC .data size=0xb",
-          "HOMELESS _ZTS10dBgActor_c STB_LOPROC .data size=0xa",
-          "HOMELESS _ZTS18daObjKm2_Ami_Bou_c STB_LOPROC .data size=0xa",
-          "HOMELESS _ZTI10dBgActor_c STB_LOPROC .data size=0xc",
-          "HOMELESS _ZTI8dActor_c STB_LOPROC .data size=0xc",
-          "HOMELESS _ZTI7dBase_c STB_LOPROC .data size=0xc",
-          "HOMELESS _ZTS7dBase_c STB_LOPROC .data size=0xf",
-          "HOMELESS _ZTI18daObjKm2_Ami_Bou_c STB_LOPROC .data size=0xc",
-          "COLLIDES-GAP _ZTV18daObjKm2_Ami_Bou_c STB_GLOBAL .data size=0x84 already at ov045:0x02112dbc",
-          "HOMELESS _ZN18daObjKm2_Ami_Bou_cD2Ev STB_GLOBAL .text size=0x4c",
-          "COLLIDES-GAP _ZTV10dBgActor_c STB_LOPROC .data size=0x84 already at ov002:0x0210ae38",
-          "COLLIDES-SRC _ZN10dBgActor_cD0Ev STB_LOPROC .text size=0x4c already at ov002:0x020ee464",
-          "COLLIDES-SRC _ZN10dBgActor_cD1Ev STB_LOPROC .text size=0x38 already at ov002:0x020ee42c"
-        ],
-        "unlicensedSections": [
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [
           {
-            "name": ".data",
-            "size": 7
-          },
-          {
-            "name": ".data",
-            "size": 8
-          },
-          {
-            "name": ".data",
-            "size": 10
-          },
-          {
-            "name": ".data",
-            "size": 10
-          },
-          {
-            "name": ".data",
-            "size": 11
-          },
-          {
-            "name": ".data",
-            "size": 12
-          },
-          {
-            "name": ".data",
-            "size": 12
-          },
-          {
-            "name": ".data",
-            "size": 12
-          },
-          {
-            "name": ".data",
-            "size": 12
-          },
-          {
-            "name": ".data",
-            "size": 15
-          },
-          {
-            "name": ".data",
-            "size": 132
-          },
-          {
-            "name": ".data",
-            "size": 132
+            "section": ".data",
+            "original": [
+              19,
+              20,
+              22
+            ],
+            "desired": [
+              19,
+              20,
+              22
+            ]
           }
         ],
-        "staleVerdictNote": "RE-SCORED 2026-09-19 BY STATIC SYMBOL LOOKUP ONLY -- the link was not re-run and no count above was re-measured. 10 of the 11 rows audited HOMELESS have a configured ROM home today, so that count is a dated artefact of the pre-rename round rather than a live finding. The banked _ZTS sizes are what date it: an _ZTS record holds the length-prefixed Itanium type-name string, so its size must be len(str(n)) + n + 1. _ZTS18daObjKm2_Ami_Bou_c must be 0x15 and 0xa is banked -- 0xa is the size under the retired 8-character coinage this class carried; _ZTS10dBgActor_c must be 0xd and 0xa is banked, again an 8-character coinage; _ZTS8dActor_c must be 0xa and 0x7 is banked; _ZTS7fBase_c must be 0x9 and 0xb is banked; _ZTS7dBase_c must be 0x9 and 0xf is banked. The spellings were swept to the cartridge's names; the numbers never were. HOMES CONFIRMED TODAY: _ZTS8dActor_c arm9:0x0208e384, _ZTI8dActor_c arm9:0x0208e390, _ZTI7fBase_c arm9:0x02086d70, _ZTS7fBase_c arm9:0x02086e60, _ZTI7dBase_c arm9:0x02086e78, _ZTS7dBase_c arm9:0x02086e54, _ZTI10dBgActor_c ov002:0x021089ec, _ZTS10dBgActor_c ov002:0x02108a04, _ZTI18daObjKm2_Ami_Bou_c ov045:0x02112d74, _ZTS18daObjKm2_Ami_Bou_c ov045:0x02112d80. THE ONE SURVIVING HOMELESS ROW IS _ZN18daObjKm2_Ami_Bou_cD2Ev, and it is genuine: it has no entry in any config/**/symbols.txt, and neither does the retired coinage's D2, so it was never homed under either spelling. mwccarm emits D1, D0 and D2 from one definition while the cartridge here carries only D1 (ov045:0x0211150c) and D0 (ov045:0x02111558); the base-object variant has no ROM address to be attributed to. THE FOUR COLLISION ROWS ALL STILL VERIFY at their exact banked addresses: _ZTV18daObjKm2_Ami_Bou_c ov045:0x02112dbc, _ZTV10dBgActor_c ov002:0x0210ae38, _ZN10dBgActor_cD0Ev ov002:0x020ee464 (size 0x4c, as banked) and _ZN10dBgActor_cD1Ev ov002:0x020ee42c (size 0x38, as banked). LOOKUP CONTROLS, so a zero cannot be read as a finding: the search covered all 106 config/**/symbols.txt; the retired spellings _ZTS8PoleLift, _ZTV8PoleLift, _ZTS8Platform and _ZTV8Platform return zero hits each, while every name listed as confirmed above returns exactly one."
+        "objisolate": null,
+        "errors": null
       },
-      "symbolCheckNewVsBaseline": null,
-      "linkerOutput": "mwldarm.exe: Multiply-defined: \"virtual table for daObjKm2_Ami_Bou_c\" in daObjKm2_Ami_Bou_c.o\nmwldarm.exe: Previously defined in _dsd_gap@ov045_3.o\nmwldarm.exe: Multiply-defined: \"virtual table for Platform\" in daObjKm2_Ami_Bou_c.o\nmwldarm.exe: Previously defined in _dsd_gap@ov002_13.o\n\nErrors caused tool to abort.",
-      "supersededBy": "This round predates the in-class destructor. Its 'Multiply-defined: virtual table for Platform' half came from dBgActor_c's vague-linkage copy, which is no longer emitted. Not re-run; promotion is blocked earlier, at the isolator. SUPERSEDED AGAIN, AND RECORDED AS SUCH ON 2026-09-19. This entry's status is `promoted`: config/arm9/overlays/ov045/delinks.txt enrolls src/game/actors/d_a_obj_km2_ami_bou.cpp `complete` over .text 0x0211150c..0x02111840, the exact span this manifest claims, so the TU is built by the production ROM build. A banked `link-failed` from a scratch whole-range link therefore no longer describes the state of this entry, and the objectAudit beneath it is a dated artefact of that same round, not a live verdict -- see objectAudit.staleVerdictNote. NOTHING WAS RE-RUN TO WRITE THIS: no link, no compile, no byte comparison. The only new work is static symbol lookup, and it is reported as such.",
-      "linkerOutputNote": "READ THIS BLOB AS HALF-SWEPT PROSE, NOT AS A FAITHFUL TRANSCRIPT. It is a captured mwldarm transcript from the pre-rename round, and a later class-rename sweep rewrote the demangled names inside it unevenly: one line now reads 'virtual table for daObjKm2_Ami_Bou_c' (this class's cartridge name) while the other still reads 'virtual table for Platform', the retired coinage for dBgActor_c. mwldarm never printed those two spellings in one run. The two lines name _ZTV18daObjKm2_Ami_Bou_c and _ZTV10dBgActor_c, whose gap objects are the ones the objectAudit records as COLLIDES-GAP at ov045:0x02112dbc and ov002:0x0210ae38. The text is left as captured rather than rewritten, because editing a recorded transcript to agree with today's names would turn a dated artefact into a false measurement."
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
     },
     "compilerOnlyOutput": {
       "requested": [
@@ -294,11 +308,8 @@
         16,
         17,
         18,
-        19,
-        20,
-        21,
-        35,
-        36
+        37,
+        38
       ],
       "data": [
         "_ZTI7fBase_c",
@@ -309,9 +320,7 @@
         "_ZTS8dActor_c",
         "_ZTI10dBgActor_c",
         "_ZTS10dBgActor_c",
-        "_ZTI18daObjKm2_Ami_Bou_c",
-        "_ZTS18daObjKm2_Ami_Bou_c",
-        "_ZTV18daObjKm2_Ami_Bou_c"
+        "_ZTI18daObjKm2_Ami_Bou_c"
       ],
       "dataExternalized": [
         "_ZTI10dBgActor_c",
@@ -320,86 +329,71 @@
         "_ZTI7fBase_c",
         "_ZTI8dActor_c",
         "_ZTS10dBgActor_c",
-        "_ZTS18daObjKm2_Ami_Bou_c",
         "_ZTS7dBase_c",
         "_ZTS7fBase_c",
-        "_ZTS8dActor_c",
-        "_ZTV18daObjKm2_Ami_Bou_c"
+        "_ZTS8dActor_c"
       ]
     }
   },
   "unlicensed_output_observed": {
-    "note": "Re-measured after the destructor was moved into the class body. One compile of src_tu/actors/daObjKm2_Ami_Bou_c.cpp, tools/tubuild.py elf_inventory. The .text list is now EMPTY: an in-class destructor makes mwccarm emit D1 and D0 only -- the cartridge's two variants, in the cartridge's order -- and dBgActor_c's own destructor is inlined rather than emitted as a vague-linkage copy. What remains is the data the key function drags in. Inventoried, not licensed, not verified.",
+    "note": "PRE-FOLD ARTEFACT (2026-09-17). The TU was text-only then; this inventory described the data the key function dragged in under deadstrip-data. After the 2026-10-01 profile fold the TU is intact-object and owns .data 0x02112d80..0x02112e3c (ZTS + profile + vtable, 0xbc). The class's own _ZTS/_ZTV are licensed data, not unlicensed output. The base-class RTTI rows below remain deadstrip-data (canonical homes outside this module).",
     "text": [],
     "data": [
       {
         "symbol": "_ZTI7fBase_c",
         "size": "0x8",
         "binding": "STB_LOPROC",
-        "rom_home": "arm9:0x02086d70"
+        "rom_home": "arm9:0x02086d70",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTS7dBase_c",
         "size": "0x9",
         "binding": "STB_LOPROC",
-        "rom_home": "arm9:0x02086e54"
+        "rom_home": "arm9:0x02086e54",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTS7fBase_c",
         "size": "0x9",
         "binding": "STB_LOPROC",
-        "rom_home": "arm9:0x02086e60"
+        "rom_home": "arm9:0x02086e60",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTS8dActor_c",
         "size": "0xa",
         "binding": "STB_LOPROC",
-        "rom_home": "arm9:0x0208e384"
+        "rom_home": "arm9:0x0208e384",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTI10dBgActor_c",
         "size": "0xc",
         "binding": "STB_LOPROC",
-        "rom_home": "ov002:0x021089ec"
+        "rom_home": "ov002:0x021089ec",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTI7dBase_c",
         "size": "0xc",
         "binding": "STB_LOPROC",
-        "rom_home": "arm9:0x02086e78"
+        "rom_home": "arm9:0x02086e78",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTI8dActor_c",
         "size": "0xc",
         "binding": "STB_LOPROC",
-        "rom_home": "arm9:0x0208e390"
+        "rom_home": "arm9:0x0208e390",
+        "disposition": "deadstrip-data"
       },
       {
         "symbol": "_ZTS10dBgActor_c",
         "size": "0xd",
         "binding": "STB_LOPROC",
-        "rom_home": "ov002:0x02108a04"
-      },
-      {
-        "symbol": "_ZTV18daObjKm2_Ami_Bou_c",
-        "size": "0x88",
-        "binding": "STB_GLOBAL",
-        "rom_home": "ov045:0x02112dbc",
-        "note": "the ROM symbol names the slot array; the compiler's symbol names the vtable object, which starts 8 bytes earlier at 0x02112db4"
-      },
-      {
-        "symbol": "_ZTI18daObjKm2_Ami_Bou_c",
-        "size": "0xc",
-        "binding": "STB_LOPROC",
-        "rom_home": "ov045:0x02112d74",
-        "note": "HOMED. The row previously read HOMELESS UNDER THE COINED NAME, from the round when the class was still a coinage, even while naming the cartridge's address itself. config/arm9/overlays/ov045/symbols.txt carries _ZTI18daObjKm2_Ami_Bou_c at 0x02112d74 (static lookup, 2026-09-19; the retired coinage's _ZTI returns zero hits). The vtable's own typeinfo word at 0x02112db8 reads 0x02112d74, and that record's base pointer is 0x021089ec = _ZTI10dBgActor_c, which is the base this header already declares. The size 0xc beside it is the round's own measurement and is left untouched."
-      },
-      {
-        "symbol": "_ZTS18daObjKm2_Ami_Bou_c",
-        "size": "0xa",
-        "binding": "STB_LOPROC",
-        "rom_home": "ov045:0x02112d80",
-        "note": "HOMED, AND THE SIZE BESIDE IT IS STALE. config/arm9/overlays/ov045/symbols.txt carries _ZTS18daObjKm2_Ami_Bou_c at 0x02112d80 (static lookup, 2026-09-19; the retired coinage's _ZTS returns zero hits). The recorded size 0xa cannot belong to this spelling: an _ZTS record holds the length-prefixed type-name string, so '18daObjKm2_Ami_Bou_c' plus its terminator is 0x15 bytes. 0xa is the size the record had under the 8-character coinage the class carried when this inventory was taken. The size is left as measured rather than recomputed, because nothing here re-compiled the TU; treat it as dating the row, not describing today's object."
+        "rom_home": "ov002:0x02108a04",
+        "disposition": "deadstrip-data"
       }
     ],
     "bss": [],
@@ -408,21 +402,8 @@
     "ctor": []
   },
   "tu_owned_but_out_of_scope": {
-    "note": "Believed to belong to this TU in the ROM. Not declared, not compiled from source, not verified. Listed so a later data phase has a starting inventory rather than a fresh search.",
+    "note": "Believed to belong to this TU in the ROM. Not declared, not compiled from source, not verified. Listed so a later data phase has a starting inventory rather than a fresh search. After the 2026-10-01 profile fold, _ZTI/_ZTV are licensed data (in .data) and removed from this list.",
     "data": [
-      {
-        "symbol": "_ZTI18daObjKm2_Ami_Bou_c",
-        "address": "0x02112d74"
-      },
-      {
-        "symbol": "g_profile_KM2_AMI_BOU",
-        "address": "0x02112d98",
-        "note": "config marks this one 'ambiguous'; historical alias daObjKm2_Ami_Bou_c_SpawnInfo"
-      },
-      {
-        "symbol": "_ZTV18daObjKm2_Ami_Bou_c",
-        "address": "0x02112dbc"
-      },
       {
         "symbol": "data_ov045_02112510",
         "address": "0x02112510",
@@ -456,9 +437,11 @@
     "One source-level change was forced by consolidation and one relocation-convention conflict was found by it: daObjKm2_Ami_Bou_c_classInit's vptr store (historical alias daObjKm2_Ami_Bou_c_Spawn) had to become (int)(_ZTV18daObjKm2_Ami_Bou_c + 2). See the report's 'What consolidation forced' section.",
     "PoleLift_ClsnFile (0x021131d0) and PoleLift_ModelFile (0x021131d8) are coined names on daObjKm2_Nobiru_c's KCL/BMD handles. This TU does not reference them. --with-derived was not applied to those two symbols.",
     "PROMOTED 2026-09-17. Class renamed PoleLift -> daObjKm2_Ami_Bou_c (ROM _ZTS at 0x02112d80). Dest src/game/actors/d_a_obj_km2_ami_bou.cpp. Text-only: _ZTV/_ZTI/_ZTS licensed deadstrip-data at unchanged symbols.txt addresses. Factory is return new.",
-    "daObjKm2_Ami_Bou_c_classInit and g_profile_KM2_AMI_BOU are reconstructed source-style names: SM64DS proves the RTTI class, KM2_AMI_BOU registry ID, descriptor/factory relationship, allocation size, and vtable identity; later EAD lineage supplies the spelling prior. Exact original SM64DS spellings are not preserved. Historical aliases were PoleLift_Spawn and PoleLift_SpawnInfo. Coined C names: no param-type claim. Member mangles are Ev (no argument types)."
+    "daObjKm2_Ami_Bou_c_classInit and g_profile_KM2_AMI_BOU are reconstructed source-style names: SM64DS proves the RTTI class, KM2_AMI_BOU registry ID, descriptor/factory relationship, allocation size, and vtable identity; later EAD lineage supplies the spelling prior. Exact original SM64DS spellings are not preserved. Historical aliases were PoleLift_Spawn and PoleLift_SpawnInfo. Coined C names: no param-type claim. Member mangles are Ev (no argument types).",
+    "FOLDED 2026-10-01: g_profile_KM2_AMI_BOU moved into this TU as AmiBouSpawnInfo (0x1c at ov045:0x02112d98). The profile fold forced the .data claim to span ZTS + profile + vtable (0x02112d80..0x02112e3c, 0xbc), which pulled the class's own _ZTS/_ZTV from compiler-only deadstrip into licensed data and flipped production_mode to intact-object. 34 relocations rows added. tubuild verify 7/7 TEXT-VERIFIED; linkcheck SCRATCH-DATA-VERIFIED (both ranges 0 differing bytes, full ROM matchesStockRom: true). Copied from daObjKm2_Gura_c."
   ],
   "partial_isolation": {
+    "note": "PRE-FOLD ARTEFACT (2026-09-17). This was a text-only partial-isolation round. After the 2026-10-01 profile fold the TU is intact-object; the current whole-TU linkcheck is the `linkcheck` block above (scratch-data-verified). The partial-isolation result is retained for history but no longer describes the current production state.",
     "round": "tools/tubuild.py linkcheck --partial -- one compile of the consolidated source, objisolate.derive per licensed function, each derived object substituted for the production per-function object at its own existing path, then scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
     "delinksChanged": false,
     "derivedObjects": 7,
@@ -510,5 +493,347 @@
     "state": "partial-link-verified",
     "stateMeaning": "contribution-equivalent, AND a scratch link with the N derived objects substituted at the N per-function object paths reproduces the module (and the ROM) byte-for-byte, with config/**/delinks.txt UNCHANGED",
     "axisNote": "Orthogonal to `status` (plan sec 6). This entry's `status` describes whole-range linking; this block describes a source consolidation whose linker contribution stays per-function."
-  }
+  },
+  "relocations": [
+    {
+      "section": ".data",
+      "source": "0x02112d98",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "daObjKm2_Ami_Bou_c_classInit",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x02111808"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112db8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZTI18daObjKm2_Ami_Bou_c",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x02112d74"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dbc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN18daObjKm2_Ami_Bou_c13InitResourcesEv",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x02111738"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dc0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c19BeforeInitResourcesEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011268"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dc4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c18AfterInitResourcesEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011244"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dc8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN18daObjKm2_Ami_Bou_c16CleanupResourcesEv",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x021115b8"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dcc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c22BeforeCleanupResourcesEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011220"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dd0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c21AfterCleanupResourcesEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02011214"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dd4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN18daObjKm2_Ami_Bou_c8BehaviorEv",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x02111618"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dd8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c14BeforeBehaviorEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010fd4"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112ddc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c13AfterBehaviorEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010fc8"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112de0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN18daObjKm2_Ami_Bou_c6RenderEv",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x021115f0"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112de4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c12BeforeRenderEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010f78"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112de8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c11AfterRenderEj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010f6c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dec",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c16OnPendingDestroyEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02043ac0"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112df0",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c9Virtual34Ejj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0204357c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112df4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c9Virtual38Ejj",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0204349c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112df8",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN7fBase_c13OnHeapCreatedEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02043494"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112dfc",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN18daObjKm2_Ami_Bou_cD1Ev",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x0211150c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e00",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN18daObjKm2_Ami_Bou_cD0Ev",
+      "addend": 0,
+      "target_module": "ov045",
+      "target_address": "0x02111558"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e04",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c13OnYoshiTryEatEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010160"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e08",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c13OnTurnIntoEggER6Player",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010154"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e0c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c9Virtual50Ev",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201014c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e10",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c15OnGroundPoundedERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010148"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e14",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c11OnAttacked1ERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010144"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e18",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c11OnAttacked2ERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010140"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e1c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c8OnKickedERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201013c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e20",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c8OnPushedERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010138"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e24",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c24OnHitByCannonBlastedCharERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010134"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e28",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c15OnHitByMegaCharER6Player",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010130"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e2c",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c19OnHitFromUnderneathERS_",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x0201012c"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e30",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c16OnAimedAtWithEggEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x02010124"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e34",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN8dActor_c25OnAimedAtWithEggReturnVecEv",
+      "addend": 0,
+      "target_module": "arm9",
+      "target_address": "0x020100dc"
+    },
+    {
+      "section": ".data",
+      "source": "0x02112e38",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "_ZN10dBgActor_c4KillEv",
+      "addend": 0,
+      "target_module": "overlays(2,7)",
+      "target_address": "0x020ee55c"
+    }
+  ]
 }

@@ -21,7 +21,8 @@
  *
  * SM64DS RTTI names the implementation daBasabasa_c. The factory
  * daBasabasa_c_classInit (historical alias Swoop_Spawn) constructs it for
- * the BASABASA registry profile.
+ * the BASABASA registry profile; it is the last function of
+ * src/actors/daBasabasa_c.cpp.
  */
 
 #include "dEnemyBase_c.h"
@@ -70,6 +71,10 @@ struct daBasabasa_c : dEnemyBase_c {
     int InitResources();
     void OnPendingDestroy();
     int Render();
+
+    /* The address is the name. The first argument is this swoop. */
+    void func_ov065_0211704c();
+    void func_ov065_02117994();
 
     /* Coined names. SetState enters a state; the four states follow, each
        as its enter and execute pair. */

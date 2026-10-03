@@ -1,197 +1,272 @@
 {
   "id": "ov002/dPathLiftActor_c",
   "module": "ov002",
-  "source": "src_tu/actors/dPathLiftActor_c.cpp",
+  "source": "src/actors/dPathLiftActor_c.cpp",
   "promoted_source": "src/actors/dPathLiftActor_c.cpp",
-  "status": "text-verified",
+  "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "contiguous linker run: 0x20ef320..0x20eff90, 22 function(s), from build/tu_map.json (tools/tu_map.py)",
-    "class label(s): dPathLiftActor_c (ROM RTTI)",
-    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "Contiguous production slice ov002:0x020ef3ec..0x020effb8: 19 dPathLiftActor_c methods and the existing func_ov002_020eff90 C bridge.",
+    "Original 22-function promotion fails production ownership: emitted inline destructor order differs from the retail D0/D1 order. Both legacy destructor owners remain enrolled.",
+    "dPathLiftActor_c identity is ROM RTTI evidence; original whole-TU boundary and complete lifecycle/state-data ownership remain unresolved."
   ],
   "sections": [
     {
       "name": ".text",
-      "start": "0x020ef320",
+      "start": "0x020ef3ec",
       "end": "0x020effb8"
     }
   ],
   "functions": [
     {
-      "symbol": "_ZN16dPathLiftActor_cD0Ev",
-      "address": "0x020ef320",
-      "size": "0x00000070",
-      "legacy_source": "src/_ZN16dPathLiftActor_cD0Ev.cpp",
-      "ordinal": 0
-    },
-    {
-      "symbol": "_ZN16dPathLiftActor_cD1Ev",
-      "address": "0x020ef390",
-      "size": "0x0000005c",
-      "legacy_source": "src/_ZN16dPathLiftActor_cD1Ev.cpp",
-      "ordinal": 1
-    },
-    {
       "symbol": "_ZN16dPathLiftActor_c9StateWaitEv",
       "address": "0x020ef3ec",
       "size": "0x00000004",
       "legacy_source": "src/func_ov002_020ef3ec.c",
-      "ordinal": 2
+      "ordinal": 0
     },
     {
       "symbol": "_ZN16dPathLiftActor_c13StateWaitInitEv",
       "address": "0x020ef3f0",
       "size": "0x00000018",
       "legacy_source": "src/func_ov002_020ef3f0.c",
-      "ordinal": 3
+      "ordinal": 1
     },
     {
       "symbol": "_ZN16dPathLiftActor_c9StateFallEv",
       "address": "0x020ef408",
       "size": "0x00000174",
       "legacy_source": "src/func_ov002_020ef408.c",
-      "ordinal": 4
+      "ordinal": 2
     },
     {
       "symbol": "_ZN16dPathLiftActor_c13StateFallInitEv",
       "address": "0x020ef57c",
       "size": "0x000000f4",
       "legacy_source": "src/func_ov002_020ef57c.c",
-      "ordinal": 5
+      "ordinal": 3
     },
     {
       "symbol": "_ZN16dPathLiftActor_c9StatePathEv",
       "address": "0x020ef670",
       "size": "0x000003d4",
       "legacy_source": "src/func_ov002_020ef670.c",
-      "ordinal": 6
+      "ordinal": 4
     },
     {
       "symbol": "_ZN16dPathLiftActor_c13StatePathInitEv",
       "address": "0x020efa44",
       "size": "0x00000010",
       "legacy_source": "src/func_ov002_020efa44.c",
-      "ordinal": 7
+      "ordinal": 5
     },
     {
       "symbol": "_ZN16dPathLiftActor_c8SetStateEi",
       "address": "0x020efa54",
       "size": "0x0000004c",
       "legacy_source": "src/func_ov002_020efa54.cpp",
-      "ordinal": 8
+      "ordinal": 6
     },
     {
       "symbol": "_ZN16dPathLiftActor_c12BaseBehaviorEv",
       "address": "0x020efaa0",
       "size": "0x00000050",
       "legacy_source": "src/_ZN16dPathLiftActor_c12BaseBehaviorEv.cpp",
-      "ordinal": 9
+      "ordinal": 7
     },
     {
       "symbol": "_ZN16dPathLiftActor_c17BaseInitResourcesEv",
       "address": "0x020efaf0",
       "size": "0x000000ec",
       "legacy_source": "src/func_ov002_020efaf0.cpp",
-      "ordinal": 10
+      "ordinal": 8
     },
     {
       "symbol": "_ZN16dPathLiftActor_c9ResetPathEv",
       "address": "0x020efbdc",
       "size": "0x00000098",
       "legacy_source": "src/func_ov002_020efbdc.c",
-      "ordinal": 11
+      "ordinal": 9
     },
     {
       "symbol": "_ZN16dPathLiftActor_c16RenderPathModelsEv",
       "address": "0x020efc74",
       "size": "0x00000080",
       "legacy_source": "src/func_ov002_020efc74.cpp",
-      "ordinal": 12
+      "ordinal": 10
     },
     {
       "symbol": "_ZN16dPathLiftActor_c16UpdatePathModelsEv",
       "address": "0x020efcf4",
       "size": "0x00000174",
       "legacy_source": "src/func_ov002_020efcf4.c",
-      "ordinal": 13
+      "ordinal": 11
     },
     {
       "symbol": "_ZNK16dPathLiftActor_c16HasNonzeroAngleZEv",
       "address": "0x020efe68",
       "size": "0x00000014",
       "legacy_source": "src/func_ov002_020efe68.c",
-      "ordinal": 14
+      "ordinal": 12
     },
     {
       "symbol": "_ZNK16dPathLiftActor_c14Param10ModeIs1Ev",
       "address": "0x020efe7c",
       "size": "0x00000020",
       "legacy_source": "src/func_ov002_020efe7c.c",
-      "ordinal": 15
+      "ordinal": 13
     },
     {
       "symbol": "_ZNK16dPathLiftActor_c14Param12ModeIs1Ev",
       "address": "0x020efe9c",
       "size": "0x00000020",
       "legacy_source": "src/func_ov002_020efe9c.c",
-      "ordinal": 16
+      "ordinal": 14
     },
     {
       "symbol": "_ZNK16dPathLiftActor_c14Param08ModeIs2Ev",
       "address": "0x020efebc",
       "size": "0x00000020",
       "legacy_source": "src/func_ov002_020efebc.c",
-      "ordinal": 17
+      "ordinal": 15
     },
     {
       "symbol": "_ZNK16dPathLiftActor_c17Param08ModeIs1Or2Ev",
       "address": "0x020efedc",
       "size": "0x00000028",
       "legacy_source": "src/func_ov002_020efedc.c",
-      "ordinal": 18
+      "ordinal": 16
     },
     {
       "symbol": "_ZNK16dPathLiftActor_c11IsUnk42cSetEv",
       "address": "0x020eff04",
       "size": "0x00000014",
       "legacy_source": "src/func_ov002_020eff04.cpp",
-      "ordinal": 19
+      "ordinal": 17
     },
     {
       "symbol": "_ZN16dPathLiftActor_c9AfterClsnEi",
       "address": "0x020eff18",
       "size": "0x00000078",
       "legacy_source": "src/_ZN16dPathLiftActor_c9AfterClsnEi.cpp",
-      "ordinal": 20
+      "ordinal": 18
     },
     {
       "symbol": "func_ov002_020eff90",
       "address": "0x020eff90",
       "size": "0x00000028",
       "legacy_source": "src/func_ov002_020eff90.cpp",
-      "ordinal": 21
+      "ordinal": 19
     }
   ],
   "data": [],
   "bss": [],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0",
+      "reason": "include/types.h declares an empty ~Vector3(), so every automatic Vector3 in this TU odr-uses it: StatePath declares six (prev, node, diff1, diff2, scaled1, scaled2), UpdatePathModels declares node and the block-scoped diff it hands to Vec3_Sub, and RenderPathModels copies data_ov002_0210af00 into the by-value local it passes to Model::Render. mwccarm therefore re-emits Vector3's vague-linkage D1 (4 bytes, bx lr, STB_LOPROC, no relocation and no caller in this object) alongside the licensed text. tools/relocs.py load_symbol_homes reports exactly one configured home for this spelling, arm9:0x020072c0 kind:function(arm,size=0x4), owned by an already-enrolled source; rombuild byte-compares this object's body against those cartridge bytes and refuses anything but byte-identical vague-linkage output before discarding the duplicate."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x2086d70",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x2086e60",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x2086e54",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x208e384",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x2086e78",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTI10dBgActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x21089ec",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTS10dBgActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x2108a04",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x208e390",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTI16dPathLiftActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x210af0c",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTS16dPathLiftActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x210af18",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZTV16dPathLiftActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x210af70",
+      "reason": "Compiler-emitted duplicate metadata with configured ROM home outside this text-only entry. Independently compare payload and relocated destinations against that home before discarding its duplicate storage; metadata ownership remains separate."
+    },
+    {
+      "symbol": "_ZN16dPathLiftActor_cD0Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "ov002",
+      "canonical_address": "0x020ef320",
+      "reason": "Preserved original legacy destructor owner supplies the retail body; proposed state-machine TU emits a byte-identical vague duplicate."
+    },
+    {
+      "symbol": "_ZN16dPathLiftActor_cD1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "ov002",
+      "canonical_address": "0x020ef390",
+      "reason": "Preserved original legacy destructor owner supplies the retail body; proposed state-machine TU emits a byte-identical vague duplicate."
+    }
+  ],
   "notes": [
-    "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
-    "tubuild create warning: RAW: src/func_ov002_020efaf0.cpp (func_ov002_020efaf0) did not split (scanned to end of file without finding a function body); carried verbatim -- its own includes/declarations stay inside its member block",
-    "tubuild create warning: RAW: src/func_ov002_020eff04.cpp (func_ov002_020eff04) did not split (scanned to end of file without finding a function body); carried verbatim -- its own includes/declarations stay inside its member block",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov002_020efe68' differs between the legacy file that used to hold func_ov002_020ef408 and the one that held func_ov002_020ef57c; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'DecIfAbove0_Short' differs between the legacy file that used to hold func_ov002_020ef408 and the one that held func_ov002_020ef670; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_HorzDist' differs between the legacy file that used to hold func_ov002_020ef57c and the one that held func_ov002_020ef670; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_Z14ApproachLinearRsss' differs between the legacy file that used to hold func_ov002_020ef408 and the one that held func_ov002_020ef670; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov002_020efe9c' differs between the legacy file that used to hold func_ov002_020efc74 and the one that held func_ov002_020efcf4; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration '_ZNK7PathPtr7GetNodeER7Vector3j' differs between the legacy file that used to hold func_ov002_020ef670 and the one that held func_ov002_020efcf4; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_Sub' differs between the legacy file that used to hold func_ov002_020ef670 and the one that held func_ov002_020efcf4; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'LenVec3' differs between the legacy file that used to hold func_ov002_020ef670 and the one that held func_ov002_020efcf4; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov002_020efedc' differs between the legacy file that used to hold func_ov002_020efbdc and the one that held _ZN8PathLift9AfterClsnEv; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'DecIfAbove0_Byte' differs between the legacy file that used to hold func_ov002_020ef408 and the one that held _ZN8PathLift9AfterClsnEv; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'func_ov002_020efa54' differs between the legacy file that used to hold func_ov002_020efbdc and the one that held _ZN8PathLift9AfterClsnEv; kept the first, the other is commented out for review",
-    "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov002_020efa54 and the one that held func_ov002_020efa54; kept the first, the other is commented out for review",
-    "tubuild reconcile note: the conflict markers the warnings above were frozen against are no longer present in src_tu/actors/dPathLiftActor_c.cpp. They were reconciled in place and the notes were not updated at the time, so the entry claimed open conflicts that no longer existed. Marked (RESOLVED) rather than deleted, so the record that two legacy files disagreed about these names survives. Checked by tools/check_tubuild_conflicts.py."
+    "Partial production promotion, not completion of the class/TU assignment.",
+    "Retain src/_ZN16dPathLiftActor_cD0Ev.cpp and src/_ZN16dPathLiftActor_cD1Ev.cpp as canonical destructor owners.",
+    "Retain state data data_ov002_0210af2c and src/__sinit_ov002_021071f4.c as existing owners. Compiler-only metadata is measured at configured ROM homes; no coined or unowned metadata waiver.",
+    "Follow-up: independently reconstruct the complete lifecycle and state-data TU boundary; current 20-function slice is the verified useful subset.",
+    "The 17 helper member names are inferred from matched bodies/state-table use; RTTI proves dPathLiftActor_c class identity, not original English member spellings. Const qualification on HasNonzeroAngleZ, Param10ModeIs1, Param12ModeIs1, Param08ModeIs2, Param08ModeIs1Or2 and IsUnk42cSet is inferred from read-only bodies; ARM bytes cannot distinguish the original qualification. SetState(int) uses an inferred int spelling for a word-sized argument."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -199,21 +274,75 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov002-dPathLiftActor_c/dPathLiftActor_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 22,
-    "functions_declared": 22,
+    "functions_matched": 20,
+    "functions_declared": 20,
     "compilerOnlyOutput": {
-      "requested": [],
-      "unhandled": [
+      "requested": [
         "_ZN7Vector3D1Ev",
-        "__sinit_dPathLiftActor_c.cpp"
+        "_ZN16dPathLiftActor_cD0Ev",
+        "_ZN16dPathLiftActor_cD1Ev"
       ],
-      "data": []
+      "deadstripped": [
+        "_ZN16dPathLiftActor_cD0Ev",
+        "_ZN16dPathLiftActor_cD1Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        34
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTI10dBgActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTI8dActor_c",
+        "_ZTI16dPathLiftActor_c",
+        "_ZTS16dPathLiftActor_c",
+        "_ZTV16dPathLiftActor_c"
+      ],
+      "dataExternalized": [
+        "_ZTI10dBgActor_c",
+        "_ZTI16dPathLiftActor_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTS16dPathLiftActor_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV16dPathLiftActor_c"
+      ]
     },
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 25 unlicensed section/symbol(s), 2 compiler-only policy error(s)",
-      "functions_occur_in_expected_order": "PARTIAL -- ordinal pair(s) not in ROM order: [(0, 1)]",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
       "relocation_destinations_verified": "PASS"
     }
   }

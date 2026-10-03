@@ -215,7 +215,7 @@ src/func_ov006_02115830.c
 src/func_ov006_02115a5c.c
 src/func_ov006_02115b0c.c
 src/_ZN16dScMgSmartball_c8BehaviorEv.cpp
-src/_ZN16dScMgSmartball_c9Virtual7CEv.cpp
+src/actors/dScMgSmartball_c.cpp
 # Run mg5, lane INTEG: dScMgSmartball_c::InitResources, vtable slot 0 (branch
 # decomp/smb-bodies, NONMATCHING, the flagged weak point). Plain C carrying the
 # mangled symbol; the _ZN16dScMgSmartball_c13InitResourcesEv trap name is aliased onto it in

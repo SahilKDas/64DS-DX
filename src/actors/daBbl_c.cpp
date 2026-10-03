@@ -26,7 +26,7 @@
  * WHY THIS IS ONE TRANSLATION UNIT: the run 0x021185c0..0x02118b50 is
  * contiguous. Its left edge is the first instruction after daObjFl_KomaU_c's
  * own factory, where that class's run stops; its right edge is the first
- * instruction of daBbl_c's neighbour BowserPuzzlePiece. Every function inside
+ * instruction of daBbl_c's neighbour daObjFl_Puzzle_c. Every function inside
  * it is either a named daBbl_c member, this class's factory, or one of the
  * five still-unnamed hooks the class reaches only through its own state
  * pointer at 0x300 -- no foreign class appears anywhere in the span.

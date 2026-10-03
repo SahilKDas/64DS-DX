@@ -180,7 +180,7 @@
     "Complete licensed text is ov002:[0x020b9e64,0x020baa2c),20 functions/3016 bytes. Callback/state initializer/factory bodies after the endpoint remain outside this TU.",
     "The12 recorded declaration conflicts are resolved: void state transition and void PMF handler; actual int Event::ClearBit; shared fixed-point scalar aliases; real Sound::PlayBank3 reference, dBgActor_c method and SharedFilePtr resource. The shared decl_common.h still calls the callback an integer object; this TU no longer includes that incompatible declaration. No shared-header change or waiver is made.",
     "Existing body/helper symbol identities and original rename ancestry a6e6eb8379738f97c6b62e558d028b23a0820128 are retained. daObjSwitch_c comes from retail RTTI; field labels and SwitchResources/StateEntry labels describe observed use, not recovered identifiers.",
-    "SS2874-08: StarMarker InitResources now declares shared data_ov002_0211092c as SharedFilePtr using the existing header. This is a caller declaration repair at ov002:[020eb204,020eb63c), with complete object identity and strict bytes proved; no new mismatch bank or shared-header edit."
+    "SS2874-08: daStarBase_c InitResources now declares shared data_ov002_0211092c as SharedFilePtr using the existing header. This is a caller declaration repair at ov002:[020eb204,020eb63c), with complete object identity and strict bytes proved; no new mismatch bank or shared-header edit."
   ],
   "verification": {
     "round": "PR2874 producer: whole promoted TU compiled once; strict20 and direct metadata proof in notes/experiments/pr2874-source-repair-0920.json",

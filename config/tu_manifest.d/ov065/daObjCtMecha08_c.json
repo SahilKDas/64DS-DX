@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x211b7f0..0x211bb7c, 6 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daObjCtMecha08_c",
-    "module sinit corroboration: 10 sinit(s) / 10 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 10 sinit(s) / 10 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold (0930c): the two registry factories daObjCtMecha08_c_classInit_CT_MECHA08B (0x0211bb7c, 0x30) and daObjCtMecha08_c_classInit_CT_MECHA08A (0x0211bbac, 0x30) abut this TU's former end 0x0211bb7c with no gap and nothing between them; tu_map left them in their own unlabelled unit because it cuts on symbol name. Both construct this class (operator new(0x330), dBgActor_c C2, _ZTV16daObjCtMecha08_c store). The widened range 0x0211b7f0..0x0211bbdc ends where the daObjCtMecha09_c TU (src/actors/daObjCtMecha09_c.cpp) begins."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x0211b7f0",
-      "end": "0x0211bb7c"
+      "end": "0x0211bbdc"
     }
   ],
   "functions": [
@@ -59,6 +60,20 @@
       "size": "0x000000f4",
       "legacy_source": "src/_ZN16daObjCtMecha08_c13InitResourcesEv.cpp",
       "ordinal": 5
+    },
+    {
+      "symbol": "daObjCtMecha08_c_classInit_CT_MECHA08B",
+      "address": "0x0211bb7c",
+      "size": "0x00000030",
+      "legacy_source": "src/d_a_obj_ct_mecha08_ct_mecha08b.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "daObjCtMecha08_c_classInit_CT_MECHA08A",
+      "address": "0x0211bbac",
+      "size": "0x00000030",
+      "legacy_source": "src/d_a_obj_ct_mecha08_ct_mecha08a.c",
+      "ordinal": 7
     }
   ],
   "data": [],
@@ -70,7 +85,8 @@
     "InitResources was enrolled without `complete` before this promotion: its CLPS-block load (from:0x0211bb68) is an ambiguous relocation, `module:overlays(12,13,24,33,35,43,47,52,53,56)`, and the legacy source spelled it with the invented name func_021121b8, which no symbols.txt defines (config/unresolved-baseline.json). tools/overlay_residency.py settle() narrows the ten candidates to ov035 -- the Tick Tock Clock level overlay, whose own daObjCtMecha10_c uses the neighbouring CLPS block data_ov035_021121d8 -- so the TU names data_ov035_021121b8. The promoted entry is `complete`.",
     "Codegen levers carried from the legacy Behavior and re-measured in TU context: the clamp keeps the ROM's goto shape, and the mMoveDir toggle goes through a laundered integer address (the member spelling changes the function's size).",
     "Deliberately left mangled: dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange each take Fix12<int> by value, and a real method call homes the argument and size-DIFFs the caller (the wall 6az that include/dBgW_KcMbg.h and src/actors/daObjCtMecha10_c.cpp both record). DecIfAbove0_Short and RandomIntInternal have no header home and keep their linker names.",
-    "This entry licenses .text only. ov065's .data is not claimed here, so the class vtable and the whole __si_class_type_info chain the compiler drags in with it are compiler-only output, each row naming the cartridge copy it duplicates."
+    "This entry licenses .text only. ov065's .data is not claimed here, so the class vtable and the whole __si_class_type_info chain the compiler drags in with it are compiler-only output, each row naming the cartridge copy it duplicates.",
+    "classInit fold (0930c): both factories are folded in as `return new daObjCtMecha08_c();` (no user-declared constructor). This file has no `#pragma defer_codegen off` and emits in reverse source order, so they are written at the top, CT_MECHA08A first and CT_MECHA08B second, ahead of InitResources. The new-expression makes mwccarm emit _ZN10dBgActor_cD2Ev, licensed as a compiler_only_output deadstrip row. tubuild verify: 8/8 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_obj_ct_mecha08_ct_mecha08b.c and src/d_a_obj_ct_mecha08_ct_mecha08a.c; their credit carries in attribution.json as path#symbol overrides."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -78,11 +94,15 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov065-daObjCtMecha08_c/daObjCtMecha08_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 6,
-    "functions_declared": 6,
+    "functions_matched": 8,
+    "functions_declared": 8,
     "compilerOnlyOutput": {
-      "requested": [],
-      "deadstripped": [],
+      "requested": [
+        "_ZN10dBgActor_cD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN10dBgActor_cD2Ev"
+      ],
       "droppedSections": [
         5,
         6,
@@ -100,7 +120,9 @@
         18,
         19,
         20,
-        21
+        21,
+        35,
+        36
       ],
       "data": [
         "_ZTV16daObjCtMecha08_c",
@@ -211,6 +233,11 @@
     }
   },
   "compiler_only_output": [
+    {
+      "symbol": "_ZN10dBgActor_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "classInit fold (0930c): each daObjCtMecha08_c_classInit_* factory's `new daObjCtMecha08_c()` instantiates the class, so mwccarm emits dBgActor_c's vague-linkage base-object destructor helper (the same byproduct licensed for ov091/daObjSimpleLift_c and documented in src/actors/daObjHatenaBlock_c.cpp). No configured ROM symbol of that name exists and nothing relocates to it."
+    },
     {
       "symbol": "_ZTV16daObjCtMecha08_c",
       "disposition": "deadstrip-data",

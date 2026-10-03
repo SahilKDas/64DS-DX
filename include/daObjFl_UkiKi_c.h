@@ -4,7 +4,7 @@
 #include "types.h"
 #include "dBgActor_c.h"
 
-/* Lethal Lava Land bobbing plank (registry profile FL_UKI_KI, actor 82): a
+/* Lethal Lava Land bobbing platform (registry profile FL_UKI_KI, actor 82): a
  * dBgActor_c whose Behavior drives mPosY off the shared sine table and drags
  * the mesh collider along with it.
  *
@@ -30,7 +30,7 @@
 struct daObjFl_UkiKi_c : dBgActor_c {
     /* dBgActor_c's fields end at 0x31e; mOriginalPosY needs 4-byte alignment. */
     u8  pad_31e[0x2];
-    /* Where InitResources found the plank. Behavior rebuilds mPosY from this
+    /* Where InitResources found the platform. Behavior rebuilds mPosY from this
        rest height plus the sine term, so the bob never accumulates drift. */
     s32 mOriginalPosY;  /* 0x320 */
     /* Seeded from mAngleX, += 0x400 per Behavior; (u16)>>4 indexes the shared
@@ -42,7 +42,7 @@ struct daObjFl_UkiKi_c : dBgActor_c {
        with _ZTI15daObjFl_UkiKi_c and _ZTS15daObjFl_UkiKi_c as vague linkage.
        All three are the cartridge's own spellings and carry configured ROM
        homes in ov022, so they license as deadstrip-data and the whole
-       six-function run isolates as one object.
+       run isolates as one object.
 
        Inline and empty is what puts D1 ahead of D0, the cartridge's order:
        written out of line mwccarm emits the synthesized D0 first, which

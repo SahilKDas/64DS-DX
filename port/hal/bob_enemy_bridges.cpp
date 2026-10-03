@@ -257,7 +257,6 @@ void _ZN10dBgCh_Actr22ClearJustHitGroundFlagEv(void *self)
    _ZN10dCapIcon_cC1Ev, and the reloc at arm9 0x02006574 says module:overlay(1)
    outright; func_020aea30 is ov002's, and the port hosts that one
    (port/unmatched/Enemy_UpdateDeath.cpp). */
-#pragma comment(linker, "/alternatename:_func_020ff028=_data_ov002_020ff028")
 #pragma comment(linker, "/alternatename:_func_020aea30=_func_ov002_020aea30")
 #pragma comment(linker, "/alternatename:?data_0209fc68@@3HA=_data_0209fc68")
 #pragma comment(linker, "/alternatename:?data_0209f2d8@@3HA=_data_0209f2d8_c")
@@ -300,7 +299,6 @@ DSSTATE_END
    overwrites it two lines later, so nothing is ever dispatched through it --
    the same reading data_ov002_021081e4 (Enemy's) already has. Its D0 spells it
    by the RTTI name, so both spellings have to resolve to one object. */
-#pragma comment(linker, "/alternatename:__ZTV11dCapEnemy_c=_data_ov002_02108284")
 #pragma comment(linker, "/alternatename:?data_0209f344@@3PAEA=_data_0209f344")
 #pragma comment(linker, "/alternatename:?data_0209f284@@3EA=_data_0209f284")
 #pragma comment(linker, "/alternatename:?data_0209d6d4@@3GA=_data_0209d6d4")

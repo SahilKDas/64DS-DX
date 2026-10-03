@@ -1,14 +1,21 @@
 //cpp
-/* Princess Peach in the castle courtyard (ov085/daPeach_c), 25
- * functions: states, talk, model, factory. Source ROM-ascending
- * under defer_codegen off (D1 below D0, no D2). Do not reorder.
+/* daPeach_c: Princess Peach in the castle courtyard (ov085, registry
+ * profile PEACH_PRINCESS). 25 functions: states, talk, model, factory.
  *
- * deslop
- * Leftover: the func_ov085 helper keeps its linker name; the
- *   ModelAnim SetAnim/Advance calls keep computed spellings
- *   (by-value Fix12<int> parameters, wall 6az).
- * Leftover: raw offsets on c (state bytes, second anim) are
- *   unrecovered header fields.
+ * Source is ROM-ascending under defer_codegen off (D1 below D0, no D2). Do
+ * not reorder. The class is built from five state pairs (InitStateN /
+ * StateN); SetState selects one, and each state writes its own code
+ * (0..4) into mStateValue.
+ *
+ * Known limits:
+ * - func_ov085_02129f8c keeps its linker name; it is the one function here
+ *   the cartridge does not name, so it stays a C-linkage free function taking
+ *   `char *`.
+ * - ModelAnim::SetAnim is called by its mangled name and the ModelAnim/
+ *   Animation views are reached by cast: both take Fix12<int> by value (see
+ *   notes/mwccarm-codegen.md 6az).
+ * - Offsets 0xa4, 0xac (dActor_c's unk_0a4 / unk_0ac) and 0xe8 (inside the
+ *   Model's ModelComponents) are still read raw, through words[] and a cast.
  */
 #include "common.h"
 #include "daPeach_c.h"
@@ -18,6 +25,8 @@
 #include "Animation.h"
 #include "dCc_c.h"
 #include "types.h"
+
+bool ApproachLinear(short &value, short target, short step);
 
 struct BMD_File;
 struct Vector3_16;
@@ -43,7 +52,6 @@ extern int AngleDiff(int, int);
 extern int Vec3_HorzDist(const void *a, const void *b);
 extern short Vec3_HorzAngle(const void *a, const void *b);
 extern short Vec3_VertAngle(const void *a, const void *b);
-extern int _Z14ApproachLinearRsss(short *dst, short target, short rate);
 extern int _ZN4cstd4fdivEii(int a, int b);
 extern void Matrix4x3_FromRotationY(void *m, int angle);
 extern void Matrix4x3_ApplyInPlaceToRotationY(void *m, short angY);
@@ -51,7 +59,7 @@ extern void Matrix4x3_ApplyInPlaceToRotationZ(void *m, short angZ);
 extern int data_020a0e68[];
 
 /* mesh collision */
-extern int dBgCh_Actr_UpdateContinuous_Veneer(void *c);
+extern void dBgCh_Actr_UpdateContinuous_Veneer(void *c);
 extern void *_ZNK10dBgCh_Actr14GetFloorResultEv(void *c);
 extern void *_ZNK10dBgCh_Actr13GetWallResultEv(void *c);
 extern void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
@@ -82,8 +90,6 @@ extern daPeach_c::StateFunc data_ov085_0213055c[];
 
 #pragma defer_codegen off
 
-/* ROM ordinals 0 and 1 -- _ZN9daPeach_cD1Ev 0x02129d18 size 0x48,
-                           _ZN9daPeach_cD0Ev 0x02129d60 size 0x5c */
 // @symbol _ZN9daPeach_cD1Ev
 // @symbol _ZN9daPeach_cD0Ev
 /* ONE declaration, TWO ROM functions. mwccarm emits the complete variant D1
@@ -119,77 +125,75 @@ void PeachDemandDeletingDtor(daPeach_c *peach)
  * straight ahead. The two ApproachLinear calls make the turn gradual. */
 void daPeach_c::UpdateLookAt()
 {
-    char *s = (char *)this;
-    Player *p = ClosestPlayer();
-    if (p == 0)
+    Player *player = ClosestPlayer();
+    if (player == 0)
         return;
-    Vector3 v;
-    Vector3 *psrc = (Vector3 *)(((long long)(int)((char *)p + 0x5c)));
-    v = *psrc;
-    int hd = Vec3_HorzDist(s + 0x5c, &v);
-    v.y = v.y - 0x1e000;
-    short ha = Vec3_HorzAngle(s + 0x5c, &v);
-    short va = Vec3_VertAngle(s + 0x5c, &v);
-    if (hd < 0x15e000 && AngleDiff(ha, *(short *)(s + 0x8e)) < 0x3000) {
-        *(short *)(s + 0x364) = va;
-        *(short *)(s + 0x366) = *(short *)(s + 0x8e) - ha;
+    Vector3 target;
+    Vector3 *playerPos = (Vector3 *)(((long long)(int)((char *)player + 0x5c)));
+    target = *playerPos;
+    int dist = Vec3_HorzDist(&mPosX, &target);
+    target.y = target.y - 0x1e000;
+    short yaw = Vec3_HorzAngle(&mPosX, &target);
+    short pitch = Vec3_VertAngle(&mPosX, &target);
+    if (dist < 0x15e000 && AngleDiff(yaw, mAngleY) < 0x3000) {
+        mTargetLookVertAngle = pitch;
+        mTargetLookHorzAngle = mAngleY - yaw;
     } else {
-        *(short *)(s + 0x364) = 0;
-        *(short *)(s + 0x366) = 0;
+        mTargetLookVertAngle = 0;
+        mTargetLookHorzAngle = 0;
     }
-    _Z14ApproachLinearRsss((short *)(s + 0x362), *(short *)(s + 0x366), 0x250);
-    _Z14ApproachLinearRsss((short *)(s + 0x360), *(short *)(s + 0x364), 0x100);
+    ApproachLinear(mLookHorzAngle, mTargetLookHorzAngle, 0x250);
+    ApproachLinear(mLookVertAngle, mTargetLookVertAngle, 0x100);
 }
 
-/* ROM ordinal 3 -- _ZN9daPeach_c21UpdateGroundCollisionEP10dBgCh_Actr,
-                    0x02129ebc, size 0xd0 */
 // @symbol _ZN9daPeach_c21UpdateGroundCollisionEP10dBgCh_Actr
 /* The floor normal becomes a pitch at +0xa8 so Peach stands square on a
  * slope. The wall branch reads its normal and drops it -- the ROM computes
  * the copy and uses nothing of it. */
 void daPeach_c::UpdateGroundCollision(dBgCh_Actr *clsn)
 {
-    int *self = (int *)this;
-    int n0[3];
-    int n1[3];
+    int *words = (int *)this;    /* 0xa4 and 0xac are dActor_c's unk_0a4 / unk_0ac */
+    int floorN[3];
+    int wallN[3];
     dBgCh_Actr_UpdateContinuous_Veneer(clsn);
     if (clsn->IsOnGround()) {
-        ((SurfaceInfo *)((char *)_ZNK10dBgCh_Actr14GetFloorResultEv(clsn) + 4))->CopyNormalTo(*(Vector3 *)n0);
-        if (n0[1] != 0) {
-            long long a = (long long)n0[0] * (long long)self[0xa4 / 4];
-            long long b = (long long)n0[2] * (long long)self[0xac / 4];
-            int x = (int)((a + 0x800) >> 12);
-            int y = (int)((b + 0x800) >> 12);
-            self[0xa8 / 4] = -(_ZN4cstd4fdivEii(x + y, n0[1]) + 0x8000);
+        ((SurfaceInfo *)((char *)_ZNK10dBgCh_Actr14GetFloorResultEv(clsn) + 4))->CopyNormalTo(*(Vector3 *)floorN);
+        if (floorN[1] != 0) {
+            long long xProd = (long long)floorN[0] * (long long)words[0xa4 / 4];
+            long long zProd = (long long)floorN[2] * (long long)words[0xac / 4];
+            int x = (int)((xProd + 0x800) >> 12);
+            int z = (int)((zProd + 0x800) >> 12);
+            mVertSpeed = -(_ZN4cstd4fdivEii(x + z, floorN[1]) + 0x8000);
         }
     }
     if (clsn->IsOnWall()) {
-        ((SurfaceInfo *)((char *)_ZNK10dBgCh_Actr13GetWallResultEv(clsn) + 4))->CopyNormalTo(*(Vector3 *)n1);
+        ((SurfaceInfo *)((char *)_ZNK10dBgCh_Actr13GetWallResultEv(clsn) + 4))->CopyNormalTo(*(Vector3 *)wallN);
     }
 }
 
 // @symbol func_ov085_02129f8c
-/* The one member of this TU the cartridge does not name: a free function with
- * C linkage, called by InitState0 and InitState4. It asks whether the actor
- * whose id sits at +0x184 is still alive and is still kind 0xbf. */
+/* Whether the actor whose id sits in mCylinder.otherOwner (+0x184) still
+ * exists and is kind 0xbf. The one member of this TU the cartridge does not
+ * name: a free function with C linkage, called by InitState0 and
+ * InitState4. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
 int func_ov085_02129f8c(char *c) {
     unsigned int id = *(unsigned int *)(c + 0x184);
     void *actor;
     unsigned short kind;
-    int r;
+    int alive;
     if (id == 0) return id;
     actor = dActor_c::FindWithID(id);
     if (actor == 0) return (int)actor;
-    kind = *(unsigned short *)((char *)actor + 0xc);
-    if (kind == 0xbf) r = 1; else r = 0;
-    /* Both paths return r. The cartridge still compares r with zero first;
-     * a single return lets the compiler delete that compare. */
-    if (r == 0)
+    kind = ((dActor_c *)actor)->actorID;
+    if (kind == 0xbf) alive = 1; else alive = 0;
+    /* Both paths return alive. The cartridge still compares it with zero
+     * first; a single return lets the compiler delete that compare. */
+    if (alive == 0)
         goto done;
-    return r;
+    return alive;
 done:
-    return r;
+    return alive;
 }
 }
 
@@ -201,37 +205,35 @@ done:
 void daPeach_c::UpdateModel()
 {
     char *c = (char *)this;
-    Matrix4x3_FromRotationY(c + 0xf0, *(short *)(c + 0x8e));
-    *(int *)(c + 0x114) = *(int *)(c + 0x5c) >> 3;
-    *(int *)(c + 0x118) = *(int *)(c + 0x60) >> 3;
-    *(int *)(c + 0x11c) = *(int *)(c + 0x64) >> 3;
+    Matrix4x3_FromRotationY(&mModelAnim.mat4x3, mAngleY);
+    mModelAnim.mat4x3.m[9] = mPosX >> 3;
+    mModelAnim.mat4x3.m[10] = mPosY >> 3;
+    mModelAnim.mat4x3.m[11] = mPosZ >> 3;
     *(PeachM48 *)data_020a0e68 = *(PeachM48 *)(*(char **)(c + 0xe8) + 0x360);
-    Matrix4x3_ApplyInPlaceToRotationY(data_020a0e68, *(short *)(c + 0x362));
-    Matrix4x3_ApplyInPlaceToRotationZ(data_020a0e68, *(short *)(c + 0x360));
+    Matrix4x3_ApplyInPlaceToRotationY(data_020a0e68, mLookHorzAngle);
+    Matrix4x3_ApplyInPlaceToRotationZ(data_020a0e68, mLookVertAngle);
     *(PeachM48 *)(*(char **)(c + 0xe8) + 0x360) = *(PeachM48 *)data_020a0e68;
     _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
-        c, c + 0x138, c + 0xf0, 0x8c000, 0x32000, 0xf);
+        this, &mShadowModel, &mModelAnim.mat4x3, 0x8c000, 0x32000, 0xf);
 }
 
 // @symbol _ZN9daPeach_c10InitState0Ev
 int daPeach_c::InitState0()
 {
-    char *c = (char *)this;
-    ((dActor_c *)c)->UpdatePos((dCc_c *)(c + 0x160));
+    UpdatePos((dCc_c *)&mCylinder);
     UpdateGroundCollision(&mWithMeshClsn);
-    func_ov085_02129f8c(c);
+    func_ov085_02129f8c((char *)this);
     return 1;
 }
 
 // @symbol _ZN9daPeach_c6State0Ev
 int daPeach_c::State0()
 {
-    char *c = (char *)this;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, data_ov085_021304ec[1], 0, 0x1000, 0);
-    ((Animation *)(c + 0x124))->SetFlags(0x40000000);
-    *(int *)(c + 0x98) = 0x4000;
-    *(int *)(c + 0xa8) = 0xa000;
-    *(int *)(c + 0x354) = 4;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)&mModelAnim, data_ov085_021304ec[1], 0, 0x1000, 0);
+    ((Animation *)&mModelAnim)->SetFlags(0x40000000);
+    mHorzSpeed = 0x4000;
+    mVertSpeed = 0xa000;
+    mStateValue = 4;
     return 1;
 }
 
@@ -244,63 +246,59 @@ int daPeach_c::State2()
 // @symbol _ZN9daPeach_c10InitState2Ev
 int daPeach_c::InitState2()
 {
-    char *c = (char *)this;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov085_021304e4[1], 0, 0x1000, 0);
-    *(int *)(c + 0x98) = 0x4000;
-    *(int *)(c + 0x354) = 3;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)&mModelAnim, (void *)data_ov085_021304e4[1], 0, 0x1000, 0);
+    mHorzSpeed = 0x4000;
+    mStateValue = 3;
     return 1;
 }
 
 // @symbol _ZN9daPeach_c10InitState4Ev
 int daPeach_c::InitState4()
 {
-    char *c = (char *)this;
-    short v = *(short *)(c + 0x8e);
-    *(short *)(c + 0x94) = v;
-    ((dActor_c *)c)->UpdatePos((dCc_c *)(c + 0x160));
+    short angY = mAngleY;
+    mPrevAngleY = angY;
+    UpdatePos((dCc_c *)&mCylinder);
     UpdateGroundCollision(&mWithMeshClsn);
-    func_ov085_02129f8c(c);
+    func_ov085_02129f8c((char *)this);
     return 1;
 }
 
 // @symbol _ZN9daPeach_c6State1Ev
 int daPeach_c::State1()
 {
-    char *c = (char *)this;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov085_021304c4[1], 0, 0x1000, 0);
-    *(int *)(c + 0x98) = 0x1800;
-    *(int *)(c + 0x354) = 2;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)&mModelAnim, (void *)data_ov085_021304c4[1], 0, 0x1000, 0);
+    mHorzSpeed = 0x1800;
+    mStateValue = 2;
     return 1;
 }
 
 // @symbol _ZN9daPeach_c6State3Ev
-/* The conversation, in three steps held in the u8 at +0x368: start the talk,
- * turn to face the player and put the message up, then wait for the player's
- * talk state to go back to -1. */
+/* The conversation, in three steps held in mTalkState: start the talk, turn
+ * to face the player and put the message up, then wait for the player's talk
+ * state to go back to -1. */
 int daPeach_c::State3()
 {
-    char *c = (char *)this;
-    Vector3 v;
-    switch (*(u8 *)(c + 0x368)) {
+    Vector3 msgPos;
+    switch (mTalkState) {
     case 0:
-        if (((daPeach_c *)c)->mTalkPlayer->StartTalk(*(fBase_c *)c, 1) != 0)
-            *(u8 *)(((int)c + 0x368)) += 1;
+        if (mTalkPlayer->StartTalk(*this, 1) != 0)
+            mTalkState += 1;
         break;
     case 1:
-        if (_Z14ApproachLinearRsss((s16 *)(c + 0x8e),
-                Vec3_HorzAngle((Vector3 *)(c + 0x5c),
-                               (Vector3 *)&((daPeach_c *)c)->mTalkPlayer->mPosX),
+        if (ApproachLinear(mAngleY,
+                Vec3_HorzAngle((Vector3 *)&mPosX,
+                               (Vector3 *)&mTalkPlayer->mPosX),
                 0x514) != 0) {
-            v.x = *(int *)(c + 0x5c);
-            v.y = *(int *)(c + 0x60);
-            v.z = *(int *)(c + 0x64);
-            v.y = v.y + 0xa0000;
-            if (((daPeach_c *)c)->mTalkPlayer->ShowMessage(*(fBase_c *)c, 0xd0, &v, 0, 0) != 0)
-                *(u8 *)(((int)c + 0x368)) += 1;
+            msgPos.x = mPosX;
+            msgPos.y = mPosY;
+            msgPos.z = mPosZ;
+            msgPos.y = msgPos.y + 0xa0000;
+            if (mTalkPlayer->ShowMessage(*this, 0xd0, &msgPos, 0, 0) != 0)
+                mTalkState += 1;
         }
         break;
     case 2:
-        if (((daPeach_c *)c)->mTalkPlayer->GetTalkState() == -1)
+        if (mTalkPlayer->GetTalkState() == -1)
             SetState(0);
         break;
     }
@@ -310,12 +308,11 @@ int daPeach_c::State3()
 // @symbol _ZN9daPeach_c10InitState1Ev
 int daPeach_c::InitState1()
 {
-    char *c = (char *)this;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)&((daPeach_c *)c)->mModelAnim, data_ov085_021304d4[1], 0, 0x1000, 0);
-    *(int *)(c + 0x12c) = 0;
-    ((Animation *)(c + 0x124))->Advance();
-    *(char *)(c + 0x368) = 1;
-    *(int *)(c + 0x354) = 1;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)&mModelAnim, data_ov085_021304d4[1], 0, 0x1000, 0);
+    ((Animation *)&mModelAnim)->currFrame = 0;
+    ((Animation *)&mModelAnim)->Advance();
+    mTalkState = 1;
+    mStateValue = 1;
     return 1;
 }
 
@@ -324,14 +321,13 @@ int daPeach_c::InitState1()
  * instead of called -- the ROM inlines it at this one site. */
 int daPeach_c::InitState3()
 {
-    char *c = (char *)this;
-    if (*(int *)(c + 0x180) & 0x8000000) {
-        char *a = (char *)dActor_c::FindWithID(*(unsigned int *)(c + 0x184));
+    if (mCylinder.hitFlags & 0x8000000) {
+        char *a = (char *)dActor_c::FindWithID(mCylinder.otherOwner);
         if (a) {
             int match = (((dActor_c *)a)->actorID == 0xbf) ? 1 : 0;
             if (match != 0) {
-                ((daPeach_c *)c)->mTalkPlayer = (Player *)a;
-                if (((daPeach_c *)c)->mTalkPlayer->StartTalk(*(fBase_c *)c, false)) {
+                mTalkPlayer = (Player *)a;
+                if (mTalkPlayer->StartTalk(*this, false)) {
                     SetState(1);
                 }
             }
@@ -343,9 +339,8 @@ int daPeach_c::InitState3()
 // @symbol _ZN9daPeach_c6State4Ev
 int daPeach_c::State4()
 {
-    char *c = (char *)this;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov085_021304bc[1], 0, 0x1000, 0);
-    *(int *)(c + 0x354) = 0;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj((char *)&mModelAnim, (void *)data_ov085_021304bc[1], 0, 0x1000, 0);
+    mStateValue = 0;
     return 1;
 }
 
@@ -428,22 +423,21 @@ int daPeach_c::Behavior()
  * pointer type, it is not an int. */
 int daPeach_c::InitResources()
 {
-    char *s = (char *)((dActor_c *)this);
     void *f = Model::LoadFile(*(SharedFilePtr *)&data_ov085_021304f4);
-    ((ModelBase *)(s + 0xd4))->SetFile((BMD_File *)f, 1, -1);
+    ((ModelBase *)&mModelAnim)->SetFile((BMD_File *)f, 1, -1);
     for (int i = 0; i < 7; i++)
         Animation::LoadFile(*(SharedFilePtr *)data_ov085_0212f280[i]);
     if (mShadowModel.InitCylinder() == 0)
         return 0;
     _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(
-        s + 0x160, ((dActor_c *)this), 0x90000, 0xc0000, 0x4800004, 0);
+        &mCylinder, this, 0x90000, 0xc0000, 0x4800004, 0);
     _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
-        s + 0x194, ((dActor_c *)this), 0x40000, 0x40000, (Vector3_16 *)0, (Vector3_16 *)0);
-    *(int *)(s + 0x9c) = -0x2000;
-    *(int *)(s + 0xa0) = -0x3c000;
-    *(int *)(s + 0x80) = 0x1000;
-    *(int *)(s + 0x84) = 0x1000;
-    *(int *)(s + 0x88) = 0x1000;
+        &mWithMeshClsn, this, 0x40000, 0x40000, (Vector3_16 *)0, (Vector3_16 *)0);
+    mVertAccel = -0x2000;
+    mTerminalVelocity = -0x3c000;
+    mScaleX = 0x1000;
+    mScaleY = 0x1000;
+    mScaleZ = 0x1000;
     SetState(0);
     UpdateModel();
     return 1;

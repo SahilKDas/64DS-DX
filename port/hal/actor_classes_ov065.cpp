@@ -1038,8 +1038,6 @@ void hal_fill_platform_vtable(void);
  * question and not a type one at this layer.
  */
 /* the four .text-pool CLPS blocks -> ov035's per-symbol mount */
-#pragma comment(linker, "/alternatename:?func_02112118@@3UCLPS_Block@@A=_data_ov035_02112118")
-#pragma comment(linker, "/alternatename:_func_021121b8=_data_ov035_021121b8")
 /* decorated free-function spellings -> the one C name each body defines */
 #pragma comment(linker, "/alternatename:?_ZN11ShadowModel10InitCuboidEv@@YAXPAX@Z=__ZN11ShadowModel10InitCuboidEv")
 #pragma comment(linker, "/alternatename:?_ZN7dBgW_Kc8LoadFileER13SharedFilePtr@@YAPAUKCL_File@@AAUSharedFilePtr@@@Z=__ZN7dBgW_Kc8LoadFileER13SharedFilePtr")

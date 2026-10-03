@@ -4,10 +4,10 @@
   "source": "src/actors/daObjMarioCap_c.cpp",
   "promoted_source": "src/actors/daObjMarioCap_c.cpp",
   "status": "promoted",
-  "boundary_confidence": "medium",
+  "boundary_confidence": "high",
   "boundary_evidence": [
-    "contiguous linker run: 0x020b6f18..0x020b8b98, 30 function(s), from build/tu_map.json (tools/tu_map.py)",
-    "PARTIAL: the licensed range is 0x020b6f18..0x020b86d0, 29 of those 30. _ZN15daObjMarioCap_c13InitResourcesEv (0x020b86d0, size 0x4c8) is held out -- its src/ shard does not reproduce under the pinned 2004/b56 compiler (build_pin.verify: 999 word(s) differ) and its delinks.txt block carries no complete marker. It is the TOP function of the run, so holding it out leaves one contiguous .text claim with no hole.",
+    "The whole daObjMarioCap_c run of ov002 .text, 0x020b6f18..0x020b8bf0, 31 functions: the tools/tu_map.py linker run 0x020b6f18..0x020b8b98 (30 functions, D1 through InitResources) plus the zero-gap registry factory daObjMarioCap_c_classInit (0x020b8b98, 0x58), folded as `return new daObjMarioCap_c();` through the class's leaf operator new. The previous delinks entry, src/game/actors/d_a_obj_waterfall.cpp, ends at 0x020b6f18 and the next one, src/game/actors/daObjPushblock_c.cpp, starts at 0x020b8bf0, so the unit is bounded by other classes on both sides.",
+    "_ZN15daObjMarioCap_c13InitResourcesEv (0x020b86d0, 0x4c8) was held out of the earlier 29-function claim; its delinks block carried no complete marker. It reproduces 0x4c8 for 0x4c8 with the two `(u32)param1` read-side casts its body documents, so it is folded and the claim is one contiguous range again.",
     "ROM class identity: _ZTS15daObjMarioCap_c / _ZTI15daObjMarioCap_c / _ZTV15daObjMarioCap_c live in ov002 outside this .text range, so the route is text-only plus a compiler_only_output policy.",
     "destructor direction: the cartridge orders D1 (0x020b6f18) BELOW D0 (0x020b6f68) and carries no D2 -- the reproducible direction for an inline in-class destructor.",
     "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU)"
@@ -16,7 +16,7 @@
     {
       "name": ".text",
       "start": "0x020b6f18",
-      "end": "0x020b86d0"
+      "end": "0x020b8bf0"
     }
   ],
   "functions": [
@@ -56,7 +56,7 @@
       "ordinal": 4
     },
     {
-      "symbol": "func_ov002_020b7200",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7200Ev",
       "address": "0x020b7200",
       "size": "0x00000130",
       "legacy_source": "src/func_ov002_020b7200.c",
@@ -70,14 +70,14 @@
       "ordinal": 6
     },
     {
-      "symbol": "func_ov002_020b74d0",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b74d0Ev",
       "address": "0x020b74d0",
       "size": "0x0000021c",
       "legacy_source": "src/func_ov002_020b74d0.c",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov002_020b76ec",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b76ecEv",
       "address": "0x020b76ec",
       "size": "0x00000130",
       "legacy_source": "src/func_ov002_020b76ec.c",
@@ -98,7 +98,7 @@
       "ordinal": 10
     },
     {
-      "symbol": "func_ov002_020b7c30",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7c30Ev",
       "address": "0x020b7c30",
       "size": "0x000000ac",
       "legacy_source": "src/func_ov002_020b7c30.c",
@@ -112,14 +112,14 @@
       "ordinal": 12
     },
     {
-      "symbol": "func_ov002_020b7cec",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7cecEv",
       "address": "0x020b7cec",
       "size": "0x0000006c",
       "legacy_source": "src/func_ov002_020b7cec.cpp",
       "ordinal": 13
     },
     {
-      "symbol": "func_ov002_020b7d58",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7d58Ev",
       "address": "0x020b7d58",
       "size": "0x00000014",
       "legacy_source": "src/func_ov002_020b7d58.c",
@@ -140,14 +140,14 @@
       "ordinal": 16
     },
     {
-      "symbol": "func_ov002_020b7d9c",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7d9cEv",
       "address": "0x020b7d9c",
       "size": "0x0000006c",
       "legacy_source": "src/func_ov002_020b7d9c.cpp",
       "ordinal": 17
     },
     {
-      "symbol": "func_ov002_020b7e08",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7e08Ev",
       "address": "0x020b7e08",
       "size": "0x00000014",
       "legacy_source": "src/func_ov002_020b7e08.c",
@@ -175,7 +175,7 @@
       "ordinal": 21
     },
     {
-      "symbol": "func_ov002_020b7f7c",
+      "symbol": "_ZN15daObjMarioCap_c19func_ov002_020b7f7cEv",
       "address": "0x020b7f7c",
       "size": "0x00000264",
       "legacy_source": "src/func_ov002_020b7f7c.c",
@@ -222,6 +222,20 @@
       "size": "0x00000228",
       "legacy_source": "src/_ZN15daObjMarioCap_c8BehaviorEv.cpp",
       "ordinal": 28
+    },
+    {
+      "symbol": "_ZN15daObjMarioCap_c13InitResourcesEv",
+      "address": "0x020b86d0",
+      "size": "0x000004c8",
+      "legacy_source": "src/_ZN15daObjMarioCap_c13InitResourcesEv.cpp",
+      "ordinal": 29
+    },
+    {
+      "symbol": "daObjMarioCap_c_classInit",
+      "address": "0x020b8b98",
+      "size": "0x00000058",
+      "legacy_source": "src/d_a_obj_mario_cap.c",
+      "ordinal": 30
     }
   ],
   "data": [],
@@ -278,8 +292,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov002-daObjMarioCap_c/daObjMarioCap_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 29,
-    "functions_declared": 29,
+    "functions_matched": 31,
+    "functions_declared": 31,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN7Vector3D1Ev"

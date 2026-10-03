@@ -22,7 +22,9 @@
 struct daObjBk_Lift_c : dBgActor_c {
     u8  pad_31e[0x2];
     ShadowModel mShadowModel;         /* 0x320 */
-    u8  pad_348[0x30];
+    /* Shadow transform. func_ov015_021123c8 copies mModel.mat4x3 here, then
+       overwrites the translation row (0x36c..0x374) before DropShadowScaleXYZ. */
+    Matrix4x3 mShadowMat;              /* 0x348 */
     s32 mFloorPosY;                      /* 0x378 */
     s32 mMinPosY;                      /* 0x37c */
     s32 mMaxPosY;                      /* 0x380 */
@@ -43,6 +45,9 @@ struct daObjBk_Lift_c : dBgActor_c {
     int CleanupResources();
     int Behavior();
     int Render();
+    /* Not vtable slots. The address is the name; the lift is this. */
+    void func_ov015_021123c8();
+    int func_ov015_021128e8(void *unused);
     virtual void OnHitByMegaChar(Player &player);   /* slot 27 */
     /* dBgActor_c's own slot, overridden here: _ZTV14daObjBk_Lift_c+0x7c relocates to
        0x0211233c while _ZTV10dBgActor_c+0x7c relocates to _ZN10dBgActor_c4KillEv. An
@@ -87,6 +92,7 @@ struct daObjBk_Lift_c {
     dBgW_KcMbg mMeshCollider;            /* 0x124 */
     u8  pad_2ec[0x34];
     ShadowModel mShadowModel; /* 0x320 */
+    /* Same 0x30 bytes as the C++ mShadowMat. This half is not compiled. */
     u8  pad_348[0x30];
     s32 mFloorPosY;            /* 0x378 */
     s32 mMinPosY;            /* 0x37c */

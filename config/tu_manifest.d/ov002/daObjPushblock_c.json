@@ -189,7 +189,7 @@
     "All nine members plus daObjPushblock_c_classInit are genuine daObjPushblock_c symbols over the real shared header.",
     "The inline virtual destructor and InitResources key function make mwcc emit the retail D1/D0 pair in ROM order with no D2, together with the class RTTI and vtable.",
     "Behavior's previous eight-byte wall disappears in the whole TU when the home-coordinate declarations remain beside their first uses, reproducing the retail load/register order.",
-    "Leftover cleanup folded daObjPushblock_c_classInit (0x020b910c..0x020b9148) as return new daObjPushblock_c(); leaf operator new(unsigned long) forwards _ZN7fBase_cnwEj. Registry/factory-backed join: the factory sits immediately after InitResources and ends at PowerFlower D1.",
+    "Leftover cleanup folded daObjPushblock_c_classInit (0x020b910c..0x020b9148) as return new daObjPushblock_c(); leaf operator new(unsigned long) forwards _ZN7fBase_cnwEj. Registry/factory-backed join: the factory sits immediately after InitResources and ends at daObjPowerUpItem_c D1.",
     "g_profile_PUSHBLOCK remains outside this manifest because data adjacency alone does not establish ownership."
   ],
   "verification": {

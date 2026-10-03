@@ -9,23 +9,33 @@
  * fellow steps, the bookshelf its three book-switches (BOOK_SWITCH 0xd5); the
  * trapdoor and the merry-go-round react to the player standing on the mesh.
  *
+ * This file is the whole linker unit 0x0211c600..0x0211d270, 16 functions:
+ *   0x0211c600  D1, D0 (the out-of-line destructor, the key function)
+ *   0x0211c684  func_ov063_0211c684  model matrix from position and angles
+ *   0x0211c6f8  func_ov063_0211c6f8  collision matrix, and the mesh Transform
+ *   0x0211c770  func_ov063_0211c770  staircase settle step (per-frame table)
+ *   0x0211c7b0  func_ov063_0211c7b0  merry-go-round state
+ *   0x0211c82c  func_ov063_0211c82c  merry-go-round occupancy
+ *   0x0211c89c  func_ov063_0211c89c  bookshelf state
+ *   0x0211cae8  func_ov063_0211cae8  book-switch callback (ORs mBookFlags)
+ *   0x0211cb54  func_ov063_0211cb54  trapdoor state
+ *   0x0211cc18  func_ov063_0211cc18  staircase rise state
+ *   0x0211cdec  CleanupResources, OnPendingDestroy, Render, Behavior,
+ *               InitResources
+ * Below it, daTrs_c's TU ends at 0x0211c600. Above it, the collision-callback
+ * pair at 0x0211d270 opens the factory unit (d_a_trs_trap_classinits.cpp).
+ * The four state bodies are reached through the dispatch records at
+ * 0x0211e9ac (merry-go-round, staircase, trapdoor, bookshelf), which the
+ * module sinit copies into the .bss table data_ov063_0211ef38.
+ *
  * TEXT ONLY. The vtable, the RTTI records, the four SharedFilePtr pairs, the
  * CLPS blocks and the .bss dispatch table are declared here and defined
- * nowhere -- the overlay blob owns every .data/.bss word, and defining any of
- * them would make mwcc emit sections this entry is not allowed to own.
+ * nowhere -- the overlay blob owns every .data/.bss word. Defining the
+ * destructor out of line makes this TU emit the vtable and the RTTI chain;
+ * the manifest licenses them as deadstrip-data at their ROM homes.
  *
- * SPLIT, not whole: the ROM interleaves this class's state bodies
- * (0x0211c684..0x0211cdec) between the destructors and CleanupResources, and
- * the collision-callback pair (0x0211d270..0x0211d2a0) between InitResources
- * and the factories. One delinks entry licenses one contiguous range, so the
- * class ships as three files -- the destructor pair beside this one, the four
- * factories in d_a_trs_trap_classinits.cpp -- with a manifest entry each. The
- * state bodies belong to a later TU of their own; they are called, never
- * defined, here.
- *
- * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S -- mwccarm emits
- * one .text section per function in the REVERSE of source order, so
- * InitResources (highest address) is written FIRST. Do not reorder.
+ * `#pragma defer_codegen off` makes source order the emission order, so the
+ * file runs in ROM order, destructor first.
  *
  * deslop leftovers:
  * - dBgW_KcMbg::SetFile keeps its mangled TU-local spelling: its signature
@@ -39,16 +49,29 @@
  *   earlier draft bound it to an opaque forward-declared class on the theory
  *   that a polymorphic receiver changes the {ptr, adj} record shape; that is
  *   false here -- under 2004/b56 the real class gives byte-identical bodies
- *   and relocation records for all 8 functions.
+ *   and relocation records.
+ * - The state bodies keep C linkage and their func_ov063_* names: nothing in
+ *   the ROM names them. The trapdoor and staircase states read daTrsTrap_c
+ *   fields; the matrix refreshes, the settle step, the merry-go-round state
+ *   and occupancy test, the bookshelf state and the book-switch callback keep
+ *   the byte-matching char-offset bodies they matched with as separate files.
  * - Behavior names mStateTimer directly at both sites (TRAP-2709
  *   experiment: unified spelling matches).
  * - +0x418 on the spawned BOOK_SWITCH is daBookGen_c's, which has no header;
  *   +0x154 here has no recovered reader. S14: no g_profile_* rows live here.
  */
 
+/* common.h first, so this TU reads the flat Matrix4x3 words: the two matrix
+   refreshes copy data_020a0e68 into the object with one ldm/stm block move,
+   which the structured Matrix3x3 + Vector3 spelling scalarizes (0x90 and
+   0x8c bytes against the ROM's 0x74 and 0x78). */
+#include "common.h"
 #include "daTrsTrap_c.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
+#include "Sound.h"
+
+#pragma defer_codegen off
 
 /* The per-trap resource rows, indexed by mIndex: the model handle, the
    collision-mesh handle, the CLPS block, and the bookshelf's six book-switch
@@ -64,14 +87,15 @@ typedef void (daTrsTrap_c::*PMF)();
 extern PMF data_ov063_0211ef38[];
 
 /* --------------------------------------------------------------------------
- * The one file-scope extern "C" region. Everything here is reached from a
- * C++-named member, which cannot declare it in its own body.
+ * The one file-scope extern "C" region.
  * ------------------------------------------------------------------------ */
 extern "C" {
-/* This TU's matrix/collision refresh, and the mesh callback it installs. */
+/* This TU's matrix/collision refresh and the occupancy test, called before
+   their definitions; the mesh callback lives in the factory unit. */
 void func_ov063_0211c684(char *c);
 void func_ov063_0211c6f8(char *c);
-void func_ov063_0211d28c(void *a, void *b, void *c);
+void func_ov063_0211c82c(char *c);
+void func_ov063_0211d28c(dBgW *clsn, daTrsTrap_c *self, dActor_c *actor);
 /* dBgW callback-word stores (see above). */
 void func_020393d4(int *p, int v);
 void func_020393c4(int *p, int v);
@@ -79,6 +103,333 @@ void func_020393c4(int *p, int v);
    free definition declares it; only the TU-local linkage differs. */
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     void *self, void *f, const Matrix4x3 *m, int fx, short s, void *b);
+/* dBgW_KcMbg::Transform: dBgW_KcMbg.h notes it keeps a free definition. */
+void _ZN10dBgW_KcMbg9TransformERK9Matrix4x3s(void *self, const Matrix4x3 &mtx, short s);
+
+extern Matrix4x3 data_020a0e68;             /* the shared scratch matrix */
+/* Staircase settle offsets, one signed byte per frame 0..3. */
+extern signed char data_ov063_0211e26c[];
+/* Staircase rise limits, indexed by mStepIndex. */
+extern int data_ov063_0211e270[];
+
+void Vec3_Asr(void *dst, void *src, int n);
+void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
+void Matrix4x3_ApplyInPlaceToRotationXYZExt(void *m, int x, int y, int z);
+int Vec3_Dist(const Vector3 *a, const Vector3 *b);
+short Vec3_HorzAngle(const Vector3 *a, const Vector3 *b);
+u8 IsAreaShowing(int idx);
+unsigned int func_02012790(unsigned int);
+}
+
+/* Out of line, and FIRST in this ROM-ascending file: that puts D1 and D0 at
+ * 0x0211c600 / 0x0211c638, the two lowest addresses in the unit, and makes
+ * this TU the one that emits the vtable. mwcc also emits D2, which the ROM
+ * does not have; the manifest licenses it as deadstrip. */
+// @symbol _ZN11daTrsTrap_cD1Ev
+// @symbol _ZN11daTrsTrap_cD0Ev
+daTrsTrap_c::~daTrsTrap_c()
+{
+}
+
+/* The model matrix: position (>> 3) and the three angles, into
+   mModel.mat4x3 at 0xf0. Called from Behavior. */
+// @symbol func_ov063_0211c684
+extern "C" void func_ov063_0211c684(char *c)
+{
+    int v[3];
+    Vec3_Asr(v, c + 0x5c, 3);
+    Matrix4x3_FromTranslation(&data_020a0e68, v[0], v[1], v[2]);
+    Matrix4x3_ApplyInPlaceToRotationXYZExt(&data_020a0e68,
+        *(short *)(c + 0x8c), *(short *)(c + 0x8e), *(short *)(c + 0x90));
+    *(Matrix4x3 *)(c + 0xf0) = data_020a0e68;
+}
+
+/* The collision matrix mClsnMat from position and angles, then the moving
+   mesh follows it. Called from InitResources and Behavior. */
+// @symbol func_ov063_0211c6f8
+extern "C" void func_ov063_0211c6f8(char *c)
+{
+    Matrix4x3_FromTranslation(&data_020a0e68, *(int *)(c + 0x5c), *(int *)(c + 0x60), *(int *)(c + 0x64));
+    Matrix4x3_ApplyInPlaceToRotationXYZExt(&data_020a0e68, *(short *)(c + 0x8c), *(short *)(c + 0x8e), *(short *)(c + 0x90));
+    *(Matrix4x3 *)(c + 0x324) = data_020a0e68;
+    _ZN10dBgW_KcMbg9TransformERK9Matrix4x3s(c + 0x15c, *(Matrix4x3 *)(c + 0x324), *(short *)(c + 0x8e));
+}
+
+/* Staircase settle: frames 0..3 nudge mPosY by the signed table entry
+   (<< 12); any later frame reports done. */
+// @symbol func_ov063_0211c770
+extern "C" int func_ov063_0211c770(unsigned char *c, int idx)
+{
+    if ((unsigned int)idx > 3 || (short)idx < 0)
+        return 1;
+    (*(int *)(((int)c + 0x60))) += data_ov063_0211e26c[idx] << 12;
+    return 0;
+}
+
+/* Merry-go-round state: spins by mAngVelY while mState is 0, keeps the
+   occupancy flag and the looping sound going. */
+// @symbol func_ov063_0211c7b0
+extern "C" void func_ov063_0211c7b0(char *c)
+{
+    short *t;
+    if (*(unsigned char *)(c + 0x150) != 0) {
+        *(short *)(c + 0x100 + 0x3a) = 0;
+        return;
+    }
+    *(short *)(c + 0x100 + 0x3a) = 0x80;
+    t = (short *)(((int)c + 0x8e));
+    *t = (short)(*t + *(short *)(c + 0x100 + 0x3a));
+    func_ov063_0211c82c(c);
+    *(unsigned int *)(c + 0x148) = Sound::PlayLong(*(unsigned int *)(c + 0x148), 3, 0x8f, *(Vector3 *)(c + 0x74), 0);
+}
+
+/* Merry-go-round occupancy. The first call only latches mInitLatch; after
+   that mOccupiedFlag is set while a rider stands on the mesh or the area is
+   showing. */
+// @symbol func_ov063_0211c82c
+extern "C" void func_ov063_0211c82c(char *c)
+{
+    if (*(unsigned char *)(c + 0x152) == 0) {
+        *(unsigned char *)(((int)c + 0x152)) += 1;
+        return;
+    }
+    if (*(int *)(c + 0x124) != 0 || IsAreaShowing(*(signed char *)(c + 0xcc))) {
+        *(unsigned char *)(c + 0x153) = 1;
+    } else {
+        *(unsigned char *)(c + 0x153) = 0;
+    }
+}
+
+/* Bookshelf state. Hidden (mVisible clear) once the player is past the
+   wall; state 0 waits for all three book-switches, 1 plays the secret chime,
+   2 slides the shelf, 3 finishes the chime and removes the shelf. */
+// @symbol func_ov063_0211c89c
+extern "C" void func_ov063_0211c89c(char *c)
+{
+    Vector3 pp;
+    char *p;
+
+    *(char *)(c + 0xcc) = ~0;
+    if (IsAreaShowing(*(signed char *)(c + 0x100 + 0x58)) == 0) {
+        *(u8 *)(c + 0x157) = 0;
+        *(char *)(c + 0xcc) = *(signed char *)(c + 0x100 + 0x58);
+        return;
+    }
+    p = (char *)((dActor_c *)c)->ClosestPlayer();
+    {
+        int *q = (int *)(p + 0x5c);
+        pp.x = q[0];
+        pp.y = q[1];
+        pp.z = q[2];
+    }
+    if (pp.x >= (int)0xffa24000)
+        *(u8 *)(c + 0x156) = 0;
+    else
+        *(u8 *)(c + 0x156) = 1;
+
+    switch (*(u8 *)(c + 0x150)) {
+    case 0:
+        if ((*(u8 *)(c + 0x157) & 8) == 0 &&
+            Vec3_Dist((Vector3 *)(c + 0x5c), &pp) < 0x320000) {
+            short a = Vec3_HorzAngle((Vector3 *)(c + 0x5c), &pp);
+            if (a <= -0x7000 || a >= 0x7000)
+                *(u8 *)(c + 0x157) |= 8;
+        }
+        {
+            u8 m = *(u8 *)(c + 0x157) & 7;
+            if (m == 7) {
+                *(u8 *)(c + 0x150) = 1;
+                return;
+            }
+            if (m == 1) return;
+            if (m == 3) return;
+            *(u8 *)(c + 0x157) &= 8;
+        }
+        return;
+    case 1:
+        {
+            u16 t = *(u16 *)(c + 0x100 + 0x4c);
+            if (t > 0x64) {
+                *(u8 *)(c + 0x150) = 2;
+                return;
+            }
+            if (t < 0x1e) return;
+            Sound::PlaySecretSound((dActor_c *)c, (u16 *)(c + 0x14e));
+        }
+        return;
+    case 2:
+        *(int *)(c + 0x5c) += 0x5000;
+        *(int *)(c + 0x148) = Sound::PlayLong(*(unsigned int *)(c + 0x148), 3, 0x8d, *(Vector3 *)(c + 0x74), 0);
+        Sound::PlaySecretSound((dActor_c *)c, (u16 *)(c + 0x14e));
+        if (*(u16 *)(c + 0x100 + 0x4c) > 0x65)
+            *(u8 *)(c + 0x150) = 3;
+        return;
+    case 3:
+        if (Sound::PlaySecretSound((dActor_c *)c, (u16 *)(c + 0x14e)) == 0)
+            return;
+        ((fBase_c *)c)->MarkForDestruction();
+        return;
+    }
+}
+
+/* Book-switch callback: ORs switch bit m into mBookFlags, then the right or
+   wrong chime -- the order is 1, then 1|2, then all three. */
+// @symbol func_ov063_0211cae8
+extern "C" void func_ov063_0211cae8(unsigned char *c, int m)
+{
+    unsigned char *p = (unsigned char *)(c + 0x157);
+    *p |= m;
+    unsigned char v = c[0x157] & 7;
+    if (v != 1 && v != 3 && v != 7) {
+        func_02012790(0xe);
+        return;
+    }
+    func_02012790(0x26);
+}
+
+/* Trapdoor state. While an actor stands on it, mAngVelX tilts toward the
+   rider's z offset; with nobody on it the door swings back and stops at
+   level. The tilt is applied twice in the standing case, as in the ROM. */
+// @symbol func_ov063_0211cb54
+extern "C" void func_ov063_0211cb54(daTrsTrap_c *self)
+{
+    if (self->mStandingActor != 0) {
+        self->mAngVelX = (s16)((self->mStandingActor->mPosZ - self->mPosZ) >> 0xc);
+        *(s16 *)((int)self + 0x8c) = *(s16 *)((int)self + 0x8c) + self->mAngVelX;
+    } else {
+        int a = self->mAngleX;
+        if (a < 0) a = -a;
+        if (a < 0xbb8 || self->mStateTimer > 0xf) {
+            int v;
+            self->mAngVelX = 0;
+            v = self->mAngleX;
+            if (v > 0) {
+                if (v < 0xc8) self->mAngleX = 0;
+                else self->mAngVelX = -0xc8;
+            } else {
+                if (v > -0xc8) self->mAngleX = 0;
+                else self->mAngVelX = 0xc8;
+            }
+        }
+    }
+    *(s16 *)((int)self + 0x8c) = *(s16 *)((int)self + 0x8c) + self->mAngVelX;
+}
+
+/* Staircase rise state. Waits until the master step (or this one, for the
+   master) is released; then rises 8 per frame to this step's limit, settles
+   through func_ov063_0211c770, and the last step plays the secret chime. */
+// @symbol func_ov063_0211cc18
+extern "C" void func_ov063_0211cc18(daTrsTrap_c *a)
+{
+    int limit;
+    daTrsTrap_c *other;
+    unsigned char *pst;
+    int *p60;
+    int *p144;
+
+    limit = data_ov063_0211e270[a->mStepIndex];
+    other = (daTrsTrap_c *)dActor_c::FindWithID(a->mParentUniqueID);
+    if (other != 0) {
+        if (other->mTriggered == 0)
+            return;
+        a->mVisible = 1;
+    } else {
+        if (a->mTriggered == 0)
+            return;
+        a->mVisible = 1;
+    }
+
+    switch (a->mState) {
+    case 0:
+        a->mPosY = a->mHomePosY;
+        a->mRiseProgress = 0;
+        pst = (unsigned char *)(int)((char *)a + 0x150);
+        *pst = (unsigned char)(*pst + 1);
+        /* fallthrough */
+    case 1:
+        p60 = (int *)(int)((char *)a + 0x60);
+        p144 = (int *)(int)((char *)a + 0x144);
+        *p60 = *p60 + 0x8000;
+        *p144 = *p144 + 8;
+        a->mSoundHandle = Sound::PlayLong(a->mSoundHandle, 3, 0x82, *(Vector3 *)&a->mCamSpacePosX, 0);
+        if (a->mRiseProgress <= limit)
+            return;
+        a->mRiseProgress = limit;
+        a->mPosY = a->mHomePosY + (limit << 12);
+        pst = (unsigned char *)(int)((char *)a + 0x150);
+        *pst = (unsigned char)(*pst + 1);
+        return;
+    case 2:
+        if (a->mStateTimer == 0)
+            Sound::PlayBank3(0x3d, *(Vector3 *)&a->mCamSpacePosX);
+        if (func_ov063_0211c770((unsigned char *)a, a->mStateTimer) != 0) {
+            pst = (unsigned char *)(int)((char *)a + 0x150);
+            *pst = (unsigned char)(*pst + 1);
+        }
+        return;
+    case 3:
+        if (a->mStepIndex == 2) {
+            if (Sound::PlaySecretSound(a, &a->mSoundTimer) != 0) {
+                pst = (unsigned char *)(int)((char *)a + 0x150);
+                *pst = (unsigned char)(*pst + 1);
+            }
+        } else {
+            pst = (unsigned char *)(int)((char *)a + 0x150);
+            *pst = (unsigned char)(*pst + 1);
+        }
+        return;
+    case 4:
+    default:
+        return;
+    }
+}
+
+// @symbol _ZN11daTrsTrap_c16CleanupResourcesEv
+/* Vtable slot 3. Unhooks the moving mesh and releases this trap's model and
+ * collision rows. */
+int daTrsTrap_c::CleanupResources()
+{
+    mMovingMeshCollider.Disable();
+    data_ov063_0211e27c[mIndex]->Release();
+    data_ov063_0211e28c[mIndex]->Release();
+    return 1;
+}
+
+// @symbol _ZN11daTrsTrap_c16OnPendingDestroyEv
+void daTrsTrap_c::OnPendingDestroy()
+{
+}
+
+// @symbol _ZN11daTrsTrap_c6RenderEv
+/* Vtable slot 9. Draws the model unless this trap is parked invisible (an
+ * untriggered step, or the bookshelf while the player is past the wall). */
+int daTrsTrap_c::Render()
+{
+    if (mVisible == 0)
+        return 1;
+    mModel.Render(0);
+    return 1;
+}
+
+// @symbol _ZN11daTrsTrap_c8BehaviorEv
+/* Vtable slot 6. One call through this trap's state body every frame, then
+ * the model/collision refresh and the standing-actor clear. mStateTimer
+ * counts frames in the state and restarts whenever the body moves on. */
+int daTrsTrap_c::Behavior()
+{
+    unsigned char before = mState;
+    int idx = mIndex;
+    (this->*data_ov063_0211ef38[idx])();
+    /* Count frames in state; restart on transition. */
+    u16 *ctr = &mStateTimer;
+    *ctr = *ctr + 1;
+    if (before != mState) {
+        mStateTimer = 0;
+    }
+    func_ov063_0211c684((char *)this);
+    func_ov063_0211c6f8((char *)this);
+    mStandingActor = 0;
+    return 1;
 }
 
 // @symbol _ZN11daTrsTrap_c13InitResourcesEv
@@ -214,53 +565,5 @@ int daTrsTrap_c::InitResources()
     mAngVelX = 0;
     mAngVelY = 0;
     mAngVelZ = 0;
-    return 1;
-}
-
-// @symbol _ZN11daTrsTrap_c8BehaviorEv
-/* Vtable slot 6. One call through this trap's state body every frame, then
- * the model/collision refresh and the standing-actor clear. mStateTimer
- * counts frames in the state and restarts whenever the body moves on. */
-int daTrsTrap_c::Behavior()
-{
-    unsigned char before = mState;
-    int idx = mIndex;
-    (this->*data_ov063_0211ef38[idx])();
-    /* Count frames in state; restart on transition. */
-    u16 *ctr = &mStateTimer;
-    *ctr = *ctr + 1;
-    if (before != mState) {
-        mStateTimer = 0;
-    }
-    func_ov063_0211c684((char *)this);
-    func_ov063_0211c6f8((char *)this);
-    mStandingActor = 0;
-    return 1;
-}
-
-// @symbol _ZN11daTrsTrap_c6RenderEv
-/* Vtable slot 9. Draws the model unless this trap is parked invisible (an
- * untriggered step, or the bookshelf while the player is past the wall). */
-int daTrsTrap_c::Render()
-{
-    if (mVisible == 0)
-        return 1;
-    mModel.Render(0);
-    return 1;
-}
-
-// @symbol _ZN11daTrsTrap_c16OnPendingDestroyEv
-void daTrsTrap_c::OnPendingDestroy()
-{
-}
-
-// @symbol _ZN11daTrsTrap_c16CleanupResourcesEv
-/* Vtable slot 3. Unhooks the moving mesh and releases this trap's model and
- * collision rows. */
-int daTrsTrap_c::CleanupResources()
-{
-    mMovingMeshCollider.Disable();
-    data_ov063_0211e27c[mIndex]->Release();
-    data_ov063_0211e28c[mIndex]->Release();
     return 1;
 }

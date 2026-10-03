@@ -3,8 +3,9 @@
 
 #include "dBgActor_c.h"
 
-/* The stump. A ground pound sinks it one step; a mega hit sinks the rest.
- * The last step drops coins.
+/* PILE, the stump. It starts with three steps to sink: a ground pound sinks it
+ * one step (60 units), a mega hit sinks all that remain, and reaching the
+ * bottom drops coins.
  *
  * BASE: dBgActor_c, direct -- _ZTI11daObjPile_c at ov091 0x0213527c names
  * _ZTI10dBgActor_c.
@@ -25,19 +26,22 @@
 struct daObjPile_c : dBgActor_c {
     /* dBgActor_c ends at 0x31e (its own sizeof rounds up to 0x320); these two
        bytes are this class's own, in the base's tail padding -- same reuse
-       include/daObjFl_Ring_c.h documents at the same offset. Field names are
-       placeholders: offsets, widths and read/write sites are observed from
+       include/daObjFl_Ring_c.h documents at the same offset. mStepsLeft is
+       read off its uses: InitResources sets 3, each ordinary ground pound decrements it,
+       a mega hit sinks the pile by mStepsLeft steps and zeroes it, and both
+       hit handlers ignore the pile at 0. The other names are placeholders:
+       offsets, widths and read/write sites are observed from
        Behavior/OnGroundPounded/OnHitByMegaChar (slots 6/21/27, ov091
        0x02133738/3648/35d4), not proven semantics. */
-    u8  mState;              /* 0x31e -- gates OnGroundPounded/OnHitByMegaChar; ==3 in Behavior */
-    u8  mAttackCooldown;     /* 0x31f -- DecIfAbove0_Byte-gated */
-    u8  mBusy;               /* 0x320 -- suppresses OnHitByMegaChar and part of Behavior */
+    u8  mStepsLeft;          /* 0x31e -- 3 when intact, 0 once fully sunk */
+    u8  mAttackCooldown;     /* 0x31f -- set to 15 by a hit, counted down in Behavior; hits ignored while nonzero */
+    u8  mBusy;               /* 0x320 -- suppresses OnHitByMegaChar and the coin drops; daWanwan_c sets it to 1 on the stump it spawns */
     u8  pad_321[3];
     s32 mAngleDelta;         /* 0x324 -- accumulated turn-toward-player angle */
     s16 mPrevAngle;          /* 0x328 -- last frame's horizontal angle to player */
     u8  pad_32a[2];
     /* KINOKO_TAG backlink: daObjKinokoTag_c::Behavior stores itself here, and
-       func_ov091_02133498 reads it back. */
+       daObjPile_c::func_ov091_02133498 reads it back. */
     dActor_c *mLinkedTag;    /* 0x32c */
 
     virtual ~daObjPile_c();                     /* slots 16 (D1), 17 (D0) */
@@ -53,6 +57,11 @@ struct daObjPile_c : dBgActor_c {
        measured with tools/mangle.py, not assumed. */
     void OnGroundPounded(dActor_c &other);      /* slot 21 */
     void OnHitByMegaChar(Player &player);       /* slot 27 */
+
+    /* Non-virtual. The address is the method name. flag is int: the callee
+       compares the full register. */
+    void func_ov091_02133498();
+    void func_ov091_021334b8(int flag);
 };
 
 #ifndef SM64DS_PLATFORM_PC

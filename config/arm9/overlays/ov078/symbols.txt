@@ -9,7 +9,7 @@ func_ov078_02123bc4 kind:function(arm,size=0x5c) addr:0x02123bc4
 func_ov078_02123c20 kind:function(arm,size=0xd0) addr:0x02123c20
 func_ov078_02123cf0 kind:function(arm,size=0x4c) addr:0x02123cf0
 func_ov078_02123d3c kind:function(arm,size=0x17c) addr:0x02123d3c
-func_ov078_02123eb8 kind:function(arm,size=0x64) addr:0x02123eb8
+_ZN12daBombking_c19func_ov078_02123eb8Ev kind:function(arm,size=0x64) addr:0x02123eb8
 func_ov078_02123f1c kind:function(arm,size=0x98) addr:0x02123f1c
 func_ov078_02123fb4 kind:function(arm,size=0x4c) addr:0x02123fb4
 func_ov078_02124000 kind:function(arm,size=0x60) addr:0x02124000
@@ -93,6 +93,7 @@ _ZTI12daBombking_c kind:data(any) addr:0x02126e0c
 _ZTS12daBombking_c kind:data(any) addr:0x02126e18
 g_profile_BOMBKING kind:data(any) addr:0x02126e28 ambiguous
 _ZTV12daBombking_c kind:data(any) addr:0x02126e4c
+data_ov078_02126ec8 kind:data(any) addr:0x02126ec8
 data_ov078_02126ee0 kind:bss addr:0x02126ee0
 data_ov078_02126ee8 kind:bss addr:0x02126ee8
 data_ov078_02126ef0 kind:bss addr:0x02126ef0

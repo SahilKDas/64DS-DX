@@ -1,4 +1,4 @@
-/* daFRing_c -- Bowser's shockwaves (registry profile FIRERING).
+/* daFRing_c -- daKpa_c's shockwaves (registry profile FIRERING).
  * Two rings, each a model plus a texture sequence, a material changer
  * and a texture transformer. mFrame counts up from 0; Behavior shocks
  * the player while it is still below 70.

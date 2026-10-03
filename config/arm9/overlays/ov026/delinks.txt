@@ -42,111 +42,19 @@ src/d_a_obj_wl_polelift.cpp:
 
 src/actors/daObjWlKoopaShutter_c.cpp:
     complete
-    .text start:0x021116c8 end:0x02111888
-
-src/d_a_obj_wl_koopa_shutter.c:
-    complete
-    .text start:0x02111888 end:0x021118b8
+    .text start:0x021116c8 end:0x021118b8
 
 src/actors/daObjWlSubmarine_c.cpp:
     complete
-    .text start:0x021118b8 end:0x02111a70
+    .text start:0x021118b8 end:0x02111aa0
 
-src/d_a_obj_wl_submarine.c:
+src/actors/daWater_Tatumaki_c.cpp:
     complete
-    .text start:0x02111a70 end:0x02111aa0
-
-src/_ZN9WhirlpoolD1Ev.cpp:
-    complete
-    .text start:0x02111aa0 end:0x02111ad8
-
-src/_ZN9WhirlpoolD0Ev.cpp:
-    complete
-    .text start:0x02111ad8 end:0x02111b24
-
-src/func_ov026_02111b24.c:
-    complete
-    .text start:0x02111b24 end:0x02111cb4
-
-src/func_ov026_02111cb4.c:
-    complete
-    .text start:0x02111cb4 end:0x02111d4c
-
-src/func_ov026_02111d4c.cpp:
-    complete
-    .text start:0x02111d4c end:0x02111ed8
-
-src/func_ov026_02111ed8.c:
-    complete
-    .text start:0x02111ed8 end:0x02111ee0
-
-src/func_ov026_02111ee0.cpp:
-    complete
-    .text start:0x02111ee0 end:0x02111f30
-
-src/func_ov026_02111f30.c:
-    complete
-    .text start:0x02111f30 end:0x02111fa4
-
-src/_ZN9Whirlpool16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02111fa4 end:0x02111fd4
-
-src/_ZN9Whirlpool16OnPendingDestroyEv.cpp:
-    complete
-    .text start:0x02111fd4 end:0x02111fd8
-
-src/_ZN9Whirlpool6RenderEv.cpp:
-    complete
-    .text start:0x02111fd8 end:0x0211200c
-
-src/_ZN9Whirlpool8BehaviorEv.cpp:
-    complete
-    .text start:0x0211200c end:0x021120ec
-
-src/_ZN9Whirlpool13InitResourcesEv.cpp:
-    complete
-    .text start:0x021120ec end:0x021121bc
-
-src/d_a_water_tatumaki.c:
-    complete
-    .text start:0x021121bc end:0x021121fc
-
-src/_ZN17daWater_Suikomi_cD1Ev.cpp:
-    complete
-    .text start:0x021121fc end:0x02112234
-
-src/_ZN17daWater_Suikomi_cD0Ev.cpp:
-    complete
-    .text start:0x02112234 end:0x02112280
-
-src/func_ov026_02112280.c:
-    complete
-    .text start:0x02112280 end:0x021122b0
-
-src/func_ov026_021122b0.c:
-    complete
-    .text start:0x021122b0 end:0x021122cc
-
-src/func_ov026_021122cc.c:
-    complete
-    .text start:0x021122cc end:0x021122d4
-
-src/func_ov026_021122d4.cpp:
-    complete
-    .text start:0x021122d4 end:0x02112324
-
-src/func_ov026_02112324.c:
-    complete
-    .text start:0x02112324 end:0x02112328
+    .text start:0x02111aa0 end:0x021121fc
 
 src/actors/daWater_Suikomi_c.cpp:
     complete
-    .text start:0x02112328 end:0x02112450
-
-src/d_a_water_suikomi.c:
-    complete
-    .text start:0x02112450 end:0x02112490
+    .text start:0x021121fc end:0x02112490
 
 src/__sinit_ov026_02112b7c.c:
     complete

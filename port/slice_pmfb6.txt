@@ -78,7 +78,7 @@ src/func_ov002_020f5f0c.cpp
 # only its table alias.
 src/_ZN3Key8BehaviorEv.cpp
 src/_ZN13UpDownLiftBbh8BehaviorEv.cpp
-src/_ZN6ToxBox8BehaviorEv.cpp
+src/actors/daOnms_c.cpp
 
 # ---- gate 3: THE OBJECT-FIELD ROWS THE ov006 RANGE SWEEP CLOSES ------------
 #

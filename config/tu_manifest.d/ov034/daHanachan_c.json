@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x21111a0..0x21136a4, 34 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daHanachan_c",
-    "module sinit corroboration: 1 sinit(s) / 1 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 1 sinit(s) / 1 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold: the daHanachan_c_classInit registry factory (profile HANACHAN, historical alias Wiggler_Spawn), 0x021136a4..0x02113820, abuts this TU's InitResources with no gap; tu_map leaves it unlabelled because it cuts on symbol name. Folded at the end of the file (defer_codegen off, source order) as the loose file's hand-built sequence: fBase_c operator new, dEnemyBase_c C2, vtable store &_ZTV12daHanachan_c[2], eight __cxa_vec_ctor calls, dBgCh_Actr C1. `return new daHanachan_c();` was measured first and does not reproduce it (999 words differ, first wrong relocation _ZN15TextureSequenceC1Ev): types.h's Vector3 and Vector3s have no user-declared constructor, so `new` skips the per-element func_0203d384/func_0203d73c construction the ROM performs. The unit is now 0x021111a0..0x02113820, 35 functions, bounded above by the end of ov034 .text at 0x02113820."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x021111a0",
-      "end": "0x021136a4"
+      "end": "0x02113820"
     }
   ],
   "functions": [
@@ -255,6 +256,13 @@
       "size": "0x00000468",
       "legacy_source": "src/_ZN12daHanachan_c13InitResourcesEv.cpp",
       "ordinal": 33
+    },
+    {
+      "symbol": "daHanachan_c_classInit",
+      "address": "0x021136a4",
+      "size": "0x0000017c",
+      "legacy_source": "src/d_a_hanachan.c",
+      "ordinal": 34
     }
   ],
   "data": [],
@@ -320,8 +328,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov034-daHanachan_c/daHanachan_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 34,
-    "functions_declared": 34,
+    "functions_matched": 35,
+    "functions_declared": 35,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN12daHanachan_cD2Ev",
@@ -338,8 +346,6 @@
         10,
         11,
         12,
-        73,
-        74,
         75,
         76,
         77,
@@ -354,7 +360,9 @@
         86,
         87,
         88,
-        89
+        89,
+        90,
+        91
       ],
       "data": [
         "_ZTI7fBase_c",

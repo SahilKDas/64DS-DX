@@ -2,11 +2,11 @@
 # slot 16 through hal/dtor_faces_cpp.cpp. One line per class, grouped as
 # status/DTORFACES.md records them.
 # group 1
-src/_ZN4CoinD1Ev.cpp
+src/actors/daCoin_c.cpp
 # group 2
-src/_ZN10StarMarkerD1Ev.cpp
+src/_ZN12daStarBase_cD1Ev.cpp
 src/_ZN4BirdD1Ev.cpp
-src/_ZN9ButterflyD1Ev.cpp
+src/actors/daBtfly_c.cpp
 src/_ZN4FishD1Ev.cpp
 src/_ZN13PeachPaintingD1Ev.cpp
 src/game/actors/d_a_mc_flag.cpp
@@ -16,9 +16,9 @@ src/game/actors/d_a_obj_waterfall.cpp
 src/game/actors/d_a_set_se.cpp
 src/game/actors/d_a_star_gate.cpp
 # group 3
-src/_ZN10BowserTailD1Ev.cpp
-src/_ZN6BowserD1Ev.cpp
-src/_ZN9SpikeBombD1Ev.cpp
+src/actors/daKpa_c.cpp
+src/actors/daKpa_c.cpp
+src/actors/daKirai_c.cpp
 src/game/actors/daBrq_c.cpp
 src/game/actors/d_a_krpa.cpp
 src/game/actors/d_a_kp_fr.cpp

@@ -11,13 +11,13 @@
  * storage begins at 0x02108d8c and its public address point is
  * _ZTV13daObjDorifu_c at 0x02108d94, 32 slots, running to 0x02108e14.
  *
- * ABSTRACT. Vtable slots 0 and 3 are bare zero words with no relocation --
+ * Abstract: vtable slots 0 and 3 are bare zero words with no relocation --
  * InitResources() and CleanupResources() are pure. The three concrete
  * descendants each supply the no-argument override and forward to the
  * resource-table overloads defined here; those descendants live in ov036,
  * ov043 and ov047, outside this module, so nothing of theirs is claimed.
  *
- * WHY `#pragma defer_codegen off` AND TWO FORCING FUNCTIONS
+ * Why `#pragma defer_codegen off` and two forcing functions
  *
  * The cartridge orders this run D0 (0x020b4a70) then D1 (0x020b4af8), and a
  * promoted object has to emit its licensed functions in ROM-ascending order
@@ -37,7 +37,7 @@
  * tree reads high-address-first.
  *
  * Moving the destructor out of line also produces the ROM's order, and is
- * REFUTED: with the body removed from the class the three descendants stop
+ * refuted: with the body removed from the class the three descendants stop
  * inlining the vptr store, and all six of their destructors change size. The
  * header's inline body is load-bearing for them, so it stays and this file
  * pays with the pragma instead.
@@ -47,7 +47,7 @@
  * name and vtable; all of that is compiler-only output with a ROM home
  * elsewhere and is licensed to deadstrip in the manifest.
  *
- * deslop leftovers:
+ * Known limits:
  * - Event::GetBit is still reached through its mangled spelling; there is no
  *   Event header this TU can take without a shared-header campaign.
  * - dBgW_KcMbg::SetFile takes its scale as Fix12<int> BY VALUE. The natural
@@ -67,6 +67,16 @@
 
 typedef struct { s32 words[12]; } Matrix4x3Copy;
 
+/* Behavior's mState values. What each does is read off the code: 0 and 2 wait
+   on Event::GetBit(mEventBit) going set and clear, 1 and 3 step mActivePlank
+   down to 0 and back up to 4, one plank each time mStepTimer runs out. */
+enum {
+    STATE_AWAIT_EVENT_SET = 0,
+    STATE_STEP_DOWN = 1,
+    STATE_AWAIT_EVENT_CLEAR = 2,
+    STATE_STEP_UP = 3
+};
+
 extern "C" {
 int  _ZN5Event6GetBitEj(unsigned int bit);
 unsigned char DecIfAbove0_Byte(unsigned char *p);
@@ -79,13 +89,9 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     void *self, void *kcl, void *mat, s32 scale, s16 angle, void *clps);
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 0 -- _ZN13daObjDorifu_cD0Ev, 0x020b4a70, size 0x88              */
-/* ROM ordinal 1 -- _ZN13daObjDorifu_cD1Ev, 0x020b4af8, size 0x74              */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjDorifu_cD0Ev
 // @symbol _ZN13daObjDorifu_cD1Ev
-/* NO SOURCE HERE. Both destructor variants come from the ONE inline body in
+/* No source here: both destructor variants come from the ONE inline body in
  * include/daObjDorifu_c.h -- the class's descendants inline its vptr store,
  * which the compiler can only do from a visible body, so the definition
  * cannot move into this file.
@@ -110,12 +116,9 @@ void daObjDorifu_c_EmitDestructor(daObjDorifu_c *p)
     p->~daObjDorifu_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 2 -- 0x020b4b6c, size 0x58                                      */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjDorifu_c16CleanupResourcesEP20daObjDorifuResources
-/* Shared cleanup for the three concrete drifting-platform descendants. Their
- * slot-3 overrides pass their own five-entry resource table here. */
+/* ov002 0x020b4b6c. Shared cleanup for the three concrete drifting-platform
+ * descendants. Their slot-3 overrides pass their own five-entry resource table here. */
 s32 daObjDorifu_c::CleanupResources(daObjDorifuResources *resources)
 {
     for (s32 i = 0; i < 5; ++i) {
@@ -127,9 +130,6 @@ s32 daObjDorifu_c::CleanupResources(daObjDorifuResources *resources)
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 3 -- 0x020b4bc4, size 0x38                                      */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjDorifu_c6RenderEv
 /* daObjDorifu_c::Render -- vtable slot 9, ov002 0x020b4bc4.
  * reloc: _ZTV13daObjDorifu_c+0x24 -> 0x020b4bc4, where
@@ -143,12 +143,9 @@ s32 daObjDorifu_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 4 -- 0x020b4bfc, size 0x15c                                     */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjDorifu_c8BehaviorEv
 /* daObjDorifu_c::Behavior -- vtable slot 6, ov002 0x020b4bfc, and this class's
- * KEY FUNCTION: the first non-pure, non-inline virtual the header declares, so
+ * key function: the first non-pure, non-inline virtual the header declares, so
  * this definition is what anchors _ZTV13daObjDorifu_c / _ZTI13daObjDorifu_c
  * into this translation unit.
  *
@@ -162,68 +159,65 @@ s32 daObjDorifu_c::Render()
  * `extern int _ZN4dBgW9IsEnabledEv(void *)` was emitted verbatim from C but
  * would be mangled a SECOND time from C++, which this file is.
  *
- * THE `(int)` LAUNDER ON &mActivePlank IS LOAD-BEARING: without it mwcc
+ * The `(int)` launder on &mActivePlank is load-bearing: without it mwcc
  * common-subexpressions the field address across the DecIfAbove0_Byte call and
  * emits one instruction fewer than the ROM has. */
 s32 daObjDorifu_c::Behavior()
 {
     int i;
-    dBgW_KcMbg *m;
-    unsigned char *p;
+    dBgW_KcMbg *clsn;
+    unsigned char *plankPtr;
 
     switch (mState) {
-    case 0:
+    case STATE_AWAIT_EVENT_SET:
         if (_ZN5Event6GetBitEj(mEventBit))
-            mState = 1;
+            mState = STATE_STEP_DOWN;
         break;
-    case 1:
+    case STATE_STEP_DOWN:
         if (DecIfAbove0_Byte(&mStepTimer) == 0) {
-            p = (unsigned char *)(int)&mActivePlank;
-            *p = *p - 1;
+            plankPtr = (unsigned char *)(int)&mActivePlank;
+            *plankPtr = *plankPtr - 1;
             mStepTimer = 2;
         }
         if (mActivePlank == 0) {
             mActivePlank = 0;
-            mState = 2;
+            mState = STATE_AWAIT_EVENT_CLEAR;
         }
         break;
-    case 2:
+    case STATE_AWAIT_EVENT_CLEAR:
         if (_ZN5Event6GetBitEj(mEventBit) == 0)
-            mState = 3;
+            mState = STATE_STEP_UP;
         break;
-    case 3:
+    case STATE_STEP_UP:
         if (DecIfAbove0_Byte(&mStepTimer) == 0) {
-            p = (unsigned char *)(int)&mActivePlank;
-            *p = *p + 1;
+            plankPtr = (unsigned char *)(int)&mActivePlank;
+            *plankPtr = *plankPtr + 1;
             mStepTimer = 2;
         }
         if (mActivePlank >= 4) {
             mActivePlank = 4;
-            mState = 0;
+            mState = STATE_AWAIT_EVENT_SET;
         }
         break;
     }
 
-    m = mPlankClsn;
+    clsn = mPlankClsn;
     for (i = 0; i < 5; i++) {
         if (i == mActivePlank) {
-            if (!m->IsEnabled())
-                m->Enable(this);
+            if (!clsn->IsEnabled())
+                clsn->Enable(this);
         } else {
-            if (m->IsEnabled())
-                m->Disable();
+            if (clsn->IsEnabled())
+                clsn->Disable();
         }
-        m++;
+        clsn++;
     }
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 5 -- 0x020b4d58, size 0x180                                     */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjDorifu_c13InitResourcesEP20daObjDorifuResources
-/* Shared initialization for the three concrete drifting-platform descendants.
- * Each passes its own five-entry daObjDorifuResources table. The raw matrix
+/* ov002 0x020b4d58. Shared initialization for the three concrete
+ * drifting-platform descendants. Each passes its own five-entry daObjDorifuResources table. The raw matrix
  * copies are load-bearing: ordinary C++ struct assignment scalarizes them
  * instead of emitting the ROM's ldm/stm sequence. */
 s32 daObjDorifu_c::InitResources(daObjDorifuResources *resources)

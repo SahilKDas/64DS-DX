@@ -3,7 +3,7 @@ typedef struct V3 { int x, y, z; } V3;
 typedef struct dBgCh_Lin { char pad[0x14]; char surf[0x64]; } dBgCh_Lin;
 
 extern s16 Vec3_HorzAngle(const V3 *a, const V3 *b);
-extern void _ZN9dBgCh_LinC1Ev(dBgCh_Lin *rc);
+extern void *_ZN9dBgCh_LinC1Ev(dBgCh_Lin *rc);
 extern void func_0200897c(char *self, dBgCh_Lin *rc);
 extern void _ZN9dBgCh_Lin13SetObjAndLineERK7Vector3S2_P8dActor_c(dBgCh_Lin *rc, V3 *a, V3 *b, void *actor);
 extern int _ZN9dBgCh_Lin10DetectClsnEv(dBgCh_Lin *rc);
@@ -11,7 +11,7 @@ extern void _ZNK11SurfaceInfo12CopyNormalToER7Vector3(void *surf, V3 *out);
 extern s16 _ZN4cstd5atan2E5Fix12IiES1_(int a, int b);
 extern int AngleDiff(int a, int b);
 extern void _ZN9dBgCh_LinD1Ev(dBgCh_Lin *rc);
-extern void _Z14ApproachLinearRsss(s16 *v, s16 step, s16 rate);
+extern int _Z14ApproachLinearRsss(short *value, short target, short step);
 extern signed char data_0209f2f8;
 
 void func_0200b990(char *self, char *arg1, int arg2)

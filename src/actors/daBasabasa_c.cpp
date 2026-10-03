@@ -1,25 +1,30 @@
 //cpp
-/* daBasabasa_c (BASABASA, the swoop), ov065 0x02116f98..0x02117ee8.
+/* daBasabasa_c (BASABASA, the swoop), ov065 0x02116f98..0x02117f40,
+ * 22 functions.
  *
  * RTTI names daBasabasa_c. The vtable address point is 0x0211cca0; the word
  * at -4 is _ZTI12daBasabasa_c (0x0211cc60), whose string at 0x0211cc6c is
- * "12daBasabasa_c" and whose single base is dEnemyBase_c. The factory
- * daBasabasa_c_classInit at 0x02117ee8 follows this run and is not in it.
+ * "12daBasabasa_c" and whose single base is dEnemyBase_c. The registry
+ * factory daBasabasa_c_classInit (0x02117ee8..0x02117f40, historical alias
+ * Swoop_Spawn) closes the run: operator new(0x440), the dEnemyBase_c
+ * constructor, this class's vtable store and the five member constructors,
+ * which is exactly `new daBasabasa_c()`. Its name is reconstructed from the
+ * BASABASA profile; retail does not store it.
  *
  * The out-of-line destructor is the key function, so this TU emits the
  * vtable and RTTI. Under `#pragma defer_codegen off` it comes out D1, D0,
  * then a D2 the cartridge has no home for (manifest: deadstrip), and .text
  * is laid down in source order, so the file is ROM-ascending.
  *
- * Known limits:
+ * Leftover:
  * - ModelAnim::SetAnim, dCcAc_c::Init, dBgCh_Actr::Init,
  *   dEnemyBase_c::KillByInvincibleChar, dActor_c::SpawnCoins,
- *   dActor_c::DropShadowRadHeight, Player::Hurt and Player::Bounce are
- *   called by their mangled names. Each symbol carries a Fix12<int> by value.
- * - func_ov065_0211704c and func_ov065_02117994 keep C linkage under their
- *   address names, because include/decl_common.h declares them that way.
- * - The shared files and the four state records keep their address names:
- *   the static initializer that owns that .bss is another source file.
+ *   dActor_c::DropShadowRadHeight, Player::Hurt and Player::Bounce stay
+ *   mangled. Each symbol carries a Fix12<int> by value.
+ * - The shared files and the four state records keep their address names.
+ *   The static initializer that owns that .bss is another source file.
+ * - Testing actorID and mFlags through an int, ExecutePerch's base pointer,
+ *   the reload of unk_0ac, and EnterDrop's PoofPos are the forms that matched.
  */
 
 #pragma defer_codegen off
@@ -66,7 +71,7 @@ extern void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void* self, dActor_c* a, i
 extern void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void* self, dActor_c* a, int r, int h, Vector3_16* p, Vector3_16* q);
 }
 
-void ApproachLinear(short &value, short target, short step);
+bool ApproachLinear(short &value, short target, short step);
 
 /* The four states, by the address of their .bss record. */
 extern daBasabasa_c::State data_ov065_0211d6e0;   /* chase */
@@ -86,25 +91,24 @@ daBasabasa_c::~daBasabasa_c()
 {
 }
 
-// @symbol func_ov065_0211704c
+// @symbol _ZN12daBasabasa_c19func_ov065_0211704cEv
 /* Reacts to whatever the collision cylinder touched this frame. */
-extern "C" void func_ov065_0211704c(char *c)
+void daBasabasa_c::func_ov065_0211704c()
 {
-    daBasabasa_c *self = (daBasabasa_c *)c;
     Player *p;
     int flags;
     int isPlayer;
 
-    if (self->mdCcAc_c.otherOwner == 0) return;
-    p = (Player *)dActor_c::FindWithID(self->mdCcAc_c.otherOwner);
+    if (mdCcAc_c.otherOwner == 0) return;
+    p = (Player *)dActor_c::FindWithID(mdCcAc_c.otherOwner);
     if (p == 0) return;
-    flags = self->mdCcAc_c.hitFlags;
+    flags = mdCcAc_c.hitFlags;
     if (flags & 0x2400) {
-        self->mIsFlying = 1;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
-        self->mDeathState = 2;
-        func_ov002_020aea30(self, p, 0);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        mIsFlying = 1;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
+        mDeathState = 2;
+        func_ov002_020aea30(this, p, 0);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
     if (flags & 0x10) {
@@ -112,38 +116,38 @@ extern "C" void func_ov065_0211704c(char *c)
         v[0] = -0x2000;
         v[1] = 0;
         v[2] = 0;
-        _ZN12dEnemyBase_c20KillByInvincibleCharERK10Vector3_16R6Player5Fix12IiE(self, v, p);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        _ZN12dEnemyBase_c20KillByInvincibleCharERK10Vector3_16R6Player5Fix12IiE(this, v, p);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
     if (flags & 0x40000) {
-        self->mDeathState = 4;
-        self->mIsFlying = 1;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
-        func_ov002_020aea30(self, p, 0);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        mDeathState = 4;
+        mIsFlying = 1;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
+        func_ov002_020aea30(this, p, 0);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
     if (flags & 0x4380) {
-        self->mIsFlying = 1;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
-        self->mDeathState = 3;
-        func_ov002_020aea30(self, p, 0);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        mIsFlying = 1;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
+        mDeathState = 3;
+        func_ov002_020aea30(this, p, 0);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
     if (flags & 0x40) {
-        self->mIsFlying = 1;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
-        self->mDeathState = 2;
-        func_ov002_020aea30(self, p, 0);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        mIsFlying = 1;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim1, LOADED_FILE(data_ov065_0211d690), 0, 0x1000, 0);
+        mDeathState = 2;
+        func_ov002_020aea30(this, p, 0);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
     if (flags & 0x20) {
-        self->mDeathState = 1;
-        func_ov002_020aea30(self, p, 0);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        mDeathState = 1;
+        func_ov002_020aea30(this, p, 0);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
 
@@ -152,35 +156,35 @@ extern "C" void func_ov065_0211704c(char *c)
     if (isPlayer == 0)
         return;
 
-    if (self->BumpedUnderneathByPlayer(*p) == 1 || p->IsOnShell() == 1 || p->mIsMetal == 1) {
+    if (BumpedUnderneathByPlayer(*p) == 1 || p->IsOnShell() == 1 || p->mIsMetal == 1) {
         Vector3 pos;
-        self->SmallPoofDust();
-        self->KillAndTrackInDeathTable();
-        func_02012694(0x112, &self->mCamSpacePosX);
-        pos.x = self->mPosX;
-        pos.y = self->mPosY;
-        pos.z = self->mPosZ;
+        SmallPoofDust();
+        KillAndTrackInDeathTable();
+        func_02012694(0x112, &mCamSpacePosX);
+        pos.x = mPosX;
+        pos.y = mPosY;
+        pos.z = mPosZ;
         _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(
-            self, &pos, self->unk_10a + 1, 0xa000, 0);
+            this, &pos, unk_10a + 1, 0xa000, 0);
         return;
     }
 
-    if (self->JumpedOnByPlayer(self->mdCcAc_c, *p) != 0) {
+    if (JumpedOnByPlayer(mdCcAc_c, *p) != 0) {
         _ZN6Player6BounceE5Fix12IiE(p, 0x28000);
-        self->mDeathState = 1;
-        func_ov002_020aea30(self, p, 0);
-        func_02012694(0x112, &self->mCamSpacePosX);
+        mDeathState = 1;
+        func_ov002_020aea30(this, p, 0);
+        func_02012694(0x112, &mCamSpacePosX);
         return;
     }
     Vector3 pos;
-    pos.x = self->mPosX;
-    pos.y = self->mPosY;
-    pos.z = self->mPosZ;
+    pos.x = mPosX;
+    pos.y = mPosY;
+    pos.z = mPosZ;
     _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(p, &pos, 1, 0xc000, 1, 0, 1);
-    if (self->mCurrentState != &data_ov065_0211d6e0)
+    if (mCurrentState != &data_ov065_0211d6e0)
         return;
-    self->mPerchTimer = 0;
-    self->SetState(&data_ov065_0211d6f0);
+    mPerchTimer = 0;
+    SetState(&data_ov065_0211d6f0);
 }
 
 // @symbol _ZN12daBasabasa_c13ExecuteReturnEv
@@ -344,28 +348,27 @@ int daBasabasa_c::SetState(State *state)
     return (this->*mCurrentState->enter)();
 }
 
-// @symbol func_ov065_02117994
+// @symbol _ZN12daBasabasa_c19func_ov065_02117994Ev
 /* Places both models and the drop shadow at the current position. */
-extern "C" void func_ov065_02117994(char *c)
+void daBasabasa_c::func_ov065_02117994()
 {
-    daBasabasa_c *self = (daBasabasa_c *)c;
     Vector3 v;
-    Vec3_Asr(&v, (Vector3 *)&self->mPosX, 3);
+    Vec3_Asr(&v, (Vector3 *)&mPosX, 3);
     Matrix4x3_FromTranslation(&data_020a0e68, v.x, v.y, v.z);
     Matrix4x3_ApplyInPlaceToRotationXYZExt(&data_020a0e68,
-        self->mAngleX, self->mAngleY, self->mAngleZ);
-    if (self->mIsFlying == 1) {
-        self->mModelAnim1.mat4x3 = data_020a0e68;
+        mAngleX, mAngleY, mAngleZ);
+    if (mIsFlying == 1) {
+        mModelAnim1.mat4x3 = data_020a0e68;
     } else {
-        self->mModelAnim2.mat4x3 = data_020a0e68;
+        mModelAnim2.mat4x3 = data_020a0e68;
     }
     Matrix4x3_FromTranslation(&data_020a0e68,
-        self->mPosX >> 3,
-        (self->mPosY - 0x18000) >> 3,
-        self->mPosZ >> 3);
-    self->mShadowMatrix = data_020a0e68;
+        mPosX >> 3,
+        (mPosY - 0x18000) >> 3,
+        mPosZ >> 3);
+    mShadowMatrix = data_020a0e68;
     _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
-        self, &self->mShadowModel, &self->mShadowMatrix, 0x32000, 0x258000, 0xf);
+        this, &mShadowModel, &mShadowMatrix, 0x32000, 0x258000, 0xf);
 }
 
 // @symbol _ZN12daBasabasa_c16CleanupResourcesEv
@@ -408,7 +411,7 @@ int daBasabasa_c::Behavior()
                 mdCcAc_c.Update();
             }
         }
-        func_ov065_02117994((char *)this);
+        func_ov065_02117994();
         return 1;
     }
     if (UpdateKillByInvincibleChar(mWithMeshClsn, mModelAnim1, 3) != 0) {
@@ -416,7 +419,7 @@ int daBasabasa_c::Behavior()
     }
     if (mDeathState != 0) {
         UpdateDeath(mWithMeshClsn);
-        func_ov065_02117994((char *)this);
+        func_ov065_02117994();
         return 1;
     }
     DecIfAbove0_Short((unsigned short *)&mStateTimer);
@@ -446,9 +449,9 @@ int daBasabasa_c::Behavior()
     mAngleX = mPrevAngleX;
     mAngleY = mPrevAngleY;
     mAngleZ = mPrevAngleZ;
-    func_ov065_02117994((char *)this);
+    func_ov065_02117994();
     if (mIsFlying == 1) {
-        func_ov065_0211704c((char *)this);
+        func_ov065_0211704c();
     }
     mdCcAc_c.Clear();
     {
@@ -509,4 +512,10 @@ void daBasabasa_c::OnTurnIntoEgg(Player &player)
 s32 daBasabasa_c::OnYoshiTryEat()
 {
     return 4;
+}
+
+// @symbol daBasabasa_c_classInit
+extern "C" daBasabasa_c *daBasabasa_c_classInit()
+{
+    return new daBasabasa_c();
 }

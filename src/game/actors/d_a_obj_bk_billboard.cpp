@@ -69,3 +69,16 @@ extern "C" void func_ov015_02111214(daObjBkBillboard_c *t)
     t->mModel.mat4x3.t.y = t->mPosY >> 3;
     t->mModel.mat4x3.t.z = t->mPosZ >> 3;
 }
+
+// @symbol _ZN18daObjBkBillboard_cD1Ev
+// @symbol _ZN18daObjBkBillboard_cD0Ev
+/* NOT WRITTEN HERE ON PURPOSE. The inline `~daObjBkBillboard_c() {}` in the
+   header is the whole source of both variants: from an inline body mwcc emits
+   D1 and then D0 -- the cartridge's own order -- and no D2. Writing the body
+   out of line here instead flips them to D0-before-D1 and the isolation step
+   rejects the object.
+
+   Their bodies are one vptr store, then mModel destroyed, then ~dActor_c --
+   the direct-base chain the RTTI states. D0's trailing deallocation is the
+   inline `operator delete` it inherits, which is why nothing here names a
+   heap. */

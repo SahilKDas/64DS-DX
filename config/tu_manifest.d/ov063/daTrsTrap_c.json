@@ -1,55 +1,200 @@
 {
-  "boundary_confidence": "medium",
+  "boundary_confidence": "high",
   "boundary_evidence": [
-    "Hand-cut cleanup merge, not a tu_map cut: the five methods are the contiguous ROM run 0x0211cdec..0x0211d270, bounded below by the state-body block (0x0211c684..0x0211cdec, a later TU of its own) and above by the collision-callback pair (0x0211d270..0x0211d2a0).",
-    "The class's destructors (0x0211c600..0x0211c684) stay legacy single-function sources, and the four factories (0x0211d2a0..0x0211d3a0) ship in d_a_trs_trap_classinits.cpp under entry ov063/daTrsTrap_c_classInit: one delinks entry licenses one contiguous range, so the ROM-interleaved class cannot be one file.",
+    "contiguous linker run: 0x0211c600..0x0211d270, 16 function(s) -- the whole tools/tu_map.py unit: D1 and D0, the nine state and refresh bodies 0x0211c684..0x0211cdec, and the five methods. Below it src/actors/daTrs_c.cpp ends at 0x0211c600; above it the collision-callback pair at 0x0211d270 opens the factory unit, entry ov063/daTrsTrap_c_classInit.",
+    "The four state bodies are reached through the dispatch records at ov063:0x0211e9ac..0x0211e9c4 (func_ov063_0211c7b0, 0211cc18, 0211cb54, 0211c89c); the refresh helpers are called from Behavior and InitResources; func_ov063_0211c770 from 0211cc18 and 0211c82c from 0211c7b0. Every body reads daTrsTrap_c fields.",
     "class label: daTrsTrap_c (ROM _ZTS at ov063 0x0211e9d8); _ZTV address point 0x0211ea88."
   ],
   "bss": [],
   "compiler_only_output": [
+    {
+      "symbol": "_ZN11daTrsTrap_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Homeless. One out-of-line destructor under #pragma defer_codegen off emits D1, D0, then D2. The cartridge has D1 at ov063:0x0211c600 and D0 at 0x0211c638 and no D2. Production isolation discards it. It is emitted after D0, and the licensed functions stay ROM-ascending."
+    },
     {
       "canonical_address": "0x020072c0",
       "canonical_module": "arm9",
       "disposition": "deadstrip-duplicate",
       "reason": "InitResources holds Vector3 locals (pos, base), and types.h gives Vector3 an inline destructor, so the compiler emits its own copy of the four-byte bx lr body. The ROM homes it in arm9; this copy is a duplicate and is discarded by text-only isolation.",
       "symbol": "_ZN7Vector3D1Ev"
+    },
+    {
+      "symbol": "_ZTV11daTrsTrap_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov063",
+      "canonical_address": "0x0211ea88",
+      "reason": "The out-of-line destructor is the key function, so this TU emits the vtable. Public address point ov063:0x0211ea88 is in .data, outside the licensed text span 0x0211c600..0x0211d270. D1 and D0 store this vptr; text-only production discards the emitted copy and retains cartridge data."
+    },
+    {
+      "symbol": "_ZTI11daTrsTrap_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov063",
+      "canonical_address": "0x0211e9cc",
+      "reason": "This class's __si_class_type_info, dragged in with the vtable. Cartridge copy ov063:0x0211e9cc. Its base word is _ZTI8dActor_c."
+    },
+    {
+      "symbol": "_ZTS11daTrsTrap_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov063",
+      "canonical_address": "0x0211e9d8",
+      "reason": "Type-name string 11daTrsTrap_c at ov063:0x0211e9d8."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e390, outside this TU's licensed range (.text 0x0211c600-0x0211d270), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390"
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e384, outside this TU's licensed range (.text 0x0211c600-0x0211d270), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e78, outside this TU's licensed range (.text 0x0211c600-0x0211d270), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e54, outside this TU's licensed range (.text 0x0211c600-0x0211d270), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54"
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086d70, outside this TU's licensed range (.text 0x0211c600-0x0211d270), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e60, outside this TU's licensed range (.text 0x0211c600-0x0211d270), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60"
     }
   ],
   "data": [],
   "externalized_output": [],
   "functions": [
     {
+      "symbol": "_ZN11daTrsTrap_cD1Ev",
+      "address": "0x0211c600",
+      "size": "0x00000038",
+      "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN11daTrsTrap_cD0Ev",
+      "address": "0x0211c638",
+      "size": "0x0000004c",
+      "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov063_0211c684",
+      "address": "0x0211c684",
+      "size": "0x00000074",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211c684.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov063_0211c6f8",
+      "address": "0x0211c6f8",
+      "size": "0x00000078",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211c6f8.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov063_0211c770",
+      "address": "0x0211c770",
+      "size": "0x00000040",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211c770.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov063_0211c7b0",
+      "address": "0x0211c7b0",
+      "size": "0x0000007c",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211c7b0.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov063_0211c82c",
+      "address": "0x0211c82c",
+      "size": "0x00000070",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211c82c.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov063_0211c89c",
+      "address": "0x0211c89c",
+      "size": "0x0000024c",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211c89c.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov063_0211cae8",
+      "address": "0x0211cae8",
+      "size": "0x0000006c",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211cae8.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov063_0211cb54",
+      "address": "0x0211cb54",
+      "size": "0x000000c4",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211cb54.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov063_0211cc18",
+      "address": "0x0211cc18",
+      "size": "0x000001d4",
+      "legacy_source": "src/unnamed/ov063/func_ov063_0211cc18.c",
+      "ordinal": 10
+    },
+    {
       "address": "0x0211cdec",
       "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c16CleanupResourcesEv.cpp",
-      "ordinal": 0,
+      "ordinal": 11,
       "size": "0x00000044",
       "symbol": "_ZN11daTrsTrap_c16CleanupResourcesEv"
     },
     {
       "address": "0x0211ce30",
       "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c16OnPendingDestroyEv.cpp",
-      "ordinal": 1,
+      "ordinal": 12,
       "size": "0x00000004",
       "symbol": "_ZN11daTrsTrap_c16OnPendingDestroyEv"
     },
     {
       "address": "0x0211ce34",
       "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c6RenderEv.cpp",
-      "ordinal": 2,
+      "ordinal": 13,
       "size": "0x00000040",
       "symbol": "_ZN11daTrsTrap_c6RenderEv"
     },
     {
       "address": "0x0211ce74",
       "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c8BehaviorEv.cpp",
-      "ordinal": 3,
+      "ordinal": 14,
       "size": "0x0000008c",
       "symbol": "_ZN11daTrsTrap_c8BehaviorEv"
     },
     {
       "address": "0x0211cf00",
       "legacy_source": "src/game/actors/daTrsTrap_c/_ZN11daTrsTrap_c13InitResourcesEv.cpp",
-      "ordinal": 4,
+      "ordinal": 15,
       "size": "0x00000370",
       "symbol": "_ZN11daTrsTrap_c13InitResourcesEv"
     }
@@ -57,8 +202,8 @@
   "id": "ov063/daTrsTrap_c",
   "module": "ov063",
   "notes": [
-    "Hand-merged deslop cleanup (Big Boo's Haunt animated-furniture traps), not a tubuild create shadow: five legacy one-function sources consolidated into d_a_trs_trap.cpp with named fields, typed resource rows, and `return new` factories next door. See the file's own header comment for the split rationale and leftovers.",
-    "InitResources keeps two load-bearing preheader shapes (offset table referenced by symbol at the use site; v16 written x, y, z); Behavior spells mStateTimer two ways to keep the increment and reset address computations apart. Both are commented at the code."
+    "Sixteen-function unit 0x0211c600..0x0211d270 in ROM order under #pragma defer_codegen off: the out-of-line destructor (D1, D0), the nine unnamed state and refresh bodies, then CleanupResources, OnPendingDestroy, Render, Behavior and InitResources.",
+    "InitResources keeps two load-bearing preheader shapes (offset table referenced by symbol at the use site; v16 written x, y, z); Behavior names mStateTimer directly at both sites. Both are commented at the code."
   ],
   "production_mode": "text-only",
   "promoted_source": "src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp",
@@ -66,22 +211,76 @@
     {
       "end": "0x0211d270",
       "name": ".text",
-      "start": "0x0211cdec"
+      "start": "0x0211c600"
     }
   ],
   "source": "src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp",
   "status": "promoted",
   "verification": {
-    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity), via tools/prepush_linkcheck.py --files",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
     "criteria": {
       "every_declared_function_bytes_match": "PASS",
       "every_declared_function_defined": "PASS",
-      "relocation_destinations_verified": "PASS"
+      "relocation_destinations_verified": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS"
     },
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
-    "functions_declared": 5,
-    "functions_matched": 5,
-    "round": "tools/prepush_linkcheck.py --files src/game/actors/daTrsTrap_c/d_a_trs_trap.cpp -- 5 checked, 5 verified, 0 warnings, 0 blocking",
-    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe"
+    "functions_declared": 16,
+    "functions_matched": 16,
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "object": "build/tu/ov063-daTrsTrap_c/d_a_trs_trap.o (gitignored)",
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN11daTrsTrap_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN11daTrsTrap_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        23,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "data": [
+        "_ZTV11daTrsTrap_c",
+        "_ZTI11daTrsTrap_c",
+        "_ZTS11daTrsTrap_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI11daTrsTrap_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS11daTrsTrap_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV11daTrsTrap_c"
+      ]
+    }
   }
 }

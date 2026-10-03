@@ -1,14 +1,18 @@
 //cpp
-/* dScMgSnowball_c -- the snowball-rolling minigame scene: 23 functions
- * (.text 0x0212568c..0x021295ac), the destructor, eight virtual overrides and
- * the thirteen helpers they call.
+/* dScMgSnowball_c -- the snowball-rolling minigame scene: 42 functions
+ * (.text 0x0212568c..0x0212a520), the destructor, eight virtual overrides, the
+ * constructor and the helpers they call, including the per-element helpers for
+ * the 0x32-element array at this+0xbe94. dScMgSnowball_c_classInit, which
+ * follows at 0x0212a520, is its own TU (src/d_s_mg_snowball.cpp).
+ * The constructor (0x021295ac) and the 18 functions after it were separate
+ * one-function files (func_ov006_021295ac through func_ov006_0212a3c0).
  *
  * Functions run in ROM order under `#pragma defer_codegen off`; removing it
  * breaks five functions and the section order. The six bracketed optimizer
  * pragmas are needed too, and so is the include order (see below).
  *
  * Blocked: the helpers are unnamed in symbols.txt. Some calls stay mangled:
- * cstd::atan2, ApproachLinear and Particle::System take Fix12 or reference
+ * cstd::atan2 and Particle::System take Fix12 or reference
  * arguments, and decl_common.h declares a global named G2, so no
  * `namespace G2` can be opened here.
  */
@@ -27,6 +31,8 @@
 #include "Sound.h"
 #include "dScMgBase_c.h"
 #include "Particle__System.h"
+
+bool ApproachLinear(short &value, short target, short step);
 
 /* Declarations the recovered sources need that no project header supplies.
  * Each one was checked against include/*.h first; these are the residue. */
@@ -91,7 +97,6 @@ struct SPS {
 #define atan2 _ZN4cstd5atan2E5Fix12IiES1_
 #define pnew _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE
 #define pfromid(id) ((int *)Particle::System::FromUniqueID(id))
-#define ApproachLinear _Z14ApproachLinearRsss
 /* H is `short` in Behavior and `unsigned short` in the helpers; HS is the
  * signed read where a site needs it. */
 
@@ -137,7 +142,7 @@ extern void SetSubBg2Offset(int, int);
 extern void SetSubBg3Offset(int, int);
 extern void func_020731dc(void *, void *, void **);
 extern void Quaternion_Normalize(s32 *);
-extern void _ZN7Vector3D1Ev(void);
+extern void *_ZN7Vector3D1Ev(void *object);
 extern void func_ov006_02126948(char *);
 extern void func_ov006_0212a3c0(char *);
 extern void func_ov006_02125994(char *);
@@ -153,7 +158,6 @@ s32  GetGameLanguage(void);
 void func_02012790(int a);
 void FreeGfxSlotsById(int arg);
 void Vec2_Sub(int *o, int *a, int *b);
-void _Z14ApproachLinearRsss(short *a, short b, short cc);
 extern unsigned char data_020a0e40[];
 extern unsigned char data_020a0de8[];
 extern unsigned char data_020a0de9[];
@@ -1659,7 +1663,7 @@ s32 dScMgSnowball_c::Behavior()
             q = __aeabi_idiv(v * 0x2710, I(0xaba0));
             *hp = *hp + (unsigned short)q;
             m = atan2(I(0xab60), I(0xab64));
-            ApproachLinear((short*)AT(c,0xab7c), (short)m, (short)(Vec2_Len((int*)ATI(0xab60)) / 16));
+            ApproachLinear(*(short*)AT(c,0xab7c), (short)m, (short)(Vec2_Len((int*)ATI(0xab60)) / 16));
         }
 
         if (B(0xb9e5) == 1 || I(0xb9dc) <= 0) {
@@ -1972,4 +1976,548 @@ s32 dScMgSnowball_c::InitResources()
     func_ov006_02126ee4(arg0);
     func_ov006_02126a98((char *)arg0);
     return 1;
+}
+
+// @symbol func_ov006_021295ac
+/* The constructor body of dScMgSnowball_c, called from dScMgSnowball_c_classInit
+   on the freshly allocated 0xc59c-byte object. Base C2, the two vptr stores
+   (dScMgSingle3DBase_c's, then this class's own, which lands on the cartridge's
+   _ZTV15dScMgSnowball_c), the tracker at 0x471c, mModel, the `= 0` at 0xabf4
+   and the three element arrays, constructed in the order ~dScMgSnowball_c
+   unwinds them. */
+extern "C" {
+void *_ZN11dScMgBase_cC2Ev(void *p);
+void _ZN8Particle10SysTrackerC1Ev(void *p);
+void *_ZN5ModelC1Ev(void *p);
+void __cxa_vec_ctor(void *arr, int count, int size, void *ctor, void *dtor);
+void func_0203d738(void *);
+void func_ov006_0212968c(void);
+}
+extern void *_ZTV19dScMgSingle3DBase_c;
+extern void *_ZTV15dScMgSnowball_c[];
+extern "C" void *func_ov006_021295ac(char *t)
+{
+    _ZN11dScMgBase_cC2Ev(t);
+    *(void **)t = &_ZTV19dScMgSingle3DBase_c;
+    _ZN8Particle10SysTrackerC1Ev(t + 0x471c);
+    *(void **)t = &_ZTV15dScMgSnowball_c[2];
+    _ZN5ModelC1Ev(t + 0xaba4);
+    *(int *)(t + 0xabf4) = 0;
+    __cxa_vec_ctor(t + 0xacd8, 0x80, 8, (void *)func_0203d738, (void *)NullDestructor_0203d47c);
+    __cxa_vec_ctor(t + 0xb5d8, 0x80, 8, (void *)func_0203d738, (void *)NullDestructor_0203d47c);
+    __cxa_vec_ctor(t + 0xba14, 0x20, 0x24, (void *)func_ov006_0212968c, (void *)func_ov006_02125800);
+    return t;
+}
+
+// @symbol func_ov006_0212968c
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+void func_ov006_0212968c(void)
+{
+}
+}
+
+// @symbol func_ov006_02129690
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern void func_ov004_020af948(void* a, int b, int c, void* m);
+extern void DrawOamSprite(void* a, int b, int c, void* m);
+
+typedef struct {
+    s32 a;        /* 0x00 */
+    s32 b;        /* 0x04 */
+    u8 pad[0x16]; /* 0x08 */
+    u8 f1e;       /* 0x1e */
+    u8 f1f;       /* 0x1f */
+    u8 f20;       /* 0x20 */
+    u8 pad2[3];   /* 0x21 */
+} Elem_02129690;
+
+typedef struct {
+    u8 head[0xab6c];
+    s32 fixed;                  /* 0xab6c */
+    u8 mid[0xbe94 - 0xab70];
+    Elem_02129690 arr[50];               /* 0xbe94 */
+} Obj_02129690;
+
+void func_ov006_02129690(void* self)
+{
+    Obj_02129690* a = (Obj_02129690*)self;
+    int i;
+    for (i = 0; i < 50; i++) {
+        if (a->arr[i].f1e != 0) {
+            int bb = a->arr[i].a >> 12;
+            int cc = (a->arr[i].b - a->fixed) >> 12;
+            func_ov004_020af948((void*)data_ov006_02139c6c[a->arr[i].f1f], bb, cc, 0);
+            DrawOamSprite((void*)data_ov006_02139c6c[a->arr[i].f20], bb, cc, 0);
+        }
+    }
+}
+}
+
+// @symbol func_ov006_0212972c
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+void func_ov006_0212972c(char* c, int idx){
+  int off = idx * 0x24;
+  short* h = (short*)(c + 0xbeac + off);
+  if (*(unsigned short*)h != 0) {
+    *h = (short)(*(unsigned short*)h - 1);
+    if (*h < 0) *h = 0;
+    return;
+  }
+  {
+    int* w = (int*)(c + 0xbea0 + off);
+    if (*w > 0x100) {
+      *w = *w - 0x10;
+      if ((short)*w < 0x100) *w = 0x100;
+      return;
+    }
+  }
+  *(unsigned char*)(c + 0xb000 + off + 0xeb1) = 0;
+}
+}
+
+// @symbol func_ov006_021297c0
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int* seed);
+extern int data_0209d4b8;
+
+void func_ov006_021297c0(unsigned char* base, int idx)
+{
+    int off = idx * 0x24;
+    int* pa = (int*)(base + 0xbea0 + off);
+    int* pb = (int*)(base + 0xbea4 + off);
+    if (*pb > *pa) {
+        *pa = *pa + 0x10;
+        if (*pb > *pa)
+            *pa = *pb;
+    }
+    {
+        unsigned short* cnt = (unsigned short*)(base + 0xbeac + off);
+        if (*cnt != 0) {
+            *cnt = *cnt - 1;
+            if (*(short*)cnt < 0)
+                *cnt = 0;
+            return;
+        }
+        *(unsigned char*)(base + 0xbeb1 + off) = 2;
+        *cnt = (unsigned char)(((32 * (((unsigned)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff)) >> 15) + 0x20);
+    }
+}
+}
+
+// @symbol func_ov006_02129894
+extern "C" {
+extern int RandomIntInternal(int* seed);
+extern int data_0209d4b8;
+void func_ov006_02129894(char* c, int i) {
+  int idx = i * 0x24;
+  unsigned int r;
+  *(int*)(c + 0xbea0 + idx) = 0;
+  r = ((unsigned)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+  *(int*)(c + 0xbea4 + idx) = (((r << 4) >> 15) << 4) + 0x300;
+  *(unsigned char*)(c + 0xbeb1 + idx) = 1;
+  r = ((unsigned)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+  r = ((r << 5) >> 15) + 0x20;
+  *(short*)(c + 0xbeac + idx) = (unsigned char)r;
+}
+}
+
+// @symbol func_ov006_0212992c
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+void func_ov006_0212992c(char *self, int idx)
+{
+    int off = idx * 0x24;
+    int *be94 = (int*)(self + 0xbe94 + off);
+    int *be9c = (int*)(self + 0xbe9c + off);
+    int *be98 = (int*)(self + 0xbe98 + off);
+    *be94 = *be94 + *be9c;
+    *be98 = *be98 + *(int*)(self + 0xbea0 + off);
+    if (*(unsigned short*)(self + 0xbea8 + off) != 0) {
+        unsigned short *p16 = (unsigned short*)(self + 0xbeaa + off);
+        *p16 = *p16 - 1;
+        if ((short)*p16 < 0) *p16 = 0;
+        return;
+    }
+    if (*be9c > 0) {
+        *be9c -= 8;
+        if ((short)*be9c < 0) *be9c = 0;
+        return;
+    }
+    if (*be9c < 0) {
+        *be9c += 8;
+        if (*be9c > 0) *be9c = 0;
+        return;
+    }
+    *(unsigned char*)(self + 0xbeb0 + off) = 0;
+}
+}
+
+// @symbol func_ov006_02129a34
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int *seed);
+extern int data_0209d4b8;
+
+void func_ov006_02129a34(char *base, int i)
+{
+    int o = i * 0x24;
+    unsigned short *aa8;
+
+    *(int *)(base + 0xbe94 + o) += *(int *)(base + 0xbe9c + o);
+    *(int *)(base + 0xbe98 + o) = *(int *)(base + 0xbe98 + o) + *(int *)(base + 0xbea0 + o);
+
+    aa8 = (unsigned short *)(base + 0xbea8 + o);
+    if (*aa8 != 0) {
+        *aa8 = *aa8 - 1;
+        if (*(short *)aa8 < 0) *aa8 = 0;
+        return;
+    }
+
+    {
+        int *p9c = (int *)(base + 0xbe9c + o);
+        if (*p9c > -0x300) {
+            *p9c -= 8;
+            if (*p9c <= -0x300) *p9c = 0x300;
+        }
+    }
+
+    {
+        unsigned short *aaa = (unsigned short *)(base + 0xbeaa + o);
+        if (*aaa != 0) {
+            *aaa = *aaa - 1;
+            if (*(short *)aaa < 0) *aaa = 0;
+            return;
+        }
+        *(unsigned char *)(base + 0xbeb0 + o) = 3;
+        *aaa = (short)(((((((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff) << 5) >> 0xf) + 0x20) & 0xff);
+    }
+}
+}
+
+// @symbol func_ov006_02129b74
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int *seed);
+extern int data_0209d4b8;
+
+void func_ov006_02129b74(char *base, int index)
+{
+    int i = index * 0x24;
+    unsigned short v;
+
+    *(int *)(base + 0xbe94 + i) += *(int *)(base + 0xbe9c + i);
+    *(int *)(base + 0xbe98 + i) += *(int *)(base + 0xbea0 + i);
+
+    v = *(unsigned short *)(base + 0xbea8 + i);
+    if (v != 0) {
+        *(short *)(base + 0xbea8 + i) = v - 1;
+        if (*(short *)(base + 0xbea8 + i) < 0)
+            *(short *)(base + 0xbea8 + i) = 0;
+        return;
+    }
+
+    if (*(int *)(base + 0xbe9c + i) < 0x300) {
+        *(int *)(base + 0xbe9c + i) += 8;
+        if (*(int *)(base + 0xbe9c + i) >= 0x300)
+            *(int *)(base + 0xbe9c + i) = 0x300;
+    }
+
+    v = *(unsigned short *)(base + 0xbeaa + i);
+    if (v != 0) {
+        *(short *)(base + 0xbeaa + i) = v - 1;
+        if (*(short *)(base + 0xbeaa + i) < 0)
+            *(short *)(base + 0xbeaa + i) = 0;
+        return;
+    }
+
+    *(char *)(base + 0xbeb0 + i) = 3;
+    *(short *)(base + 0xbeaa + i) = (((((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff) << 5) >> 0xf) + 0x20 & 0xff;
+}
+}
+
+// @symbol func_ov006_02129cb0
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int *seed);
+extern int data_0209d4b8;
+extern unsigned char data_ov006_0212f3b0[];
+
+void func_ov006_02129cb0(char *o, int i)
+{
+    int n = i * 0x24;
+    if (*(unsigned short *)(o + 0xbea8 + n) != 0) {
+        *(unsigned short *)(o + 0xbea8 + n) = *(unsigned short *)(o + 0xbea8 + n) - 1;
+        if (*(short *)(o + 0xbea8 + n) < 0) *(short *)(o + 0xbea8 + n) = 0;
+        return;
+    }
+    *(int *)(o + 0xbe9c + n) = 0;
+    *(unsigned char *)(o + 0xbeb0 + n) = data_ov006_0212f3b0[(((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff) << 1 >> 15];
+    *(unsigned short *)(o + 0xbea8 + n) = (short)(unsigned char)((0x10 * (((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff)) >> 0xf);
+    *(unsigned short *)(o + 0xbeaa + n) = (short)(unsigned char)(((0x40 * (((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff)) >> 0xf) + 0x60);
+}
+}
+
+// @symbol func_ov006_02129d94
+struct C_02129d94; typedef void (C_02129d94::*PMF_02129d94)(int);
+struct Entry_02129d94 { PMF_02129d94 pmf; };
+extern Entry_02129d94 data_ov006_02143070[];
+extern Entry_02129d94 data_ov006_02143020[];
+struct Elem_02129d94 { unsigned char a; unsigned char b; char pad[0x22]; };
+struct C_02129d94 { char head[0xbeb0]; Elem_02129d94 arr[1]; };
+extern "C" void func_ov006_02129d94(C_02129d94* c, int i) {
+  int idx0 = c->arr[i].a;
+  (c->*data_ov006_02143070[idx0].pmf)(i);
+  int idx1 = c->arr[i].b;
+  (c->*data_ov006_02143020[idx1].pmf)(i);
+}
+
+// @symbol func_ov006_02129e28
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+void func_ov006_02129e28(char *c, int i){
+  int o = i*0x24;
+  char *b9c = c + 0xbe9c;
+  char *b94 = c + 0xbe94;
+  char *b98 = c + 0xbe98;
+  int v;
+  *(int*)(b94 + o) = *(int*)(b94 + o) + *(int*)(b9c + o);
+  *(int*)(b98 + o) = *(int*)(b98 + o) + *(int*)(c + o + 0xbea0);
+  v = *(int*)(b9c + o);
+  if(v > 0){
+    v -= 0x20;
+    *(int*)(b9c + o) = v;
+    v = *(int*)(b9c + o);
+    v = (short)v;
+    if(v < 0){ v = 0; *(int*)(b9c + o) = v; }
+  } else if(v < 0){
+    v += 0x20;
+    *(int*)(b9c + o) = v;
+    v = *(int*)(b9c + o);
+    if(v > 0){ v = 0; *(int*)(b9c + o) = v; }
+  } else {
+    *(unsigned char*)(c + o + 0xbeb0) = 0;
+  }
+}
+}
+
+// @symbol func_ov006_02129eec
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+void func_ov006_02129eec(char *c, int idx)
+{
+    int n = idx * 0x24;
+    unsigned short d;
+    short r;
+    *(int *)(c + 0xbe94 + n) = *(int *)(c + 0xbe94 + n) + *(int *)(c + 0xbe9c + n);
+    *(int *)(c + 0xbe98 + n) = *(int *)(c + 0xbe98 + n) + *(int *)(c + 0xbea0 + n);
+    d = *(unsigned short *)(c + 0xbea8 + n);
+    if (d != 0) {
+        r = (short)(d - 1);
+        *(short *)(c + 0xbea8 + n) = r;
+        if (*(short *)(c + 0xbea8 + n) < 0) *(short *)(c + 0xbea8 + n) = 0;
+        return;
+    }
+    if (*(int *)(c + 0xbe9c + n) > -0x400) {
+        *(int *)(c + 0xbe9c + n) -= 0x20;
+        if (*(int *)(c + 0xbe9c + n) <= -0x400) *(int *)(c + 0xbe9c + n) = 0x400;
+    }
+    d = *(unsigned short *)(c + 0xbeaa + n);
+    if (d != 0) {
+        r = (short)(d - 1);
+        *(short *)(c + 0xbeaa + n) = r;
+        if (*(short *)(c + 0xbeaa + n) < 0) *(short *)(c + 0xbeaa + n) = 0;
+        return;
+    }
+    *(unsigned char *)(c + 0xbeb0 + n) = 3;
+}
+}
+
+// @symbol func_ov006_0212a000
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+void func_ov006_0212a000(char *base, int index)
+{
+    int n;
+
+    *(int *)(base + 0xbe94 + index * 0x24) += *(int *)(base + 0xbe9c + index * 0x24);
+    *(int *)(base + 0xbe98 + index * 0x24) += *(int *)(base + 0xbea0 + index * 0x24);
+
+    n = *(unsigned short *)(base + 0xbea8 + index * 0x24);
+    if (n != 0) {
+        *(unsigned short *)(base + 0xbea8 + index * 0x24) = (unsigned short)(n - 1);
+        if (*(short *)(base + 0xbea8 + index * 0x24) < 0)
+            *(short *)(base + 0xbea8 + index * 0x24) = 0;
+        return;
+    }
+
+    if (*(int *)(base + 0xbe9c + index * 0x24) < 0x400) {
+        *(int *)(base + 0xbe9c + index * 0x24) += 0x20;
+        if (*(int *)(base + 0xbe9c + index * 0x24) >= 0x400)
+            *(int *)(base + 0xbe9c + index * 0x24) = 0x400;
+    }
+
+    n = *(unsigned short *)(base + 0xbeaa + index * 0x24);
+    if (n != 0) {
+        *(unsigned short *)(base + 0xbeaa + index * 0x24) = (unsigned short)(n - 1);
+        if (*(short *)(base + 0xbeaa + index * 0x24) < 0)
+            *(short *)(base + 0xbeaa + index * 0x24) = 0;
+        return;
+    }
+
+    *(unsigned char *)(base + 0xbeb0 + index * 0x24) = 3;
+}
+}
+
+// @symbol func_ov006_0212a110
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int *seed);
+extern int data_0209d4b8;
+extern unsigned char data_ov006_0212f3ac[];
+
+void func_ov006_0212a110(char *c, int idx)
+{
+    int n = idx * 0x24;
+    unsigned short d;
+    short r;
+    unsigned int v;
+    d = *(unsigned short *)(c + 0xbea8 + n);
+    if (d != 0) {
+        r = (short)(d - 1);
+        *(short *)(c + 0xbea8 + n) = r;
+        if (*(short *)(c + 0xbea8 + n) < 0) *(short *)(c + 0xbea8 + n) = 0;
+        return;
+    }
+    *(int *)(c + 0xbe9c + n) = 0;
+    v = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    *(int *)(c + 0xbea0 + n) = (int)(((v << 5) >> 15) << 4) + 0x600;
+    v = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    *(unsigned char *)(c + 0xbeb0 + n) = data_ov006_0212f3ac[(v << 1) >> 15];
+    v = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    *(short *)(c + 0xbea8 + n) = (unsigned char)((v << 4) >> 15);
+    v = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    *(short *)(c + 0xbeaa + n) = (unsigned char)(((v * 0x30) >> 15) + 0x30);
+}
+}
+
+// @symbol func_ov006_0212a224
+struct C_0212a224;
+typedef void (C_0212a224::*PMF_0212a224)(int);
+extern "C" PMF_0212a224 data_ov006_02143050[];
+
+extern "C" void func_ov006_0212a224(char *base, int idx)
+{
+    unsigned char state = *(unsigned char *)(base + idx * 0x24 + 0xbeb0);
+    (((C_0212a224 *)base)->*data_ov006_02143050[state])(idx);
+}
+
+// @symbol func_ov006_0212a274
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int *seed);
+extern int data_0209d4b8;
+extern int data_ov006_0212f3b4[];
+
+void func_ov006_0212a274(char *self, int idx)
+{
+    unsigned int v = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16 & 0x7fff) << 3 >> 0xf;
+    int b = 0;
+    if (v == 5)
+        b = 1;
+    *(unsigned char *)(self + idx * 0x24 + 0xbeaf) = data_ov006_0212f3b4[b];
+    *(unsigned char *)(self + idx * 0x24 + 0xbeb0) = 0;
+}
+}
+
+// @symbol func_ov006_0212a2e0
+class C_0212a2e0 { public: int dummy; };
+typedef void (C_0212a2e0::*PMF_0212a2e0)(int);
+
+extern "C" PMF_0212a2e0 data_ov006_02143038[];
+extern "C" int RandomIntInternal(int *seed);
+extern "C" int data_0209d4b8;
+
+extern "C" void func_ov006_0212a2e0(char *o)
+{
+    int i;
+    char *q;
+    int mask;
+
+    q = o;
+    i = 0;
+    mask = 0x7fff;
+    do {
+        if (*(u8 *)(q + 0xbeae) != 0) {
+            u8 fidx = *(u8 *)(q + 0xbeaf);
+            (((C_0212a2e0 *)o)->*data_ov006_02143038[fidx])(i);
+            if ((*(int *)(q + 0xbe98) - *(int *)(o + 0xab6c)) >> 12 >= 0xc8) {
+                u32 rnd = ((u32)RandomIntInternal(&data_0209d4b8) >> 16) & mask;
+                rnd = (rnd << 5) >> 0xf;
+                *(int *)(q + 0xbe94) = rnd << 0xf;
+                *(int *)(q + 0xbe98) = *(int *)(o + 0xab6c) - 0x8000;
+                *(u8 *)(q + 0xbeb0) = 0;
+                *(u8 *)(q + 0xbeaf) = 0;
+                *(u8 *)(q + 0xbeb1) = 0;
+            }
+        }
+        i++;
+        q += 0x24;
+    } while (i < 0x32);
+}
+
+// @symbol func_ov006_0212a3c0
+extern "C" {  /* .c-derived member: C linkage for the whole block */
+extern int RandomIntInternal(int *seed);
+extern int data_0209d4b8;
+
+void func_ov006_0212a3c0(char *c)
+{
+    int i;
+    char *p;
+    unsigned int r;
+    unsigned int v;
+    int q;
+    unsigned int m;
+
+    i = 0;
+    p = c;
+    for (; i < 0x32; i++)
+    {
+        *(int *)(p + 0xb000 + 0xe94) = 0;
+        *(int *)(p + 0xb000 + 0xe98) = 0;
+        *(int *)(p + 0xb000 + 0xe9c) = 0;
+        *(int *)(p + 0xb000 + 0xea0) = 0;
+        *(short *)(p + 0xbe00 + 0xa8) = 0;
+        *(short *)(p + 0xbe00 + 0xaa) = 0;
+        *(short *)(p + 0xbe00 + 0xac) = 0;
+        *(char *)(p + 0xb000 + 0xeae) = 0;
+        *(char *)(p + 0xb000 + 0xeaf) = 0;
+        *(char *)(p + 0xb000 + 0xeb0) = 0;
+        *(char *)(p + 0xb000 + 0xeb1) = 0;
+        *(char *)(p + 0xb000 + 0xeb2) = 0;
+        *(char *)(p + 0xb000 + 0xeb3) = 0;
+        *(char *)(p + 0xb000 + 0xeb4) = 1;
+        p += 0x24;
+    }
+
+    i = 0;
+    p = c;
+    for (; i < 0x32; i++)
+    {
+        r = (unsigned int)RandomIntInternal(&data_0209d4b8);
+        m = ((r >> 16) & 0x7fff) << 5;
+        *(int *)(p + 0xb000 + 0xe94) = (int)((m >> 0xf)) << 0xf;
+
+        r = (unsigned int)RandomIntInternal(&data_0209d4b8);
+        q = (((r >> 16) & 0x7fff) * 0x18) >> 0xf;
+        *(int *)(p + 0xb000 + 0xe98) = *(int *)(c + 0xab6c) - 0x8000 + (q << 0xf);
+        *(char *)(p + 0xb000 + 0xeae) = 1;
+        *(char *)(p + 0xb000 + 0xeb2) = 1;
+        *(char *)(p + 0xb000 + 0xeaf) = 0;
+        *(char *)(p + 0xb000 + 0xeb0) = 0;
+
+        r = (unsigned int)RandomIntInternal(&data_0209d4b8);
+        *(char *)(p + 0xb000 + 0xeb3) = (char)(((r >> 16) & 0x7fff) * 5 >> 0xf);
+
+        r = (unsigned int)RandomIntInternal(&data_0209d4b8);
+        v = *(unsigned char *)(p + 0xb000 + 0xeb3) + ((((r >> 16) & 0x7fff) << 2) >> 0xf) + 1;
+        v = v & 0xff;
+        if (v >= 5)
+            v = (v - 5) & 0xff;
+        *(char *)(p + 0xb000 + 0xeb4) = (char)v;
+        *(short *)(p + 0xbe00 + 0xa8) = 0;
+        p += 0x24;
+    }
+}
 }

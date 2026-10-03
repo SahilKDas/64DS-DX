@@ -21,7 +21,7 @@
  * (D0). Both leaves fill all three nulls, which is why daObjBSwdoor_c and daObjCvShutter_c
  * each have their own InitResources, CleanupResources and Behavior in the tree.
  *
- * TWO DESCENDANTS: daObjBSwdoor_c (was ShutterBob) and daObjCvShutter_c (daObjCvShutter_c).
+ * TWO DESCENDANTS: daObjBSwdoor_c (was ShutterBob) and daObjCvShutter_c.
  * Each one's destructor stores this class's vtable between its own and
  * _ZTV10dBgActor_c.
  *

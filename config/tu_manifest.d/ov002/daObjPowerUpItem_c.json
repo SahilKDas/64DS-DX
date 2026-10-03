@@ -1,0 +1,307 @@
+{
+  "id": "ov002/daObjPowerUpItem_c",
+  "module": "ov002",
+  "source": "src/actors/daObjPowerUpItem_c.cpp",
+  "promoted_source": "src/actors/daObjPowerUpItem_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "medium",
+  "boundary_evidence": [
+    "contiguous linker run: 0x20b9148..0x20b9e0c, 18 function(s), from build/tu_map.json (tools/tu_map.py)",
+    "class label(s): daObjPowerUpItem_c",
+    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit tail fold (0930c): daObjPowerUpItem_c_classInit (0x020b9e0c..0x020b9e64) abuts this TU's range with no gap and is now inside it; tu_map cuts on symbol name and left it out. The unit is 0x020b9148..0x020b9e64, bounded above by src/actors/daObjSwitch_c.cpp, which starts exactly at 0x020b9e64."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x020b9148",
+      "end": "0x020b9e64"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN18daObjPowerUpItem_cD1Ev",
+      "address": "0x020b9148",
+      "size": "0x00000050",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN18daObjPowerUpItem_cD0Ev",
+      "address": "0x020b9198",
+      "size": "0x00000064",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov002_020b91fc",
+      "address": "0x020b91fc",
+      "size": "0x000000bc",
+      "legacy_source": "src/func_ov002_020b91fc.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov002_020b92b8",
+      "address": "0x020b92b8",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov002_020b92b8.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov002_020b92c4",
+      "address": "0x020b92c4",
+      "size": "0x0000018c",
+      "legacy_source": "src/func_ov002_020b92c4.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov002_020b9450",
+      "address": "0x020b9450",
+      "size": "0x00000074",
+      "legacy_source": "src/func_ov002_020b9450.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov002_020b94c4",
+      "address": "0x020b94c4",
+      "size": "0x000001fc",
+      "legacy_source": "src/func_ov002_020b94c4.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov002_020b96c0",
+      "address": "0x020b96c0",
+      "size": "0x00000044",
+      "legacy_source": "src/func_ov002_020b96c0.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov002_020b9704",
+      "address": "0x020b9704",
+      "size": "0x0000004c",
+      "legacy_source": "src/func_ov002_020b9704.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov002_020b9750",
+      "address": "0x020b9750",
+      "size": "0x0000004c",
+      "legacy_source": "src/func_ov002_020b9750.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov002_020b979c",
+      "address": "0x020b979c",
+      "size": "0x000001a0",
+      "legacy_source": "src/func_ov002_020b979c.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov002_020b993c",
+      "address": "0x020b993c",
+      "size": "0x000000e0",
+      "legacy_source": "src/func_ov002_020b993c.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov002_020b9a1c",
+      "address": "0x020b9a1c",
+      "size": "0x00000060",
+      "legacy_source": "src/func_ov002_020b9a1c.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "_ZN18daObjPowerUpItem_c16CleanupResourcesEv",
+      "address": "0x020b9a7c",
+      "size": "0x00000030",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_c16CleanupResourcesEv.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "_ZN18daObjPowerUpItem_c6RenderEv",
+      "address": "0x020b9aac",
+      "size": "0x000000c4",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_c6RenderEv.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "_ZN18daObjPowerUpItem_c8BehaviorEv",
+      "address": "0x020b9b70",
+      "size": "0x00000090",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_c8BehaviorEv.cpp",
+      "ordinal": 15
+    },
+    {
+      "symbol": "_ZN18daObjPowerUpItem_c13InitResourcesEv",
+      "address": "0x020b9c00",
+      "size": "0x00000204",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_c13InitResourcesEv.cpp",
+      "ordinal": 16
+    },
+    {
+      "symbol": "_ZN18daObjPowerUpItem_c13OnYoshiTryEatEv",
+      "address": "0x020b9e04",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN18daObjPowerUpItem_c13OnYoshiTryEatEv.cpp",
+      "ordinal": 17
+    },
+    {
+      "symbol": "daObjPowerUpItem_c_classInit",
+      "address": "0x020b9e0c",
+      "size": "0x00000058",
+      "legacy_source": "src/d_a_obj_power_up_item.c",
+      "ordinal": 18
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Cartridge RTTI name is daObjPowerUpItem_c (_ZTS18daObjPowerUpItem_c). The licensed run is the one .text span 0x020b9148..0x020b9e64 (19 functions); the last is the registry factory daObjPowerUpItem_c_classInit (0x020b9e0c), folded in the 0930c classInit tail pass.",
+    "The destructor is declared in the header and defined once, out of line, first in the file. Under #pragma defer_codegen off that emits D1 then D0 in ROM order, plus a homeless D2.",
+    "classInit tail fold (0930c): folded the registry factory daObjPowerUpItem_c_classInit (0x020b9e0c..0x020b9e64) into this promoted TU and widened the complete delinks.txt claim to 0x020b9148..0x020b9e64. The loose source hand-called fBase_c::operator new(972), dActor_c's base constructor, stored _ZTV18daObjPowerUpItem_c, then constructed the two Model members, the ShadowModel, the dCcAc_c and the dBgCh_Actr. daObjPowerUpItem_c declares no constructor, so the implicit one emits that sequence and the factory is `return new daObjPowerUpItem_c();`. Under `#pragma defer_codegen off` it is written at the end of the file."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN18daObjPowerUpItem_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Out-of-line ~daObjPowerUpItem_c under #pragma defer_codegen off emits D1, D0, then D2. The cartridge has D1 at 0x020b9148 and D0 at 0x020b9198 and no daObjPowerUpItem_c D2, so the extra is homeless."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0",
+      "reason": "include/types.h defines ~Vector3() inline, so a TU that holds a Vector3 emits this 4-byte vague-linkage body. It has a ROM home at arm9:0x020072c0 owned by src/_ZN7Vector3D1Ev.cpp, so the disposition is deadstrip-duplicate rather than a homeless deadstrip."
+    },
+    {
+      "symbol": "_ZTV18daObjPowerUpItem_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02109800",
+      "reason": "Key function is the out-of-line destructor, so this TU emits the vtable. symbols.txt names the address point ov002:0x02109800; the licensed span is only .text 0x020b9148..0x020b9e64."
+    },
+    {
+      "symbol": "_ZTI18daObjPowerUpItem_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210977c",
+      "reason": "This class's __si_class_type_info, emitted with the vtable. Canonical copy ov002:0x0210977c, outside the licensed .text span."
+    },
+    {
+      "symbol": "_ZTS18daObjPowerUpItem_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02109788",
+      "reason": "Type name string. The cartridge holds the length-prefixed name at ov002:0x02109788, which is the size this TU emits."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390",
+      "reason": "Inherited vague-linkage RTTI for the immediate base. Canonical copy arm9:0x0208e390."
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384",
+      "reason": "Inherited vague-linkage type name for dActor_c. Canonical copy arm9:0x0208e384."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "Inherited vague-linkage RTTI for dBase_c. Canonical copy arm9:0x02086e78."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Inherited vague-linkage type name for dBase_c. Canonical copy arm9:0x02086e54."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "Inherited vague-linkage RTTI for fBase_c. Canonical copy arm9:0x02086d70."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Inherited vague-linkage type name for fBase_c. Canonical copy arm9:0x02086e60."
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov002-daObjPowerUpItem_c/daObjPowerUpItem_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 19,
+    "functions_declared": 19,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN18daObjPowerUpItem_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN18daObjPowerUpItem_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        18,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56
+      ],
+      "data": [
+        "_ZTV18daObjPowerUpItem_c",
+        "_ZTI18daObjPowerUpItem_c",
+        "_ZTS18daObjPowerUpItem_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI18daObjPowerUpItem_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS18daObjPowerUpItem_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV18daObjPowerUpItem_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

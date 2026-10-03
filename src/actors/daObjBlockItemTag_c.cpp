@@ -4,8 +4,9 @@
  *
  * Each tag attaches to a physical daObjBlockL_c and, once linked,
  * dispatches one of four spawn actions through the PMF table: One-Up
- * mushroom, Mega mushroom, Koopa shell, or Silver Star. Factories
- * live outside this TU.
+ * mushroom, Mega mushroom, Koopa shell, or Silver Star. The TU is
+ * ov002 0x020b415c..0x020b46a0, fourteen functions; it ends with the
+ * four per-profile registry factories, each `new daObjBlockItemTag_c()`.
  *
  * Leftover: LinkSilverStarAndStarMarker, LoadSilverStarAndNumber and
  *   UnloadSilverStarAndNumber keep linker names (ov002 helpers);
@@ -201,4 +202,36 @@ int daObjBlockItemTag_c::InitResources()
         break;
     }
     return 1;
+}
+
+/* The four registry factories, one per spawn profile, in ROM order.
+ * Reconstructed source-style names: SM64DS proves daObjBlockItemTag_c
+ * through RTTI, allocation size, vtable identity, and the BLK_SLVSTAR_TAG,
+ * BLK_GNSHELL_TAG, BLK_SKINOKO_TAG and BLK_OKINOKO_TAG registry profiles;
+ * later EAD lineage supplies classInit. Exact original spellings are not
+ * preserved. Historical aliases: SilverStarBlockTag_Spawn,
+ * GreenShellBlockTag_Spawn, MegaMushroomBlockTag_Spawn,
+ * OneUpMushroomBlockTag_Spawn. */
+// @symbol daObjBlockItemTag_c_classInit_BLK_SLVSTAR_TAG
+extern "C" daObjBlockItemTag_c *daObjBlockItemTag_c_classInit_BLK_SLVSTAR_TAG()
+{
+    return new daObjBlockItemTag_c();
+}
+
+// @symbol daObjBlockItemTag_c_classInit_BLK_GNSHELL_TAG
+extern "C" daObjBlockItemTag_c *daObjBlockItemTag_c_classInit_BLK_GNSHELL_TAG()
+{
+    return new daObjBlockItemTag_c();
+}
+
+// @symbol daObjBlockItemTag_c_classInit_BLK_SKINOKO_TAG
+extern "C" daObjBlockItemTag_c *daObjBlockItemTag_c_classInit_BLK_SKINOKO_TAG()
+{
+    return new daObjBlockItemTag_c();
+}
+
+// @symbol daObjBlockItemTag_c_classInit_BLK_OKINOKO_TAG
+extern "C" daObjBlockItemTag_c *daObjBlockItemTag_c_classInit_BLK_OKINOKO_TAG()
+{
+    return new daObjBlockItemTag_c();
 }

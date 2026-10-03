@@ -297,7 +297,7 @@ src/_ZN2GX15SetGraphicsModeEiii.cpp
 src/_ZN3G2x12SetBGyAffineEPVtP9Matrix2x2iiii.cpp
 src/_ZN3GXS15SetGraphicsModeEi.cpp
 src/_ZN4cstd6strlenEPKc.cpp
-src/_ZN7fBase_c7ProcessEMS_FivEMS_FbvEMS_FvjE.cpp
+src/actors/ActorBase.cpp
 src/func_0201473c.c
 src/func_020147bc.c
 src/func_020524c4.c
@@ -678,7 +678,7 @@ src/_ZN10dBgCh_Actr20UpdateExtraContinousEv.cpp
 src/_ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii.c
 src/_ZN8dActor_c11UntrackStarERa.cpp
 src/_ZN5Sound8PlayLongEjjjRK7Vector3s.cpp
-src/_ZN7fBase_c18MarkForDestructionEv.cpp
+src/actors/ActorBase.cpp
 src/func_0200d858.c
 src/func_02010da4.c
 src/_ZN5dCc_c6UnlinkEv.cpp

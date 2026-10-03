@@ -50,7 +50,7 @@ src/game/actors/d_a_obj_c0_switch.cpp
 #    thunk calling the C symbol directly -- no face needed. ROM:
 #    from:0x0211bc8c (_ZTV12MetalNetLift + 4*9) -> 0x02117cfc,
 #    kind:function(arm,size=0x28).
-src/_ZN12MetalNetLift6RenderEv.cpp
+src/actors/daObjFl_Amilift_c.cpp
 
 # 4. src/game/actors/d_a_star_gate.cpp  (daDoor_c::CleanupResources)
 #    RETIRES port/unmatched/Door_CleanupResources.cpp (whole file).

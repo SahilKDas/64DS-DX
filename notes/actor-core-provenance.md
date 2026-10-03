@@ -187,7 +187,7 @@ they are `dActor_c`'s and four bytes wide.
 
 The `#else` C branch carried `pad_0a4`/`pad_0ac` long after the C++ branch above
 promoted them to real `s32` fields -- a drift no gate could catch, because until
-`include/Door.h`'s own C branch nested this struct, NO C translation unit in the
+`include/daDoor_c.h`'s own C branch nested this struct, NO C translation unit in the
 tree included the header at all and the whole `#else` was dead. The two spellings
 now agree field for field.
 
@@ -208,7 +208,7 @@ Named from matched bodies only. See `include/dActor_c.h` for the short form.
 | `0x0c4` | `mClipResult` | the `u8 *` out-parameter `BeforeBehavior` hands to `Clipper::Func_020150E8`. |
 | `0x0ce` | `mDeathTableID` | `GetBitInDeathTable`, `TrackInDeathTable` and `UntrackInDeathTable` pass it straight to `DeathTable_GetBit`/`SetBit`/`ClearBit`; `dActor_c::Spawn`'s last parameter is `s16 deathTableID` and the constructor seeds it from `data_0208e378`. |
 
-`0x0a4` and `0x0ac` are deliberately still `unk_`: `dEnemyBase_c` and `Door` prove
+`0x0a4` and `0x0ac` are deliberately still `unk_`: `dEnemyBase_c` and `daDoor_c` prove
 they exist and are four bytes, and nothing in the tree shows what they mean.
 So are `0x050`'s neighbours `0x058`'s width aside, `0x0c4`'s exact bit meanings,
 and `fBase_c`'s `0x10..0x13` and `0x48`.

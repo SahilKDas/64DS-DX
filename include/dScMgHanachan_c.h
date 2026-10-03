@@ -14,11 +14,12 @@
  * The destructor is non-trivial: D1 and D0 both call __cxa_vec_cleanup on
  * the 15x0x98 array at 0x4678, as dScMgBase_c's own D1/D0 do. D0's
  * deallocation comes from dScMgBase_c's operator delete. __cxa_vec_cleanup
- * is declared here, not per destructor file, like func_ov004_020b929c in
- * dScMgBase_c.h.
+ * and the array's element destructor func_ov006_020ea324 are declared here,
+ * where both the destructor and dScMgHanachan_c_classInit reach them, like
+ * func_ov004_020b929c in dScMgBase_c.h.
  */
 extern "C" void __cxa_vec_cleanup(void *arr, int count, int elemSize, void *dtor);
-extern "C" void *func_ov006_020ea324(void);
+extern "C" void *func_ov006_020ea324(void *self);
 
 struct dScMgHanachan_c : dScMgBase_c {
     virtual ~dScMgHanachan_c();

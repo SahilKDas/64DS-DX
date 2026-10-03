@@ -10,63 +10,15 @@ src/actors/daOts_c.cpp:
 
 src/actors/daDonketu_c.cpp:
     complete
-    .text start:0x02117070 end:0x02117444
-
-src/d_a_donketu.c:
-    complete
-    .text start:0x02117444 end:0x021174a0
+    .text start:0x02117070 end:0x021174a0
 
 src/actors/daBDonketu_c.cpp:
     complete
-    .text start:0x021174a0 end:0x0211791c
+    .text start:0x021174a0 end:0x02117978
 
-src/d_a_b_donketu.c:
+src/actors/daObjFl_Amilift_c.cpp:
     complete
-    .text start:0x0211791c end:0x02117978
-
-src/_ZN12MetalNetLiftD1Ev.cpp:
-    complete
-    .text start:0x02117978 end:0x021179bc
-
-src/_ZN12MetalNetLiftD0Ev.cpp:
-    complete
-    .text start:0x021179bc end:0x02117a14
-
-src/func_ov064_02117a14.cpp:
-    complete
-    .text start:0x02117a14 end:0x02117a44
-
-src/func_ov064_02117a44.cpp:
-    complete
-    .text start:0x02117a44 end:0x02117b8c
-
-src/func_ov064_02117b8c.c:
-    complete
-    .text start:0x02117b8c end:0x02117bdc
-
-src/func_ov064_02117bdc.c:
-    complete
-    .text start:0x02117bdc end:0x02117c24
-
-src/func_ov064_02117c24.c:
-    complete
-    .text start:0x02117c24 end:0x02117cc4
-
-src/_ZN12MetalNetLift16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02117cc4 end:0x02117cfc
-
-src/_ZN12MetalNetLift6RenderEv.cpp:
-    complete
-    .text start:0x02117cfc end:0x02117d24
-
-src/_ZN12MetalNetLift8BehaviorEv.cpp:
-    complete
-    .text start:0x02117d24 end:0x02117e44
-
-src/_ZN12MetalNetLift13InitResourcesEv.cpp:
-    complete
-    .text start:0x02117e44 end:0x02117fb4
+    .text start:0x02117978 end:0x02117fb4
 
 src/func_ov064_02117fb4.cpp:
     complete
@@ -86,99 +38,15 @@ src/game/actors/d_a_obj_fl_gura.cpp:
 
 src/actors/daObjFl_KomaU_c.cpp:
     complete
-    .text start:0x02118138 end:0x02118564
-
-src/d_a_obj_fl_koma_u.cpp:
-    complete
-    .text start:0x02118564 end:0x021185c0
+    .text start:0x02118138 end:0x021185c0
 
 src/actors/daBbl_c.cpp:
     complete
     .text start:0x021185c0 end:0x02118b50
 
-src/_ZN17BowserPuzzlePieceD1Ev.cpp:
+src/actors/daObjFl_Coin_c.cpp:
     complete
-    .text start:0x02118b50 end:0x02118b94
-
-src/_ZN17BowserPuzzlePieceD0Ev.cpp:
-    complete
-    .text start:0x02118b94 end:0x02118bec
-
-src/_ZN19BowserPuzzleManagerD1Ev.cpp:
-    complete
-    .text start:0x02118bec end:0x02118c10
-
-src/_ZN19BowserPuzzleManagerD0Ev.cpp:
-    complete
-    .text start:0x02118c10 end:0x02118c48
-
-src/func_ov064_02118c48.c:
-    complete
-    .text start:0x02118c48 end:0x02118cd4
-
-src/func_ov064_02118cd4.c:
-    complete
-    .text start:0x02118cd4 end:0x02118cec
-
-src/func_ov064_02118cec.c:
-    complete
-    .text start:0x02118cec end:0x02118d08
-
-src/func_ov064_02118d08.c:
-    complete
-    .text start:0x02118d08 end:0x02118d20
-
-src/func_ov064_02118d20.c:
-    complete
-    .text start:0x02118d20 end:0x02118d3c
-
-src/func_ov064_02118d3c.c:
-    complete
-    .text start:0x02118d3c end:0x02118da0
-
-src/func_ov064_02118da0.cpp:
-    complete
-    .text start:0x02118da0 end:0x02118e24
-
-src/func_ov064_02118e24.cpp:
-    complete
-    .text start:0x02118e24 end:0x02118ee4
-
-src/func_ov064_02118ee4.c:
-    complete
-    .text start:0x02118ee4 end:0x02118fa4
-
-src/func_ov064_02118fa4.cpp:
-    complete
-    .text start:0x02118fa4 end:0x02119010
-
-src/func_ov064_02119010.c:
-    complete
-    .text start:0x02119010 end:0x0211904c
-
-src/_ZN17BowserPuzzlePiece16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x0211904c end:0x02119088
-
-src/_ZN17BowserPuzzlePiece6RenderEv.cpp:
-    complete
-    .text start:0x02119088 end:0x021190b0
-
-src/_ZN17BowserPuzzlePiece8BehaviorEv.cpp:
-    complete
-    .text start:0x021190b0 end:0x0211915c
-
-src/_ZN19BowserPuzzleManager8BehaviorEv.cpp:
-    complete
-    .text start:0x0211915c end:0x021191a8
-
-src/_ZN17BowserPuzzlePiece13InitResourcesEv.cpp:
-    complete
-    .text start:0x021191a8 end:0x02119284
-
-src/_ZN19BowserPuzzleManager13InitResourcesEv.cpp:
-    complete
-    .text start:0x02119284 end:0x0211929c
+    .text start:0x02118b50 end:0x0211929c
 
 src/func_ov064_0211929c.cpp:
     complete
@@ -198,71 +66,11 @@ src/d_a_obj_fl_puzzle.c:
 
 src/actors/daWater_Hakidasi_c.cpp:
     complete
-    .text start:0x02119330 end:0x02119a18
+    .text start:0x02119330 end:0x02119a58
 
-src/d_a_water_hakidasi.c:
+src/actors/daWater_Ring_c.cpp:
     complete
-    .text start:0x02119a18 end:0x02119a58
-
-src/_ZN14daWater_Ring_cD1Ev.cpp:
-    complete
-    .text start:0x02119a58 end:0x02119aa0
-
-src/_ZN14daWater_Ring_cD0Ev.cpp:
-    complete
-    .text start:0x02119aa0 end:0x02119afc
-
-src/func_ov064_02119afc.cpp:
-    complete
-    .text start:0x02119afc end:0x02119c60
-
-src/func_ov064_02119c60.c:
-    complete
-    .text start:0x02119c60 end:0x02119ce4
-
-src/func_ov064_02119ce4.c:
-    complete
-    .text start:0x02119ce4 end:0x02119d28
-
-src/func_ov064_02119d28.c:
-    complete
-    .text start:0x02119d28 end:0x02119ea0
-
-src/func_ov064_02119ea0.c:
-    complete
-    .text start:0x02119ea0 end:0x02119ecc
-
-src/func_ov064_02119ecc.cpp:
-    complete
-    .text start:0x02119ecc end:0x02119f1c
-
-src/func_ov064_02119f1c.cpp:
-    complete
-    .text start:0x02119f1c end:0x02119fa0
-
-src/_ZN14daWater_Ring_c16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02119fa0 end:0x02119fc4
-
-src/_ZN14daWater_Ring_c16OnPendingDestroyEv.cpp:
-    complete
-    .text start:0x02119fc4 end:0x02119fc8
-
-src/_ZN14daWater_Ring_c6RenderEv.cpp:
-    complete
-    .text start:0x02119fc8 end:0x02119ffc
-
-src/_ZN14daWater_Ring_c8BehaviorEv.cpp:
-    complete
-    .text start:0x02119ffc end:0x0211a090
-
-src/_ZN14daWater_Ring_c13InitResourcesEv.cpp:
-    complete
-    .text start:0x0211a090 end:0x0211a1b0
-
-src/d_a_water_ring.c:
-    complete
-    .text start:0x0211a1b0 end:0x0211a200
+    .text start:0x02119a58 end:0x0211a200
 
 src/actors/daObjTbox_c.cpp:
     complete

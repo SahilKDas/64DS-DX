@@ -1,6 +1,6 @@
 //cpp
 /* Production translation unit for ov026/daWater_Suikomi_c.
- * 5 function(s), .text 0x02112328..0x02112450. The WATER_SUIKOMI actor, the
+ * 13 function(s), .text 0x021121fc..0x02112490. The WATER_SUIKOMI actor, the
  * water suction in Wet-Dry World.
  *
  * NAME: _ZTS17daWater_Suikomi_c is "17daWater_Suikomi_c" at ov026 0x02113dec;
@@ -11,23 +11,29 @@
  * tree previously called the class WaterSuction (coined; that spelling is not
  * in the cartridge).
  *
- * This is a partial span of the class: five complete delinks that abut, with
- * nothing between them. D1 and D0 keep their own files, because five
- * unconverted one-function sources sit between D0 and CleanupResources
- * (func_ov026_02112280..func_ov026_02112324). They are this class's
- * state-machine helpers, not virtuals: 0x021122cc and 0x021122b0 are the two
+ * This is the whole unit: the destructor pair, the five state-machine
+ * helpers between D0 and CleanupResources, the five virtuals, then the
+ * factory. The helpers are not virtuals: 0x021122cc and 0x021122b0 are the two
  * member-function pointers that ov026's last static initializer (0x02112d68)
  * copies from 0x02113dd8/0x02113dd0 into the state record at 0x02113f58;
  * func_ov026_021122d4 installs a state record at +0x30c (InitResources hands
- * it 0x02113f58); and Behavior calls func_ov026_02112324. The out-of-line
- * destructor is the key function and is defined in
- * src/_ZN17daWater_Suikomi_cD1Ev.cpp and src/_ZN17daWater_Suikomi_cD0Ev.cpp,
- * so _ZTV/_ZTI/_ZTS are emitted there and this TU emits none of them. The
- * factory daWater_Suikomi_c_classInit starts at 0x02112450
- * (src/d_a_water_suikomi.c) and is not absorbed.
+ * it 0x02113f58); and Behavior calls func_ov026_02112324. (A vtable scan
+ * that runs past daWater_Tatumaki_c's 31 slots at 0x02113d54 reads those two
+ * member-function-pointer constants as Tatumaki "slots 31 and 33"; they are
+ * not Tatumaki's, and no Tatumaki function lies in this range.)
+ *
+ * The out-of-line destructor is the key function, so this TU emits
+ * _ZTV/_ZTI/_ZTS17daWater_Suikomi_c; the manifest's compiler_only_output rows
+ * route those (and the homeless D2) to the cartridge's own copies. The
+ * registry factory daWater_Suikomi_c_classInit (0x02112450) closes the unit
+ * and ov026's .text.
  *
  * Under `#pragma defer_codegen off` .text is laid down in source order, so
  * this file is ROM-ascending.
+ *
+ * Leftover: the helpers keep their func_ov026_* names and C linkage, because
+ * the static initializer and the state record name them by address; none has
+ * a recovered name.
  */
 #include "decl_common.h"
 #include "daWater_Suikomi_c.h"
@@ -56,6 +62,69 @@ extern V3 data_ov026_02113f4c;
 }
 
 #pragma defer_codegen off
+
+// @symbol _ZN17daWater_Suikomi_cD1Ev
+// @symbol _ZN17daWater_Suikomi_cD0Ev
+/* The key function. D1 stores the vtable, destroys mWithMeshClsn (+0x150)
+ * and mdCcAcPos_c (+0x110) in reverse declaration order, then runs
+ * dEnemyBase_c's D2; D0 does the same and hands the object to the inline
+ * operator delete. The base-object D2 mwcc also emits has no home in the
+ * cartridge. */
+daWater_Suikomi_c::~daWater_Suikomi_c()
+{
+}
+
+// @symbol func_ov026_02112280
+/* Looks up the actor the collider last touched (+0x134, inside mdCcAcPos_c)
+ * and does nothing with it: the ROM body returns either way. */
+extern "C" void func_ov026_02112280(char *c)
+{
+    unsigned int id = *(unsigned int *)(c + 0x134);
+    if (id == 0) return;
+    void *r = dActor_c::FindWithID(id);
+    if (r == 0) return;
+}
+
+// @symbol func_ov026_021122b0
+/* The state's per-frame function (the record's second member pointer). */
+extern "C" int func_ov026_021122b0(void *t)
+{
+    func_ov026_02112280((char *)t);
+    return 1;
+}
+
+// @symbol func_ov026_021122cc
+/* The state's entry function (the record's first member pointer). */
+extern "C" int func_ov026_021122cc(void)
+{
+    return 1;
+}
+
+/* func_ov026_021122d4's view of the object: the state record pointer at
+ * +0x30c, as a pointer to the record's first (entry) member pointer. */
+struct SuikomiStateOwner;
+typedef int (SuikomiStateOwner::*SuikomiEnterFn)();
+struct SuikomiStateOwner {
+    char pad[0x30c];
+    SuikomiEnterFn *pp;
+};
+
+// @symbol func_ov026_021122d4
+/* Installs a state record at +0x30c and runs its entry function. */
+extern "C" int func_ov026_021122d4(void *thiz, void *rec)
+{
+    SuikomiStateOwner *c = (SuikomiStateOwner *)thiz;
+    c->pp = (SuikomiEnterFn *)rec;
+    SuikomiEnterFn *q = c->pp;
+    if (*q == 0) return 1;
+    return (c->**q)();
+}
+
+// @symbol func_ov026_02112324
+/* Empty in the ROM: four bytes, `bx lr`. Behavior still calls it. */
+extern "C" void func_ov026_02112324(void *)
+{
+}
 
 // @symbol _ZN17daWater_Suikomi_c16CleanupResourcesEv
 int daWater_Suikomi_c::CleanupResources()
@@ -108,4 +177,14 @@ int daWater_Suikomi_c::InitResources()
     _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(&mdCcAcPos_c, this, &vec, 0x64000, 0xa4000, 0x800006, 0);
     func_ov026_021122d4(this, &data_ov026_02113f58);
     return 1;
+}
+
+/* Reconstructed source-style name: SM64DS proves daWater_Suikomi_c through
+ * RTTI, allocation size, vtable identity, and the WATER_SUIKOMI registry
+ * profile; later EAD lineage supplies classInit. Exact original spelling is
+ * not preserved. Historical alias: WaterSuction_Spawn. */
+// @symbol daWater_Suikomi_c_classInit
+extern "C" daWater_Suikomi_c *daWater_Suikomi_c_classInit()
+{
+    return new daWater_Suikomi_c();
 }

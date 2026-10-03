@@ -1,7 +1,7 @@
-_ZN8BookShotD1Ev kind:function(arm,size=0x50) addr:0x021111a0
-_ZN8BookShotD0Ev kind:function(arm,size=0x64) addr:0x021111f0
-_ZN15BookShotSpawnerD1Ev kind:function(arm,size=0x24) addr:0x02111254
-_ZN15BookShotSpawnerD0Ev kind:function(arm,size=0x38) addr:0x02111278
+_ZN8daBook_cD1Ev kind:function(arm,size=0x50) addr:0x021111a0
+_ZN8daBook_cD0Ev kind:function(arm,size=0x64) addr:0x021111f0
+_ZN11daBookGen_cD1Ev kind:function(arm,size=0x24) addr:0x02111254
+_ZN11daBookGen_cD0Ev kind:function(arm,size=0x38) addr:0x02111278
 func_ov020_021112b0 kind:function(arm,size=0x90) addr:0x021112b0
 func_ov020_02111340 kind:function(arm,size=0xd8) addr:0x02111340
 func_ov020_02111418 kind:function(arm,size=0x194) addr:0x02111418
@@ -16,15 +16,15 @@ func_ov020_02111fc4 kind:function(arm,size=0xbc) addr:0x02111fc4
 func_ov020_02112080 kind:function(arm,size=0x90) addr:0x02112080
 func_ov020_02112110 kind:function(arm,size=0x5c) addr:0x02112110
 func_ov020_0211216c kind:function(arm,size=0xd8) addr:0x0211216c
-_ZN8BookShot16CleanupResourcesEv kind:function(arm,size=0x4c) addr:0x02112244
-_ZN15BookShotSpawner16CleanupResourcesEv kind:function(arm,size=0x34) addr:0x02112290
-_ZN8BookShot6RenderEv kind:function(arm,size=0x78) addr:0x021122c4
-_ZN8BookShot8BehaviorEv kind:function(arm,size=0xdc) addr:0x0211233c
-_ZN15BookShotSpawner8BehaviorEv kind:function(arm,size=0xcc) addr:0x02112418
-_ZN8BookShot13InitResourcesEv kind:function(arm,size=0x284) addr:0x021124e4
-_ZN15BookShotSpawner13InitResourcesEv kind:function(arm,size=0x3c) addr:0x02112768
-_ZN8BookShot16OnAimedAtWithEggEv kind:function(arm,size=0x28) addr:0x021127a4
-_ZN8BookShot13OnYoshiTryEatEv kind:function(arm,size=0x28) addr:0x021127cc
+_ZN8daBook_c16CleanupResourcesEv kind:function(arm,size=0x4c) addr:0x02112244
+_ZN11daBookGen_c16CleanupResourcesEv kind:function(arm,size=0x34) addr:0x02112290
+_ZN8daBook_c6RenderEv kind:function(arm,size=0x78) addr:0x021122c4
+_ZN8daBook_c8BehaviorEv kind:function(arm,size=0xdc) addr:0x0211233c
+_ZN11daBookGen_c8BehaviorEv kind:function(arm,size=0xcc) addr:0x02112418
+_ZN8daBook_c13InitResourcesEv kind:function(arm,size=0x284) addr:0x021124e4
+_ZN11daBookGen_c13InitResourcesEv kind:function(arm,size=0x3c) addr:0x02112768
+_ZN8daBook_c16OnAimedAtWithEggEv kind:function(arm,size=0x28) addr:0x021127a4
+_ZN8daBook_c13OnYoshiTryEatEv kind:function(arm,size=0x28) addr:0x021127cc
 daBook_c_classInit_BOOK_SWITCH kind:function(arm,size=0x5c) addr:0x021127f4
 daBookGen_c_classInit kind:function(arm,size=0x30) addr:0x02112850
 daBook_c_classInit_KILLER_BOOK kind:function(arm,size=0x5c) addr:0x02112880
@@ -209,6 +209,7 @@ g_profile_BOOK_SWITCH kind:data(any) addr:0x02114898 ambiguous
 g_profile_SHOOT_BOOK kind:data(any) addr:0x021148b4 ambiguous
 data_ov020_021148b8 kind:data(any) addr:0x021148b8 ambiguous
 _ZTV15BookShotSpawner kind:data(any) addr:0x021148d8
+_ZTV11daBookGen_c kind:data(any) addr:0x021148d8
 data_ov020_021148e0 kind:data(any) addr:0x021148e0 ambiguous
 data_ov020_021148f0 kind:data(any) addr:0x021148f0 ambiguous
 _ZTV8BookShot kind:data(any) addr:0x0211495c

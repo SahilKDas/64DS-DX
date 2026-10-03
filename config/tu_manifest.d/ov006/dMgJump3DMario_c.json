@@ -6,215 +6,299 @@
   "status": "promoted",
   "boundary_confidence": "high",
   "boundary_evidence": [
-    "contiguous linker run 0x020c762c..0x020c8a30, 28 function(s), from build/tu_map.json (tools/tu_map.py); the 28 symbols.txt sizes sum to exactly 0x1404 and every function starts where the previous one ends, so the run has no hole and no segment choice.",
+    "contiguous linker run 0x020c6f8c..0x020c8a30, 40 function(s). build/tu_map.json (tools/tu_map.py) cuts the unlabelled unit 0x020c4060..0x020c762c (61 functions) on contiguity alone; this TU takes its top 12 functions, 0x020c6f8c..0x020c762c, together with the 28 functions of the class-labelled run 0x020c762c..0x020c8a30. The 40 symbols.txt sizes sum to exactly 0x1aa4 and every function starts where the previous one ends, so the run has no hole and no segment choice.",
     "class label(s): dMgJump3DMario_c. The class name is the cartridge's own RTTI: the 19 bytes at ov006 0x0213b0b0 are literally `16dMgJump3DMario_c` + NUL, at file offset 0x7b1f0 of extracted/overlays/overlay_0006.bin (module base 0x020bfec0, NOT 0x020c0000).",
     "The run holds the key function. The destructor is not virtual -- no vtable slot is 0x020c893c and no deleting stub exists in the ROM -- so the key function is the first non-inline virtual declared in include/dMgJump3DMario_c.h, Unk_020c76d8 at 0x020c76d8, which is inside the run. D1 (0x020c893c) and C1 (0x020c8a04) are inside it too.",
-    "BOUNDARY CAVEAT, carried forward from the scout's facts file: tu_map cuts on symbol NAME, and only five of the 28 symbols carry the class name. Both neighbours abut with ZERO gap -- func_ov006_020c7574 ends exactly at 0x020c762c and func_ov006_020c8a30 starts exactly at 0x020c8a30 -- and seven still-unpromoted `.c` shards immediately below the run (0x020c70d0..0x020c7574) call eight of this class's members, while src/func_ov006_020c7300.c installs one of this class's own pointer-to-member states from the record at 0x0213b040. Whether the original .cpp was exactly this run, or was wider, is NOT settled. The claim taken here is the run tu_map cuts.",
-    "module sinit corroboration: 31 sinit(s) / 31 .ctor entries, sinit_vs_tu=ok, module-wide and NOT narrowed to this TU. Independently: no entry in ov006's .ctor table at 0x0213356c..0x021335ec points anywhere inside 0x020c762c..0x020c8a30, so this TU has no static initialiser of its own and the 15 pointer-to-member records in .data are baked in rather than filled at runtime."
+    "LOWER EDGE, 0x020c6f8c, proven from the cartridge's own data. (1) .data: the six tuning words 0x0213b008..0x0213b01c are written whole by func_ov006_020c6f8c and read or written by the class members at 0x020c78e0, 0x020c7ba0, 0x020c8004, 0x020c801c, 0x020c8044 and others, and by the front helpers 0x020c7388..0x020c7574; the pair at 0x0213b040 that func_ov006_020c7300 compares is one of this class's pointer-to-member records. All of it sits in the single block 0x0213b008..0x0213b0a0 that ends in this class's RTTI at 0x0213b0a4. (2) .bss: func_ov006_020c70d0..func_ov006_020c7574 use 0x02140400..0x02140434, the first words of the 0x02140400..0x02140468 window the class members use (0x02140408, 0x0214040c, 0x02140424..0x02140468 are the class's anim-file slots); the preceding code's bss window ends at 0x02140338. (3) .rodata: func_ov006_020c7490 reads 0x0212dddc, directly after the 0x0212ddd0 that func_ov006_020c7734 reads. (4) The function just below, func_ov006_020c6f70, is the constructor of a different class (a ModelAnim at +0x38, destructed by func_ov006_020c6f3c, models loaded into 0x02140330/0x02140338); that class's state tables sit in .data below the dMg3DHeyhoObjAdapter_c RTTI, so the neighbour belongs to the unit that ends at 0x020c6f8c, not to this one. Data addresses rise with TU order in this overlay, which is what places the two blocks. func_ov006_020c7574 also stores the three player pointers into 0x021403f4, a global the lower unit's functions read as well; that is a shared extern, not a static of either TU.",
+    "module sinit corroboration: 31 sinit(s) / 31 .ctor entries, sinit_vs_tu=ok, module-wide and NOT narrowed to this TU. Independently: no entry in ov006's .ctor table at 0x0213356c..0x021335ec points anywhere inside 0x020c6f8c..0x020c8a30, so this TU has no static initialiser of its own and the 15 pointer-to-member records in .data are baked in rather than filled at runtime. UPPER EDGE: unchanged; the next run starts at 0x020c8a30 with the sprite-pool unit."
   ],
   "sections": [
     {
       "name": ".text",
-      "start": "0x020c762c",
+      "start": "0x020c6f8c",
       "end": "0x020c8a30"
     }
   ],
   "functions": [
     {
+      "symbol": "func_ov006_020c6f8c",
+      "address": "0x020c6f8c",
+      "size": "0x00000144",
+      "legacy_source": "src/func_ov006_020c6f8c.c",
+      "ordinal": 0
+    },
+    {
+      "symbol": "func_ov006_020c70d0",
+      "address": "0x020c70d0",
+      "size": "0x0000005c",
+      "legacy_source": "src/func_ov006_020c70d0.c",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov006_020c712c",
+      "address": "0x020c712c",
+      "size": "0x00000070",
+      "legacy_source": "src/func_ov006_020c712c.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov006_020c719c",
+      "address": "0x020c719c",
+      "size": "0x00000118",
+      "legacy_source": "src/func_ov006_020c719c.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov006_020c72b4",
+      "address": "0x020c72b4",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov006_020c72b4.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov006_020c72c8",
+      "address": "0x020c72c8",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov006_020c72c8.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov006_020c72dc",
+      "address": "0x020c72dc",
+      "size": "0x00000024",
+      "legacy_source": "src/func_ov006_020c72dc.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov006_020c7300",
+      "address": "0x020c7300",
+      "size": "0x00000088",
+      "legacy_source": "src/func_ov006_020c7300.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov006_020c7388",
+      "address": "0x020c7388",
+      "size": "0x00000090",
+      "legacy_source": "src/func_ov006_020c7388.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov006_020c7418",
+      "address": "0x020c7418",
+      "size": "0x00000078",
+      "legacy_source": "src/func_ov006_020c7418.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov006_020c7490",
+      "address": "0x020c7490",
+      "size": "0x000000e4",
+      "legacy_source": "src/func_ov006_020c7490.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov006_020c7574",
+      "address": "0x020c7574",
+      "size": "0x000000b8",
+      "legacy_source": "src/func_ov006_020c7574.c",
+      "ordinal": 11
+    },
+    {
       "symbol": "_ZN16dMgJump3DMario_c12Unk_020c762cEv",
       "address": "0x020c762c",
       "size": "0x000000a4",
       "legacy_source": "src/_ZN16dMgJump3DMario_c12Unk_020c762cEv.cpp",
-      "ordinal": 0
+      "ordinal": 12
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c12Unk_020c76d0Ev",
       "address": "0x020c76d0",
       "size": "0x00000008",
       "legacy_source": "src/_ZN16dMgJump3DMario_c12Unk_020c76d0Ev.cpp",
-      "ordinal": 1
+      "ordinal": 13
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c12Unk_020c76d8Ev",
       "address": "0x020c76d8",
       "size": "0x00000008",
       "legacy_source": "src/_ZN16dMgJump3DMario_c12Unk_020c76d8Ev.cpp",
-      "ordinal": 2
+      "ordinal": 14
     },
     {
-      "symbol": "func_ov006_020c76e0",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c76e0Ev",
       "address": "0x020c76e0",
       "size": "0x00000054",
       "legacy_source": "src/func_ov006_020c76e0.cpp",
-      "ordinal": 3
+      "ordinal": 15
     },
     {
-      "symbol": "func_ov006_020c7734",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c7734Ev",
       "address": "0x020c7734",
       "size": "0x0000012c",
       "legacy_source": "src/func_ov006_020c7734.cpp",
-      "ordinal": 4
+      "ordinal": 16
     },
     {
-      "symbol": "func_ov006_020c7860",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c7860Ev",
       "address": "0x020c7860",
       "size": "0x0000008c",
       "legacy_source": "src/func_ov006_020c7860.cpp",
-      "ordinal": 5
+      "ordinal": 17
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9StateDampEv",
       "address": "0x020c78ec",
       "size": "0x000000bc",
       "legacy_source": "src/func_ov006_020c78ec.cpp",
-      "ordinal": 6
+      "ordinal": 18
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9EnterDampEv",
       "address": "0x020c79a8",
       "size": "0x00000088",
       "legacy_source": "src/func_ov006_020c79a8.cpp",
-      "ordinal": 7
+      "ordinal": 19
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9StateHoldEv",
       "address": "0x020c7a30",
       "size": "0x00000174",
       "legacy_source": "src/func_ov006_020c7a30.c",
-      "ordinal": 8
+      "ordinal": 20
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9EnterHoldEv",
       "address": "0x020c7ba4",
       "size": "0x000000c4",
       "legacy_source": "src/func_ov006_020c7ba4.c",
-      "ordinal": 9
+      "ordinal": 21
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9StateMoveEv",
       "address": "0x020c7c68",
       "size": "0x000003c4",
       "legacy_source": "src/func_ov006_020c7c68.c",
-      "ordinal": 10
+      "ordinal": 22
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9EnterMoveEv",
       "address": "0x020c802c",
       "size": "0x0000001c",
       "legacy_source": "src/func_ov006_020c802c.c",
-      "ordinal": 11
+      "ordinal": 23
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c12StateFallOutEv",
       "address": "0x020c8048",
       "size": "0x0000003c",
       "legacy_source": "src/func_ov006_020c8048.c",
-      "ordinal": 12
+      "ordinal": 24
     },
     {
-      "symbol": "func_ov006_020c8084",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c8084Ev",
       "address": "0x020c8084",
       "size": "0x000000c8",
       "legacy_source": "src/func_ov006_020c8084.cpp",
-      "ordinal": 13
+      "ordinal": 25
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c12StateRiseOutEv",
       "address": "0x020c814c",
       "size": "0x00000094",
       "legacy_source": "src/func_ov006_020c814c.cpp",
-      "ordinal": 14
+      "ordinal": 26
     },
     {
-      "symbol": "func_ov006_020c81e0",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c81e0Ev",
       "address": "0x020c81e0",
       "size": "0x00000090",
       "legacy_source": "src/func_ov006_020c81e0.c",
-      "ordinal": 15
+      "ordinal": 27
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c8EnterHitEv",
       "address": "0x020c8270",
       "size": "0x000000cc",
       "legacy_source": "src/func_ov006_020c8270.c",
-      "ordinal": 16
+      "ordinal": 28
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c11StateBounceEv",
       "address": "0x020c833c",
       "size": "0x00000264",
       "legacy_source": "src/func_ov006_020c833c.c",
-      "ordinal": 17
+      "ordinal": 29
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c11EnterBounceEv",
       "address": "0x020c85a0",
       "size": "0x0000001c",
       "legacy_source": "src/func_ov006_020c85a0.c",
-      "ordinal": 18
+      "ordinal": 30
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c11StateWindUpEv",
       "address": "0x020c85bc",
       "size": "0x00000070",
       "legacy_source": "src/func_ov006_020c85bc.cpp",
-      "ordinal": 19
+      "ordinal": 31
     },
     {
-      "symbol": "func_ov006_020c862c",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c862cEi",
       "address": "0x020c862c",
       "size": "0x00000020",
       "legacy_source": "src/func_ov006_020c862c.c",
-      "ordinal": 20
+      "ordinal": 32
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c9StateIdleEv",
       "address": "0x020c864c",
       "size": "0x0000000c",
       "legacy_source": "src/func_ov006_020c864c.c",
-      "ordinal": 21
+      "ordinal": 33
     },
     {
-      "symbol": "func_ov006_020c8658",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c8658Ev",
       "address": "0x020c8658",
       "size": "0x00000028",
       "legacy_source": "src/func_ov006_020c8658.c",
-      "ordinal": 22
+      "ordinal": 34
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c12StateRespawnEv",
       "address": "0x020c8680",
       "size": "0x000000e8",
       "legacy_source": "src/func_ov006_020c8680.c",
-      "ordinal": 23
+      "ordinal": 35
     },
     {
       "symbol": "_ZN16dMgJump3DMario_c12EnterRespawnEv",
       "address": "0x020c8768",
       "size": "0x00000068",
       "legacy_source": "src/func_ov006_020c8768.c",
-      "ordinal": 24
+      "ordinal": 36
     },
     {
-      "symbol": "func_ov006_020c87d0",
+      "symbol": "_ZN16dMgJump3DMario_c19func_ov006_020c87d0Ev",
       "address": "0x020c87d0",
       "size": "0x0000016c",
       "legacy_source": "src/func_ov006_020c87d0.cpp",
-      "ordinal": 25
+      "ordinal": 37
     },
     {
       "symbol": "_ZN16dMgJump3DMario_cD1Ev",
       "address": "0x020c893c",
       "size": "0x000000c8",
       "legacy_source": "src/_ZN16dMgJump3DMario_cD1Ev.cpp",
-      "ordinal": 26
+      "ordinal": 38
     },
     {
       "symbol": "_ZN16dMgJump3DMario_cC1Ev",
       "address": "0x020c8a04",
       "size": "0x0000002c",
       "legacy_source": "src/_ZN16dMgJump3DMario_cC1Ev.cpp",
-      "ordinal": 27
+      "ordinal": 39
     }
   ],
   "data": [],
@@ -258,7 +342,9 @@
     "THE FIFTEEN NEW MEMBER NAMES ARE COINED. The cartridge proves each member's address, size, that its first argument is the object, and -- for the nine reached through a pointer-to-member -- which 8-byte record in the unowned .data at 0x0213b020..0x0213b098 installs it and which member writes that record. It proves no spelling. The derivation is written out in include/dMgJump3DMario_c.h and the fifteen rows are logged in symbols/actor_renames.tsv. The three virtual names stay address-derived (Unk_020c76d8 / Unk_020c76d0 / Unk_020c762c); nothing in the ROM carries their 2004 spelling.",
     "SYMBOLS.TXT MOVED IN THIS COMMIT -- 15 rows in config/arm9/overlays/ov006/symbols.txt. That is not the usual text-only promotion, which touches no symbols.txt at all. Fifteen 8-byte pointer-to-member records sit in ov006's UNOWNED .data at 0x0213b020..0x0213b098 and dsd resolves each record's code word by the NAME symbols.txt gives at the target address, so a converted member whose row still said `func_ov006_*` would link its .data word as 0x00000000 with a green compile. No byte gate at verify or linkcheck-of-the-TU catches it.",
     "include/dMgJump3DMario_c.h gained fifteen non-virtual member declarations and no field or virtual. Byte-neutrality was PROVEN rather than asserted: src/minigames/d_s_mg_jump2.cpp, src/minigames/d_s_mg_trampoline2.cpp, src/_ZN22dMg3DHeyhoObjAdapter_cC2Ev.cpp and all five of this class's own shards were compiled with the pinned mwccarm 2004/b56 at the build's flags before and after the edit; all eight object sha256s are identical. The two minigame TUs are already promoted and their manifests are not regenerated by this change.",
-    "ONE MEASURED DIFF, and its fix. func_ov006_020c81e0's shard spelled the 8-byte record it copies into +0x3c as `struct { int a, b; }`. C block-moved it; C++ scalarises two named ints and schedules the load after the store -- two words differing at +0x64 and +0x68 with no size change. Spelling it as an array member restored 28/28. Every other record copy in this TU already used an array."
+    "ONE MEASURED DIFF, and its fix. func_ov006_020c81e0's shard spelled the 8-byte record it copies into +0x3c as `struct { int a, b; }`. C block-moved it; C++ scalarises two named ints and schedules the load after the store -- two words differing at +0x64 and +0x68 with no size change. Spelling it as an array member restored 28/28. Every other record copy in this TU already used an array.",
+    "SOURCE REVIEW JUMP3D-2711-02 (disposition: deferred, completion: partial). The eight members that keep `func_ov006_*` labels are a MIGRATION DEPENDENCY on twelve `bl` sites in seven still-unpromoted `.c` shards, not an inability to name an implemented C++ method: a C shard can declare the mangled linker symbol, as this tree does elsewhere. The eight members, the seven shards and the twelve call sites are enumerated in issue #2722 (https://github.com/tangosdev/sm64ds-decomp/issues/2722), which owns that migration and names its next owner; this promotion reserves none of it and must not be held for it. The labels themselves are address-derived: the image preserves no original linker symbol table and RTTI supplies class identities, not function spellings (notes/tu-promotion-conventions.md section 1), so they assert nothing about the original spellings. The retained substitution is the plain Jump3DVec in place of types.h's Vector3, pinned in notes/experiments/jump3d-2711-members-vector3.md and notes/experiments/jump3d-2711-scratch-vector3.md: the Vector3 spelling is byte-identical per function, but the TU then defines _ZN7Vector3D1Ev, no compiler_only_output row in this manifest licenses that symbol, and isolate_many refuses the emission. The four in-place load-bearing spellings carry their own pinned experiments (jump3d-2711-mtx-intptr-zeroing.md, jump3d-2711-statehold-flag-reuse.md, jump3d-2711-statemove-volatile-store.md, jump3d-2711-87d0-int-temp.md), as do the two mangled-spelling walls (jump3d-2711-setanim-member-form.md, jump3d-2711-common-first-matrix.md). EnterHit's earlier Pair/select spelling was disproved by jump3d-2711-enterhit-pmf-assign.md and replaced by the plain pointer-to-member assignment.",
+    "WIDENED DOWNWARD to 0x020c6f8c: the twelve front helpers (func_ov006_020c6f8c, 70d0, 712c, 719c, 72b4, 72c8, 72dc, 7300, 7388, 7418, 7490, 7574), previously one-function shards, are folded in source order ahead of Unk_020c762c. Their calls into the class are real member calls; func_ov006_020c7490 keeps its `opt_common_subs off` as a push/pop bracket. tubuild verify 40/40 MATCH, objisolate clean, reloc-destinations clean."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -266,8 +352,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov006-dMgJump3DMario_c/dMgJump3DMario_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 28,
-    "functions_declared": 28,
+    "functions_matched": 40,
+    "functions_declared": 40,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN16dMgJump3DMario_cD2Ev",
@@ -282,24 +368,24 @@
         "_ZN22dMg3DHeyhoObjAdapter_cD2Ev"
       ],
       "droppedSections": [
-        56,
-        57,
-        58,
-        59,
-        60,
-        61,
-        64,
-        65,
-        66,
-        67,
-        68,
-        69,
-        70,
-        71,
-        72,
-        73,
-        74,
-        75
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99
       ],
       "data": [
         "_ZTV16dMgJump3DMario_c",

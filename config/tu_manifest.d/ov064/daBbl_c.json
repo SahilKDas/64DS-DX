@@ -9,7 +9,7 @@
     "contiguous linker run: 0x21185c0..0x2118b10, 13 function(s), from build/tu_map.json (tools/tu_map.py)",
     "right edge extended to 0x02118b50 to take in daBbl_c_classInit at 0x02118b10: the run carries no mangled name for tu_map to attribute, but it allocates this class's own 0x31c, installs _ZTV7daBbl_c, constructs dCcAc_c at 0x110 and dBgCh_Actr at 0x144, and is the factory word of g_profile_BUBBLE at 0x0211bec8 (ov064 relocs.txt: from:0x0211bec8 to:0x02118b10). Same registry/factory-backed join ov064/daObjTbox_c, ov064/daObjShell_c and ov100/daBtfly_c were promoted on",
     "left edge is the end of src/d_a_obj_fl_koma_u.cpp's daObjFl_KomaU_c_classInit entry (0x021185c0) -- a foreign class's own factory, i.e. the end of that class's run",
-    "right edge is the start of _ZN17BowserPuzzlePieceD1Ev (0x02118b50), the first function of a foreign class",
+    "right edge is the start of _ZN16daObjFl_Puzzle_cD1Ev (0x02118b50), the first function of a foreign class",
     "no foreign class's symbol appears anywhere inside 0x021185c0..0x02118b50: every entry is a named daBbl_c member, this class's factory, or one of the five still-unnamed state helpers InitResources/Behavior reach through the class's own 0x300 state pointer",
     "class label(s): daBbl_c",
     "module sinit corroboration: 11 sinit(s) / 11 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"

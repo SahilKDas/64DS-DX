@@ -1,0 +1,501 @@
+{
+  "id": "ov065/DorriePlatform+daDossyCap_c+daDossy_c",
+  "module": "ov065",
+  "source": "src/actors/daDossy_c.cpp",
+  "promoted_source": "src/actors/daDossy_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x2117f40..0x21196d8, 29 function(s), from build/tu_map.json (tools/tu_map.py)",
+    "class label(s): DorriePlatform, daDossyCap_c, daDossy_c",
+    "module sinit corroboration: 10 sinit(s) / 10 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "ALL TWENTY-NINE MATCH as one file: tools/tubuild.py verify reports 29/29 MATCH, objisolate clean, relocation destinations clean, every function in ROM-ascending order. The run's two edges are the class pair's own structors: it opens with daDossy_c's D1/D0 and daDossyCap_c's D1/D0 (inline destructors, emitted by the key-function TU) and closes with DorriePlatform's out-of-line C1, which daDossy_c_classInit hands to __cxa_vec_ctor for mPlatforms[7].",
+    "Both classes' key function (InitResources, the first non-inline virtual) is defined here, so this object emits _ZTV9daDossy_c and _ZTV12daDossyCap_c and the RTTI chain down to fBase_c; every one has a configured ROM home and a deadstrip-data row below. The ov065 homes (_ZTS9daDossy_c 0x0211cd34, _ZTI9daDossy_c 0x0211cd40, _ZTI12daDossyCap_c 0x0211cd4c, _ZTS12daDossyCap_c 0x0211cd58, _ZTV12daDossyCap_c 0x0211cdc4, _ZTV9daDossy_c 0x0211ce48) sit directly after this TU's .text in the overlay's data, the layout one key-function TU produces."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02117f40",
+      "end": "0x021196d8"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN9daDossy_cD1Ev",
+      "address": "0x02117f40",
+      "size": "0x00000068",
+      "legacy_source": "src/_ZN9daDossy_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN9daDossy_cD0Ev",
+      "address": "0x02117fa8",
+      "size": "0x0000007c",
+      "legacy_source": "src/_ZN9daDossy_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN12daDossyCap_cD1Ev",
+      "address": "0x02118024",
+      "size": "0x00000040",
+      "legacy_source": "src/_ZN12daDossyCap_cD1Ev.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN12daDossyCap_cD0Ev",
+      "address": "0x02118064",
+      "size": "0x00000054",
+      "legacy_source": "src/_ZN12daDossyCap_cD0Ev.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN14DorriePlatformD1Ev",
+      "address": "0x021180b8",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN14DorriePlatformD1Ev.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov065_021180d4",
+      "address": "0x021180d4",
+      "size": "0x00000174",
+      "legacy_source": "src/func_ov065_021180d4.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_02118248Ev",
+      "address": "0x02118248",
+      "size": "0x0000009c",
+      "legacy_source": "src/func_ov065_02118248.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_021182e4Ev",
+      "address": "0x021182e4",
+      "size": "0x000000e4",
+      "legacy_source": "src/func_ov065_021182e4.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_021183c8Ev",
+      "address": "0x021183c8",
+      "size": "0x0000026c",
+      "legacy_source": "src/func_ov065_021183c8.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_02118634Ev",
+      "address": "0x02118634",
+      "size": "0x00000204",
+      "legacy_source": "src/func_ov065_02118634.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_02118838Ev",
+      "address": "0x02118838",
+      "size": "0x00000414",
+      "legacy_source": "src/func_ov065_02118838.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov065_02118c4c",
+      "address": "0x02118c4c",
+      "size": "0x00000078",
+      "legacy_source": "src/func_ov065_02118c4c.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_02118cc4Ev",
+      "address": "0x02118cc4",
+      "size": "0x00000040",
+      "legacy_source": "src/func_ov065_02118cc4.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "_ZN9daDossy_c16CleanupResourcesEv",
+      "address": "0x02118d04",
+      "size": "0x0000007c",
+      "legacy_source": "src/_ZN9daDossy_c16CleanupResourcesEv.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "_ZN9daDossy_c6RenderEv",
+      "address": "0x02118d80",
+      "size": "0x00000028",
+      "legacy_source": "src/_ZN9daDossy_c6RenderEv.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "_ZN12daDossyCap_c6RenderEv",
+      "address": "0x02118da8",
+      "size": "0x00000048",
+      "legacy_source": "src/_ZN12daDossyCap_c6RenderEv.cpp",
+      "ordinal": 15
+    },
+    {
+      "symbol": "_ZN9daDossy_c8BehaviorEv",
+      "address": "0x02118df0",
+      "size": "0x000002b8",
+      "legacy_source": "src/_ZN9daDossy_c8BehaviorEv.cpp",
+      "ordinal": 16
+    },
+    {
+      "symbol": "_ZN12daDossyCap_c8BehaviorEv",
+      "address": "0x021190a8",
+      "size": "0x00000168",
+      "legacy_source": "src/_ZN12daDossyCap_c8BehaviorEv.cpp",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov065_02119210",
+      "address": "0x02119210",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov065_02119210.c",
+      "ordinal": 18
+    },
+    {
+      "symbol": "_ZN9daDossy_c13InitResourcesEv",
+      "address": "0x02119228",
+      "size": "0x000002c0",
+      "legacy_source": "src/_ZN9daDossy_c13InitResourcesEv.cpp",
+      "ordinal": 19
+    },
+    {
+      "symbol": "_ZN12daDossyCap_c13InitResourcesEv",
+      "address": "0x021194e8",
+      "size": "0x00000084",
+      "legacy_source": "src/_ZN12daDossyCap_c13InitResourcesEv.cpp",
+      "ordinal": 20
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_0211956cEP8dActor_c",
+      "address": "0x0211956c",
+      "size": "0x00000028",
+      "legacy_source": "src/func_ov065_0211956c.c",
+      "ordinal": 21
+    },
+    {
+      "symbol": "_ZN9daDossy_c19func_ov065_02119594EP8dActor_c",
+      "address": "0x02119594",
+      "size": "0x00000028",
+      "legacy_source": "src/func_ov065_02119594.c",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov065_021195bc",
+      "address": "0x021195bc",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov065_021195bc.c",
+      "ordinal": 23
+    },
+    {
+      "symbol": "func_ov065_021195d0",
+      "address": "0x021195d0",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov065_021195d0.c",
+      "ordinal": 24
+    },
+    {
+      "symbol": "_ZN12daDossyCap_c13OnYoshiTryEatEv",
+      "address": "0x021195e4",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN12daDossyCap_c13OnYoshiTryEatEv.cpp",
+      "ordinal": 25
+    },
+    {
+      "symbol": "daDossyCap_c_classInit",
+      "address": "0x021195ec",
+      "size": "0x00000048",
+      "legacy_source": "src/d_a_dossy_cap.c",
+      "ordinal": 26
+    },
+    {
+      "symbol": "daDossy_c_classInit",
+      "address": "0x02119634",
+      "size": "0x00000088",
+      "legacy_source": "src/d_a_dossy.c",
+      "ordinal": 27
+    },
+    {
+      "symbol": "_ZN14DorriePlatformC1Ev",
+      "address": "0x021196bc",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN14DorriePlatformC1Ev.cpp",
+      "ordinal": 28
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Written in descending ROM order (mwccarm's default reverse emission), with `#pragma opt_common_subs off` and `#pragma opt_strength_reduction off` file-wide. Both are needed and neither binds as a push/pop bracket around func_ov065_02118838, the function that needs them; the old per-file `opt_propagation off` on daDossy_c::Behavior is not needed in this TU.",
+    "Leftovers are listed in the source's header comment: the Fix12<int> by-value mangled calls (wall 6az, measured again here on ModelAnim::SetAnim), the decl_common.h char* parameters of func_ov065_021180d4/02118c4c/02119210, the char*-stepped DorriePlatform walks, and address-named data."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov065-DorriePlatform+daDossyCap_c+daDossy_c/daDossy_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 29,
+    "functions_declared": 29,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN14DorriePlatformC2Ev",
+        "_ZN14DorriePlatformD2Ev",
+        "_ZN7Vector3D1Ev",
+        "_ZN8Vector3sD1Ev"
+      ],
+      "deadstripped": [
+        "_ZN14DorriePlatformC2Ev",
+        "_ZN14DorriePlatformD2Ev",
+        "_ZN7Vector3D1Ev",
+        "_ZN8Vector3sD1Ev"
+      ],
+      "droppedSections": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        32,
+        33,
+        38,
+        49,
+        80,
+        81
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTS9daDossy_c",
+        "_ZTI9daDossy_c",
+        "_ZTI12daDossyCap_c",
+        "_ZTS12daDossyCap_c",
+        "_ZTV12daDossyCap_c",
+        "_ZTV9daDossy_c"
+      ],
+      "dataExternalized": [
+        "_ZTI12daDossyCap_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTI9daDossy_c",
+        "_ZTS12daDossyCap_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTS9daDossy_c",
+        "_ZTV12daDossyCap_c",
+        "_ZTV9daDossy_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "scratch-link-verified",
+      "scratch": "build/tu/ov065-DorriePlatform+daDossyCap_c+daDossy_c/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x02117f40",
+        "end": "0x021196d8",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x02117f40",
+          "end": "0x021196d8",
+          "differingBytes": 0,
+          "firstDiff": null
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 29
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
+    }
+  },
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN14DorriePlatformC2Ev",
+      "disposition": "deadstrip",
+      "reason": "DorriePlatform::DorriePlatform() is written once, out of line, and mwccarm emits the complete C1 and the base-object C2 from it. DorriePlatform has no base class and is only ever built as an element of daDossy_c::mPlatforms[7] (through __cxa_vec_ctor in daDossy_c_classInit), so the cartridge kept only C1 at ov065:0x021196bc (0x1c, licensed and byte-matched here). No checked-in symbols.txt names a C2, so a home count of 0 selects the plain deadstrip."
+    },
+    {
+      "symbol": "_ZN14DorriePlatformD2Ev",
+      "disposition": "deadstrip",
+      "reason": "The destructor twin of the C2 row above: ~DorriePlatform() is written once, out of line, mwccarm emits D1 and D2 from it, and the cartridge kept only D1 at ov065:0x021180b8 (0x1c, licensed and byte-matched here; __cxa_vec_dtor in the daDossy_c destructors calls it). No symbols.txt row names a D2, so the disposition is the plain deadstrip."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0",
+      "reason": "This TU builds Vector3 temporaries by value (the spawn positions in InitResources, daDossyCap_c::Behavior and func_ov065_021180d4, the render scale, and the platform offset in func_ov065_02118838), so mwccarm re-emits Vector3's trivial vague-linkage D1 alongside the licensed text. The cartridge keeps one copy at arm9:0x020072c0, kind:function(arm,size=0x4), and an enrolled source already owns it; rombuild compares this object's body against those cartridge bytes and refuses anything but byte-identical vague-linkage output before discarding the duplicate."
+    },
+    {
+      "symbol": "_ZN8Vector3sD1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02011508",
+      "reason": "The same vague-linkage case for Vector3s, whose empty inline destructor is declared in include/types.h; func_ov065_02118838 builds the per-platform Vector3s rotation temporary that pulls it in. The cartridge keeps exactly one copy at arm9:0x02011508, kind:function(arm,size=0x4), owned by the enrolled source src/_ZN8Vector3sD1Ev.cpp. This object's copy is the identical 4-byte `bx lr` body with no relocations; rombuild compares the body against those cartridge bytes before discarding the duplicate."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "daDossy_c and daDossyCap_c both define their destructors inline in the class body, and this TU defines their first non-inline virtual (InitResources, the key function), so mwccarm emits both vtables and the whole ancestor chain's vague-linkage RTTI here as passengers: daDossy_c / daDossyCap_c -> dActor_c -> dBase_c -> fBase_c. fBase_c is the chain root. The cartridge's own copy is at arm9:0x02086d70; romdata_check compares this object's bytes and relocations against that home before text-only isolation discards the duplicate."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Type-name string `7fBase_c\u0000` emitted beside _ZTI7fBase_c. ROM home arm9:0x02086e60, 0x9 bytes -- the exact size verify reports for the copy in this object."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "__si_class_type_info for the second link of the chain; its +8 word relocates to _ZTI7fBase_c. ROM home arm9:0x02086e78."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Type-name string `7dBase_c\u0000`. ROM home arm9:0x02086e54, 0x9 bytes."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390",
+      "reason": "__si_class_type_info whose +8 word reaches _ZTI7dBase_c. ROM home arm9:0x0208e390."
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384",
+      "reason": "Type-name string `8dActor_c\u0000`. ROM home arm9:0x0208e384, 0xa bytes."
+    },
+    {
+      "symbol": "_ZTS9daDossy_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov065",
+      "canonical_address": "0x0211cd34",
+      "reason": "Type-name string `9daDossy_c` plus its NUL (0xb bytes), the cartridge's own RTTI spelling. ROM home ov065:0x0211cd34, inside this overlay's .data; this TU emits it because it defines daDossy_c's key function."
+    },
+    {
+      "symbol": "_ZTI9daDossy_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov065",
+      "canonical_address": "0x0211cd40",
+      "reason": "__si_class_type_info for daDossy_c; its +8 word relocates to _ZTI8dActor_c (the si_class_type_info base word, which is the RTTI evidence for daDossy_c : dActor_c). ROM home ov065:0x0211cd40, 0xc bytes."
+    },
+    {
+      "symbol": "_ZTI12daDossyCap_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov065",
+      "canonical_address": "0x0211cd4c",
+      "reason": "__si_class_type_info for daDossyCap_c, base word _ZTI8dActor_c. ROM home ov065:0x0211cd4c, 0xc bytes."
+    },
+    {
+      "symbol": "_ZTS12daDossyCap_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov065",
+      "canonical_address": "0x0211cd58",
+      "reason": "Type-name string `12daDossyCap_c` plus its NUL (0xf bytes). ROM home ov065:0x0211cd58."
+    },
+    {
+      "symbol": "_ZTV12daDossyCap_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov065",
+      "canonical_address": "0x0211cdc4",
+      "reason": "daDossyCap_c's 0x84-byte vtable (two header words plus dActor_c's 31 slots), emitted here with the key function. ROM home ov065:0x0211cdc4; romdata_check compares bytes and relocations (slots 0/6/9/18 point at this TU's InitResources/Behavior/Render/OnYoshiTryEat, the D1/D0 pair at its destructors) before text-only isolation discards the object copy."
+    },
+    {
+      "symbol": "_ZTV9daDossy_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov065",
+      "canonical_address": "0x0211ce48",
+      "reason": "daDossy_c's 0x84-byte vtable, emitted here with the key function InitResources. ROM home ov065:0x0211ce48 (the type-info word four bytes below the address point reads _ZTI9daDossy_c); romdata_check compares bytes and relocations before text-only isolation discards the object copy."
+    }
+  ]
+}

@@ -29,7 +29,7 @@
  * - owner+0x5c: FindWithID result overlaid as NumberPos; dActor_c has
  *   no Pos() in this tree.
  * - POWER_STAR (0xb2) +0x43c / +0x496: Render walks stars while
- *   data_0209b454 bit 0x4000000 is set. PowerStar.h has unk_43c; 0x496
+ *   data_0209b454 bit 0x4000000 is set. daStar_c.h has unk_43c; 0x496
  *   sits in that class's pad. This leaf does not name those fields.
  * - func_ov002_020f0918 keeps its func_ name: not a vtable slot, and
  *   the only caller is arm9 dActor_c::SpawnNumber.

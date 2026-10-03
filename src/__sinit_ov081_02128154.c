@@ -4,19 +4,19 @@ extern int _ZN13SharedFilePtr9ConstructEj(void*, int);
 extern void func_02017ab4(void);
 extern void SharedFilePtr_Destruct_Anim(void);
 
-extern void* data_ov081_02128d90;
+extern struct SharedFilePtr data_ov081_02128d90;
 extern void* data_ov081_02128dc0;
 extern void* data_ov081_02128db0;
 extern void* data_ov081_02128dcc;
-extern void* data_ov081_02128d98;
+extern struct SharedFilePtr data_ov081_02128d98;
 extern void* data_ov081_02128dd8;
 extern void* data_ov081_02128db8;
 extern void* data_ov081_02128de4;
 extern void* data_ov081_02128da8;
 extern void* data_ov081_02128df0;
-extern void* data_ov081_02128d88;
+extern struct SharedFilePtr data_ov081_02128d88;
 extern void* data_ov081_02128e08;
-extern void* data_ov081_02128da0;
+extern struct SharedFilePtr data_ov081_02128da0;
 extern void* data_ov081_02128dfc;
 
 typedef struct { int a, b; } S8;

@@ -1,0 +1,384 @@
+{
+  "id": "ov064/daObjFl_Coin_c+daObjFl_Puzzle_c",
+  "module": "ov064",
+  "source": "src/actors/daObjFl_Coin_c.cpp",
+  "promoted_source": "src/actors/daObjFl_Coin_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "medium",
+  "boundary_evidence": [
+    "contiguous linker run: 0x2118b50..0x211929c, 21 function(s), from build/tu_map.json (tools/tu_map.py)",
+    "class label(s): daObjFl_Coin_c, daObjFl_Puzzle_c",
+    "module sinit corroboration: 11 sinit(s) / 11 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02118b50",
+      "end": "0x0211929c"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_cD1Ev",
+      "address": "0x02118b50",
+      "size": "0x00000044",
+      "legacy_source": "src/_ZN16daObjFl_Puzzle_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_cD0Ev",
+      "address": "0x02118b94",
+      "size": "0x00000058",
+      "legacy_source": "src/_ZN16daObjFl_Puzzle_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "_ZN14daObjFl_Coin_cD1Ev",
+      "address": "0x02118bec",
+      "size": "0x00000024",
+      "legacy_source": "src/_ZN14daObjFl_Coin_cD1Ev.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "_ZN14daObjFl_Coin_cD0Ev",
+      "address": "0x02118c10",
+      "size": "0x00000038",
+      "legacy_source": "src/_ZN14daObjFl_Coin_cD0Ev.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118c48Ev",
+      "address": "0x02118c48",
+      "size": "0x0000008c",
+      "legacy_source": "src/func_ov064_02118c48.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118cd4Ev",
+      "address": "0x02118cd4",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov064_02118cd4.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118cecEv",
+      "address": "0x02118cec",
+      "size": "0x0000001c",
+      "legacy_source": "src/func_ov064_02118cec.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118d08Ev",
+      "address": "0x02118d08",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov064_02118d08.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118d20Ev",
+      "address": "0x02118d20",
+      "size": "0x0000001c",
+      "legacy_source": "src/func_ov064_02118d20.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118d3cEv",
+      "address": "0x02118d3c",
+      "size": "0x00000064",
+      "legacy_source": "src/func_ov064_02118d3c.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118da0Ev",
+      "address": "0x02118da0",
+      "size": "0x00000084",
+      "legacy_source": "src/func_ov064_02118da0.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118e24Eiii",
+      "address": "0x02118e24",
+      "size": "0x000000c0",
+      "legacy_source": "src/func_ov064_02118e24.cpp",
+      "ordinal": 11
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118ee4Ev",
+      "address": "0x02118ee4",
+      "size": "0x000000c0",
+      "legacy_source": "src/func_ov064_02118ee4.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02118fa4Ev",
+      "address": "0x02118fa4",
+      "size": "0x0000006c",
+      "legacy_source": "src/func_ov064_02118fa4.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c19func_ov064_02119010Ev",
+      "address": "0x02119010",
+      "size": "0x0000003c",
+      "legacy_source": "src/func_ov064_02119010.c",
+      "ordinal": 14
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c16CleanupResourcesEv",
+      "address": "0x0211904c",
+      "size": "0x0000003c",
+      "legacy_source": "src/_ZN16daObjFl_Puzzle_c16CleanupResourcesEv.cpp",
+      "ordinal": 15
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c6RenderEv",
+      "address": "0x02119088",
+      "size": "0x00000028",
+      "legacy_source": "src/_ZN16daObjFl_Puzzle_c6RenderEv.cpp",
+      "ordinal": 16
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c8BehaviorEv",
+      "address": "0x021190b0",
+      "size": "0x000000ac",
+      "legacy_source": "src/_ZN16daObjFl_Puzzle_c8BehaviorEv.cpp",
+      "ordinal": 17
+    },
+    {
+      "symbol": "_ZN14daObjFl_Coin_c8BehaviorEv",
+      "address": "0x0211915c",
+      "size": "0x0000004c",
+      "legacy_source": "src/_ZN14daObjFl_Coin_c8BehaviorEv.cpp",
+      "ordinal": 18
+    },
+    {
+      "symbol": "_ZN16daObjFl_Puzzle_c13InitResourcesEv",
+      "address": "0x021191a8",
+      "size": "0x000000dc",
+      "legacy_source": "src/_ZN16daObjFl_Puzzle_c13InitResourcesEv.cpp",
+      "ordinal": 19
+    },
+    {
+      "symbol": "_ZN14daObjFl_Coin_c13InitResourcesEv",
+      "address": "0x02119284",
+      "size": "0x00000018",
+      "legacy_source": "src/_ZN14daObjFl_Coin_c13InitResourcesEv.cpp",
+      "ordinal": 20
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov064-daObjFl_Coin_c+daObjFl_Puzzle_c/daObjFl_Coin_c+daObjFl_Puzzle_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 21,
+    "functions_declared": 21,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_Z39daObjFl_Puzzle_c_EmitDeletingDestructorP16daObjFl_Puzzle_c",
+        "_Z31daObjFl_Puzzle_c_EmitDestructorP16daObjFl_Puzzle_c",
+        "_Z37daObjFl_Coin_c_EmitDeletingDestructorP14daObjFl_Coin_c",
+        "_Z29daObjFl_Coin_c_EmitDestructorP14daObjFl_Coin_c"
+      ],
+      "deadstripped": [
+        "_Z29daObjFl_Coin_c_EmitDestructorP14daObjFl_Coin_c",
+        "_Z31daObjFl_Puzzle_c_EmitDestructorP16daObjFl_Puzzle_c",
+        "_Z37daObjFl_Coin_c_EmitDeletingDestructorP14daObjFl_Coin_c",
+        "_Z39daObjFl_Puzzle_c_EmitDeletingDestructorP16daObjFl_Puzzle_c"
+      ],
+      "droppedSections": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        35,
+        36,
+        37,
+        38
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTI8dActor_c",
+        "_ZTI10dBgActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTI14daObjFl_Coin_c",
+        "_ZTS14daObjFl_Coin_c",
+        "_ZTV14daObjFl_Coin_c",
+        "_ZTI16daObjFl_Puzzle_c",
+        "_ZTS16daObjFl_Puzzle_c",
+        "_ZTV16daObjFl_Puzzle_c"
+      ],
+      "dataExternalized": [
+        "_ZTI10dBgActor_c",
+        "_ZTI14daObjFl_Coin_c",
+        "_ZTI16daObjFl_Puzzle_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTS14daObjFl_Coin_c",
+        "_ZTS16daObjFl_Puzzle_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV14daObjFl_Coin_c",
+        "_ZTV16daObjFl_Puzzle_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  },
+  "compiler_only_output": [
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTI10dBgActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021089ec",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTS10dBgActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x02108a04",
+      "reason": "Inherited vague-linkage record. romdata_check proves the compiler copy against its canonical home before text-only isolation discards it."
+    },
+    {
+      "symbol": "_ZTI14daObjFl_Coin_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov064",
+      "canonical_address": "0x0211bf98",
+      "reason": "The coin class's key function emits the ROM typeinfo at ov064 0x0211bf98. romdata_check proves it before isolation discards this copy."
+    },
+    {
+      "symbol": "_ZTS14daObjFl_Coin_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov064",
+      "canonical_address": "0x0211bfb0",
+      "reason": "The coin class emits the type-name string 14daObjFl_Coin_c at ov064 0x0211bfb0. romdata_check proves the payload before isolation."
+    },
+    {
+      "symbol": "_ZTV14daObjFl_Coin_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov064",
+      "canonical_address": "0x0211c1d8",
+      "reason": "The coin class emits its vtable. The public address point is ov064 0x0211c1d8; storage starts eight bytes earlier. romdata_check proves the slots before isolation."
+    },
+    {
+      "symbol": "_ZTI16daObjFl_Puzzle_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov064",
+      "canonical_address": "0x0211bfa4",
+      "reason": "The piece class's key function emits the ROM typeinfo at ov064 0x0211bfa4. romdata_check proves it before isolation discards this copy."
+    },
+    {
+      "symbol": "_ZTS16daObjFl_Puzzle_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov064",
+      "canonical_address": "0x0211bfc4",
+      "reason": "The piece class emits the type-name string 16daObjFl_Puzzle_c at ov064 0x0211bfc4. romdata_check proves the payload before isolation."
+    },
+    {
+      "symbol": "_ZTV16daObjFl_Puzzle_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov064",
+      "canonical_address": "0x0211c25c",
+      "reason": "The piece class emits its vtable. The public address point is ov064 0x0211c25c; storage starts eight bytes earlier. romdata_check proves the slots before isolation."
+    },
+    {
+      "symbol": "_Z39daObjFl_Puzzle_c_EmitDeletingDestructorP16daObjFl_Puzzle_c",
+      "disposition": "deadstrip",
+      "reason": "Not called and not in the ROM. A delete-expression forces the piece's out-of-line D0. Homeless: no symbols.txt row."
+    },
+    {
+      "symbol": "_Z31daObjFl_Puzzle_c_EmitDestructorP16daObjFl_Puzzle_c",
+      "disposition": "deadstrip",
+      "reason": "Not called and not in the ROM. An explicit destructor call forces the piece's out-of-line D1. Homeless: no symbols.txt row."
+    },
+    {
+      "symbol": "_Z37daObjFl_Coin_c_EmitDeletingDestructorP14daObjFl_Coin_c",
+      "disposition": "deadstrip",
+      "reason": "Not called and not in the ROM. A delete-expression forces the coin manager's out-of-line D0. Homeless: no symbols.txt row."
+    },
+    {
+      "symbol": "_Z29daObjFl_Coin_c_EmitDestructorP14daObjFl_Coin_c",
+      "disposition": "deadstrip",
+      "reason": "Not called and not in the ROM. An explicit destructor call forces the coin manager's out-of-line D1. Homeless: no symbols.txt row."
+    }
+  ]
+}

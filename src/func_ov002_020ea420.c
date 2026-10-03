@@ -4,7 +4,7 @@ struct BF { u16 pad : 7; u16 b7 : 1; u16 b8 : 1; u16 b9 : 1; u16 rest : 6; };
 enum { false, true };
 
 extern int NumVsStarsObtained(void);
-extern void _ZN9PowerStar13AddStarMarkerEv(char *self);
+extern void _ZN8daStar_c13AddStarMarkerEv(char *self);
 extern void func_02012790(int id);
 extern int _Z14ApproachLinearRiii(int *v, int target, int step);
 extern void _ZN8dActor_c11UntrackStarERa(char *self, char *p);
@@ -39,7 +39,7 @@ void func_ov002_020ea420(char *c) {
             } else if (*(int *)(c + 0x80) == 0x1000) {
                 *(u16 *)(c + 0x492) = lim + 0xb;
                 *(u16 *)(c + 0x4a2) |= 0x200;
-                _ZN9PowerStar13AddStarMarkerEv(c);
+                _ZN8daStar_c13AddStarMarkerEv(c);
                 *(int *)(c + 0x128) &= ~1;
             }
             if (*(u16 *)(c + 0x492) < (unsigned int)lim) {
@@ -52,7 +52,7 @@ void func_ov002_020ea420(char *c) {
                 spd = *(int *)(c + 0x80);
                 if (*(u16 *)(c + 0x492) >= lim + 0xa) {
                     if (_Z14ApproachLinearRiii(&spd, 0x1000, step) != 0) {
-                        _ZN9PowerStar13AddStarMarkerEv(c);
+                        _ZN8daStar_c13AddStarMarkerEv(c);
                         *(int *)(c + 0x128) &= ~1;
                     }
                 } else {

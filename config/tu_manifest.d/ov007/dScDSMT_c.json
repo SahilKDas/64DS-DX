@@ -1,0 +1,362 @@
+{
+  "id": "ov007/dScDSMT_c",
+  "module": "ov007",
+  "source": "src/actors/dScDSMT_c.cpp",
+  "promoted_source": "src/actors/dScDSMT_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x20cc028..0x20ccb54, 20 function(s): build/tu_map.json units 0x20cc028..0x20cc600 (13, class label dScDSMT_c) and 0x20cc600..0x20ccb54 (7, unlabelled) are ONE TU -- func_ov007_020cc600 calls this run's func_ov007_020cc0cc/020cc0e4/020cc118/020cc168, and dScDSMT_c_classInit at the run's end stores _ZTV9dScDSMT_c and the graphCallback_c vptr pair",
+    "class label(s): dScDSMT_c",
+    "module sinit corroboration: 0 sinit(s) / 0 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "ALL TWENTY MATCH: written as one file (destructor inline in the class body, InitResources as key function, reverse source order), tools/tubuild.py verify reported 20/20 MATCH, objisolate clean, relocation destinations clean, every function in ROM-ascending order.",
+    "LICENSED RANGE IS A SUBSET OF THE RUN, because two members do not LINK. Behavior (0x020cc2cc) references (int)&overlay_64 / &overlay_66 and InitResources (0x020cc4c0) references &overlay_100 / &overlay_102 -- NitroSDK FS_OVERLAY_ID absolute symbols whose value is the overlay number (cartridge pool words 0x40/0x42 and 0x64/0x66). No lcf in the tree defines an overlay_N symbol: overlay_64/66 have no config/arm9/symbols.txt row, and overlay_100/102 are two of the nine pre-existing `dsd check symbols` errors. Measured on a stock tree with just those two shards marked complete: mwldarm reports all four Undefined. Literal ids are not the same source -- InitResources with 100/102 written as literals builds 0x138 bytes against the cartridge's 0x140, because 100 is immediate-encodable and the cartridge pool-loads it. Every other overlay_N user in the tree (func_0201a2f8, func_0201a798, func_02034fbc, ...) is unenrolled for the same reason.",
+    "Both sit in the MIDDLE of the run, and a delinks entry carries exactly one .text range, so the licensed .text cannot skip them. That splits the run into 0x020cc028..0x020cc2cc (10 functions), CleanupResources alone, and 0x020cc600..0x020ccb54 (7). This entry licenses the largest side, which also carries the destructor pair and the graphCallback_c key function.",
+    "DESTRUCTOR FORM: the cartridge puts D1 (0x020cc028) below D0 (0x020cc070). Inline in the class body, mwccarm emits D1, D0 only from the TU defining the key function InitResources, which cannot be licensed. So include/dScDSMT_c.h keeps the out-of-line declaration, the destructor is the key function and is defined here under `#pragma defer_codegen off`, which emits D1, D0, then a base-object D2 (licensed deadstrip), and makes emission ROM-ascending file-wide, so the source is written in ROM order."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x020cc028",
+      "end": "0x020cc2cc"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN9dScDSMT_cD1Ev",
+      "address": "0x020cc028",
+      "size": "0x00000048",
+      "legacy_source": "src/_ZN9dScDSMT_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN9dScDSMT_cD0Ev",
+      "address": "0x020cc070",
+      "size": "0x0000005c",
+      "legacy_source": "src/_ZN9dScDSMT_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov007_020cc0cc",
+      "address": "0x020cc0cc",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov007_020cc0cc.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov007_020cc0e4",
+      "address": "0x020cc0e4",
+      "size": "0x00000010",
+      "legacy_source": "src/func_ov007_020cc0e4.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "_ZN9dScDSMT_c15graphCallback_c14GraphCallback2Ev",
+      "address": "0x020cc0f4",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN9dScDSMT_c15graphCallback_c14GraphCallback2Ev.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "_ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev",
+      "address": "0x020cc110",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN9dScDSMT_c15graphCallback_c14GraphCallback0Ev.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov007_020cc118",
+      "address": "0x020cc118",
+      "size": "0x00000050",
+      "legacy_source": "src/func_ov007_020cc118.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov007_020cc168",
+      "address": "0x020cc168",
+      "size": "0x00000144",
+      "legacy_source": "src/func_ov007_020cc168.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "_ZN9dScDSMT_c16OnPendingDestroyEv",
+      "address": "0x020cc2ac",
+      "size": "0x00000004",
+      "legacy_source": "src/_ZN9dScDSMT_c16OnPendingDestroyEv.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "_ZN9dScDSMT_c6RenderEv",
+      "address": "0x020cc2b0",
+      "size": "0x0000001c",
+      "legacy_source": "src/_ZN9dScDSMT_c6RenderEv.cpp",
+      "ordinal": 9
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "FOLLOW-UP, the moment the tree's link can define overlay_N (an absolute-symbol definition for FS_OVERLAY_ID values, or symbols.txt rows the lcf generator turns into definitions): flip include/dScDSMT_c.h to `virtual ~dScDSMT_c() {}` inline in the class body, drop `#pragma defer_codegen off` and write the file in reverse ROM order, fold in Behavior, CleanupResources, InitResources, func_ov007_020cc600, the five wrappers func_ov007_020cca68..020ccab4 and dScDSMT_c_classInit (src/d_s_dsmt.c), extend the licensed .text to 0x020cc028..0x020ccb54, and drop the D2 deadstrip row (inline emits none). The twenty-function file that byte-matched 20/20 in that form is the starting point; its classInit is the literal construction bridge (func_02017278 is dFdDummy_c's out-of-line constructor, still unnamed, so `return new dScDSMT_c()` would inline a different fader constructor), storing &_ZTV9dScDSMT_c[2] and &_ZTVN9dScDSMT_c15graphCallback_cE[2] (this TU emits both).",
+    "config/arm9/overlays/ov007/symbols.txt gains _ZTVN9dScDSMT_c15graphCallback_cE at 0x021032b0 (an alias beside data_ov007_021032b0, the way _ZTV9dScDSMT_c sits beside data_ov007_021032e8), so the compiler-emitted graphCallback_c vtable has a configured ROM home for its deadstrip-data row."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov007-dScDSMT_c/dScDSMT_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 10,
+    "functions_declared": 10,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN9dScDSMT_cD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN9dScDSMT_cD2Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7dBase_c",
+        "_ZTS8dScene_c",
+        "_ZTI8dScene_c",
+        "_ZTIN8dGraph_c10callback_cE",
+        "_ZTSN8dGraph_c10callback_cE",
+        "_ZTI9dScDSMT_c",
+        "_ZTS9dScDSMT_c",
+        "_ZTV9dScDSMT_c",
+        "_ZTIN9dScDSMT_c15graphCallback_cE",
+        "_ZTSN9dScDSMT_c15graphCallback_cE",
+        "_ZTVN9dScDSMT_c15graphCallback_cE"
+      ],
+      "dataExternalized": [
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dScene_c",
+        "_ZTI9dScDSMT_c",
+        "_ZTIN8dGraph_c10callback_cE",
+        "_ZTIN9dScDSMT_c15graphCallback_cE",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dScene_c",
+        "_ZTS9dScDSMT_c",
+        "_ZTSN8dGraph_c10callback_cE",
+        "_ZTSN9dScDSMT_c15graphCallback_cE",
+        "_ZTV9dScDSMT_c",
+        "_ZTVN9dScDSMT_c15graphCallback_cE"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "scratch-link-verified",
+      "scratch": "build/tu/ov007-dScDSMT_c/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x020cc028",
+        "end": "0x020cc2cc",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x020cc028",
+          "end": "0x020cc2cc",
+          "differingBytes": 0,
+          "firstDiff": null
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 10
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
+    }
+  },
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN9dScDSMT_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-generated base-object destructor variant, emitted because the destructor is defined out of line. dScDSMT_c is never a base subobject; the cartridge carries only D1 (0x020cc028) and D0 (0x020cc070), no symbols.txt defines a D2 and nothing relocates to one."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "Vague-linkage typeinfo record for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x02086d70, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "Vague-linkage typeinfo NAME string for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x02086e60, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "Vague-linkage typeinfo NAME string for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x02086e54, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "Vague-linkage typeinfo record for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x02086e78, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTS8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914b0",
+      "reason": "Vague-linkage typeinfo NAME string for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x020914b0, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTI8dScene_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914d4",
+      "reason": "Vague-linkage typeinfo record for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x020914d4, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTIN8dGraph_c10callback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208ee04",
+      "reason": "Vague-linkage typeinfo record for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x0208ee04, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTSN8dGraph_c10callback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208ee24",
+      "reason": "Vague-linkage typeinfo NAME string for an inherited base, re-emitted by every TU that names this class's RTTI. The cartridge's own copy lives at arm9:0x0208ee24, outside every range this entry claims."
+    },
+    {
+      "symbol": "_ZTI9dScDSMT_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov007",
+      "canonical_address": "0x02103278",
+      "reason": "Typeinfo record for dScDSMT_c, emitted here because this TU defines the key function (InitResources). Its cartridge home is ov007:0x02103278, in .data -- outside the 0x020cc028..0x020ccb54 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTS9dScDSMT_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov007",
+      "canonical_address": "0x0210326c",
+      "reason": "Typeinfo name string for dScDSMT_c, emitted here because this TU defines the key function (InitResources). Its cartridge home is ov007:0x0210326c, in .data -- outside the 0x020cc028..0x020ccb54 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTV9dScDSMT_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov007",
+      "canonical_address": "0x021032e8",
+      "reason": "Vtable for dScDSMT_c, emitted here because this TU defines the key function (InitResources). Its cartridge home is ov007:0x021032e8, in .data -- outside the 0x020cc028..0x020ccb54 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTIN9dScDSMT_c15graphCallback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov007",
+      "canonical_address": "0x02103284",
+      "reason": "Typeinfo record for dScDSMT_c::graphCallback_c, emitted here because this TU defines the key function (GraphCallback0). Its cartridge home is ov007:0x02103284, in .data -- outside the 0x020cc028..0x020ccb54 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTSN9dScDSMT_c15graphCallback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov007",
+      "canonical_address": "0x021032c0",
+      "reason": "Typeinfo name string for dScDSMT_c::graphCallback_c, emitted here because this TU defines the key function (GraphCallback0). Its cartridge home is ov007:0x021032c0, in .data -- outside the 0x020cc028..0x020ccb54 .text run this entry claims."
+    },
+    {
+      "symbol": "_ZTVN9dScDSMT_c15graphCallback_cE",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov007",
+      "canonical_address": "0x021032b0",
+      "reason": "Vtable for dScDSMT_c::graphCallback_c, emitted here because this TU defines the key function (GraphCallback0). Its cartridge home is ov007:0x021032b0, in .data -- outside the 0x020cc028..0x020ccb54 .text run this entry claims."
+    }
+  ]
+}

@@ -60,10 +60,10 @@ port/unmatched/Ov060_StateDispatch.cpp
 # Host thunk (its matched D0's chain minus the Deallocate) in
 # hal/actor_classes_ov060.cpp.
 src/d_a_kirai.c
-src/_ZN9SpikeBomb13InitResourcesEv.cpp
-src/_ZN9SpikeBomb8BehaviorEv.cpp
-src/_ZN9SpikeBomb6RenderEv.cpp
-src/_ZN9SpikeBomb16CleanupResourcesEv.cpp
+src/actors/daKirai_c.cpp
+src/actors/daKirai_c.cpp
+src/actors/daKirai_c.cpp
+src/actors/daKirai_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN9SpikeBombD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9SpikeBombD0Ev.cpp
 
@@ -71,22 +71,22 @@ src/_ZN9SpikeBomb16CleanupResourcesEv.cpp
 # D1 held out for the same reason as SpikeBomb's; Render held out as the
 # ModelAnim slot-5 collision (Ov060_Renders.cpp).
 src/d_a_kpa.c
-src/_ZN6Bowser13InitResourcesEv.cpp
-src/_ZN6Bowser16CleanupResourcesEv.cpp
+src/actors/daKpa_c.cpp
+src/actors/daKpa_c.cpp
 # src/_ZN6Bowser8BehaviorEv.cpp -- HELD OUT: does not compile under MSVC
 #   (C2761 x6, shadow members re-declared at namespace scope). Host copy in
 #   port/unmatched/Ov060_StateDispatch.cpp.
-src/_ZN6Bowser16OnPendingDestroyEv.cpp
+src/actors/daKpa_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN6BowserD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN6BowserD0Ev.cpp
 
 # ---- BOWSER TAIL (278) -- Bowser's init spawns it unchecked ----------------
 # D1 held out (real MSVC destructor), the same host thunk shape.
 src/d_a_kpa_tail.c
-src/_ZN10BowserTail13InitResourcesEv.cpp
-src/_ZN10BowserTail16CleanupResourcesEv.cpp
-src/_ZN10BowserTail8BehaviorEv.cpp
-src/_ZN10BowserTail6RenderEv.cpp
+src/actors/daKpa_c.cpp
+src/actors/daKpa_c.cpp
+src/actors/daKpa_c.cpp
+src/actors/daKpa_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN10BowserTailD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN10BowserTailD0Ev.cpp
 

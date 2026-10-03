@@ -36,27 +36,16 @@
 # representation never comes into it -- the rabbit's case. Only the eight
 # statics need seating, and that is in hal/actor_overlays.cpp with the rest.
 src/d_a_btfly.c
-src/_ZN9Butterfly13InitResourcesEv.cpp
+src/actors/daBtfly_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN9ButterflyD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9ButterflyD0Ev.cpp
-src/_ZN9Butterfly8BehaviorEv.cpp
 # _ZN9Butterfly6RenderEv IS NOT HERE: it dispatches ModelAnim slot 5
 # through a local shadow class, which is ROM numbering, and _ZTV9ModelAnim
 # CANNOT be dual-filled the way _ZTV5Model can -- MSVC's slot 5 there is
 # Virtual18, which takes two arguments where the shadow passes one. Host
 # copy in port/unmatched/ModelAnim_Renders.cpp; measured as a c0000005 in
 # Model::Virtual10 before it was one.
-src/_ZN9Butterfly16CleanupResourcesEv.cpp
-src/_ZN9Butterfly16OnPendingDestroyEv.cpp
 # the eight states, all matched -- no hole and no trap
-src/_ZN9Butterfly6State6Ev.cpp
-src/_ZN9Butterfly6State5Ev.cpp
-src/_ZN9Butterfly6State4Ev.cpp
-src/_ZN9Butterfly6State7Ev.cpp
-src/_ZN9Butterfly6State3Ev.cpp
-src/_ZN9Butterfly6State2Ev.cpp
-src/_ZN9Butterfly6State1Ev.cpp
-src/_ZN9Butterfly6State0Ev.cpp
 
 # ---- FISH (actor 344, ov100) x2 -------------------------------------------
 # The two shoals in the moat. Seven states, and the class is bound to a PARENT

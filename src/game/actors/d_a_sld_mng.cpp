@@ -66,3 +66,23 @@ int daSldMng_c::Behavior()
     }
     return 1;
 }
+// @symbol _ZN10daSldMng_cD1Ev
+// @symbol _ZN10daSldMng_cD0Ev
+/* -------------------------------------------------------------------------- */
+/* ROM ordinals 0 and 1 -- _ZN10daSldMng_cD1Ev 0x0211261c size 0x24 and       */
+/* _ZN10daSldMng_cD0Ev 0x02112640 size 0x38 -- are NOT written here.         */
+/*                                                                            */
+/* The destructor is defined INLINE in include/daSldMng_c.h. Written           */
+/* out-of-line here the real destructor makes mwccarm emit D0 BEFORE D1, the   */
+/* reverse of the cartridge's order, which objisolate refuses for the whole    */
+/* translation unit, and it emits a third D2 body with no ROM home. The inline */
+/* definition gives the retail D1/D0 pair in ROM order and no D2, while        */
+/* InitResources -- declared out-of-line above and first in the class body --  */
+/* keeps this TU as the class's key-function TU, so it still owns the complete */
+/* _ZTV/_ZTI/_ZTS group declared in this entry's compiler_only_output. D0 is   */
+/* that destructor plus dActor_c's inherited inline `operator delete`; slot 17 */
+/* is the deleting variant.                                                    */
+/*                                                                            */
+/* The body is genuinely empty: the class adds no member with a destructor to  */
+/* dActor_c, so the ROM's D1 is a vptr store and the base chain, nothing more. */
+/* -------------------------------------------------------------------------- */

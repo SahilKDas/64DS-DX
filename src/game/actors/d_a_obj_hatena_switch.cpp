@@ -360,6 +360,7 @@ void daObjHatenaSwitch_c::OnGroundPounded(dActor_c &other)
 {
     mPressTimer = 0;
 }
-
-/*
+// @symbol _ZN19daObjHatenaSwitch_cD1Ev
+// @symbol _ZN19daObjHatenaSwitch_cD0Ev
+/* ROM ordinals 0/1 -- D1 at 0x020b4ed8 and D0 at 0x020b4f44 are emitted
  * naturally by the inline destructor and InitResources vtable instantiation. */

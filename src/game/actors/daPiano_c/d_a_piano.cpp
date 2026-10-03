@@ -62,6 +62,8 @@
 #include "SharedFilePtr.h"
 #include "Player.h"
 
+bool ApproachLinear(short &value, short target, short step);
+
 extern SharedFilePtr gPianoModelFile;
 extern SharedFilePtr gPianoCollisionFile;
 extern SharedFilePtr gPianoAttackAnimationFile;
@@ -88,13 +90,13 @@ void func_0203568c(int *clsn, int radius);
 void func_02035684(int *clsn, int height);
 int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(dBgActor_c *, int, int);
 void func_ov063_0211ddf4(daPiano_c *self);
-void _ZN10dBgActor_cC2Ev(void *self);
-void _ZN9ModelAnimC1Ev(void *self);
-void _ZN11ShadowModelC1Ev(void *self);
+void *_ZN10dBgActor_cC2Ev(void *self);
+void *_ZN9ModelAnimC1Ev(void *self);
+void *_ZN11ShadowModelC1Ev(void *self);
 void __cxa_vec_ctor(void *array, int count, int stride, void *ctor, void *dtor);
-void _ZN10dCcAcPos_cC1Ev(void *self);
+void *_ZN10dCcAcPos_cC1Ev(void *self);
 void _ZN10dCcAcPos_cD1Ev(void *self);
-void _ZN10dBgCh_ActrC1Ev(void *self);
+void *_ZN10dBgCh_ActrC1Ev(void *self);
 }
 
 /* The registry factory. C LINKAGE IS LOAD-BEARING -- the ROM symbol is the
@@ -394,7 +396,6 @@ void func_ov063_0211d8cc(daPiano_c* self)
     extern void Vec3_Sub(PianoVec3* out, PianoVec3* a, PianoVec3* b);
     extern int LenVec3(PianoVec3* v);
     extern s16 Vec3_HorzAngle(const PianoVec3* v0, const PianoVec3* v1);
-    extern int _Z14ApproachLinearRsss(s16& v, s16 target, s16 step);
     extern void func_ov063_0211ddac(daPiano_c* c, int state);
 
     extern s16 data_02082214[];   /* sine table: (angle >> 4) * 2 taps sin/cos */
@@ -453,7 +454,7 @@ void func_ov063_0211d8cc(daPiano_c* self)
     if (target != 0) {
         Vec3_Sub(&tmp, (PianoVec3*)&self->mPosX, (PianoVec3*)&target->mPosX);
         dist = LenVec3(&tmp);
-        _Z14ApproachLinearRsss(
+        ApproachLinear(
             self->mPrevAngleY,
             Vec3_HorzAngle((PianoVec3*)&self->mPosX, (PianoVec3*)&self->mTarget->mPosX),
             0x200);

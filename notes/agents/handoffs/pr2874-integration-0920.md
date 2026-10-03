@@ -16,13 +16,13 @@ The actor uses genuine model rendering and Vector3 scale, ordinary matrix
 assignment, native collider transformation, real class member-pointer state
 dispatch, named actor fields and class-owned resource records. Transition and
 tail state handler return void. The sound wrapper forwards the actual integer
-handle consumed by Star and BlueCoin switches. The StarMarker declaration now
+handle consumed by Star and BlueCoin switches. The daStarBase_c declaration now
 names the actual SharedFilePtr resource. No contradiction is newly banked.
 
 Scalar collider SetFile and materialized integer comparisons remain where the
 committed exact compiler experiments show ordinary alternatives differ. The
 earlier nested-matrix failure is superseded by a matching ordinary assignment.
-Thirteen address-named helpers and an unnamed foreign PowerStar field remain
+Thirteen address-named helpers and an unnamed foreign daStar_c field remain
 explicit boundaries; this is not whole-class/interface completion.
 
 SS2874-01 through09 are preserved in the evidence. The incorrect OnGroundPounded
@@ -38,7 +38,7 @@ The Star section of the field-provenance note now describes the current typed
 fields and native calls; all other class sections remain unchanged.
 
 Source proof contains38 focused strict checks, both complete affected header
-consumer objects, unchanged StarMarker object, all output/order policies, and
+consumer objects, unchanged daStarBase_c object, all output/order policies, and
 all249 emitted metadata bytes across eleven objects. The vtable proof covers
 the complete136 bytes including its preamble. Standard word-level metadata
 reporting remains seven VERIFIED and four PARTIAL; un-emitted gap padding is

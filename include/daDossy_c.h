@@ -82,14 +82,23 @@ struct daDossy_c : dActor_c {
     u8  mClsnState;             /* 0x11b5 */
     u8  pad_11b6[0x2];
 
-    /* Inline is load-bearing: explicit use in the destructor source files
-     * emits D1 then D0 without inventing a homeless D2. */
+    /* Inline is load-bearing: src/actors/daDossy_c.cpp defines the key
+     * function InitResources, so it emits D1 then D0 with no homeless D2. */
     virtual ~daDossy_c() {}
 
     virtual int InitResources();
     virtual int CleanupResources();
     virtual int Behavior();
     virtual int Render();
+
+    int func_ov065_02118248();
+    void func_ov065_021182e4();
+    void func_ov065_021183c8();
+    void func_ov065_02118634();
+    void func_ov065_02118838();
+    void func_ov065_02118cc4();
+    void func_ov065_0211956c(dActor_c *other);
+    void func_ov065_02119594(dActor_c *other);
 };
 
 #ifndef SM64DS_PLATFORM_PC

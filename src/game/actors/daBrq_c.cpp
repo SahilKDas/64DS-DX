@@ -508,7 +508,8 @@ foundPlayer:
     }
     return 1;
 }
-
+// @symbol _ZN7daBrq_cD1Ev
+// @symbol _ZN7daBrq_cD0Ev
 /* The inline destructor and InitResources key function emit the retail D1/D0
  * group without a retained D2 or forcing helper. */
 

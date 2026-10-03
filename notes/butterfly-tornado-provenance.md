@@ -1,4 +1,4 @@
-# daBtfly_c, daTor_c, StarMarker, daOnms_c -- field-name provenance
+# daBtfly_c, daTor_c, daStarBase_c, daOnms_c -- field-name provenance
 
 Four standalone actors whose headers came out of `tools/gen_header.py` with
 observed offsets and placeholder names. The offsets and widths were already
@@ -12,7 +12,7 @@ cartridge under 2004/b56, checked per function with `build_pin`'s `verify`
 
 ## A rule these four share
 
-daTor_c and StarMarker remain flat shadow structs that restate `dActor_c`'s
+daTor_c and daStarBase_c remain flat shadow structs that restate `dActor_c`'s
 bytes. daBtfly_c has since been promoted to genuine `daBtfly_c : dActor_c`
 class form; its inherited fields therefore come directly from
 `include/dActor_c.h` rather than being repeated locally.
@@ -95,18 +95,18 @@ the second only by InitResources, and nothing in the tree reads either.
 0x354/0x356/0x358 came out of `pad_352`.
 
 
-## StarMarker (`include/StarMarker.h`)
+## daStarBase_c (`include/daStarBase_c.h`)
 
 The on-screen glint showing where an uncollected star will appear.
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x004 | `mUniqueID` | `fBase_c`'s own offset. `src/_ZN10StarMarker27SpawnRedCoinStarIfNecessaryEv.cpp` hands it to the star it spawns, at `star+0x434`. |
-| 0x18c | `mShadowMtx` | `src/_ZN10StarMarker8BehaviorEv.cpp` stores `IDENTITY_MATRIX4X3` over `*(Mtx *)&mShadowMtx` -- a whole Matrix4x3, 0x18c..0x1bb -- and passes `&mShadowMtx` to `dActor_c::DropShadowRadHeight` as the shadow's matrix. |
+| 0x004 | `mUniqueID` | `fBase_c`'s own offset. `src/_ZN12daStarBase_c27SpawnRedCoinStarIfNecessaryEv.cpp` hands it to the star it spawns, at `star+0x434`. |
+| 0x18c | `mShadowMtx` | `src/_ZN12daStarBase_c8BehaviorEv.cpp` stores `IDENTITY_MATRIX4X3` over `*(Mtx *)&mShadowMtx` -- a whole Matrix4x3, 0x18c..0x1bb -- and passes `&mShadowMtx` to `dActor_c::DropShadowRadHeight` as the shadow's matrix. |
 | 0x1b0/0x1b4/0x1b8 | `mShadowMtxTX/TY/TZ` | The translation row of that same matrix (+0x24/+0x28/+0x2c), set to `mPos >> 3` in the statements right after the identity store. |
-| 0x1bc/0x1c0/0x1c4 | `mSpawnPosX/Y/Z` | `src/_ZN10StarMarker13InitResourcesEv.cpp` copies `mPos` here. Nothing in the tree reads them; the name records the copy, which is unambiguous. |
+| 0x1bc/0x1c0/0x1c4 | `mSpawnPosX/Y/Z` | `src/_ZN12daStarBase_c13InitResourcesEv.cpp` copies `mPos` here. Nothing in the tree reads them; the name records the copy, which is unambiguous. |
 | 0x1c8 | `mGroundY` | InitResources raycasts down with a `dBgCh_Gnd` from `mPosY + 0x1e000` and stores the result's own +0x44 here. Behavior turns `mPosY - mGroundY` into the shadow's drop height. |
-| 0x1cc | `mSpawnedActorID` | A unique id, not a pointer: `src/_ZN10StarMarker16OnPendingDestroyEv.cpp` feeds it to `dActor_c::FindWithID` and, if that actor has no death-table slot of its own, clears `mSpawnedDeathTableID`'s bit. InitResources zeroes it and nothing in the tree sets it non-zero, so the write side is still missing. |
+| 0x1cc | `mSpawnedActorID` | A unique id, not a pointer: `src/_ZN12daStarBase_c16OnPendingDestroyEv.cpp` feeds it to `dActor_c::FindWithID` and, if that actor has no death-table slot of its own, clears `mSpawnedDeathTableID`'s bit. InitResources zeroes it and nothing in the tree sets it non-zero, so the write side is still missing. |
 | 0x1d0 | `mHitActor` | Behavior resolves `mdCcAcPos_c.otherOwner` to an actor and stores it here just before calling `func_ov002_020e7d84`. |
 | 0x1d6 | `mSpawnedDeathTableID` | The slot `DeathTable_ClearBit` is called on in OnPendingDestroy. InitResources sets -1, the same "no slot" value `dActor_c` uses for its own `mDeathTableID`. |
 

@@ -1124,5 +1124,60 @@ class AllocationMethodTests(unittest.TestCase):
 # `Ran 20 tests ... OK` over them. `python -m unittest tools.test_check_header_offsets`
 # imports the module instead of running it, which is why running it that way locally
 # found 53 and nobody noticed the split.
+
+
+class CvQualifiedFieldTests(unittest.TestCase):
+    """A cv-qualifier changes neither a field's size nor its alignment.
+
+    `const State *mState;` came back UNPARSED and failed four class-form PRs
+    (#3214, #3215, #3219, #3220) on headers whose offsets were all right.
+    """
+
+    def _run(self, members):
+        with tempfile.TemporaryDirectory(prefix="offset_cv_") as tmp:
+            header = pathlib.Path(tmp) / "Widget.h"
+            header.write_text("struct Widget {\n" + members + "\n};\n",
+                              encoding="utf-8")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = C.main([str(header)])
+            return rc, out.getvalue()
+
+    def test_qualified_fields_are_sized_like_their_unqualified_type(self):
+        for field in ("const State *mState;", "State const *mState;",
+                      "volatile u32 mFlags;", "const volatile u32 mFlags;",
+                      "u32 volatile mFlags;", "const struct State *mState;"):
+            with self.subTest(field=field):
+                rc, out = self._run(
+                    "    u8 first; /* 0x000 */\n"
+                    "    u8 pad_001[3]; /* 0x001 */\n"
+                    f"    {field} /* 0x004 */\n"
+                    "    u16 tail; /* 0x008 */")
+                self.assertEqual(rc, 0, out)
+                self.assertIn("4 commented fields, 0 mismatched, 0 unparsed, struct spans 0xa", out)
+
+    def test_a_wrong_offset_after_a_qualified_field_still_fails(self):
+        rc, out = self._run(
+            "    const State *mState; /* 0x000 */\n"
+            "    u16 tail; /* 0x008 */")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("2 commented fields, 1 mismatched, 0 unparsed", out)
+
+    def test_a_name_that_starts_with_const_is_still_the_name(self):
+        rc, out = self._run(
+            "    u32 const_value; /* 0x000 */\n"
+            "    u8 volatile_flag; /* 0x004 */")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("2 commented fields, 0 mismatched, 0 unparsed, struct spans 0x5", out)
+
+    def test_an_unknown_qualified_type_is_still_unparsed(self):
+        rc, out = self._run(
+            "    const Mystery mValue; /* 0x000 */\n"
+            "    u32 tail; /* 0x004 */")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("UNPARSED", out)
+        self.assertIn("const Mystery mValue;", out)
+
+
 if __name__ == "__main__":
     unittest.main()

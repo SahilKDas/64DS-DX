@@ -24,9 +24,8 @@ credits. Five existing converted identities move from deleted shards to `path#sy
 identities in the promoted TU; the baseline remains 2,973, with no new gain banked.
 
 Declaration entries follow the PR's retired shards into its live TU. Four reviewed
-global identities are corrected to the source's actual interfaces: `data_0209f318`
-uses `Camera *`, `data_ov085_021305d8` uses `SharedFilePtr`, and the two state objects
-at ov085:0x0213071c/0x0213072c use `MipKeyState`. This records the known disagreements
+global identities are corrected to the source's actual interfaces: [data_0209f318](../../../config/arm9/symbols.txt) uses `Camera *`, [data_ov085_021305d8](../../../config/arm9/overlays/ov085/symbols.txt) uses `SharedFilePtr`, and the two state objects
+at [ov085](../../../config/arm9/overlays/ov085/symbols.txt):0x0213071c/0x0213072c use `MipKeyState`. This records the known disagreements
 with generic placeholders elsewhere; it does not assert that every repository
 declaration has been reconstructed. The typed interfaces and 16-byte state data
 were independently inspected and byte checked before the baseline edits.

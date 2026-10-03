@@ -1,0 +1,427 @@
+{
+  "id": "ov002/daYegg_c",
+  "module": "ov002",
+  "source": "src/actors/daYegg_c.cpp",
+  "promoted_source": "src/actors/daYegg_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x20ec56c..0x20ee3d8, 32 function(s), from build/tu_map.json (tools/tu_map.py) -- the whole unit. src/game/actors/d_a_warpkun.cpp ends exactly at 0x020ec56c below it.",
+    "class label(s): daYegg_c",
+    "module sinit corroboration: 26 sinit(s) / 26 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit tail fold: daYegg_c_classInit (0x020ee3d8..0x020ee42c) abuts this TU's range with no gap and is now inside it; tu_map cuts on symbol name and left it out. The unit is 0x020ec56c..0x020ee42c, bounded above by src/actors/dBgActor_c.cpp, which starts exactly at 0x020ee42c."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x020ec56c",
+      "end": "0x020ee42c"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN8daYegg_cD1Ev",
+      "address": "0x020ec56c",
+      "size": "0x00000048",
+      "legacy_source": "src/_ZN8daYegg_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN8daYegg_cD0Ev",
+      "address": "0x020ec5b4",
+      "size": "0x0000005c",
+      "legacy_source": "src/_ZN8daYegg_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov002_020ec610",
+      "address": "0x020ec610",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov002_020ec610.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov002_020ec628",
+      "address": "0x020ec628",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov002_020ec628.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov002_020ec640",
+      "address": "0x020ec640",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov002_020ec640.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov002_020ec654",
+      "address": "0x020ec654",
+      "size": "0x0000001c",
+      "legacy_source": "src/func_ov002_020ec654.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov002_020ec670",
+      "address": "0x020ec670",
+      "size": "0x000000b8",
+      "legacy_source": "src/func_ov002_020ec670.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov002_020ec728",
+      "address": "0x020ec728",
+      "size": "0x000000e4",
+      "legacy_source": "src/func_ov002_020ec728.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov002_020ec80c",
+      "address": "0x020ec80c",
+      "size": "0x0000012c",
+      "legacy_source": "src/func_ov002_020ec80c.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov002_020ec938",
+      "address": "0x020ec938",
+      "size": "0x00000040",
+      "legacy_source": "src/func_ov002_020ec938.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov002_020ec978",
+      "address": "0x020ec978",
+      "size": "0x0000004c",
+      "legacy_source": "src/func_ov002_020ec978.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov002_020ec9c4",
+      "address": "0x020ec9c4",
+      "size": "0x00000110",
+      "legacy_source": "src/func_ov002_020ec9c4.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov002_020ecad4",
+      "address": "0x020ecad4",
+      "size": "0x00000038",
+      "legacy_source": "src/func_ov002_020ecad4.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov002_020ecb0c",
+      "address": "0x020ecb0c",
+      "size": "0x0000020c",
+      "legacy_source": "src/func_ov002_020ecb0c.c",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov002_020ecd18",
+      "address": "0x020ecd18",
+      "size": "0x0000027c",
+      "legacy_source": "src/func_ov002_020ecd18.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov002_020ecf94",
+      "address": "0x020ecf94",
+      "size": "0x00000034",
+      "legacy_source": "src/func_ov002_020ecf94.c",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov002_020ecfc8",
+      "address": "0x020ecfc8",
+      "size": "0x0000010c",
+      "legacy_source": "src/func_ov002_020ecfc8.c",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov002_020ed0d4",
+      "address": "0x020ed0d4",
+      "size": "0x000004dc",
+      "legacy_source": "src/func_ov002_020ed0d4.c",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov002_020ed5b0",
+      "address": "0x020ed5b0",
+      "size": "0x0000008c",
+      "legacy_source": "src/func_ov002_020ed5b0.c",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov002_020ed63c",
+      "address": "0x020ed63c",
+      "size": "0x00000048",
+      "legacy_source": "src/func_ov002_020ed63c.cpp",
+      "ordinal": 19
+    },
+    {
+      "symbol": "func_ov002_020ed684",
+      "address": "0x020ed684",
+      "size": "0x00000048",
+      "legacy_source": "src/func_ov002_020ed684.cpp",
+      "ordinal": 20
+    },
+    {
+      "symbol": "func_ov002_020ed6cc",
+      "address": "0x020ed6cc",
+      "size": "0x0000006c",
+      "legacy_source": "src/func_ov002_020ed6cc.c",
+      "ordinal": 21
+    },
+    {
+      "symbol": "func_ov002_020ed738",
+      "address": "0x020ed738",
+      "size": "0x000000c0",
+      "legacy_source": "src/func_ov002_020ed738.cpp",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov002_020ed7f8",
+      "address": "0x020ed7f8",
+      "size": "0x000001a0",
+      "legacy_source": "src/func_ov002_020ed7f8.c",
+      "ordinal": 23
+    },
+    {
+      "symbol": "func_ov002_020ed998",
+      "address": "0x020ed998",
+      "size": "0x000001a4",
+      "legacy_source": "src/func_ov002_020ed998.cpp",
+      "ordinal": 24
+    },
+    {
+      "symbol": "func_ov002_020edb3c",
+      "address": "0x020edb3c",
+      "size": "0x00000168",
+      "legacy_source": "src/func_ov002_020edb3c.cpp",
+      "ordinal": 25
+    },
+    {
+      "symbol": "func_ov002_020edca4",
+      "address": "0x020edca4",
+      "size": "0x00000120",
+      "legacy_source": "src/func_ov002_020edca4.c",
+      "ordinal": 26
+    },
+    {
+      "symbol": "func_ov002_020eddc4",
+      "address": "0x020eddc4",
+      "size": "0x00000190",
+      "legacy_source": "src/func_ov002_020eddc4.c",
+      "ordinal": 27
+    },
+    {
+      "symbol": "_ZN8daYegg_c16CleanupResourcesEv",
+      "address": "0x020edf54",
+      "size": "0x00000044",
+      "legacy_source": "src/_ZN8daYegg_c16CleanupResourcesEv.cpp",
+      "ordinal": 28
+    },
+    {
+      "symbol": "_ZN8daYegg_c6RenderEv",
+      "address": "0x020edf98",
+      "size": "0x00000078",
+      "legacy_source": "src/_ZN8daYegg_c6RenderEv.cpp",
+      "ordinal": 29
+    },
+    {
+      "symbol": "_ZN8daYegg_c8BehaviorEv",
+      "address": "0x020ee010",
+      "size": "0x00000134",
+      "legacy_source": "src/_ZN8daYegg_c8BehaviorEv.cpp",
+      "ordinal": 30
+    },
+    {
+      "symbol": "_ZN8daYegg_c13InitResourcesEv",
+      "address": "0x020ee144",
+      "size": "0x00000294",
+      "legacy_source": "src/_ZN8daYegg_c13InitResourcesEv.cpp",
+      "ordinal": 31
+    },
+    {
+      "symbol": "daYegg_c_classInit",
+      "address": "0x020ee3d8",
+      "size": "0x00000054",
+      "legacy_source": "src/d_a_yegg.c",
+      "ordinal": 32
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Thirty-three-function unit 0x020ec56c..0x020ee42c: D1 and D0 from the out-of-line destructor, the twenty-six helpers func_ov002_020ec610..func_ov002_020eddc4, CleanupResources, Render, Behavior, InitResources, then the registry factory daYegg_c_classInit.",
+    "Written in ROM order under `#pragma defer_codegen off`. That keeps D1 ahead of D0 and scopes `#pragma opt_strength_reduction off` to the two functions the legacy shards carried it on, func_ov002_020edb3c and InitResources: with codegen deferred the pragma is last-wins over the whole file, and an `on` after func_ov002_020edb3c size-diffs it.",
+    "daYegg_c_classInit is written as `return new daYegg_c;`: the implicit constructor reproduces the loose file's fBase_c::operator new(0x42c), dEnemyBase_c base constructor, vptr store and the four member constructors byte for byte.",
+    "func_ov002_020ec670 is the one complete=False shard in the run; it matches inside the TU like the others."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN8daYegg_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Homeless. One out-of-line destructor under #pragma defer_codegen off emits D1, D0, then D2. The cartridge has D1 at ov002:0x020ec56c and D0 at 0x020ec5b4 and no D2. Production isolation discards it. It is emitted after D0, and the licensed functions stay ROM-ascending."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "reason": "include/types.h defines Vector3::~Vector3() inline and empty. Several helpers take Vector3 locals, so this TU emits that four-byte body once as vague linkage. The cartridge's copy is arm9:0x020072c0 (src/_ZN7Vector3D1Ev.cpp); this object is not its home.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0"
+    },
+    {
+      "symbol": "_ZTV8daYegg_c",
+      "disposition": "deadstrip-data",
+      "reason": "The out-of-line destructor is the key function, so this TU emits the vtable. ov002:0x0210adb4 is in .data, outside the licensed text span 0x020ec56c..0x020ee42c. D1, D0 and the factory store this vptr; text-only production discards the emitted copy and retains cartridge data.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210adb4"
+    },
+    {
+      "symbol": "_ZTI8daYegg_c",
+      "disposition": "deadstrip-data",
+      "reason": "This class's __si_class_type_info, dragged in with the vtable. Cartridge copy ov002:0x0210ad84. Its base word is _ZTI12dEnemyBase_c.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210ad84"
+    },
+    {
+      "symbol": "_ZTS8daYegg_c",
+      "disposition": "deadstrip-data",
+      "reason": "Type-name string 8daYegg_c at ov002:0x0210ad78.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x0210ad78"
+    },
+    {
+      "symbol": "_ZTI12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at ov002:0x021081c0, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081c0"
+    },
+    {
+      "symbol": "_ZTS12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at ov002:0x021081cc, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081cc"
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e390, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390"
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e384, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e78, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e54, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54"
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086d70, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e60, outside this TU's licensed range (.text 0x020ec56c-0x020ee42c), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60"
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov002-daYegg_c/daYegg_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 33,
+    "functions_declared": 33,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN8daYegg_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN7Vector3D1Ev",
+        "_ZN8daYegg_cD2Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        19,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85
+      ],
+      "data": [
+        "_ZTV8daYegg_c",
+        "_ZTI8daYegg_c",
+        "_ZTS8daYegg_c",
+        "_ZTI12dEnemyBase_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI12dEnemyBase_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTI8daYegg_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTS8daYegg_c",
+        "_ZTV8daYegg_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

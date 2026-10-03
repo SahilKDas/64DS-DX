@@ -12,8 +12,7 @@
  *   decrements mSparkleShuffles through a byte pointer. The member form misses.
  * Leftover: StateShuffle's angle read-modify-write stays on raw+0x5400.
  *   mShuffleAngle += folds the address.
- * Leftover: Render's frame index stays ((int *)raw + k)[0x1510], and the
- *   cup x/y in that call stay two different spellings.
+ * Leftover: Render's cup x/y arguments retain two different spellings.
  * Leftover: Behavior's mAnim / mFrame / mTick loads stay (int) casts.
  * Leftover: the factory is still _ZN11dScMgBase_cC2Ev plus SysTracker C1.
  *   There is no dScMgCup_c constructor.
@@ -916,14 +915,11 @@ s32 dScMgCup_c::Render()
         }
     }
 
-    /* Keep both index towers in the call below: spelled as unk_5440[k] or
-       as a flat offset, the compiler recomputes the address and the code
-       changes. */
     for (k = 0; k < 3; k++) {
         cup = order[k];
         func_ov006_020debb4((char *)mFx, (char)cup);
         func_ov006_020deed8((int)raw,
-            (void *)data_ov006_0213c0d8[mAnim[cup]][((int*)raw + k)[0x1510]].list,
+            (void *)data_ov006_0213c0d8[mAnim[cup]][mFrame[k]].list,
             *(int*)(raw + cup * 8 + 0x53e8),
             ((struct P8*)raw + cup)[0xa7d].b,
             mOnes[cup],

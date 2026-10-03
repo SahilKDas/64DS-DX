@@ -38,19 +38,20 @@
  * inline destructor in include/daObjTbox_c.h emits the retail D1/D0 pair
  * first and emits no D2 body.
  *
- * deslop leftovers:
+ * Known limits:
  * - ModelAnim::SetAnim and dCcAc_c::Init keep their C ABI spellings in
  *   InitResources: their real declarations pass Fix12<int> by value, which
  *   mwccarm lowers differently at a C++ call site.
- * - func_02012790 / func_02012694 are still linker names; they are the sound
- *   and positional-sound entry points State0 uses.
+ * - func_02012790 / func_02012694 are still linker names; State0 calls them
+ *   with a sound code (and, for the second, a position). No further name is
+ *   coined.
  * - data_ov064_0211c98c, the three PMF pairs, and the four SharedFilePtr
  *   handles are overlay data this TU consumes and does not own.
+ * - The "// address (size)" line above each definition is its ROM location.
+ * - The sixteen one-function sources this TU consolidates are recorded, with
+ *   their retired paths, in its manifest entry.
  *
- * Consolidated from sixteen one-function sources, one per symbol below.
- * Their retired paths are recorded per function in this TU's manifest
- * entry; naming them here would leave the comment pointing at files the
- * fold deletes. ROM address order:
+ * ROM address order:
  *   [ 0] 0x0211a200  _ZN11daObjTbox_cD1Ev
  *   [ 1] 0x0211a238  _ZN11daObjTbox_cD0Ev
  *   [ 2] 0x0211a284  _ZN11daObjTbox_c20UpdateModelTransformEv
@@ -99,9 +100,7 @@ void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(
     u32 flags, u32 vulnFlags);
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 15 -- daObjTbox_c_classInit, 0x0211a8f0, size 0x40 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a8f0 (0x40)
 // @symbol daObjTbox_c_classInit
 /* Reconstructed source-style name: the cartridge proves daObjTbox_c through
  * RTTI, allocation size and vtable identity, and the TREASURE_BOX profile at
@@ -128,17 +127,12 @@ extern "C" daObjTbox_c *daObjTbox_c_classInit()
     return new daObjTbox_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 14 -- _ZN11daObjTbox_c13InitResourcesEv, 0x0211a814, size 0xdc */
-/* -------------------------------------------------------------------------- */
+// 0x0211a814 (0xdc)
 // @symbol _ZN11daObjTbox_c13InitResourcesEv
-/* recovered: named members + shared header, real C++ method
- *
- * ModelAnim::SetAnim and dCcAc_c::Init keep their C ABI spellings here. Their
+/* ModelAnim::SetAnim and dCcAc_c::Init keep their C ABI spellings here. Their
  * real declarations pass Fix12<int> by value, which mwccarm lowers differently
  * at a C++ call site (the documented Fix12 caller wall); the scalar ABI forms
- * are the measured ROM calls. Everything else uses the recovered class API.
- */
+ * are the measured ROM calls. */
 int daObjTbox_c::InitResources()
 {
     Model::LoadFile(data_ov002_0210d9a8);
@@ -160,9 +154,7 @@ int daObjTbox_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 13 -- _ZN11daObjTbox_c8BehaviorEv, 0x0211a7ec, size 0x28 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a7ec (0x28)
 // @symbol _ZN11daObjTbox_c8BehaviorEv
 int daObjTbox_c::Behavior()
 {
@@ -172,9 +164,7 @@ int daObjTbox_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 12 -- _ZN11daObjTbox_c6RenderEv, 0x0211a7c4, size 0x28 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a7c4 (0x28)
 // @symbol _ZN11daObjTbox_c6RenderEv
 int daObjTbox_c::Render()
 {
@@ -183,19 +173,11 @@ int daObjTbox_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 11 -- _ZN11daObjTbox_c16CleanupResourcesEv, 0x0211a77c, size 0x48 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a77c (0x48)
 // @symbol _ZN11daObjTbox_c16CleanupResourcesEv
-/* recovered: shared header, real C++ method
- *
- * Four releases, and the split is the finding: two handles live in this
+/* Four releases: two handles live in this
  * overlay and two in ov002, borrowed from the always-resident module. The
- * ROM's order is own-first, borrowed-after, and is reproduced verbatim.
- *
- * `SharedFilePtr::Release` is now spelt as the member call it is, so the
- * compiler emits _ZN13SharedFilePtr7ReleaseEv itself.
- */
+ * ROM's order is own-first, borrowed-after. */
 int daObjTbox_c::CleanupResources()
 {
     data_ov064_0211c96c.Release();
@@ -205,9 +187,7 @@ int daObjTbox_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 10 -- _ZN11daObjTbox_c17CallStateBehaviorEv, 0x0211a734, size 0x48 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a734 (0x48)
 // @symbol _ZN11daObjTbox_c17CallStateBehaviorEv
 void daObjTbox_c::CallStateBehavior()
 {
@@ -215,9 +195,7 @@ void daObjTbox_c::CallStateBehavior()
     (this->*data_ov064_0211c98c[index][1])();
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 9 -- _ZN11daObjTbox_c8SetStateEi, 0x0211a6ec, size 0x48 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a6ec (0x48)
 // @symbol _ZN11daObjTbox_c8SetStateEi
 void daObjTbox_c::SetState(s32 state)
 {
@@ -226,18 +204,14 @@ void daObjTbox_c::SetState(s32 state)
     (this->*data_ov064_0211c98c[index][0])();
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 8 -- _ZN11daObjTbox_c10InitState0Ev, 0x0211a6e0, size 0xc */
-/* -------------------------------------------------------------------------- */
+// 0x0211a6e0 (0xc)
 // @symbol _ZN11daObjTbox_c10InitState0Ev
 void daObjTbox_c::InitState0()
 {
     mModelAnim.currFrame = 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 7 -- _ZN11daObjTbox_c6State0Ev, 0x0211a4c4, size 0x21c */
-/* -------------------------------------------------------------------------- */
+// 0x0211a4c4 (0x21c)
 // @symbol _ZN11daObjTbox_c6State0Ev
 void daObjTbox_c::State0()
 {
@@ -256,69 +230,65 @@ void daObjTbox_c::State0()
     if (player == 0)
         return;
 
-    {
-        int t = player->actorID;
-        t = t == 0xbf;
-        if (t != false) {
-            Vector3 *playerPosPtr = (Vector3 *)&player->mPosX;
-            Vector3 playerPos;
-            playerPos.x = playerPosPtr->x;
-            playerPos.y = playerPosPtr->y;
-            playerPos.z = playerPosPtr->z;
-            if (AngleDiff(Vec3_HorzAngle((Vector3 *)&mPosX, &playerPos), mAngleY) < 0x4000) {
-                int sbcount = 0;
-                int count = 0;
-                dActor_c *cur = FindWithActorID(0xd, 0);
-                while (cur != 0) {
-                    count++;
-                    if (cur != this) {
-                        s32 fv = ((daObjTbox_c *)cur)->mState;
-                        int r1v = 1;
-                        if (fv != 1) {
-                            if (fv != 2)
-                                r1v = 0;
-                        }
-                        if (r1v != 0)
-                            sbcount++;
+    int isPlayer = player->actorID;
+    isPlayer = isPlayer == 0xbf;
+    if (isPlayer != false) {
+        Vector3 *playerPosPtr = (Vector3 *)&player->mPosX;
+        Vector3 playerPos;
+        playerPos.x = playerPosPtr->x;
+        playerPos.y = playerPosPtr->y;
+        playerPos.z = playerPosPtr->z;
+        if (AngleDiff(Vec3_HorzAngle((Vector3 *)&mPosX, &playerPos), mAngleY) < 0x4000) {
+            int openCount = 0;
+            int chestCount = 0;
+            dActor_c *chest = FindWithActorID(0xd, 0);
+            while (chest != 0) {
+                chestCount++;
+                if (chest != this) {
+                    s32 otherState = ((daObjTbox_c *)chest)->mState;
+                    int isOpen = 1;
+                    if (otherState != 1) {
+                        if (otherState != 2)
+                            isOpen = 0;
                     }
-                    cur = FindWithActorID(0xd, cur);
+                    if (isOpen != 0)
+                        openCount++;
                 }
+                chest = FindWithActorID(0xd, chest);
+            }
 
-                if (sbcount + 1 == mOrder) {
-                    if (count == mOrder) {
-                        SpawnSoundObj(0);
-                        mIsLastChest = 1;
-                    } else {
-                        func_02012790(0x26);
-                    }
-                    if (player->mIsUnderwater != 0)
-                        func_02012694(0x22, (Vector3 *)&mCamSpacePosX);
-                    else
-                        func_02012694(0x20, (Vector3 *)&mCamSpacePosX);
-                    SetState(1);
+            if (openCount + 1 == mOrder) {
+                if (chestCount == mOrder) {
+                    SpawnSoundObj(0);
+                    mIsLastChest = 1;
                 } else {
-                    mStateTimer = 0x5a;
-                    if (player->mIsMetal != 0)
-                        player->Shock(0);
-                    else
-                        player->Shock(1);
+                    func_02012790(0x26);
+                }
+                if (player->mIsUnderwater != 0)
+                    func_02012694(0x22, (Vector3 *)&mCamSpacePosX);
+                else
+                    func_02012694(0x20, (Vector3 *)&mCamSpacePosX);
+                SetState(1);
+            } else {
+                mStateTimer = 0x5a;
+                if (player->mIsMetal != 0)
+                    player->Shock(0);
+                else
+                    player->Shock(1);
 
-                    for (;;) {
-                        cur = FindWithActorID(0xd, cur);
-                        if (cur == 0)
-                            break;
-                        if (cur != this)
-                            ((daObjTbox_c *)cur)->SetState(0);
-                    }
+                for (;;) {
+                    chest = FindWithActorID(0xd, chest);
+                    if (chest == 0)
+                        break;
+                    if (chest != this)
+                        ((daObjTbox_c *)chest)->SetState(0);
                 }
             }
         }
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 6 -- _ZN11daObjTbox_c10InitState1Ev, 0x0211a49c, size 0x28 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a49c (0x28)
 // @symbol _ZN11daObjTbox_c10InitState1Ev
 void daObjTbox_c::InitState1()
 {
@@ -328,9 +298,7 @@ void daObjTbox_c::InitState1()
     mFlags &= ~1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 5 -- _ZN11daObjTbox_c6State1Ev, 0x0211a39c, size 0x100 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a39c (0x100)
 // @symbol _ZN11daObjTbox_c6State1Ev
 void daObjTbox_c::State1()
 {
@@ -365,9 +333,7 @@ void daObjTbox_c::State1()
         SetState(2);
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 4 -- _ZN11daObjTbox_c10InitState2Ev, 0x0211a380, size 0x1c */
-/* -------------------------------------------------------------------------- */
+// 0x0211a380 (0x1c)
 // @symbol _ZN11daObjTbox_c10InitState2Ev
 void daObjTbox_c::InitState2()
 {
@@ -375,9 +341,7 @@ void daObjTbox_c::InitState2()
         mFlags |= 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 3 -- _ZN11daObjTbox_c6State2Ev, 0x0211a2c4, size 0xbc */
-/* -------------------------------------------------------------------------- */
+// 0x0211a2c4 (0xbc)
 // @symbol _ZN11daObjTbox_c6State2Ev
 void daObjTbox_c::State2()
 {
@@ -400,9 +364,7 @@ void daObjTbox_c::State2()
     mFlags |= 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 2 -- _ZN11daObjTbox_c20UpdateModelTransformEv, 0x0211a284, size 0x40 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a284 (0x40)
 // @symbol _ZN11daObjTbox_c20UpdateModelTransformEv
 void daObjTbox_c::UpdateModelTransform()
 {
@@ -412,10 +374,7 @@ void daObjTbox_c::UpdateModelTransform()
     mModelAnim.mat4x3.t.z = mPosZ >> 3;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 1 -- _ZN11daObjTbox_cD0Ev, 0x0211a238, size 0x4c */
-/* ROM ordinal 0 -- _ZN11daObjTbox_cD1Ev, 0x0211a200, size 0x38 */
-/* -------------------------------------------------------------------------- */
+// 0x0211a238 (0x4c), 0x0211a200 (0x38)
 // @symbol _ZN11daObjTbox_cD1Ev
 // @symbol _ZN11daObjTbox_cD0Ev
 /* NOT WRITTEN HERE ON PURPOSE. The inline `~daObjTbox_c() {}` in the header is

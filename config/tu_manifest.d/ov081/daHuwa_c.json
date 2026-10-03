@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x2123740..0x2124040, 12 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daHuwa_c",
-    "module sinit corroboration: 5 sinit(s) / 5 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 5 sinit(s) / 5 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold (0930c): the HUWAHUWA registry factory daHuwa_c_classInit (0x02124040, 0x50) abuts the run's end 0x02124040 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range 0x02123740..0x02124090 (13 functions) ends where the daSnowman_c TU (src/actors/daSnowman_c.cpp) begins."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x02123740",
-      "end": "0x02124040"
+      "end": "0x02124090"
     }
   ],
   "functions": [
@@ -101,13 +102,21 @@
       "size": "0x00000008",
       "legacy_source": "src/_ZN8daHuwa_c13OnYoshiTryEatEv.cpp",
       "ordinal": 11
+    },
+    {
+      "symbol": "daHuwa_c_classInit",
+      "address": "0x02124040",
+      "size": "0x00000050",
+      "legacy_source": "src/d_a_huwa.c",
+      "ordinal": 12
     }
   ],
   "data": [],
   "bss": [],
   "notes": [
-    "Whole class, text only. daHuwa_c_classInit at 0x02124040 is the next function and is not part of this TU.",
-    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov081_02123910 and the one that held _ZN8daHuwa_c8BehaviorEv; kept the first, the other is commented out for review"
+    "Whole class, text only. The abutting registry factory daHuwa_c_classInit (0x02124040) was folded in by the 0930c classInit fold (below).",
+    "tubuild create warning (RESOLVED): CONFLICT: extern declaration 'Vec3_HorzAngle' differs between the legacy file that used to hold func_ov081_02123910 and the one that held _ZN8daHuwa_c8BehaviorEv; kept the first, the other is commented out for review",
+    "classInit fold (0930c): daHuwa_c_classInit is folded in last, in ROM order, under the file's `#pragma defer_codegen off`, as `return new daHuwa_c();`. The retired one-function source hand-called fBase_c::operator new(924 = 0x39c), dEnemyBase_c's C2 constructor, this class's vtable store and the four member C1 constructors (ModelAnim 0x110, ShadowModel 0x174, dCcAc_c 0x19c, dBgCh_Actr 0x1d0); daHuwa_c has no user-declared constructor, so the synthesized one emits the identical sequence and no new compiler-only output. tubuild verify: 13/13 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_huwa.c; its credit carries in attribution.json as a path#symbol override."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -115,8 +124,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov081-daHuwa_c/daHuwa_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 12,
-    "functions_declared": 12,
+    "functions_matched": 13,
+    "functions_declared": 13,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN8daHuwa_cD2Ev",
@@ -130,8 +139,6 @@
         9,
         10,
         14,
-        29,
-        30,
         31,
         32,
         33,
@@ -146,7 +153,9 @@
         42,
         43,
         44,
-        45
+        45,
+        46,
+        47
       ],
       "data": [
         "_ZTI7fBase_c",

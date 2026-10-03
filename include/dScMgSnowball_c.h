@@ -40,8 +40,8 @@
  * mArray2. the same file writes the first two the same way.
  *
  * 0xbe94..0xc59c IS A FIFTH ARRAY, and it is why this class has NO trailing
- * slack at all: src/func_ov006_02129690.c already carries the full element
- * layout (two s32 then three u8 at +0x1e/0x1f/0x20, stride 0x24) as a local
+ * slack at all: func_ov006_02129690 (in src/actors/dScMgSnowball_c.cpp) already
+ * carries the full element layout (two s32 then three u8 at +0x1e/0x1f/0x20, stride 0x24) as a local
  * `Elem arr[50]` at exactly this offset, and 50 * 0x24 = 0x708 closes
  * precisely on the allocation literal. At least eight further ov006 files
  * index it. Unlike the other four arrays neither structor touches it, so

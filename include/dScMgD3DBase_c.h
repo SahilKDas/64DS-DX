@@ -150,7 +150,7 @@ struct dScMgD3DBase_c : dScMgBase_c {
        (+0xa0..+0xb8), and all four children reference all fourteen. Kept as
        flat names for now because the eight files that read them spell them
        this way; typing it as a real array is its own change. */
-    /* AND EACH ELEMENT IS A MINIGAME CAMERA. src/Camera_UpdateMatrices.c
+    /* AND EACH ELEMENT IS A MINIGAME CAMERA. Camera_UpdateMatrices (src/actors/unit020bfec0.cpp)
        carries the 0xbc layout: matrices in the head, `eye` at +0xa0, `target`
        at +0xac and `angle` at +0xb8. dScMgJump_c::InitResources settles which
        element is which by calling Camera_UpdateMatrices(this + 0x466c) and

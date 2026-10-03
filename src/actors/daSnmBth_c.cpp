@@ -1,6 +1,6 @@
 //cpp
-/* ov027/daSnmBth_c -- the snowman's breath (d_a_snm_bth). 16 functions,
- * .text 0x021120c4..0x02112ab4.
+/* ov027/daSnmBth_c -- the snowman's breath (d_a_snm_bth). 17 functions,
+ * .text 0x021120c4..0x02112b14, the end of ov027 .text.
  *
  * daSnmBth_c owns fifty SnowmanBreathParticle members. The particle's eight
  * functions sit in the cartridge between this actor's destructors and its
@@ -24,8 +24,17 @@
  * ROM-ascending. A Matrix4x3 member, whose implicit destructor runs
  * Vector3's inline one, flips the group back to D2, D0, D1 even with the
  * pragma (measured), which is why mInvModelMat is flat words in
- * daSnmBth_c.h. The particle array does not have that effect. The factory
- * daSnmBth_c_classInit (0x02112ab4) is the next file, src/d_a_snm_bth.c.
+ * daSnmBth_c.h. The particle array does not have that effect. The registry
+ * factory daSnmBth_c_classInit (0x02112ab4) is the last function.
+ *
+ * Known limits:
+ * - The Particle::System, Sound::PlayLong, dCcPos_c::Init and Player::BlowAway /
+ *   HasFinishedTalking calls keep their mangled names; Fix12<int> arguments are
+ *   passed by value (mwccarm 6az wall); match.py wildcards these relocations.
+ * - SnowmanBreathParticle is a coined name (no ROM type string).
+ * - mInvModelMat stays flat words: a Matrix4x3 member reorders the destructors.
+ * - IsPlayerInRange keeps its goto chain: folding the six range tests into one ||
+ *   condition (measured) makes the function 4 bytes larger.
  */
 
 #pragma defer_codegen off
@@ -79,30 +88,22 @@ extern SharedFilePtr data_ov002_0210d9c0;
 /* Whole-matrix copies (InitResources, IsPlayerInRange) cast through a plain
  * 48-byte struct; that is the form both were matched in, so it stays. */
 typedef struct { s32 words[12]; } MatrixWords;
-typedef struct { int w[12]; } M48;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinals 0/1 -- _ZN10daSnmBth_cD1Ev 0x021120c4 (0x40),                 */
-/*                     _ZN10daSnmBth_cD0Ev 0x02112104 (0x54)                  */
-/* -------------------------------------------------------------------------- */
+// 0x021120c4 (0x40), 0x02112104 (0x54)
 // @symbol _ZN10daSnmBth_cD1Ev
 // @symbol _ZN10daSnmBth_cD0Ev
 daSnmBth_c::~daSnmBth_c()
 {
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 2 -- _ZN21SnowmanBreathParticleD1Ev, 0x02112158, size 0x18 */
-/* -------------------------------------------------------------------------- */
+// 0x02112158 (0x18)
 // @symbol _ZN21SnowmanBreathParticleD1Ev
 SnowmanBreathParticle::~SnowmanBreathParticle()
 {
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 3 -- _ZN21SnowmanBreathParticle9HitPlayerEv, 0x02112170, size 0x1cc */
-/* -------------------------------------------------------------------------- */
+// 0x02112170 (0x1cc)
 // @symbol _ZN21SnowmanBreathParticle9HitPlayerEv
 void SnowmanBreathParticle::HitPlayer()
 {
@@ -117,19 +118,19 @@ void SnowmanBreathParticle::HitPlayer()
     _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(
         0x100, mPos.x, mPos.y, mPos.z);
 
-    char *player = (char *)actor;
-    if (*(u8 *)(player + 0x6f9))
+    Player *player = (Player *)actor;
+    if (player->mIsMetal)
         return;
-    if (*(u8 *)(player + 0x703))
+    if (player->mIsMega)
         return;
-    if (*(u8 *)(player + 0x6fd))
+    if (player->mIsBalloon)
         return;
     _ZN6Player8BlowAwayEs(player, mAngleY);
-    if (((Player *)player)->IsCollectingCap())
+    if (player->IsCollectingCap())
         return;
-    if (*(u8 *)(player + 0x6ff))
+    if (player->mHasWings)
         return;
-    if (*(u8 *)(player + 0x6fb))
+    if (player->mIsVanish)
         return;
 
     s32 angle = Vec3_HorzAngle(&data_ov027_02113d10,
@@ -138,9 +139,8 @@ void SnowmanBreathParticle::HitPlayer()
     rotation.x = 0;
     rotation.y = (s16)angle;
     rotation.z = 0;
-    if (*(u8 *)(player + 0x6d9) != actor->param1) {
-        ((Player *)player)->SetNewHatCharacter(
-            *(u8 *)(player + 0x6d9), 0, 0);
+    if (player->mCharacter != actor->param1) {
+        player->SetNewHatCharacter(player->mCharacter, 0, 0);
     } else {
         if (SaveData::HasPlayerLostCap())
             return;
@@ -166,9 +166,7 @@ void SnowmanBreathParticle::HitPlayer()
     cap->mHorzSpeed = 0x1c000;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 4 -- _ZN21SnowmanBreathParticle12CheckSnowmanEv, 0x0211233c, size 0x74 */
-/* -------------------------------------------------------------------------- */
+// 0x0211233c (0x74)
 // @symbol _ZN21SnowmanBreathParticle12CheckSnowmanEv
 void SnowmanBreathParticle::CheckSnowman()
 {
@@ -182,9 +180,7 @@ void SnowmanBreathParticle::CheckSnowman()
     mTimer = 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 5 -- _ZN21SnowmanBreathParticle14UpdatePositionEv, 0x021123b0, size 0x74 */
-/* -------------------------------------------------------------------------- */
+// 0x021123b0 (0x74)
 // @symbol _ZN21SnowmanBreathParticle14UpdatePositionEv
 void SnowmanBreathParticle::UpdatePosition()
 {
@@ -196,9 +192,7 @@ void SnowmanBreathParticle::UpdatePosition()
     AddVec3(&mPos, &offset, &mPos);
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 6 -- _ZN21SnowmanBreathParticle6RenderEv, 0x02112424, size 0x5c */
-/* -------------------------------------------------------------------------- */
+// 0x02112424 (0x5c)
 // @symbol _ZN21SnowmanBreathParticle6RenderEv
 void SnowmanBreathParticle::Render()
 {
@@ -209,9 +203,7 @@ void SnowmanBreathParticle::Render()
             mParticleID, 0x111, mPos.x, mPos.y, mPos.z, 0, 0);
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 7 -- _ZN21SnowmanBreathParticle8BehaviorEv, 0x02112480, size 0x64 */
-/* -------------------------------------------------------------------------- */
+// 0x02112480 (0x64)
 // @symbol _ZN21SnowmanBreathParticle8BehaviorEv
 void SnowmanBreathParticle::Behavior()
 {
@@ -225,9 +217,7 @@ void SnowmanBreathParticle::Behavior()
     mCollider.Update();
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 8 -- _ZN21SnowmanBreathParticle8TrySpawnER6Player, 0x021124e4, size 0xc4 */
-/* -------------------------------------------------------------------------- */
+// 0x021124e4 (0xc4)
 // @symbol _ZN21SnowmanBreathParticle8TrySpawnER6Player
 int SnowmanBreathParticle::TrySpawn(Player &player)
 {
@@ -235,7 +225,7 @@ int SnowmanBreathParticle::TrySpawn(Player &player)
     if (mTimer != 0)
         return 0;
     mPos = data_ov027_02113d10;
-    angle = Vec3_HorzAngle(&mPos, (Vector3 *)((char *)&player + 0x5c));
+    angle = Vec3_HorzAngle(&mPos, (Vector3 *)&player.mPosX);
     if (angle > 0x2af8)
         angle = 0x2af8;
     if (angle < 0x9de)
@@ -250,9 +240,7 @@ int SnowmanBreathParticle::TrySpawn(Player &player)
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 9 -- _ZN21SnowmanBreathParticleC1Ev, 0x021125a8, size 0x70 */
-/* -------------------------------------------------------------------------- */
+// 0x021125a8 (0x70)
 // @symbol _ZN21SnowmanBreathParticleC1Ev
 SnowmanBreathParticle::SnowmanBreathParticle()
 {
@@ -262,9 +250,7 @@ SnowmanBreathParticle::SnowmanBreathParticle()
     mTimer = 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 10 -- _ZN10daSnmBth_c15IsPlayerInRangeEv, 0x02112618, size 0xe8 */
-/* -------------------------------------------------------------------------- */
+// 0x02112618 (0xe8)
 // @symbol _ZN10daSnmBth_c15IsPlayerInRangeEv
 int daSnmBth_c::IsPlayerInRange()
 {
@@ -272,7 +258,7 @@ int daSnmBth_c::IsPlayerInRange()
     mTalkPlayer = player;
 
     Vector3 playerPos;
-    Vec3_Asr(&playerPos, (Vector3 *)((char *)player + 0x5c), 3);
+    Vec3_Asr(&playerPos, (Vector3 *)&player->mPosX, 3);
     *(MatrixWords *)&data_020a0e68 = *(MatrixWords *)&mInvModelMat;
 
     Vector3 localPos;
@@ -296,9 +282,7 @@ fail:
     return 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 11 -- _ZN10daSnmBth_c16CleanupResourcesEv, 0x02112700, size 0x3c */
-/* -------------------------------------------------------------------------- */
+// 0x02112700 (0x3c)
 // @symbol _ZN10daSnmBth_c16CleanupResourcesEv
 /* daSnmBth_c::CleanupResources -- vtable slot 3. Releases the three shared
  * files the class holds; it never touches `this`. */
@@ -310,9 +294,7 @@ int daSnmBth_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 12 -- _ZN10daSnmBth_c16OnPendingDestroyEv, 0x0211273c, size 0x4 */
-/* -------------------------------------------------------------------------- */
+// 0x0211273c (0x4)
 // @symbol _ZN10daSnmBth_c16OnPendingDestroyEv
 /* daSnmBth_c::OnPendingDestroy -- vtable slot 12. The ROM body is empty: the
  * override exists only to occupy the slot. */
@@ -320,9 +302,7 @@ void daSnmBth_c::OnPendingDestroy()
 {
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 13 -- _ZN10daSnmBth_c6RenderEv, 0x02112740, size 0x64 */
-/* -------------------------------------------------------------------------- */
+// 0x02112740 (0x64)
 // @symbol _ZN10daSnmBth_c6RenderEv
 int daSnmBth_c::Render()
 {
@@ -338,9 +318,7 @@ int daSnmBth_c::Render()
   return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 14 -- _ZN10daSnmBth_c8BehaviorEv, 0x021127a4, size 0x238 */
-/* -------------------------------------------------------------------------- */
+// 0x021127a4 (0x238)
 // @symbol _ZN10daSnmBth_c8BehaviorEv
 int daSnmBth_c::Behavior()
 {
@@ -418,9 +396,7 @@ int daSnmBth_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* ROM ordinal 15 -- _ZN10daSnmBth_c13InitResourcesEv, 0x021129dc, size 0xd8 */
-/* -------------------------------------------------------------------------- */
+// 0x021129dc (0xd8)
 // @symbol _ZN10daSnmBth_c13InitResourcesEv
 int daSnmBth_c::InitResources()
 {
@@ -436,6 +412,16 @@ int daSnmBth_c::InitResources()
     Matrix4x3_FromTranslation(&data_020a0e68, pos.x, pos.y, pos.z);
     Matrix4x3_ApplyInPlaceToRotationY(&data_020a0e68, mAngleY);
     InvMat4x3(&data_020a0e68, &data_020a0e68);
-    *(M48*)&mInvModelMat = *(M48*)&data_020a0e68;
+    *(MatrixWords *)&mInvModelMat = *(MatrixWords *)&data_020a0e68;
     return 1;
+}
+
+/* Reconstructed source-style name: SM64DS proves daSnmBth_c through RTTI,
+ * allocation size, vtable identity, and the SNOWMAN_BREATH registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: SnowmanBreath_Spawn. */
+// @symbol daSnmBth_c_classInit
+extern "C" daSnmBth_c *daSnmBth_c_classInit()
+{
+    return new daSnmBth_c();
 }

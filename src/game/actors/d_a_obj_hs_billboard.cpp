@@ -85,3 +85,15 @@ extern "C" void func_ov031_02111214(daObjHsBillboard_c *self)
     self->mModel.mat4x3.t.y = self->mPosY >> 3;
     self->mModel.mat4x3.t.z = self->mPosZ >> 3;
 }
+// @symbol _ZN18daObjHsBillboard_cD1Ev
+// @symbol _ZN18daObjHsBillboard_cD0Ev
+/* NOT WRITTEN HERE ON PURPOSE. The inline `~daObjHsBillboard_c() {}` in the
+   header is the whole source of both variants: from an inline body mwcc emits
+   D1 and then D0 -- the cartridge's own order -- and no D2. Written out of
+   line here instead they come out D0-before-D1 and the isolation step rejects
+   the object.
+
+   Both bodies are short because the chain is short: this class's vptr store,
+   then the owned Model at 0xd4, then dActor_c's own teardown, which is where
+   the actor-list unlink lives. D0's trailing deallocation is the inherited
+   inline `operator delete`, which is why nothing here names a heap. */

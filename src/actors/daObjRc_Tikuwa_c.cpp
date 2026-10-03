@@ -1,6 +1,6 @@
 //cpp
 /* Production translation unit for ov036/daObjRc_Tikuwa_c.
- * 7 function(s), .text 0x0211193c..0x02111ca4. The RC_TIKUWA donut block:
+ * 10 function(s), .text 0x0211193c..0x02111d14. The RC_TIKUWA donut block:
  * once something has stood on it for fifteen frames it falls, poofs when it
  * lands or drops far enough below the player, and respawns at its home
  * position once the player has moved away.
@@ -20,10 +20,14 @@
  *   a member call homes the argument and changes the ROM ABI.
  * Leftover: func_020393d4 / func_020393c4 are 4-byte stores into dBgW's
  *   callback slots; naming belongs with dBgW in arm9.
- * Leftover: func_ov036_02111ca4 (sets mHadClsn), func_ov036_02111cc4 (the
- *   callback InitResources installs) and the factory
- *   daObjRc_Tikuwa_c_classInit (0x02111cd8) sit past this run's right edge
- *   and stay one-function sources.
+ * Leftover: func_ov036_02111ca4 and its veneer func_ov036_02111cc4 keep the
+ *   cartridge's unmangled linker names. The first is the collision callback
+ *   body, the second the C-ABI entry InitResources installs into dBgW's slot.
+ *   Neither can become a method: C++ would mangle the symbol and the link
+ *   would stop resolving the name the ROM carries. Its +0x4e8 store is this
+ *   class's mHadClsn, named here because the callback only has a void*.
+ * Leftover: the named local in func_ov036_02111ca4 is load-bearing -- folded
+ *   into the `if`, mwcc emits 0x14 and the cartridge's is 0x20.
  */
 
 #pragma defer_codegen off
@@ -145,4 +149,44 @@ s32 daObjRc_Tikuwa_c::InitResources()
     mHomePosY = mPosY;
     mHomePosZ = mPosZ;
     return 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* dBgW's collision callback body. The cartridge links this address under the
+ * unmangled name func_ov036_02111ca4, so it has to keep C linkage -- spelling
+ * it as a method would mangle the symbol to
+ * _ZN16daObjRc_Tikuwa_c14OnClsnWithTypeEPv and the link would stop resolving
+ * the name the ROM actually carries. `self` is this block; +0x4e8 is its
+ * mHadClsn. A clsn word of 0xbf at +0xc is the collider it counts. */
+/* -------------------------------------------------------------------------- */
+// @symbol func_ov036_02111ca4
+extern "C" void func_ov036_02111ca4(void *self, void *clsn)
+{
+    /* The named local is load-bearing: folded into the `if`, mwcc drops the
+     * store/reload pair and the function comes out 0x14. The cartridge's is
+     * 0x20. */
+    unsigned char isOurs = *(unsigned short *)((char *)clsn + 0xc) == 0xbf;
+    if (isOurs)
+        *(unsigned char *)((char *)self + 0x4e8) = 1;   /* mHadClsn */
+}
+
+/* -------------------------------------------------------------------------- */
+/* The C-ABI callback InitResources installs into dBgW's slot. It drops the
+ * receiver dBgW passes first and hands the block itself to the body above. */
+/* -------------------------------------------------------------------------- */
+// @symbol func_ov036_02111cc4
+extern "C" void func_ov036_02111cc4(void *dBgW, void *self, void *clsn)
+{
+    func_ov036_02111ca4(self, clsn);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Factory: `return new` goes through the class's leaf operator new adapter
+ * to fBase_c::operator new -- the 0x4ec allocation the cartridge's own
+ * factory makes. */
+/* -------------------------------------------------------------------------- */
+// @symbol daObjRc_Tikuwa_c_classInit
+extern "C" daObjRc_Tikuwa_c *daObjRc_Tikuwa_c_classInit()
+{
+    return new daObjRc_Tikuwa_c;
 }

@@ -22,12 +22,12 @@ This document describes this commit. The queue records its immutable output SHA.
 
 ## What changed and why
 
-- Class, TU, symbol and module-qualified ROM scope: `daObjCvNewsLift_c` in ov021. The promoted
+- Class, TU, symbol and module-qualified ROM scope: `daObjCvNewsLift_c` in [ov021](../../../config/arm9/overlays/ov021/symbols.txt). The promoted
   TU `src/actors/daObjCvNewsLift_c.cpp` owns `.text 0x021111a0..0x021121e8`, 19 functions,
   text-only route (no `.data` claim).
 - Reserved surfaces actually touched: the class header (renamed to
-  `include/daObjCvNewsLift_c.h`), the ov021 `delinks.txt` and `symbols.txt`, the class manifest
-  `config/tu_manifest.d/ov021/daObjCvNewsLift_c.json`, `attribution.json`,
+  `include/daObjCvNewsLift_c.h`), the [ov021 `delinks.txt`](../../../config/arm9/overlays/ov021/delinks.txt) and [ov021 `symbols.txt`](../../../config/arm9/overlays/ov021/symbols.txt), the class manifest
+  [config/tu_manifest.d/ov021/daObjCvNewsLift_c.json](../../../config/tu_manifest.d/ov021/daObjCvNewsLift_c.json), `attribution.json`,
   `config/decl-agreement-baseline.json` (in-place insertions only), the converted baseline,
   `symbols/actor_renames.tsv`, `notes/data/class-build-worklist.tsv` and
   `notes/data/tu-promotion-queue.tsv`. No other shared header was edited.
@@ -35,8 +35,8 @@ This document describes this commit. The queue records its immutable output SHA.
   0x02114754 name the class. The typeinfo is referenced from the vtable header word of the
   table whose address point is 0x0211478c, which is exactly the address the tree carried as
   `_ZTV12WorkElevator`. The string `WorkElevator` does not occur in the cartridge. The vtable
-  storage starts at 0x02114784 and has 32 slots: slot 0 InitResources 0x02111c6c, slot 3
-  CleanupResources, slot 6 Behavior, slot 9 Render, slots 16 and 17 D1 and D0, and slot 31
+  storage starts at 0x02114784 and has 32 slots: slot 0 `InitResources` 0x02111c6c, slot 3
+  `CleanupResources`, slot 6 `Behavior`, slot 9 `Render`, slots 16 and 17 D1 and D0, and slot 31
   `dBgActor_c::Kill` 0x020ee55c. 32 slots is the `dBgActor_c` shape.
 - Lineage evidence or structural inference: the rename came from `tools/class_rename.py`
   (without `--with-derived`). Its incidental rewrites of `notes/data/c-cpp-classification.tsv`,
@@ -51,13 +51,13 @@ This document describes this commit. The queue records its immutable output SHA.
 - Compiler experiments and measured barriers:
   - The destructor is inline in the header. The out-of-line form emits D0 ahead of D1 (the
     reverse of the cartridge) and a homeless D2. Inline, the order is D1 then D0, D2 is
-    dead-stripped, and InitResources is the key function, so the vtable is emitted here.
+    dead-stripped, and `InitResources` is the key function, so the vtable is emitted here.
   - `func_ov021_02111434` previously "matched" through a `static asm` helper whose relocated
     words were wildcards. It now matches in plain C++ as a `void` function; the ROM's dead
     `ands` comes from the two early returns in its tail.
   - Kept because measured: the `(u16)(s16)mWobblePhase` double cast, the volatile reads of
-    `data_02092768` in the reset path, and the per-element pointer writes in Behavior. The
-    0x30-stepped `platform` walker in `func_ov021_0211129c` stores through
+    [data_02092768](../../../config/arm9/symbols.txt) in the reset path, and the per-element pointer writes in `Behavior`. The
+    0x30-stepped `platform` walker in [func_ov021_0211129c](../../../src/actors/daObjCvNewsLift_c.cpp)(ROM Ordinal 2) stores through
     `(char *)platform + 0x460`: `mPlatformMats[i]` misses by 8 words and a second pointer
     reallocates the loop.
   - The five collision callbacks are `void` and use a local `int isPlayer`. The one-argument,
@@ -70,11 +70,11 @@ This document describes this commit. The queue records its immutable output SHA.
   `_ZN10dBgActor_cD2Ev` dead-stripped, `_ZN7Vector3D1Ev` as a duplicate of arm9 0x020072c0,
   the ancestor typeinfo chain copied from the `daObjCvShutter_c` manifest, and the class's own
   `_ZTI`, `_ZTS` and `_ZTV` at their ROM addresses.
-- Genuine methods; remaining free-function and ABI bridges: InitResources, CleanupResources,
-  Behavior, Render and both destructors are real members. classInit is `new
+- Genuine methods; remaining free-function and ABI bridges: `InitResources`, `CleanupResources`,
+  `Behavior`, `Render` and both destructors are real members. classInit is `new
   daObjCvNewsLift_c()`. Twelve helpers keep their unnamed `func_ov021_*` symbols: the eight
-  collision callbacks and setters from 0x02111ec4 to 0x02111fe4, `func_ov021_02112024`,
-  `func_ov021_02112128`, `func_ov021_02111434` and `func_ov021_0211129c`. They take the class pointer explicitly. InitResources still calls
+  collision callbacks and setters from 0x02111ec4 to 0x02111fe4, [func_ov021_02112024](../../../config/tu_manifest.d/ov021/daObjCvNewsLift_c.json)(current [_ZN17daObjCvNewsLift_c14OnMainMeshRideEP8dActor_c](../../../src/actors/daObjCvNewsLift_c.cpp)), 
+  [func_ov021_02112128](../../../config/tu_manifest.d/ov021/daObjCvNewsLift_c.json)(current [_ZN17daObjCvNewsLift_c16MainMeshCallbackEP4dBgWPS_P8dActor_c](../../../src/actors/daObjCvNewsLift_c.cpp)), [func_ov021_02111434](../../../config/tu_manifest.d/ov021/daObjCvNewsLift_c.json)(current [_ZN17daObjCvNewsLift_c21UpdateModelTransformsEv](../../../src/actors/daObjCvNewsLift_c.cpp)) and [func_ov021_0211129c](../../../config/tu_manifest.d/ov021/daObjCvNewsLift_c.json)(current [_ZN17daObjCvNewsLift_c20UpdateClsnTransformsEv](../../../src/actors/daObjCvNewsLift_c.cpp)). They take the class pointer explicitly. `InitResources` still calls
   the mangled `_ZN10dBgW_KcMbg7SetFile...` spelling (by-value `Fix12<int>`) and the unnamed
   `func_020393c4` and `func_020393d4`.
 - Recovered layout and fields; remaining shadow structs and raw offsets: the header is a real
@@ -85,13 +85,13 @@ This document describes this commit. The queue records its immutable output SHA.
   inline header destructor, with no symbol marker, because they are inline in a directly
   included header. The vtable and RTTI are emitted by this TU and licensed at the ROM
   addresses. Data stays ROM-owned (text-only route).
-- Attribution preserved through each move and rename: 19 `path#symbol` overrides. Behavior
+- Attribution preserved through each move and rename: 19 `path#symbol` overrides. `Behavior`
   keeps its pre-existing `github-actions[bot]` override from the base. Git history for that
   shard names Tango (#2301), but changing it would be a credit change, which this task may not
-  make. InitResources keeps andrewboudreau; the rest keep tangosdev.
+  make. `InitResources` keeps andrewboudreau; the rest keep tangosdev.
 - Remaining agreed issue scope: name the twelve helpers; replace the mangled SetFile call and
   the unnamed `func_020393c4` and `func_020393d4` with header declarations; fix
-  `include/decl_common.h`'s `int` declarations of the ov021 helpers (shared header, needs a
+  `include/decl_common.h`'s `int` declarations of the [ov021](../../../config/arm9/overlays/ov021/symbols.txt) helpers (shared header, needs a
   reservation); decide whether the TU boundary belongs in `tu_map` (see below).
 
 ## Proof
@@ -117,9 +117,9 @@ files is compiled. The other gates were re-run on this commit's tree.
 - Declarations: `python tools/check_decl_agreement.py --changed eb8f46d46a`, exit 0, "no new
   declaration disagreements". Before banking it reported 25. 24 were re-keyed: the baseline
   already banked the same symbol and kind under a legacy shard this promotion deletes. The
-  last, `data_ov021_02114a20`, is the TU's `Vector3 []` against decl_common's `int []`
+  last, [data_ov021_02114a20](../../../config/arm9/overlays/ov021/symbols.txt), is the TU's `Vector3 []` against decl_common's `int []`
   placeholder, banked beside the existing `__sinit` entry. One re-keyed row lands on
-  `include/decl_common.h`: its `int` return for `func_ov021_02111434` now disagrees with the
+  `include/decl_common.h`: its `int` return for [func_ov021_02111434](../../../config/tu_manifest.d/ov021/daObjCvNewsLift_c.json)(current [_ZN17daObjCvNewsLift_c21UpdateModelTransformsEv](../../../src/actors/daObjCvNewsLift_c.cpp)) now disagrees with the
   corrected `void` definition. It is banked, not fixed, because the header is not reserved.
   The baseline change is 57 inserted lines and 0 removed; nothing was regenerated or re-sorted.
 - Port, path, reference and other static gates:
@@ -137,5 +137,5 @@ files is compiled. The other gates were re-run on this commit's tree.
 - The TU is wider than `build/tu_map.json`'s run. The manifest was extended by hand to include
   the callbacks, setters and classInit (0x02111ec4..0x021121e8). The FOLD notes in the manifest
   give the evidence.
-- The Behavior attribution override names `github-actions[bot]`. This is inherited from the
+- The `Behavior` attribution override names `github-actions[bot]`. This is inherited from the
   base unchanged, and is flagged for the coordinator.
