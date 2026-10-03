@@ -1,0 +1,489 @@
+{
+  "id": "ov004/unit020b2c84",
+  "module": "ov004",
+  "source": "src/actors/unit020b2c84.cpp",
+  "promoted_source": "src/actors/unit020b2c84.cpp",
+  "status": "promoted",
+  "boundary_confidence": "medium",
+  "boundary_evidence": [
+    "contiguous run 0x20b2c84..0x20b4aa4, 44 function(s), every one text-verified in this one compile. This is a SUB-RANGE of build/tu_map.json's unattributed ov004 unit 0x020b2c58..0x020b8714 (137 functions), which the map cannot cut because no class label falls inside it; the cuts come from the ROM's own static-initializer records.",
+    "start edge: __sinit_ov004_020b948c (.init 0x020b948c..0x020b955c) loads func_ov004_020b2c58, func_ov004_020b2c7c and func_ov004_020b2c80 as destructor helpers for the preceding unit's statics, so 0x020b2c84 (func_ov004_020b2c84) is the first function of the next unit. The three helpers stay with dScMgBase_c.",
+    "end edge: __sinit_ov004_020b955c (.init 0x020b955c..0x020b9ad0) loads func_ov004_020b4a70, func_ov004_020b4a7c and func_ov004_020b4aa0 as destructor helpers for this unit's static array data_ov004_020bf648 (3 x 0x134); func_ov004_020b4a7c runs __cxa_vec_cleanup over it with func_ov004_020b4aa0, and 0x020b4aa4 begins the unit after (unit020b4aa4, whose own bss window starts at 0x020bf9e4).",
+    "data: the one data object this unit's code emits, the anonymous initializer template of func_ov004_020b2cb8's local 29-entry array, sits at 0x020bc6e8..0x020bc7d0 (0xe8 = 29 x 8), immediately below the next unit's .data window at 0x020bc7d0, and is read only by func_ov004_020b2cb8 (relocs.txt: load at 0x020b30a8).",
+    "no ROM RTTI or vtable record (build/rtti.json) falls in the range; no class label, so the unit<addr> name.",
+    "module sinit corroboration: 4 sinit(s) / 4 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide). Neither edge is corroborated by a class label."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x020b2c84",
+      "end": "0x020b4aa4"
+    },
+    {
+      "name": ".data",
+      "start": "0x020bc6e8",
+      "end": "0x020bc7d0"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "func_ov004_020b2c84",
+      "address": "0x020b2c84",
+      "size": "0x00000034",
+      "legacy_source": "src/func_ov004_020b2c84.c",
+      "ordinal": 0
+    },
+    {
+      "symbol": "func_ov004_020b2cb8",
+      "address": "0x020b2cb8",
+      "size": "0x000004dc",
+      "legacy_source": "src/func_ov004_020b2cb8.c",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov004_020b3194",
+      "address": "0x020b3194",
+      "size": "0x00000020",
+      "legacy_source": "src/func_ov004_020b3194.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov004_020b31b4",
+      "address": "0x020b31b4",
+      "size": "0x00000068",
+      "legacy_source": "src/func_ov004_020b31b4.cpp",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov004_020b321c",
+      "address": "0x020b321c",
+      "size": "0x0000005c",
+      "legacy_source": "src/func_ov004_020b321c.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov004_020b3278",
+      "address": "0x020b3278",
+      "size": "0x00000360",
+      "legacy_source": "src/func_ov004_020b3278.cpp",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov004_020b35d8",
+      "address": "0x020b35d8",
+      "size": "0x000000c0",
+      "legacy_source": "src/func_ov004_020b35d8.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov004_020b3698",
+      "address": "0x020b3698",
+      "size": "0x00000004",
+      "legacy_source": "src/func_ov004_020b3698.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov004_020b369c",
+      "address": "0x020b369c",
+      "size": "0x00000128",
+      "legacy_source": "src/func_ov004_020b369c.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov004_020b37c4",
+      "address": "0x020b37c4",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov004_020b37c4.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov004_020b37f0",
+      "address": "0x020b37f0",
+      "size": "0x00000044",
+      "legacy_source": "src/func_ov004_020b37f0.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov004_020b3834",
+      "address": "0x020b3834",
+      "size": "0x00000054",
+      "legacy_source": "src/func_ov004_020b3834.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov004_020b3888",
+      "address": "0x020b3888",
+      "size": "0x00000024",
+      "legacy_source": "src/func_ov004_020b3888.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov004_020b38ac",
+      "address": "0x020b38ac",
+      "size": "0x000000cc",
+      "legacy_source": "src/func_ov004_020b38ac.c",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov004_020b3978",
+      "address": "0x020b3978",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov004_020b3978.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov004_020b39a4",
+      "address": "0x020b39a4",
+      "size": "0x00000194",
+      "legacy_source": "src/func_ov004_020b39a4.c",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov004_020b3b38",
+      "address": "0x020b3b38",
+      "size": "0x00000120",
+      "legacy_source": "src/func_ov004_020b3b38.cpp",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov004_020b3c58",
+      "address": "0x020b3c58",
+      "size": "0x00000044",
+      "legacy_source": "src/func_ov004_020b3c58.c",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov004_020b3c9c",
+      "address": "0x020b3c9c",
+      "size": "0x0000001c",
+      "legacy_source": "src/func_ov004_020b3c9c.c",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov004_020b3cb8",
+      "address": "0x020b3cb8",
+      "size": "0x000001e4",
+      "legacy_source": "src/func_ov004_020b3cb8.c",
+      "ordinal": 19
+    },
+    {
+      "symbol": "func_ov004_020b3e9c",
+      "address": "0x020b3e9c",
+      "size": "0x000001e4",
+      "legacy_source": "src/func_ov004_020b3e9c.c",
+      "ordinal": 20
+    },
+    {
+      "symbol": "func_ov004_020b4080",
+      "address": "0x020b4080",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov004_020b4080.cpp",
+      "ordinal": 21
+    },
+    {
+      "symbol": "func_ov004_020b40ac",
+      "address": "0x020b40ac",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov004_020b40ac.c",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov004_020b40c0",
+      "address": "0x020b40c0",
+      "size": "0x0000004c",
+      "legacy_source": "src/func_ov004_020b40c0.c",
+      "ordinal": 23
+    },
+    {
+      "symbol": "func_ov004_020b410c",
+      "address": "0x020b410c",
+      "size": "0x00000108",
+      "legacy_source": "src/func_ov004_020b410c.c",
+      "ordinal": 24
+    },
+    {
+      "symbol": "func_ov004_020b4214",
+      "address": "0x020b4214",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov004_020b4214.c",
+      "ordinal": 25
+    },
+    {
+      "symbol": "func_ov004_020b422c",
+      "address": "0x020b422c",
+      "size": "0x00000094",
+      "legacy_source": "src/func_ov004_020b422c.c",
+      "ordinal": 26
+    },
+    {
+      "symbol": "func_ov004_020b42c0",
+      "address": "0x020b42c0",
+      "size": "0x0000007c",
+      "legacy_source": "src/func_ov004_020b42c0.c",
+      "ordinal": 27
+    },
+    {
+      "symbol": "func_ov004_020b433c",
+      "address": "0x020b433c",
+      "size": "0x00000024",
+      "legacy_source": "src/func_ov004_020b433c.c",
+      "ordinal": 28
+    },
+    {
+      "symbol": "func_ov004_020b4360",
+      "address": "0x020b4360",
+      "size": "0x00000260",
+      "legacy_source": "src/func_ov004_020b4360.c",
+      "ordinal": 29
+    },
+    {
+      "symbol": "func_ov004_020b45c0",
+      "address": "0x020b45c0",
+      "size": "0x00000260",
+      "legacy_source": "src/func_ov004_020b45c0.c",
+      "ordinal": 30
+    },
+    {
+      "symbol": "func_ov004_020b4820",
+      "address": "0x020b4820",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov004_020b4820.cpp",
+      "ordinal": 31
+    },
+    {
+      "symbol": "func_ov004_020b484c",
+      "address": "0x020b484c",
+      "size": "0x0000016c",
+      "legacy_source": "src/func_ov004_020b484c.c",
+      "ordinal": 32
+    },
+    {
+      "symbol": "func_ov004_020b49b8",
+      "address": "0x020b49b8",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov004_020b49b8.c",
+      "ordinal": 33
+    },
+    {
+      "symbol": "func_ov004_020b49e4",
+      "address": "0x020b49e4",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov004_020b49e4.c",
+      "ordinal": 34
+    },
+    {
+      "symbol": "func_ov004_020b49f0",
+      "address": "0x020b49f0",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov004_020b49f0.c",
+      "ordinal": 35
+    },
+    {
+      "symbol": "func_ov004_020b4a1c",
+      "address": "0x020b4a1c",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov004_020b4a1c.c",
+      "ordinal": 36
+    },
+    {
+      "symbol": "func_ov004_020b4a28",
+      "address": "0x020b4a28",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov004_020b4a28.c",
+      "ordinal": 37
+    },
+    {
+      "symbol": "func_ov004_020b4a40",
+      "address": "0x020b4a40",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov004_020b4a40.c",
+      "ordinal": 38
+    },
+    {
+      "symbol": "func_ov004_020b4a4c",
+      "address": "0x020b4a4c",
+      "size": "0x00000018",
+      "legacy_source": "src/func_ov004_020b4a4c.c",
+      "ordinal": 39
+    },
+    {
+      "symbol": "func_ov004_020b4a64",
+      "address": "0x020b4a64",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov004_020b4a64.c",
+      "ordinal": 40
+    },
+    {
+      "symbol": "func_ov004_020b4a70",
+      "address": "0x020b4a70",
+      "size": "0x0000000c",
+      "legacy_source": "src/func_ov004_020b4a70.c",
+      "ordinal": 41
+    },
+    {
+      "symbol": "func_ov004_020b4a7c",
+      "address": "0x020b4a7c",
+      "size": "0x00000024",
+      "legacy_source": "src/func_ov004_020b4a7c.c",
+      "ordinal": 42
+    },
+    {
+      "symbol": "func_ov004_020b4aa0",
+      "address": "0x020b4aa0",
+      "size": "0x00000004",
+      "legacy_source": "src/func_ov004_020b4aa0.c",
+      "ordinal": 43
+    }
+  ],
+  "bss": [],
+  "notes": [
+    "Folded from 44 one-function sources (func_ov004_020b2c84 .. func_ov004_020b4aa0). func_ov004_020b2cb8 had no complete delinks entry before, but it byte-matched; what it lacked was a licence for the 0xe8-byte table its local array initializer copies from. A local `Entry entries[29] = {...}` makes mwccarm emit that table as an anonymous input .rodata object (@N), while the cartridge keeps it in the module's .data at 0x020bc6e8, which the intact-object link cannot place from .rodata. The unit therefore defines it as an ordinary initialized global under its configured name data_ov004_020bc6e8, and the function copies it with a plain struct copy; the emitted instructions are the same.",
+    "`#pragma defer_codegen off` is load-bearing: the shards' file-global opt_strength_reduction (func_ov004_020b2cb8) and opt_propagation (func_ov004_020b3b38, func_ov004_020b4360, func_ov004_020b45c0) pragmas bind to their one function only with undeferred codegen, which also makes the source ROM-ascending.",
+    "The per-source extern declarations disagreed on type for several symbols (data_ov004_020bf560 and data_ov006_021346bc as int vs pointer, func_ov004_020b1cf0's argument widths, func_ov004_020b39a4's return type); the single declaration set in the unit source picks one spelling each and the bodies cast to match. func_ov004_020b3c58 became void: no caller uses a result, and the void body compiles to the same bytes.",
+    "Two-word struct copies (func_ov004_020b37f0, func_ov004_020b39a4, func_ov004_020b422c) go through W2, a struct whose only member is an int[2]; plain {int a, b} structs scalarize under C++ and miss the ROM's block move.",
+    "Text and the one template only: this unit's bss (0x020bf3e8..0x020bf9e4, including the static array at data_ov004_020bf648) stays ROM-owned and is reached by extern, as the one-function sources did; __sinit_ov004_020b955c stays its own enrolled source."
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov004-unit020b2c84/unit020b2c84.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 44,
+    "functions_declared": 44,
+    "compilerOnlyOutput": {
+      "requested": [],
+      "deadstripped": [],
+      "data": [],
+      "dataExternalized": []
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    },
+    "linkcheck": {
+      "round": "tools/tubuild.py linkcheck -- scratch dsd delink+lcf, whole-tree mwccarm, mwldarm link, linked-range and module byte comparison, dsd check symbols --fail, full ROM build",
+      "result": "scratch-data-verified",
+      "scratch": "build/tu/ov004-unit020b2c84/link (gitignored)",
+      "phases": {
+        "delink": true,
+        "lcf": true,
+        "compile": true,
+        "link": true,
+        "checkModules": true,
+        "checkSymbols": false,
+        "rom": true
+      },
+      "tuRange": {
+        "start": "0x020b2c84",
+        "end": "0x020b4aa4",
+        "differingBytes": 0,
+        "firstDiff": null
+      },
+      "tuRanges": [
+        {
+          "section": ".text",
+          "start": "0x020b2c84",
+          "end": "0x020b4aa4",
+          "differingBytes": 0,
+          "firstDiff": null
+        },
+        {
+          "section": ".data",
+          "start": "0x020bc6e8",
+          "end": "0x020bc7d0",
+          "differingBytes": 0,
+          "firstDiff": null
+        }
+      ],
+      "objectAudit": {
+        "counts": {
+          "LICENSED": 45
+        },
+        "emittedTextOrderIsRomAscending": true,
+        "nonLicensedSymbols": [],
+        "unlicensedSections": []
+      },
+      "nontextSectionOrder": {
+        "groups": [
+          {
+            "section": ".data",
+            "original": [
+              5
+            ],
+            "desired": [
+              5
+            ]
+          }
+        ],
+        "objisolate": null,
+        "errors": null
+      },
+      "linkedStorageAliases": null,
+      "symbolCheckNewVsBaseline": [],
+      "symbolCheckErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "symbolCheckBaselineErrors": [
+        "[ERROR] Symbol '_deq' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad524' in ARM9 main at 0x020ad524 not found in linked binary",
+        "[ERROR] Symbol 'data_020ad560' in ARM9 main at 0x020ad560 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff98f4' in ITCM at 0x01ff98f4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff99a4' in ITCM at 0x01ff99a4 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9d40' in ITCM at 0x01ff9d40 not found in linked binary",
+        "[ERROR] Symbol 'func_01ff9e2c' in ITCM at 0x01ff9e2c not found in linked binary",
+        "[ERROR] Symbol 'overlay_100' in ARM9 main at 0x00000064 not found in linked binary",
+        "[ERROR] Symbol 'overlay_102' in ARM9 main at 0x00000066 not found in linked binary"
+      ],
+      "moduleSetSha256": "f9852ffaf80ef19662ab5535df4b13b935188ac3087b5b1d4561c089e4dd802b",
+      "rom": {
+        "bytes": 16777216,
+        "sha256": "d1506e90efae5e2d2cf119926a4ac2a291bd5ca78349d09d5024e1a918c478e8",
+        "matchesStockRom": true
+      },
+      "linkerOutput": null
+    }
+  },
+  "production_mode": "intact-object",
+  "compiler_only_output": [],
+  "data": [
+    {
+      "symbol": "data_ov004_020bc6e8",
+      "address": "0x020bc6e8",
+      "size": "0xe8",
+      "binding": "STB_GLOBAL",
+      "evidence": "the 29-entry (29 x 8 = 0xe8) Entry table func_ov004_020b2cb8 copies into its stack frame: all zero but entry 1, { 0x140, &data_ov004_020b9f54 }. The cartridge's only reference to it is the load at 0x020b30a8, inside that function."
+    }
+  ],
+  "relocations": [
+    {
+      "section": ".data",
+      "source": "0x020bc6f4",
+      "type": "R_ARM_ABS32",
+      "kind": "load",
+      "symbol": "data_ov004_020b9f54",
+      "addend": 0,
+      "target_module": "ov004",
+      "target_address": "0x020b9f54"
+    }
+  ],
+  "symbol_binding_rewrites": [
+    {
+      "symbol": "data_ov004_020bc6e8",
+      "from": "STB_LOCAL",
+      "to": "STB_GLOBAL",
+      "evidence": "The table is file-local in the source, as the anonymous template it replaces was. DSD requires a global symbol at the configured .data address; changing the ELF binding preserves all storage, relocations and emitted bytes."
+    }
+  ]
+}

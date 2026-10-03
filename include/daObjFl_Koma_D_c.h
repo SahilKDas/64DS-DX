@@ -3,33 +3,23 @@
 
 #include "types.h"
 
-/* Lethal Lava Land's spinning disc. `koma` is a spinning top.
- *
- * IT DOES NOT DERIVE FROM dBgActor_c. It derives from daObjKaitendai_c, which derives from
- * dBgActor_c, and the difference is in the bytes rather than only in the RTTI: its
- * destructor stores THREE vptrs -- its own, daObjKaitendai_c's, then dBgActor_c's.
- * A one-level chain emits two.
- *
- *   _ZTI16daObjFl_Koma_D_c  ov022 0x02113d98
- *   _ZTS16daObjFl_Koma_D_c  ov022 0x02113db0
- *   _ZTV16daObjFl_Koma_D_c  ov022 0x02113de8  (its record sits at V-4)
- *   kind  __si_class_type_info, ONE base, subobject offset 0
- *   base  daObjKaitendai_c, ov002 0x021091ac
- *
- * NO FIELDS OF ITS OWN: daObjFl_Koma_D_c_classInit passes 800 = 0x320 = sizeof(dBgActor_c).
- * It overrides slots 0 and 3, which the base leaves null.
- */
-
 #ifdef __cplusplus
 
 #include "daObjKaitendai_c.h"
 
+/**
+ * Lethal Lava Land's spinning disc. No fields of its own:
+ * sizeof(daObjFl_Koma_D_c) == 0x320 == sizeof(dBgActor_c).
+ * Overrides the two slots the base leaves null.
+ *
+ * `daObjFl_Koma_D_c` is the RTTI name. The destructor is defined
+ * out of line in the actor translation unit.
+ */
 struct daObjFl_Koma_D_c : daObjKaitendai_c {
-    /* --- vtable --- */
     virtual ~daObjFl_Koma_D_c(); /* slots 16 (D1), 17 (D0) */
 
-    int CleanupResources();            /* slot  3 */
-    int InitResources();               /* slot  0 */
+    virtual int CleanupResources(); /* slot  3 */
+    virtual int InitResources();    /* slot  0 */
 };
 
 #ifndef SM64DS_PLATFORM_PC

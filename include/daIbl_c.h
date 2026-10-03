@@ -47,45 +47,97 @@
 #include "ShadowModel.h"
 #include "dBgCh_Actr.h"
 
+/* Behavior's table is indexed by mVariant (param1's low nibble). The names say
+ * what each kind's handler does, not labels recovered from the cartridge.
+ *
+ *   0  func_ov100_02142b90: never drawn (Render skips it); a timer-driven
+ *      spawner that creates another IRONBALL actor while the closest player is
+ *      inside its distance band.
+ *   1  func_ov100_02142918: rolls freely, bouncing off walls and speeding up
+ *      down slopes.
+ *   2  func_ov100_021424c0: follows the path, speed changing with the slope.
+ *   3  func_ov100_0214272c: rolls on with no path until it drops below
+ *      mKillY or runs into a wall, then breaks up. A path follower turns into
+ *      this kind when its path index wraps.
+ *   4  func_ov100_021424c0 again: the same handler as 2, but on the ground its
+ *      speed climbs linearly to the 35 units/frame cap instead of following
+ *      the floor normal.
+ */
+enum daIbl_Kind {
+    daIbl_KIND_SPAWNER      = 0,
+    daIbl_KIND_FREE_ROLL    = 1,
+    daIbl_KIND_PATH_SLOPE   = 2,
+    daIbl_KIND_ROLL_OFF     = 3,
+    daIbl_KIND_PATH_RAMP    = 4
+};
+
 struct daIbl_c : dEnemyBase_c {
     dBgCh_Actr                 mWithMeshClsn;         /* 0x110 */
-    Model                        mModel;                /* 0x2cc */
+    Model                        mModel;                /* 0x2cc -- mModel.mat4x3 is the model matrix */
     ShadowModel                  mShadowModel;          /* 0x31c */
-    u8  pad_344[0x30];
-    dCcAc_c           mdCcAc_c;   /* 0x374 */
-    s32                          unk_3a8;               /* 0x3a8 -- zeroed by InitResources; no reader */
+    /* The shadow's Matrix4x3, as twelve words (words 9..11 are the
+       translation). func_ov100_02142264 copies the model matrix into it and then
+       overwrites the Y translation. Kept as plain words because a Matrix4x3
+       member would bring Vector3's destructor into this class's own. */
+    s32                          mShadowMtx[12];        /* 0x344 */
+    dCcAc_c           mdCcAc_c;   /* 0x374 -- hitFlags/otherOwner at 0x394/0x398 name what touched the ball */
+    /* On a ball made by a spawner (kind 0): the spawner. The spawner stores
+       itself here right after Spawn returns, and CleanupResources gives its
+       slot back through mLiveBalls. InitResources zeroes it, so a spawner's own
+       word stays 0. */
+    daIbl_c                     *mDispenser;            /* 0x3a8 */
     /* The scale Render hands to the model: it passes &mDrawScaleX as the scale
        argument, where the rest of this family passes dActor_c's own &mScaleX.
        InitResources writes 0x1000 (1.0) to all three, or 0x800 (0.5) in the one
-       level that uses the small ball. */
+       level that uses the small ball. func_ov100_02142264 reads mDrawScaleX only,
+       for the shadow's size and offset. */
     s32                          mDrawScaleX;           /* 0x3ac */
     s32                          mDrawScaleY;           /* 0x3b0 */
     s32                          mDrawScaleZ;           /* 0x3b4 */
     u8  pad_3b8[0x2];
-    s16                          unk_3ba;               /* 0x3ba -- an angle: func_ov100_0214233c
-                                                            fills it and InitResources copies it
-                                                            straight into mPrevAngleY */
+    /* The heading from the ball to mNextNodePos: func_ov100_0214233c stores
+       atan2(node.x - pos.x, node.z - pos.z) here on every call, the path
+       followers steer mPrevAngleY toward it, and InitResources copies it
+       straight into mPrevAngleY once. */
+    s16                          mHeadingToNode;        /* 0x3ba */
     u8  pad_3bc[0x4];
-    s32                          unk_3c0;               /* 0x3c0 -- per-level distance, kind 0 only */
-    s32                          unk_3c4;               /* 0x3c4 -- per-level distance, kind 0 only */
-    s32                          unk_3c8;               /* 0x3c8 -- per-level, seeded from data_02092138 */
-    s32                          unk_3cc;               /* 0x3cc -- zeroed by InitResources */
+    /* Spawner (kind 0) only: the horizontal distance band to the closest player
+       inside which it will spawn, both ends inclusive. InitResources picks
+       them per level. */
+    s32                          mMinSpawnDist;         /* 0x3c0 */
+    s32                          mMaxSpawnDist;         /* 0x3c4 */
+    /* Kind 3's Y floor: below it, or on touching a wall, the ball breaks up.
+       InitResources seeds it from data_02092138 (STAR_CAP_MIN_POS_Y in
+       symbols/verified.tsv) and overrides it in three levels. */
+    s32                          mKillY;                /* 0x3c8 */
+    /* Sound::PlayLong's return, fed back on the next call (the rolling sound);
+       zeroed on a newly hit wall and on touch-down, after which PlayLong is
+       called with a 0 handle. */
+    s32                          mRollSoundHandle;      /* 0x3cc */
     /* param1's low nibble, consumed immediately (param1 is then shifted down by
-       four so the next nibble is the path ID). InitResources switches on it --
-       0 is the static ball, 1 the free-rolling one, 2 and 4 the path followers --
-       Behavior indexes its handler table with it, and Render skips kind 0. */
+       four so the next nibble is the path ID). The kind picks the handler
+       Behavior runs (see daIbl_Kind), InitResources switches on it, and
+       Render skips kind 0. */
     u8                           mVariant;              /* 0x3d0 */
-    u8  pad_3d1[0x1];
-    u8                           unk_3d2;               /* 0x3d2 -- zeroed by InitResources */
+    /* Set by func_ov100_02142130 when the ball ran into a wall it is heading
+       into this frame. */
+    u8                           mHitWall;              /* 0x3d1 */
+    /* Spawner only: how many balls it has out. The spawner adds one after each
+       Spawn that returns an actor, and each ball's CleanupResources takes one
+       back. */
+    u8                           mLiveBalls;            /* 0x3d2 */
     u8  pad_3d3[0x1];
     s32                          mNumPathNodes;         /* 0x3d4 -- PathPtr::NumNodes() */
     s32                          mPathNodeIndex;        /* 0x3d8 -- index passed to PathPtr::GetNode */
-    s32                          mSpawnPosX;            /* 0x3dc */
-    s32                          mSpawnPosY;            /* 0x3e0 */
-    s32                          mSpawnPosZ;            /* 0x3e4 */
-    /* Where PathPtr::GetNode writes the node it was asked for; InitResources
-       compares it against the actor's own position to decide whether to skip
-       ahead one node. */
+    /* The path node the ball last passed. InitResources seeds it with the actor's
+       own position and func_ov100_0214233c overwrites it with mNextNodePos each
+       time the ball passes the node it was heading for. */
+    s32                          mPrevNodePosX;         /* 0x3dc */
+    s32                          mPrevNodePosY;         /* 0x3e0 */
+    s32                          mPrevNodePosZ;         /* 0x3e4 */
+    /* Where PathPtr::GetNode writes the node it was asked for -- the node the
+       ball is heading for. InitResources compares it against the actor's own
+       position to decide whether to skip ahead one node. */
     s32                          mNextNodePosX;         /* 0x3e8 */
     s32                          mNextNodePosY;         /* 0x3ec */
     s32                          mNextNodePosZ;         /* 0x3f0 */

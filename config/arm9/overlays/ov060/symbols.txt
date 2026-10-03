@@ -116,15 +116,15 @@ _ZN10daKpa2Bg_c6RenderEv kind:function(arm,size=0x2c) addr:0x02117b9c
 _ZN10daKpa2Bg_c8BehaviorEv kind:function(arm,size=0x68) addr:0x02117bc8
 _ZN10daKpa2Bg_c13InitResourcesEv kind:function(arm,size=0xac) addr:0x02117c30
 daKpa2Bg_c_classInit kind:function(arm,size=0x40) addr:0x02117cdc
-_ZN17BowserSkyPlatformD1Ev kind:function(arm,size=0x44) addr:0x02117d1c
-_ZN17BowserSkyPlatformD0Ev kind:function(arm,size=0x58) addr:0x02117d60
+_ZN10daKpa3Bg_cD1Ev kind:function(arm,size=0x44) addr:0x02117d1c
+_ZN10daKpa3Bg_cD0Ev kind:function(arm,size=0x58) addr:0x02117d60
 func_ov060_02117db8 kind:function(arm,size=0x328) addr:0x02117db8
 func_ov060_021180e0 kind:function(arm,size=0xd4) addr:0x021180e0
 func_ov060_021181b4 kind:function(arm,size=0x34) addr:0x021181b4
-_ZN17BowserSkyPlatform16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x021181e8
-_ZN17BowserSkyPlatform6RenderEv kind:function(arm,size=0x28) addr:0x0211822c
-_ZN17BowserSkyPlatform8BehaviorEv kind:function(arm,size=0x5c) addr:0x02118254
-_ZN17BowserSkyPlatform13InitResourcesEv kind:function(arm,size=0x11c) addr:0x021182b0
+_ZN10daKpa3Bg_c16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x021181e8
+_ZN10daKpa3Bg_c6RenderEv kind:function(arm,size=0x28) addr:0x0211822c
+_ZN10daKpa3Bg_c8BehaviorEv kind:function(arm,size=0x5c) addr:0x02118254
+_ZN10daKpa3Bg_c13InitResourcesEv kind:function(arm,size=0x11c) addr:0x021182b0
 func_ov060_021183cc kind:function(arm,size=0x28) addr:0x021183cc
 func_ov060_021183f4 kind:function(arm,size=0x14) addr:0x021183f4
 daKpa3Bg_c_classInit kind:function(arm,size=0x30) addr:0x02118408
@@ -245,7 +245,7 @@ _ZTI10daKpa3Bg_c kind:data(any) addr:0x0211a948
 _ZTS10daKpa3Bg_c kind:data(any) addr:0x0211a954
 g_profile_KOOPA3BG kind:data(any) addr:0x0211a964 ambiguous
 data_ov060_0211a980 kind:data(any) addr:0x0211a980
-_ZTV17BowserSkyPlatform kind:data(any) addr:0x0211a9b0
+_ZTV10daKpa3Bg_c kind:data(any) addr:0x0211a9b0
 data_ov060_0211aa30 kind:data(any) addr:0x0211aa30
 data_ov060_0211aa38 kind:data(any) addr:0x0211aa38
 data_ov060_0211aa40 kind:data(any) addr:0x0211aa40

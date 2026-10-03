@@ -48,7 +48,7 @@
       "ordinal": 3
     },
     {
-      "symbol": "func_ov015_021123c8",
+      "symbol": "_ZN14daObjBk_Lift_c19func_ov015_021123c8Ev",
       "address": "0x021123c8",
       "size": "0x0000009c",
       "legacy_source": "src/func_ov015_021123c8.cpp",
@@ -83,7 +83,7 @@
       "ordinal": 8
     },
     {
-      "symbol": "func_ov015_021128e8",
+      "symbol": "_ZN14daObjBk_Lift_c19func_ov015_021128e8EPv",
       "address": "0x021128e8",
       "size": "0x00000010",
       "legacy_source": "src/func_ov015_021128e8.c",

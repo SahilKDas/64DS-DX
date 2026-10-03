@@ -28,6 +28,27 @@
  * - ModelCache wants a shared home with da1up_c's copy.
  * - State numbers stay literal: what each state means is not proven (see
  *   daGmch_c.h). mFlags bit 0x80000 and the hit mask 0x66fe0 stay numeric.
+ *
+ * Leftover: char* is gone (TouchesWater takes dBgCh_Actr*, floor/wall
+ * results cast the void* extern to dBgPi* and use surface -- a dBgPi*
+ * return contradicts the other declarations -- the sine table is an s16
+ * index, the BCA word is data_ov081_02128edc[1], and the factory is
+ * `new daGmch_c()`).
+ * CallStateEnter/Update go through mStatePmfPair as daGmch_c::*. mFlags
+ * uses &= / |= and mPhase uses ++. Reverted, sizes measured against the
+ * ROM: mSpinAngleY += 0xc00 in UpdateState0 is 4 words off at the same
+ * 0x158; mPhase = (u8)(mPhase + 1) there is 0x144 against 0x158 (mPhase++
+ * matches); holder->mPosX/Y/Z in place of the &mPosX word triple is
+ * EnterState7 0x178 against 0x17c and UpdateState6 0x9c against 0xa0.
+ * Still the scalar externs for SetAnim, dCcAc_c::Init, dBgCh_Actr::Init,
+ * SpawnCoins, DropShadowRadHeight, Player::Bounce, Player::Hurt and
+ * Particle::NewSimple (Fix12<int> by value). ApproachLinear2 still sees
+ * &mState as an int* because mState/mPhase/mTimer are one word.
+ * GetFloorResult, GetWallResult and TouchesWater are not declared on
+ * dBgCh_Actr, so those stay calls. Vec3_26e28 and the *(Vector3 *)&mPosX
+ * / mCamSpacePosX puns stay: a real Vector3 runs ~Vector3, and dActor_c
+ * has no Pos(). Bca2 and the pointer-array view of the same BCA rows
+ * stay both spellings. ModelCache stays file-local.
  */
 
 #pragma defer_codegen off
@@ -80,18 +101,9 @@ struct ModelCache { int pad0; BMD_File *file; };
    Vector3: that one has a declared destructor and is not an aggregate. */
 typedef struct Vec3_26e28 { int x, y, z; } Vec3_26e28;
 
-/* CallStateUpdate and CallStateEnter, the two
-   pointer-to-member invokers.  Two separate tags
-   even though the windows are identical: mwccarm's pointer-to-member
-   representation depends on whether the class was complete when the PMF type
-   was formed, and merging two members' views of one object changes it. */
-struct C_27708;
-typedef void (C_27708::*PMF_27708)();
-struct C_27708 { char pad[0x3dc]; PMF_27708 *pp; };
-
-struct C_27744;
-typedef void (C_27744::*PMF_27744)();
-struct C_27744 { char pad[0x3dc]; PMF_27744 *pp; };
+/* Non-virtual state handlers. daGmch_c is already complete here; the
+   pointer-to-member call through mStatePmfPair still matches. */
+typedef void (daGmch_c::*StateFn)();
 
 /* EnterState4 and EnterState2 -- the two-word BCA file-pointer records those members
    recovered as a struct rather than as an array.  Hoisted to file scope only
@@ -104,8 +116,8 @@ struct Bca2 { int w[2]; };
  * A class member function may not sit in a linkage-specification region, so
  * once a member becomes `daGmch_c::Something` a declaration written in its body
  * gets C++ linkage and the reference mangles.  The bridges used by these
- * methods are declared once here; the free factory keeps its seven declarations
- * at block scope.
+ * methods are declared once here. The factory is `new daGmch_c()` and does
+ * not redeclare the member constructors.
  *
  * Of the original 54 declarations, exactly NINE had more than one type spelling
  * across the 36 shards: Vec3_Dist, dActor_c::DistToCPlayer, func_02038414,
@@ -146,9 +158,7 @@ extern void   _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(void *self, Vector3
 extern void   _ZN6Player6BounceE5Fix12IiE(void *p, int fix);
 extern void   _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *p, void *pos, unsigned int a, int fix, unsigned int b, unsigned int cc, unsigned int d);
 extern int    func_02038414(void *clsn);
-extern void  *_ZNK10dBgCh_Actr14GetFloorResultEv(void *clsn);
 extern int    _ZN4cstd4fdivEii(int a, int b);
-extern void  *_ZNK10dBgCh_Actr13GetWallResultEv(void *clsn);
 extern void   Matrix4x3_FromRotationY(void *m, int angle);
 extern void   Matrix4x3_ApplyInPlaceToTranslation(void *m, int x, int y, int z);
 extern void   Matrix4x3_ApplyInPlaceToRotationX(void *m, s16 angX);
@@ -160,7 +170,9 @@ extern void   _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned int n, int
 extern int    _Z15ApproachLinear2Riii(int *p, int target, int step);
 extern void   func_0201267c(int id, void *pos);
 extern void   _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void *self, void *actor, int a, int b, unsigned int c, unsigned int d);
-extern int    _ZNK10dBgCh_Actr12TouchesWaterEv(char *clsn);
+extern int    _ZNK10dBgCh_Actr12TouchesWaterEv(dBgCh_Actr *clsn);
+extern void  *_ZNK10dBgCh_Actr14GetFloorResultEv(void *clsn);
+extern void  *_ZNK10dBgCh_Actr13GetWallResultEv(void *clsn);
 extern void   _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void *self, void *actor, int a, int b, void *v, int c);
 }
 
@@ -323,7 +335,7 @@ int daGmch_c::ApplySlopeToVertSpeed(void *clsn)
     int wallNormal[3];
     func_02038414(clsn);
     if (((dBgCh_Actr *)clsn)->IsOnGround()) {
-        ((SurfaceInfo *)((char *)_ZNK10dBgCh_Actr14GetFloorResultEv(clsn) + 4))->CopyNormalTo(*(Vector3 *)floorNormal);
+        ((dBgPi *)_ZNK10dBgCh_Actr14GetFloorResultEv(clsn))->surface.CopyNormalTo(*(Vector3 *)floorNormal);
         if (floorNormal[1] != 0) {
             /* unk_0a4 / unk_0ac: world velocity X/Z next to mVertSpeed. */
             s32 velX = unk_0a4;
@@ -336,7 +348,7 @@ int daGmch_c::ApplySlopeToVertSpeed(void *clsn)
         }
     }
     if (((dBgCh_Actr *)clsn)->IsOnWall()) {
-        ((SurfaceInfo *)((char *)_ZNK10dBgCh_Actr13GetWallResultEv(clsn) + 4))->CopyNormalTo(*(Vector3 *)wallNormal);
+        ((dBgPi *)_ZNK10dBgCh_Actr13GetWallResultEv(clsn))->surface.CopyNormalTo(*(Vector3 *)wallNormal);
     }
 }
 
@@ -410,7 +422,7 @@ int daGmch_c::EnterState8()
     mHorzSpeed = 0xa000;
     mVertSpeed = 0x28000;
     mTimer = 0x2d;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, *(void **)((char *)data_ov081_02128edc + 4), 0, 0x1000, 0);
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, (void *)data_ov081_02128edc[1], 0, 0x1000, 0);
     mModelAnim.speed = 0x4000;
     int yOffset1 = OnAimedAtWithEgg();
     _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x43, mPosX, mPosY + yOffset1, mPosZ);
@@ -454,7 +466,6 @@ int daGmch_c::EnterState7()
 {
     extern s16 data_02082214[];
 
-    u32 *flagsPtr;
     Vec3_26e28 rayStart;
     dActor_c *holder;
     s32 *holderPos;
@@ -463,8 +474,7 @@ int daGmch_c::EnterState7()
     int angleIdx;
     s16 trig;
 
-    flagsPtr = &mFlags;
-    *flagsPtr = *flagsPtr & ~0x80000;
+    mFlags &= ~0x80000;
     zero = 0;
     holder = mHolder;
     mHorzSpeed = holder->mHorzSpeed + 0x7000;
@@ -474,6 +484,7 @@ int daGmch_c::EnterState7()
     mAngleY = holderAngle;
     mPrevAngleY = mAngleY;
 
+    /* Word triple through &mPosX. Naming the three fields is 0x178 vs 0x17c. */
     holder = mHolder;
     holderPos = &holder->mPosX;
     mPosX = holderPos[0];
@@ -481,11 +492,11 @@ int daGmch_c::EnterState7()
     mPosZ = holderPos[2];
 
     angleIdx = ((u16)mAngleY >> 4);
-    trig = *(s16 *)((char *)data_02082214 + (angleIdx << 2));
+    trig = data_02082214[angleIdx * 2];
     mPosX = mPosX + (int)(((s64)trig * 0x50000 + 0x800) >> 12);
     mPosY = mPosY + 0x50000;
     angleIdx = ((u16)mAngleY >> 4);
-    trig = *(s16 *)((char *)data_02082214 + ((angleIdx * 2 + 1) << 1));
+    trig = data_02082214[angleIdx * 2 + 1];
     mPosZ = mPosZ + (int)(((s64)trig * 0x50000 + 0x800) >> 12);
 
     holder = mHolder;
@@ -494,9 +505,9 @@ int daGmch_c::EnterState7()
         int z = holder->mPosZ;
         int y2 = y + 0x14000;
         int x = holder->mPosX;
-        ((int *)&rayStart)[0] = x;
-        ((int *)&rayStart)[1] = y2;
-        ((int *)&rayStart)[2] = z;
+        rayStart.x = x;
+        rayStart.y = y2;
+        rayStart.z = z;
     }
 
     DetectRaycastClsn(*(Vector3 *)&rayStart, *(Vector3 *)&mPosX, 1);
@@ -512,6 +523,7 @@ int daGmch_c::UpdateState6()
     int flagSet;
     flagSet = (mFlags & MFLAG_YOSHI_MOUTH_B) != 0;
     if (flagSet) {
+        /* Same word triple. Naming the three fields is 0x9c vs 0xa0. */
         s32 *sv = &mHolder->mPosX;
         mPosX = sv[0];
         mPosY = sv[1];
@@ -637,8 +649,7 @@ int daGmch_c::EnterState3()
     extern int data_ov081_02128ecc[];
     extern int data_0209e650[];
 
-    u32 *flagsPtr = &mFlags;
-    *flagsPtr = *flagsPtr & ~1;
+    mFlags &= ~1;
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, (void *)data_ov081_02128ecc[1], 0x40000000, 0x1000, 0);
     mModelAnim.currFrame = 0;
     mAngleY = (short)RandomIntInternal(data_0209e650);
@@ -708,26 +719,19 @@ void daGmch_c::EnterState1()
 // @symbol _ZN8daGmch_c12UpdateState0Ev
 int daGmch_c::UpdateState0()
 {
-    u8 *phasePtr;
-    u32 *flagsPtr;
-
     switch (mPhase) {
     case 0:
         if (_Z15ApproachLinear2Riii((int *)&mState, 1, 2) != 0) {
             _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, this, 0x4b000, 0x73000, 0x200000, 0);
-            flagsPtr = &mFlags;
-            *flagsPtr = *flagsPtr & ~0x10000000;
-            phasePtr = &mPhase;
-            *phasePtr = *phasePtr + 1;
+            mFlags &= ~0x10000000;
+            mPhase++;
         }
         break;
     case 1:
         if (DistToCPlayer() < 0x1f4000) {
-            flagsPtr = &mFlags;
-            *flagsPtr = *flagsPtr | 0x10000000;
+            mFlags |= 0x10000000;
             func_0201267c(0x76, &mCamSpacePosX);
-            phasePtr = &mPhase;
-            *phasePtr = *phasePtr + 1;
+            mPhase++;
         }
         break;
     case 2:
@@ -738,11 +742,8 @@ int daGmch_c::UpdateState0()
         break;
     }
 
-    /* Written as an explicit read-modify-write, not `+= 0xc00`: `ldrsh`/`strh`
-       carry only an 8-bit offset, so 0x3ec cannot be encoded and the address
-       MUST be split; the ROM splits it `add rN,this,#0x300` + `[rN,#0xec]`.
-       Under 2004/b56 the compound-assignment form is the one spelling that
-       instead materialises the whole 0x3ec and loads through `[rN]`. */
+    /* += 0xc00 differs by 4 words at the same 0x158. ldrsh's offset is 8
+       bits, so 0x3ec is split: add this,#0x300, then [rN,#0xec]. */
     {
         s16 spin = mSpinAngleY;
         mSpinAngleY = (s16)(spin + 0xc00);
@@ -767,13 +768,11 @@ int daGmch_c::EnterState0()
 }
 
 // @symbol _ZN8daGmch_c15CallStateUpdateEv
-/* Invokes PMF[1] -- the "update" half -- of the current state's 16-byte pair,
-   whose address this+0x3dc holds. */
+/* Invokes PMF[1] -- the update half -- of the pair mStatePmfPair points at. */
 void daGmch_c::CallStateUpdate()
 {
-    C_27708 *c = (C_27708 *)this;
-    PMF_27708 *p = c->pp + 1;
-    (c->**p)();
+    StateFn *p = ((StateFn *)mStatePmfPair) + 1;
+    (this->*(*p))();
 }
 
 // @symbol _ZN8daGmch_c14CallStateEnterEv
@@ -782,9 +781,8 @@ void daGmch_c::CallStateUpdate()
    it through `bx ip`. */
 void daGmch_c::CallStateEnter()
 {
-    C_27744 *c = (C_27744 *)this;
-    PMF_27744 *p = c->pp;
-    (c->**p)();
+    StateFn *p = (StateFn *)mStatePmfPair;
+    (this->*(*p))();
 }
 
 // @symbol _ZN8daGmch_c8SetStateEi
@@ -846,7 +844,7 @@ int daGmch_c::Behavior()
     CallStateUpdate();
     MakeVanishLuigiWork(mdCcAc_c);
     if (mWithMeshClsn.GetResultFlag1() != 0) {
-        if (_ZNK10dBgCh_Actr12TouchesWaterEv((char *)&mWithMeshClsn) != 0) {
+        if (_ZNK10dBgCh_Actr12TouchesWaterEv(&mWithMeshClsn) != 0) {
             SpawnCoinsAndDie();
         }
     }
@@ -918,35 +916,16 @@ void daGmch_c::OnTurnIntoEgg(Player &player)
 }
 
 // @symbol daGmch_c_classInit
-extern "C" {
-/* The GAMAGUCHI factory: allocates 0x3f4, runs dActor_c's constructor, installs
- * this class's vtable and constructs the five member objects.
+/* The GAMAGUCHI factory. fBase_c::operator new forwards to _ZN7fBase_cnwEj,
+ * and daGmch_c has no user-declared constructor, so `new` is the base
+ * constructor, the vtable store and the five member subobjects in field
+ * order (mModelAnim, mModel, mShadowModel, mdCcAc_c, mWithMeshClsn).
  *
  * Reconstructed source-style name: SM64DS proves daGmch_c through RTTI,
  * allocation size, vtable identity and the GAMAGUCHI registry profile; later
- * EAD lineage supplies classInit.  Exact original spelling is not preserved.
+ * EAD lineage supplies classInit. Exact original spelling is not preserved.
  * Historical alias: Moneybag_Spawn. */
-int *daGmch_c_classInit(void)
+extern "C" daGmch_c *daGmch_c_classInit(void)
 {
-    extern void *_ZN7fBase_cnwEj(unsigned int size);
-    extern void *_ZN8dActor_cC2Ev(void *p);
-    extern void *_ZN9ModelAnimC1Ev(void *p);
-    extern void *_ZN5ModelC1Ev(void *p);
-    extern void *_ZN11ShadowModelC1Ev(void *p);
-    extern void *_ZN7dCcAc_cC1Ev(void *p);
-    extern void *_ZN10dBgCh_ActrC1Ev(void *p);
-    /* _ZTV8daGmch_c is declared in daGmch_c.h -- see the note there. */
-
-    int *p = (int *)_ZN7fBase_cnwEj(1012);
-    if (p) {
-        _ZN8dActor_cC2Ev(p);
-        p[0] = (int)&_ZTV8daGmch_c[2];
-        _ZN9ModelAnimC1Ev((char *)p + 0xd4);
-        _ZN5ModelC1Ev((char *)p + 0x138);
-        _ZN11ShadowModelC1Ev((char *)p + 0x188);
-        _ZN7dCcAc_cC1Ev((char *)p + 0x1b0);
-        _ZN10dBgCh_ActrC1Ev((char *)p + 0x1e4);
-    }
-    return p;
-}
+    return new daGmch_c();
 }

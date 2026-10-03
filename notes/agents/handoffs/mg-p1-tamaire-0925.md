@@ -82,7 +82,7 @@ reserved for the theme-4 move, which did not land.
   when theme 4 does not land, so the banner waits for the pass that moves the factory.
 - **R13, deferred (theme 8).** `Behavior` cannot include `include/decl_common.h`: its local
   declarations of [func_ov006_02100084](../../../src/actors/dScMgPachinko_c.cpp)(ROM Ordinal 13), [func_ov006_021024e0](../../../src/actors/dScMgPachinko_c.cpp)(ROM Ordinal 45), [func_ov006_020fffec](../../../src/actors/dScMgPachinko_c.cpp)(ROM Ordinal 11) and
-  [func_ov004_020b0a54](../../../src_tu/actors/unit_ov004_020b0a38.cpp)(ROM Ordinal 17) take `void *`, and the header's take `char *` or `int`. mwccarm
+  [func_ov004_020b0a54](../../../src/minigames/d_s_mg_base.cpp)(ROM Ordinal 17) take `void *`, and the header's take `char *` or `int`. mwccarm
   rejects the include with "illegal function overloading" on those four lines. The call
   `func_ov004_020b0a54((void *)0x10)` keeps its cast for the same reason.
 - **R14, deferred (pass 2).** Locals named after stack slots (`sp4`, `sp8`, `spC`, `spE`),

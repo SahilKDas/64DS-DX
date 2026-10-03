@@ -2148,7 +2148,7 @@
       "object_bytes": 12840,
       "all_twenty_exact": true,
       "patch_base": "named",
-      "patch": "--- named\n+++ star_header\n@@ -5,6 +5,7 @@\n #include \"daObjSwitch_c.h\"\n #include \"SharedFilePtr.h\"\n #include \"Sound.h\"\n+#include \"PowerStar.h\"\n \n struct SwitchResources {\n     SharedFilePtr *model;\n@@ -307,7 +308,7 @@\n         return;\n     }\n     if (actor->mTargetActor == 0) return;\n-    if (*(int*)(actor->mTargetActor + 0x440) != 5) return;\n+    if (reinterpret_cast<PowerStar *>(actor->mTargetActor)->unk_440 != 5) return;\n     func_ov002_020ba4d8(self, 4);\n }\n \n@@ -381,7 +382,7 @@\n     if (actor->mTargetActorID) return 0;\n     r1 = dActor_c::FindWithActorID(0xb2, 0);\n     while (r1) {\n-        if (actor->unk_351 == *(unsigned char*)((char*)r1 + 0x49d)) {\n+        if (actor->unk_351 == static_cast<PowerStar *>(r1)->unk_49d) {\n             actor->mTargetActorID = r1->uniqueID;\n             return 1;\n         }\n",
+      "patch": "--- named\n+++ star_header\n@@ -5,6 +5,7 @@\n #include \"daObjSwitch_c.h\"\n #include \"SharedFilePtr.h\"\n #include \"Sound.h\"\n+#include \"daStar_c.h\"\n \n struct SwitchResources {\n     SharedFilePtr *model;\n@@ -307,7 +308,7 @@\n         return;\n     }\n     if (actor->mTargetActor == 0) return;\n-    if (*(int*)(actor->mTargetActor + 0x440) != 5) return;\n+    if (reinterpret_cast<daStar_c *>(actor->mTargetActor)->unk_440 != 5) return;\n     func_ov002_020ba4d8(self, 4);\n }\n \n@@ -381,7 +382,7 @@\n     if (actor->mTargetActorID) return 0;\n     r1 = dActor_c::FindWithActorID(0xb2, 0);\n     while (r1) {\n-        if (actor->unk_351 == *(unsigned char*)((char*)r1 + 0x49d)) {\n+        if (actor->unk_351 == static_cast<daStar_c *>(r1)->unk_49d) {\n             actor->mTargetActorID = r1->uniqueID;\n             return 1;\n         }\n",
       "strict": [
         {
           "name": "_ZN13daObjSwitch_cD1Ev",
@@ -3441,9 +3441,9 @@
       ]
     },
     "resource_consumer": {
-      "source": "src/_ZN10StarMarker13InitResourcesEv.cpp",
+      "source": "src/_ZN12daStarBase_c13InitResourcesEv.cpp",
       "strict": {
-        "name": "_ZN10StarMarker13InitResourcesEv",
+        "name": "_ZN12daStarBase_c13InitResourcesEv",
         "module": "ov002",
         "addr": "0x020eb204",
         "verdict": "VERIFIED",
@@ -3453,14 +3453,14 @@
       "build_only_control": {
         "original_head": "d037ba5c77008badad073a4b23f9bda3fad9897e",
         "tracked_external_source_unchanged": true,
-        "path": "src/_ZN10StarMarker13InitResourcesEv.cpp",
+        "path": "src/_ZN12daStarBase_c13InitResourcesEv.cpp",
         "required_resources": [
-          "file:src/_ZN10StarMarker13InitResourcesEv.cpp",
+          "file:src/_ZN12daStarBase_c13InitResourcesEv.cpp",
           "range:ov002:0x20eb204:0x20eb63c"
         ],
         "header_edit_needed": false,
         "include": "include/SharedFilePtr.h (existing read-only)",
-        "exact_patch": "--- a/src/_ZN10StarMarker13InitResourcesEv.cpp\n+++ b/src/_ZN10StarMarker13InitResourcesEv.cpp\n@@ -5,6 +5,7 @@\n #include \"decl_common.h\"\n /* recovered: named members + shared header, real C++ method */\n #include \"StarMarker.h\"\n+#include \"SharedFilePtr.h\"\n #include \"dBgCh_Gnd.h\"\n \n extern \"C\" {\n@@ -19,7 +20,7 @@\n }\n \n extern char data_ov002_0210d9a8;\n-extern char data_ov002_0211092c;\n+extern SharedFilePtr data_ov002_0211092c;\n extern u8 data_0209f2d8;\n extern s8 data_0209f2f8;\n \n",
+        "exact_patch": "--- a/src/_ZN12daStarBase_c13InitResourcesEv.cpp\n+++ b/src/_ZN12daStarBase_c13InitResourcesEv.cpp\n@@ -5,6 +5,7 @@\n #include \"decl_common.h\"\n /* recovered: named members + shared header, real C++ method */\n #include \"daStarBase_c.h\"\n+#include \"SharedFilePtr.h\"\n #include \"dBgCh_Gnd.h\"\n \n extern \"C\" {\n@@ -19,7 +20,7 @@\n }\n \n extern char data_ov002_0210d9a8;\n-extern char data_ov002_0211092c;\n+extern SharedFilePtr data_ov002_0211092c;\n extern u8 data_0209f2d8;\n extern s8 data_0209f2f8;\n \n",
         "same_path_complete_raw_objects_identical": true,
         "same_path_object_sha256": "f0c6559dd4aa014a319d8e80ef92333130ccc99a951e4d12896b7172d3096ab1",
         "probes": [
@@ -3469,7 +3469,7 @@
             "object_sha256": "f0c6559dd4aa014a319d8e80ef92333130ccc99a951e4d12896b7172d3096ab1",
             "object_bytes": 3024,
             "strict": {
-              "name": "_ZN10StarMarker13InitResourcesEv",
+              "name": "_ZN12daStarBase_c13InitResourcesEv",
               "module": "ov002",
               "addr": "0x020eb204",
               "verdict": "VERIFIED",
@@ -3553,7 +3553,7 @@
                   "type": "STT_FUNC"
                 },
                 {
-                  "name": "_ZN10StarMarker13InitResourcesEv",
+                  "name": "_ZN12daStarBase_c13InitResourcesEv",
                   "shndx": 5,
                   "value": 0,
                   "size": 1080,
@@ -3745,7 +3745,7 @@
             "object_sha256": "f0c6559dd4aa014a319d8e80ef92333130ccc99a951e4d12896b7172d3096ab1",
             "object_bytes": 3024,
             "strict": {
-              "name": "_ZN10StarMarker13InitResourcesEv",
+              "name": "_ZN12daStarBase_c13InitResourcesEv",
               "module": "ov002",
               "addr": "0x020eb204",
               "verdict": "VERIFIED",
@@ -3829,7 +3829,7 @@
                   "type": "STT_FUNC"
                 },
                 {
-                  "name": "_ZN10StarMarker13InitResourcesEv",
+                  "name": "_ZN12daStarBase_c13InitResourcesEv",
                   "shndx": 5,
                   "value": 0,
                   "size": 1080,
@@ -5896,7 +5896,7 @@
   ],
   "remaining_boundaries": [
     "Five named methods and13 address-named C-linkage helpers are retained; no claim those helper names were recovered or converted into methods. Their own actor fields and PMF host are real types.",
-    "PowerStar+0x438 is a read-only foreign field still padding in its existing header. Two other reads use existing PowerStar members; no new fake star layout or shared-header edit.",
+    "daStar_c+0x438 is a read-only foreign field still padding in its existing header. Two other reads use existing daStar_c members; no new fake star layout or shared-header edit.",
     "Shared C IsClsnInRange/ChangeMusicVolume/SetFile scalar definitions remain explicit interfaces; no unsupported claim that the shared Fix12 declarations canonically agree.",
     "Final root composition must reconcile credits,converted/declaration ledgers and queue only in assigned integration scope, then full ROM/current-base independent acceptance and required CI."
   ],
@@ -5947,7 +5947,7 @@
       "id": "SS2874-08",
       "kind": "correctness",
       "disposition": "fixed",
-      "reason": "StarMarker SharedFilePtr declaration fixed in atomically amended resource scope; strict0x438 and complete raw-object identity."
+      "reason": "daStarBase_c SharedFilePtr declaration fixed in atomically amended resource scope; strict0x438 and complete raw-object identity."
     }
   ],
   "declaration_gate": {
@@ -5959,7 +5959,7 @@
       "_ZN6Player17SetNoControlStateEhih return at src/actors/Eyerok.cpp",
       "_ZN6Player17SetNoControlStateEhih return at src/game/actors/d_a_ch_scene.cpp"
     ],
-    "disposition": "Same three original preflight diagnostics at old source base. Coordinator reports already accepted current-main records. No producer bank edits; root must preserve actual current-main baseline and rerun committed scoped gate. StarMarker new mismatch is resolved."
+    "disposition": "Same three original preflight diagnostics at old source base. Coordinator reports already accepted current-main records. No producer bank edits; root must preserve actual current-main baseline and rerun committed scoped gate. daStarBase_c new mismatch is resolved."
   },
   "static_checks": {
     "conflicts": "PASS: all12 historical conflict notes RESOLVED,0 markers; tool exit0",
@@ -5974,7 +5974,7 @@
     "substituted_paths": [
       "config/tu_manifest.d/ov002/daObjSwitch_c.json",
       "include/daObjSwitch_c.h",
-      "src/_ZN10StarMarker13InitResourcesEv.cpp",
+      "src/_ZN12daStarBase_c13InitResourcesEv.cpp",
       "src/actors/daObjSwitch_c.cpp",
       "src/func_02012310.c"
     ],

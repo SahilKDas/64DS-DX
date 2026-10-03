@@ -72,10 +72,17 @@ typedef struct Player Player;
 
 struct daObjTatefuda_c : dBgActor_c {
     dCcAc_c mdCcAc_c;                /* 0x320 */
-    /* Behavior reads this word right after dCc_c::Clear/Update on mdCcAc_c and
-       branches on == 3 and <= 1, so it is that collider's result code. It sat
-       inside pad_354 until Behavior was read. */
-    s32 mClsnResult;                 /* 0x354 */
+    /* The index of the state this sign is in. func_ov002_020bbd5c stores a new
+       index here and runs that state's ENTER routine; func_ov002_020bbda4 runs
+       the current state's UPDATE routine. Both go through the 5-row table
+       data_ov002_0210e084, whose rows are {enter, update} pointer-to-member
+       pairs copied in by this overlay's static initializer (the ROM words at
+       0x02109a64..0x02109ab3 are the ten functions); see State below.
+       Behavior reads it back after the update to special-case THROWN and to
+       decide whether the drop shadow is refreshed. It sat inside pad_354 until
+       Behavior was read, and was first named for a collider result code,
+       which it is not: the collider is mdCcAc_c, ahead of it. */
+    s32 mState;                      /* 0x354 */
     ShadowModel mShadowModel;        /* 0x358 */
     /* Behavior hands this to dActor_c::DropShadowScaleXYZ as its Matrix4x3 &
        argument, right after mShadowModel -- the drop shadow's own matrix. A
@@ -96,19 +103,31 @@ struct daObjTatefuda_c : dBgActor_c {
        Particle::System handles and the break countdown that consumes them. */
     u32 mParticleHandle1;            /* 0x584 */
     u32 mParticleHandle2;            /* 0x588 */
-    u8  mBreakTimer;                 /* 0x58c */
-    u8  pad_58d[0x1];
+    u8  mBreakTimer;                 /* 0x58c -- break countdown; func_ov002_020bb42c starts it at 0x3c */
+    u8  mTalkStep;                   /* 0x58d -- step of the talk walk-up; 0 on entering TALK */
     u8  mPoundsLeft;                 /* 0x58e */
     u8  mPoundCooldown;              /* 0x58f */
     u8  mHidden;                     /* 0x590 */
     u8  mRespawnDelay;               /* 0x591 */
-    u8  pad_592[0xa];
+    u8  pad_592[0x2];
+    /* Last value of the flag word data_0209f284 the talk routine saw; it
+       plays sound 0x24 when the flag differs from this and is non-zero. */
+    u8  mFlagSeen;               /* 0x594 */
+    u8  pad_595[0x3];
+    /* The player this sign is talking to: set by func_ov002_020bb520 from the
+       actor that hit the collider, and handed to Player::GetTalkState,
+       Player::ShowMessage2 and friends as their `this`. */
+    Player *mTalkingPlayer;          /* 0x598 */
     /* Player * -- the ROM loads this WORD and passes it to _ZN6Player9DropActorEv as that
        function's `this`, which is an object address, so the word is a Player *. It says
        nothing about the rest of the marker's span, which stays explicit padding. Was a u8
-       marker. */
+       marker. Set when the grab succeeds (CARRIED) and moved to mLastHolder, then
+       cleared, when the sign is thrown or dropped. */
     Player *mHoldingPlayer;          /* 0x59c */
-    u8  pad_5a0[0x4];
+    /* The player that held it last: the enter routines of THROWN and DROPPED copy
+       mHoldingPlayer here before clearing it. The THROWN update skips this
+       player when it looks for someone to hurt. */
+    Player *mLastHolder;             /* 0x5a0 */
 
     /* --- vtable --- */
     /* INLINE ON PURPOSE, for the reason include/dBgActor_c.h gives for its own.
@@ -146,6 +165,21 @@ struct daObjTatefuda_c : dBgActor_c {
     void OnGroundPounded(dActor_c &other);   /* slot 21 */
     int  OnAttacked1(dActor_c &other);       /* slot 22 */
     void OnHitByMegaChar(Player &player);    /* slot 27 */
+
+    /* mState values, as the rows of data_ov002_0210e084 read. Each row is
+       {enter, update}; the addresses are the ov002 helpers in the .cpp.
+         row 0  enter 020bba24 (empty)      update 020bb9fc
+         row 1  enter 020bb9f0              update 020bb614
+         row 2  enter 020bbd50              update 020bbcb8
+         row 3  enter 020bbc78              update 020bbb14
+         row 4  enter 020bbac8              update 020bba28 */
+    enum State {
+        STATE_IDLE    = 0,   /* standing; polls for a talk or a grab */
+        STATE_TALK    = 1,   /* a player is talking to the sign */
+        STATE_CARRIED = 2,   /* held by a player */
+        STATE_THROWN  = 3,   /* launched with a horizontal and a vertical speed, spinning */
+        STATE_DROPPED = 4    /* released at the holder's position; its X angle turns toward 0x4000 */
+    };
 };
 
 #ifndef SM64DS_PLATFORM_PC
@@ -185,7 +219,7 @@ struct daObjTatefuda_c {
     u8  pad_2ed[0x33];
     u8  mdCcAc_c;                    /* 0x320 */
     u8  pad_321[0x33];
-    s32 mClsnResult;                 /* 0x354 */
+    s32 mState;                      /* 0x354 */
     u8  mShadowModel;                /* 0x358 */
     u8  pad_359[0x27];
     struct Matrix4x3 mShadowMat;     /* 0x380 */
@@ -203,14 +237,17 @@ struct daObjTatefuda_c {
     u32 mParticleHandle1;            /* 0x584 */
     u32 mParticleHandle2;            /* 0x588 */
     u8  mBreakTimer;                 /* 0x58c */
-    u8  pad_58d[0x1];
+    u8  mTalkStep;                   /* 0x58d */
     u8  mPoundsLeft;                 /* 0x58e */
     u8  mPoundCooldown;              /* 0x58f */
     u8  mHidden;                     /* 0x590 */
     u8  mRespawnDelay;               /* 0x591 */
-    u8  pad_592[0xa];
+    u8  pad_592[0x2];
+    u8  mFlagSeen;               /* 0x594 */
+    u8  pad_595[0x3];
+    Player *mTalkingPlayer;          /* 0x598 */
     Player *mHoldingPlayer;          /* 0x59c */
-    u8  pad_5a0[0x4];
+    Player *mLastHolder;             /* 0x5a0 */
 };
 
 #endif /* __cplusplus */

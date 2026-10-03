@@ -16,8 +16,9 @@
  * mState points at a two-pointer-to-member record. __sinit_ov090_02133ea8
  * copies the init PMF (func_ov090_02132a58) and the execute PMF
  * (func_ov090_021327e4) into data_ov090_0213454c. Behavior calls execute.
- * The record type is completed in the TU; a member spelling of those two
- * functions would mangle to symbols the cartridge does not have.
+ * The record type is completed in the TU. Those two functions are methods;
+ * the sinit copies the PMF words from data outside this TU, so this file
+ * does not emit a state-table symbol.
  */
 
 #include "dEnemyBase_c.h"
@@ -54,6 +55,12 @@ struct daManta_c : dEnemyBase_c {
     int InitResources();
     void OnPendingDestroy();
     int Render();
+
+    void func_ov090_02132730();
+    int func_ov090_021327e4();
+    int func_ov090_02132a58();
+    int func_ov090_02132ac4(MantaState *state);
+    void func_ov090_02132b14();
 };
 
 #ifndef SM64DS_PLATFORM_PC

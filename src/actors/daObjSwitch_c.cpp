@@ -12,7 +12,7 @@
 #include "daObjSwitch_c.h"
 #include "SharedFilePtr.h"
 #include "Sound.h"
-#include "PowerStar.h"
+#include "daStar_c.h"
 
 extern daObjSwitch_c::StateEntry data_ov002_0210e00c[];
 
@@ -334,7 +334,7 @@ extern "C" void func_ov002_020ba1ac(char *self)
         return;
     }
     if (actor->mTargetActor == 0) return;
-    if (static_cast<PowerStar *>(actor->mTargetActor)->unk_440 != 5) return;
+    if (static_cast<daStar_c *>(actor->mTargetActor)->unk_440 != 5) return;
     func_ov002_020ba4d8(self, 4);
 }
 
@@ -349,7 +349,7 @@ extern "C" void func_ov002_020ba0f8(char *c)
         int b = (actor->actorID == 0xc);
         if (b) {
             dActor_c *p = actor->mTargetActor;
-            // This foreign star field is still unnamed in PowerStar.h.
+            // This foreign star field is still unnamed in daStar_c.h.
             if (p != 0 && *reinterpret_cast<int *>(reinterpret_cast<char *>(p) + 0x438) == 0) {
                 func_ov002_020e7104(p, 0);
             }
@@ -413,7 +413,7 @@ extern "C" int func_ov002_020b9f00(char *self)
     if (actor->mTargetActorID) return 0;
     star = dActor_c::FindWithActorID(0xb2, 0);
     while (star) {
-        if (actor->mStarID == static_cast<PowerStar *>(star)->unk_49d) {
+        if (actor->mStarID == static_cast<daStar_c *>(star)->unk_49d) {
             actor->mTargetActorID = star->uniqueID;
             return 1;
         }

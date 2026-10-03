@@ -90,6 +90,15 @@ struct daDossy_c : dActor_c {
     virtual int CleanupResources();
     virtual int Behavior();
     virtual int Render();
+
+    int func_ov065_02118248();
+    void func_ov065_021182e4();
+    void func_ov065_021183c8();
+    void func_ov065_02118634();
+    void func_ov065_02118838();
+    void func_ov065_02118cc4();
+    void func_ov065_0211956c(dActor_c *other);
+    void func_ov065_02119594(dActor_c *other);
 };
 
 #ifndef SM64DS_PLATFORM_PC

@@ -23,7 +23,7 @@
 #include "daSCoin_c.h"
 #include "SharedFilePtr.h"
 #include "Model.h"
-#include "PowerStar.h"
+#include "daStar_c.h"
 
 extern "C" {
 int Vec3_Dist(const Vector3 *a, const Vector3 *b);
@@ -153,7 +153,7 @@ void daSCoin_c::func_ov002_020f05f4()
                 char *star = (char *)dActor_c::Spawn(
                     0xb2, unk_10d | 0x40, pos, 0, mAreaId, -1);
                 if (star != 0) {
-                    ((PowerStar *)star)->AddStarMarker();
+                    ((daStar_c *)star)->AddStarMarker();
                 }
             }
             return;

@@ -36,11 +36,11 @@ src/BookSwitch_Spawn.c	PURE-C	ov016				1		None		-
 src/d_a_book_killer_book.c	WEAK-refs-only	ov020				1		None		-
 src/d_a_kpa2_bg.c	WEAK-refs-only	ov060				1		None		-
 src/d_a_kpa_fire.c	WEAK-refs-only	ov060				1		None		-
-src/d_a_obj_fl_coin.c	S1-stores-rom-vptr	ov064			stores _ZTV19BowserPuzzleManager	1		None	_ZTV19BowserPuzzleManager	-
+src/d_a_obj_fl_coin.c	S1-stores-rom-vptr	ov064			stores _ZTV14daObjFl_Coin_c	1		None	_ZTV14daObjFl_Coin_c	-
 src/d_a_obj_fl_puzzle.c	WEAK-refs-only	ov064				1		None		-
 src/d_a_f_ring.c	WEAK-refs-only	ov060				1		None		-
 src/d_a_obj_wl_koopa_shutter.c	S1-stores-rom-vptr	ov026			stores _ZTV21daObjWlKoopaShutter_c	1		None	_ZTV21daObjWlKoopaShutter_c	-
-src/d_a_kpa3_bg.c	S1-stores-rom-vptr	ov060			stores _ZTV17BowserSkyPlatform	1		None	_ZTV17BowserSkyPlatform	-
+src/d_a_kpa3_bg.c	S1-stores-rom-vptr	ov060			stores _ZTV10daKpa3Bg_c	1		None	_ZTV10daKpa3Bg_c	-
 src/d_a_kpa_tail.c	WEAK-refs-only	ov060				1		None		-
 src/d_a_kpa.c	WEAK-refs-only	ov060				1		None		-
 src/d_a_obj_block_l_sw_block_l.c	WEAK-refs-only	ov002				1		None		-
@@ -584,7 +584,7 @@ src/_ZN10SphereClsn14SetFloorResultERK10ClsnResult.c	P3-mangled-method-only	arm9
 src/_ZN10SphereClsn15SetObjAndSphereERK7Vector35Fix12IiEP8dActor_c.c	P3-mangled-method-only	arm9		SphereClsn	_ZN10SphereClsn15SetObjAndSphereERK7Vector35Fix12IiEP8dActor_c	1		True		by-value-class-param
 src/_ZN10SphereClsnC1Ev.c	P3-mangled-method-only	arm9		SphereClsn	_ZN10SphereClsnC1Ev	1		True		-
 src/_ZN10SphereClsnD1Ev.c	DTOR-ONLY	arm9	dBgCh_SphCrr	SphereClsn/dBgCh_SphCrr	_ZN10SphereClsnD1Ev	1		True	_ZTV10SphereClsn	-
-src/_ZN10StarMarkerD0Ev.c	DTOR-ONLY	ov002	daStarBase_c	StarMarker/daStarBase_c	_ZN10StarMarkerD0Ev	1		True		-
+src/_ZN12daStarBase_cD0Ev.c	DTOR-ONLY	ov002	daStarBase_c	daStarBase_c/daStarBase_c	_ZN12daStarBase_cD0Ev	1		True		-
 src/_ZN10dBgActor_c14KillByMegaCharER6Player.c	P3-mangled-method-only	ov002		dBgActor_c	_ZN10dBgActor_c14KillByMegaCharER6Player	1		True		-
 src/_ZN10dBgActor_cC2Ev.c	P3-mangled-method-only	ov002		dBgActor_c	_ZN10dBgActor_cC2Ev	1		True	_ZTV10dBgActor_c	-
 src/_ZN10dFdDummy_c11AdvanceFadeEv.c	P1-vtable+mangled	arm9	dFdDummy_c	dFdDummy_c	vtable dFdDummy_c slot 2 @0x201721c | _ZN10dFdDummy_c11AdvanceFadeEv	1		True		-
@@ -773,9 +773,9 @@ src/_ZN16daObjRc_Dorifu_cD0Ev.c	DTOR-ONLY	ov036	daObjRc_Dorifu_c	daObjRc_Dorifu_
 src/_ZN17BigMovingIceBlock16CleanupResourcesEv.c	P1-vtable+mangled	ov056	daObjEwmIceBlock_c	BigMovingIceBlock/daObjEwmIceBlock_c	vtable daObjEwmIceBlock_c slot 3 @0x211123c | _ZN17BigMovingIceBlock16CleanupResourcesEv	1		True		-
 src/_ZN17BigMovingIceBlockD0Ev.c	DTOR-ONLY	ov056	daObjEwmIceBlock_c	BigMovingIceBlock/daObjEwmIceBlock_c	_ZN17BigMovingIceBlockD0Ev	1		True	_ZTV10dBgActor_c	-
 src/_ZN17BigMovingIceBlockD1Ev.c	DTOR-ONLY	ov056	daObjEwmIceBlock_c	BigMovingIceBlock/daObjEwmIceBlock_c	_ZN17BigMovingIceBlockD1Ev	1		True	_ZTV10dBgActor_c	-
-src/_ZN17BowserPuzzlePieceD0Ev.c	DTOR-ONLY	ov064	daObjFl_Puzzle_c	BowserPuzzlePiece/daObjFl_Puzzle_c	_ZN17BowserPuzzlePieceD0Ev	1		True	_ZTV10dBgActor_c/_ZTV17BowserPuzzlePiece	-
-src/_ZN17BowserPuzzlePieceD1Ev.c	DTOR-ONLY	ov064	daObjFl_Puzzle_c	BowserPuzzlePiece/daObjFl_Puzzle_c	_ZN17BowserPuzzlePieceD1Ev	1		True	_ZTV10dBgActor_c/_ZTV17BowserPuzzlePiece	-
-src/_ZN17BowserSkyPlatformD0Ev.c	DTOR-ONLY	ov060	daKpa3Bg_c	BowserSkyPlatform/daKpa3Bg_c	_ZN17BowserSkyPlatformD0Ev	1		True	_ZTV10dBgActor_c/_ZTV17BowserSkyPlatform	-
+src/_ZN16daObjFl_Puzzle_cD0Ev.c	DTOR-ONLY	ov064	daObjFl_Puzzle_c	daObjFl_Puzzle_c/daObjFl_Puzzle_c	_ZN16daObjFl_Puzzle_cD0Ev	1		True	_ZTV10dBgActor_c/_ZTV16daObjFl_Puzzle_c	-
+src/_ZN16daObjFl_Puzzle_cD1Ev.c	DTOR-ONLY	ov064	daObjFl_Puzzle_c	daObjFl_Puzzle_c/daObjFl_Puzzle_c	_ZN16daObjFl_Puzzle_cD1Ev	1		True	_ZTV10dBgActor_c/_ZTV16daObjFl_Puzzle_c	-
+src/_ZN10daKpa3Bg_cD0Ev.c	DTOR-ONLY	ov060	daKpa3Bg_c	daKpa3Bg_c/daKpa3Bg_c	_ZN10daKpa3Bg_cD0Ev	1		True	_ZTV10dBgActor_c/_ZTV10daKpa3Bg_c	-
 src/_ZN17ExtendingPlatform16OnPendingDestroyEv.c	P1-vtable+mangled	ov045	daObjKm2_Nobiru_c	ExtendingPlatform/daObjKm2_Nobiru_c	vtable daObjKm2_Nobiru_c slot 12 @0x2111970 | _ZN17ExtendingPlatform16OnPendingDestroyEv	1		True		-
 src/_ZN17ExtendingPlatformD0Ev.c	DTOR-ONLY	ov045	daObjKm2_Nobiru_c	ExtendingPlatform/daObjKm2_Nobiru_c	_ZN17ExtendingPlatformD0Ev	1		True		-
 src/_ZN17daObjKm1_Dorifu_cD0Ev.c	DTOR-ONLY	ov043	daObjKm1_Dorifu_c	daObjKm1_Dorifu_c	_ZN17daObjKm1_Dorifu_cD0Ev	1		True	_ZTV10dBgActor_c/_ZTV13daObjDorifu_c/_ZTV17daObjKm1_Dorifu_c	-
@@ -811,7 +811,7 @@ src/_ZN9daSetSE_c16CleanupResourcesEv.c	P1-vtable+mangled	ov002	daSetSE_c	daSetS
 src/_ZN9daSetSE_c16OnPendingDestroyEv.c	P1-vtable+mangled	ov002	daSetSE_c	daSetSE_c/daSetSE_c	vtable daSetSE_c slot 12 @0x20f19f0 | _ZN9daSetSE_c16OnPendingDestroyEv	1		True		-
 src/_ZN9daSetSE_c6RenderEv.c	P1-vtable+mangled	ov002	daSetSE_c	daSetSE_c/daSetSE_c	vtable daSetSE_c slot 9 @0x20f19f4 | _ZN9daSetSE_c6RenderEv	1		True		-
 src/_ZN9daSetSE_cD0Ev.c	DTOR-ONLY	ov002	daSetSE_c	daSetSE_c/daSetSE_c	_ZN9daSetSE_cD0Ev	1		True	_ZTV9daSetSE_c	-
-src/_ZN19BowserPuzzleManagerD0Ev.c	DTOR-ONLY	ov064	daObjFl_Coin_c	BowserPuzzleManager/daObjFl_Coin_c	_ZN19BowserPuzzleManagerD0Ev	1		True	_ZTV19BowserPuzzleManager	-
+src/_ZN14daObjFl_Coin_cD0Ev.c	DTOR-ONLY	ov064	daObjFl_Coin_c	daObjFl_Coin_c/daObjFl_Coin_c	_ZN14daObjFl_Coin_cD0Ev	1		True	_ZTV14daObjFl_Coin_c	-
 src/_ZN19CylinderClsnWithPos4InitERK7Vector35Fix12IiES4_jj.c	P3-mangled-method-only	arm9		CylinderClsnWithPos	_ZN19CylinderClsnWithPos4InitERK7Vector35Fix12IiES4_jj	1		True		by-value-class-param
 src/_ZN19CylinderClsnWithPos6GetPosEv.c	P1-vtable+mangled	arm9	dCcPos_c	CylinderClsnWithPos/dCcPos_c	vtable dCcPos_c slot 2 @0x2014820 | _ZN19CylinderClsnWithPos6GetPosEv	1		True		-
 src/_ZN19CylinderClsnWithPosC1Ev.c	P3-mangled-method-only	arm9		CylinderClsnWithPos	_ZN19CylinderClsnWithPosC1Ev	1		True		-

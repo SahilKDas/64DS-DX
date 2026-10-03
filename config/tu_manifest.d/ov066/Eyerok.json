@@ -6,15 +6,14 @@
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "Claim: ROM ordinals 2..60 of the 61-function contiguous linker run 0x02115ee0..0x0211a2e4 (build/tu_map.json), i.e. .text 0x0211603c..0x0211a2e4, 59 functions. The two functions left outside are ordinals 0 and 1, the destructors _ZN6EyerokD1Ev (0x02115ee0) and _ZN6EyerokD0Ev (0x02115f84), which stay their own enrolled shards: `Eyerok` is a coined class name (the ROM RTTI is daIwante_c), and defining the class's out-of-line virtual destructor -- its key function -- in this file would emit the vtable and RTTI under the coined spelling (_ZTS6Eyerok), which is not in the ROM image. Without the key function this TU emits no vtable or RTTI. History: this entry first claimed only ordinals 25..58 (0x021184c0..0x02119ce8), because six shards in the run referenced 0x02112c08/c88/ca8/cc8/d48 under undefined placeholder names (func_02112c08 etc.) and could not link. Those addresses lie below ov066 in the overlay slot it shares; tools/overlay_residency.py finds ov025 the only candidate overlay that can be resident with ov066, and ov025's symbols.txt names all five as data (data_ov025_02112c08/c88/ca8/cc8/d48, CLPS blocks passed to dBgW_KcMbg::SetFile). With the references respelled to those symbols the six shards linked, and the unit was widened to its full extent here.",
-    "Upper bound: 0x0211a2e4. What follows is not an Eyerok member and not a zero-gap registry factory: func_ov066_0211a2e4 (0x0211a2e4..0x0211a35c) is a free C function, then the `#pragma long_calls` tail-call veneer func_ov066_0211a35c (..0x0211a370) that this unit installs as the dBgW callback, then the registry factory daIwante_c_classInit in src/d_a_iwante.cpp (0x0211a370..0x0211a418), which is separated from this unit by those two functions and so is not folded. Builder re-derivation from config/arm9/overlays/ov066/delinks.txt: the run 0x02115ee0..0x0211a2e4 is covered contiguously, with no address gap, by the D1 and D0 shards and this one complete entry.",
+    "contiguous linker run: 0x0211603c..0x0211a418, 62 function(s). Extended over three zero-gap neighbours past the old right edge 0x0211a2e4: func_ov066_0211a2e4, its arg-shifting veneer func_ov066_0211a35c, and the factory daIwante_c_classInit. tu_map cuts before them because the first two carry no class name. They are this class's, not new ones: the veneer is installed as a dBgW callback by seven places in this very TU (func_020393c4(..., (void *)func_ov066_0211a35c)), and the factory installs _ZTV6Eyerok, which is this unit's vtable. The module's sinit starts at 0x0211a418.",
     "class label(s): Eyerok (ROM RTTI name daIwante_c -- _ZTI10daIwante_c/_ZTS10daIwante_c at ov066:0x0211ad24/0x0211ad30; `Eyerok` is a coined name already spelled into every function symbol of this run in config/arm9/overlays/ov066/symbols.txt, and a text-only promotion does not repoint symbols.txt)"
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x0211603c",
-      "end": "0x0211a2e4"
+      "end": "0x0211a418"
     }
   ],
   "functions": [
@@ -430,6 +429,27 @@
       "size": "0x00000008",
       "legacy_source": "src/_ZN6Eyerok16OnAimedAtWithEggEv.cpp",
       "ordinal": 60
+    },
+    {
+      "symbol": "func_ov066_0211a2e4",
+      "address": "0x0211a2e4",
+      "size": "0x00000078",
+      "legacy_source": "src/func_ov066_0211a2e4.c",
+      "ordinal": 61
+    },
+    {
+      "symbol": "func_ov066_0211a35c",
+      "address": "0x0211a35c",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov066_0211a35c.c",
+      "ordinal": 62
+    },
+    {
+      "symbol": "daIwante_c_classInit",
+      "address": "0x0211a370",
+      "size": "0x000000a8",
+      "legacy_source": "src/d_a_iwante.cpp",
+      "ordinal": 63
     }
   ],
   "data": [],
@@ -564,8 +584,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov066-Eyerok/Eyerok.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 59,
-    "functions_declared": 59,
+    "functions_matched": 62,
+    "functions_declared": 62,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN7Vector3D1Ev",
@@ -667,7 +687,7 @@
     {
       "symbol": "_ZN7Vector3D1Ev",
       "disposition": "deadstrip-duplicate",
-      "reason": "Vector3's inline destructor, emitted as vague linkage because this TU odr-uses it: _ZN6Eyerok16CleanupResourcesEv and _ZN6Eyerok8BehaviorEv walk the class's Vector3 mDustPos[0x14] span at this+0x4dc, and _ZN6Eyerok13InitResourcesEv has two Vector3 locals. The cartridge homes it at arm9:0x020072c0 (config/arm9/symbols.txt), outside this entry's only licensed range (.text 0x0211603c-0x0211a2e4), so dsd supplies that copy and production isolation discards ours.",
+      "reason": "Vector3's inline destructor, emitted as vague linkage because this TU odr-uses it: _ZN6Eyerok16CleanupResourcesEv and _ZN6Eyerok8BehaviorEv walk the class's Vector3 mDustPos[0x14] span at this+0x4dc, and _ZN6Eyerok13InitResourcesEv has two Vector3 locals. The cartridge homes it at arm9:0x020072c0 (config/arm9/symbols.txt), outside this entry's only licensed range (.text 0x0211603c-0x0211a418), so dsd supplies that copy and production isolation discards ours.",
       "canonical_module": "arm9",
       "canonical_address": "0x020072c0"
     },

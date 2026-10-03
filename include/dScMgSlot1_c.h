@@ -73,8 +73,8 @@
  *
  * slots 27/28 (OnHitByMegaChar/OnHitFromUnderneath) are real overrides.  The
  * names were independently recovered on dScMgBase_c's own copies at the same
- * two slots (src/_ZN11dScMgBase_c15OnHitByMegaCharEv.cpp and
- * .../_ZN11dScMgBase_c19OnHitFromUnderneathEv.cpp, both of which this class's
+ * two slots (dScMgBase_c::OnHitByMegaChar and ::OnHitFromUnderneath in
+ * src/minigames/d_s_mg_base.cpp, both of which this class's
  * overrides call into), and on many unrelated fBase_c descendants across other
  * overlays -- a shared, fixed collision-event slot pair used across both the
  * dActor_c and dScene_c branches, not a coincidence of numbering.

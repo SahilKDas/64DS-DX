@@ -22,11 +22,16 @@
 #include "dCcAc_c.h"
 #include "dBgCh_Actr.h"
 
+/* Actor ID (symbols/actor_debug_names.tsv): 311 CHORO_ROCK. */
+enum {
+    daChoro_Rock_ACTOR_ID = 0x137
+};
+
 struct daChoro_Rock_c : dEnemyBase_c {
     Model mModel;                     /* 0x110 */
     dCcAc_c mdCcAc_c;/* 0x160 */
     dBgCh_Actr mWithMeshClsn;       /* 0x194 */
-    u8 mIsSmall;                       /* 0x350 */
+    u8 mIsSmall;                       /* 0x350 -- param1 & 1; a big rock (0) breaks into two small ones (1) on landing */
 
     /* --- vtable --- */
     virtual ~daChoro_Rock_c();

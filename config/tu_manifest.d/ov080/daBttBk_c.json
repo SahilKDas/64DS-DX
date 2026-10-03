@@ -41,77 +41,77 @@
       "ordinal": 2
     },
     {
-      "symbol": "func_ov080_02124acc",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02124accEv",
       "address": "0x02124acc",
       "size": "0x00000170",
       "legacy_source": "src/func_ov080_02124acc.cpp",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov080_02124c3c",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02124c3cEv",
       "address": "0x02124c3c",
       "size": "0x00000224",
       "legacy_source": "src/func_ov080_02124c3c.cpp",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov080_02124e60",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02124e60Ev",
       "address": "0x02124e60",
       "size": "0x00000050",
       "legacy_source": "src/func_ov080_02124e60.c",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov080_02124eb0",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02124eb0Ev",
       "address": "0x02124eb0",
       "size": "0x0000002c",
       "legacy_source": "src/func_ov080_02124eb0.c",
       "ordinal": 6
     },
     {
-      "symbol": "func_ov080_02124edc",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02124edcEv",
       "address": "0x02124edc",
       "size": "0x00000110",
       "legacy_source": "src/func_ov080_02124edc.cpp",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov080_02124fec",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02124fecEv",
       "address": "0x02124fec",
       "size": "0x00000020",
       "legacy_source": "src/func_ov080_02124fec.c",
       "ordinal": 8
     },
     {
-      "symbol": "func_ov080_0212500c",
+      "symbol": "_ZN9daBttBk_c19func_ov080_0212500cEv",
       "address": "0x0212500c",
       "size": "0x00000090",
       "legacy_source": "src/func_ov080_0212500c.cpp",
       "ordinal": 9
     },
     {
-      "symbol": "func_ov080_0212509c",
+      "symbol": "_ZN9daBttBk_c19func_ov080_0212509cEv",
       "address": "0x0212509c",
       "size": "0x0000002c",
       "legacy_source": "src/func_ov080_0212509c.c",
       "ordinal": 10
     },
     {
-      "symbol": "func_ov080_021250c8",
+      "symbol": "_ZN9daBttBk_c19func_ov080_021250c8Ev",
       "address": "0x021250c8",
       "size": "0x0000003c",
       "legacy_source": "src/func_ov080_021250c8.cpp",
       "ordinal": 11
     },
     {
-      "symbol": "func_ov080_02125104",
+      "symbol": "_ZN9daBttBk_c19func_ov080_02125104Ev",
       "address": "0x02125104",
       "size": "0x00000038",
       "legacy_source": "src/func_ov080_02125104.cpp",
       "ordinal": 12
     },
     {
-      "symbol": "func_ov080_0212513c",
+      "symbol": "_ZN9daBttBk_c19func_ov080_0212513cEi",
       "address": "0x0212513c",
       "size": "0x0000001c",
       "legacy_source": "src/func_ov080_0212513c.c",
@@ -172,7 +172,7 @@
   "notes": [
     "Promoted from the gap-free ov080 run 0x02124a20..0x021253b4 (20 complete delinks). The abutting factory daBttBk_c_classInit was folded in afterwards by the 0930c classInit fold (below). RTTI: _ZTS9daBttBk_c at 0x0212815c, _ZTI at 0x02128168 points at _ZTI8dActor_c, vtable preamble word at 0x02128194 is that _ZTI.",
     "The destructor is one out-of-line definition under #pragma defer_codegen off. mwccarm emits D1 then D0 in ROM order and also a D2 with no cartridge home. Vector3's inline destructor is the vague arm9 copy.",
-    "func_ov080_0212513c takes (actor, state). InitResources and func_ov080_02124e60 call it through a one-argument cast: each has just stored 0, and r1 still holds that 0. A written second argument re-emits the mov and DIFFs.",
+    "func_ov080_0212513c is the member daBttBk_c::func_ov080_0212513c(int). InitResources and func_ov080_02124e60 pass 0. That member call matches; the old one-argument cast is gone.",
     "classInit fold (0930c): daBttBk_c_classInit is folded in last, in ROM order, under the file's `#pragma defer_codegen off`, as `return new daBttBk_c();`. The retired one-function source hand-called fBase_c::operator new(888 = 0x378), dActor_c's C2 constructor, this class's vtable store and the four member C1 constructors (Model 0xd4, ShadowModel 0x124, dCcAc_c 0x14c, dBgCh_Actr 0x180); daBttBk_c has no user-declared constructor, so the synthesized one emits the identical sequence and no new compiler-only output. tubuild verify: 21/21 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_btt_bk.c; its credit carries in attribution.json as a path#symbol override."
   ],
   "compiler_only_output": [

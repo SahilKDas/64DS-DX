@@ -298,7 +298,7 @@ Source: `src/game/actors/d_a_krpa.cpp`.
 
 Sources: `src/actors/daTgz_c.cpp`.
 
-## EnemySwitchTag -- include/EnemySwitchTag.h
+## daESwitch_c -- include/EnemySwitchTag.h
 
 The tag sets an `Event` bit while something stands in its collider.
 
@@ -308,9 +308,9 @@ The tag sets an `Event` bit while something stands in its collider.
 | 0x10a | `mHoldTimer` | counts `mHoldDuration` down; at 0 it clears the collider flag and `Event::ClearBit(mEventID)`. |
 | 0x10c | `mIsReusable` | bit 5 of `param1`. Set: the tag re-arms by reloading `mHoldTimer` from `mHoldDuration`. Clear: it marks itself for destruction after firing once. |
 
-Sources: `src/_ZN14EnemySwitchTag13InitResourcesEv.cpp`,
-`src/_ZN14EnemySwitchTag8BehaviorEv.cpp`,
-`src_tu/actors/EnemySpawner+EnemySwitchTag.cpp`.
+Source: `daESwitch_c::InitResources` and `daESwitch_c::Behavior` in
+`src/game/actors/d_a_e_switch.cpp`. The cartridge RTTI spells the class
+`daESwitch_c`; `EnemySwitchTag` remains a compatibility typedef.
 
 ## daDossyCap_c -- include/daDossyCap_c.h
 

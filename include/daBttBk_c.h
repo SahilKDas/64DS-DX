@@ -74,6 +74,20 @@ struct daBttBk_c : dActor_c {
     virtual void OnPendingDestroy();      /* slot 12 */
     virtual s32  OnYoshiTryEat();         /* slot 18 */
     virtual void OnTurnIntoEgg(Player &player); /* slot 19 */
+
+    /* Non-virtual. The first parameter was this actor, so each is a member.
+       The cartridge keeps no English spelling; the ROM address is the name. */
+    void func_ov080_02124acc();
+    void func_ov080_02124c3c();
+    int func_ov080_02124e60();
+    int func_ov080_02124eb0();
+    int func_ov080_02124edc();
+    int func_ov080_02124fec();
+    int func_ov080_0212500c();
+    int func_ov080_0212509c();
+    void func_ov080_021250c8();
+    void func_ov080_02125104();
+    void func_ov080_0212513c(int i);
 };
 
 #ifndef SM64DS_PLATFORM_PC

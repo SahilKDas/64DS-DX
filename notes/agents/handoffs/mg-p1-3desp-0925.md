@@ -61,8 +61,8 @@ This document describes this commit. The queue records its immutable output SHA.
   casts strip the `volatile`: without them mwcc rejects the copy (`illegal operands`).
 - **R6, fixed.** The `zero` temporary is gone; literal zeros match.
 - **R7, fixed.** Ten local redeclarations in `InitResources` repeated `decl_common.h`
-  exactly (`InitialiseVramGlobals`, [func_ov004_020b04d0](../../../src/func_ov004_020b04d0.c), `Deallocate`, `func_02056374`,
-  [func_ov004_020b0cac](../../../src/func_ov004_020b0cac.c), three `data_ov006_*` handles, [data_ov004_020bc880](../../../config/arm9/overlays/ov004/symbols.txt) and
+  exactly (`InitialiseVramGlobals`, [func_ov004_020b04d0](../../../src/minigames/d_s_mg_base.cpp), `Deallocate`, `func_02056374`,
+  [func_ov004_020b0cac](../../../src/minigames/d_s_mg_base.cpp), three `data_ov006_*` handles, [data_ov004_020bc880](../../../config/arm9/overlays/ov004/symbols.txt) and
   [data_ov004_020bc884](../../../config/arm9/overlays/ov004/symbols.txt)). They are deleted. Each symbol keeps a plurality that agrees
   with its definition.
 - **R8, deferred.** The `G2S::GetBG2CharPtr`, `GXS::LoadBGPltt`, `GXS::LoadOBJPltt` and

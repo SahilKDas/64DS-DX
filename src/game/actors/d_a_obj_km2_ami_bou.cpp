@@ -22,8 +22,10 @@
  *   mHeightAng += 0x100 on the u16 is ldrh; Behavior's add is ldrsh
  *   (1 word, this TU). mHeightAng = mHeightAng + 0x100 still differs
  *   by 4 words.
- * Leftover: g_profile_KM2_AMI_BOU is defined outside this file.
  * Leftover: the destructor stays inline so D1 stays above D0.
+ *
+ * Folded 2026-10-01: g_profile_KM2_AMI_BOU now lives in this TU as
+ * AmiBouSpawnInfo. S14 closed; 7/7 MATCH, reloc addend +0 (S24).
  */
 
 #include "daObjKm2_Ami_Bou_c.h"
@@ -54,6 +56,31 @@ extern "C" daObjKm2_Ami_Bou_c *daObjKm2_Ami_Bou_c_classInit()
 {
     return new daObjKm2_Ami_Bou_c();
 }
+
+struct AmiBouSpawnInfo {
+    daObjKm2_Ami_Bou_c *(*classInit)();
+    s16 executePriority; /* +4: also KM2_AMI_BOU registry id 0x008e = 142 */
+    s16 renderPriority;  /* +6 */
+    u32 actorFlags;
+    Fix12i clipOffsetY;
+    Fix12i clipRadius;
+    Fix12i clipDistance;
+    Fix12i farDistance;
+};
+typedef char AmiBouSpawnInfo_size_must_be_0x1c[
+    sizeof(AmiBouSpawnInfo) == 0x1c ? 1 : -1];
+
+// @symbol g_profile_KM2_AMI_BOU
+extern "C" AmiBouSpawnInfo g_profile_KM2_AMI_BOU = {
+    daObjKm2_Ami_Bou_c_classInit,
+    0x008e,
+    0x00d5,
+    2,
+    0x00100000,
+    0x00300000,
+    0x01000000,
+    0
+};
 
 // @symbol _ZN18daObjKm2_Ami_Bou_c13InitResourcesEv
 s32 daObjKm2_Ami_Bou_c::InitResources()

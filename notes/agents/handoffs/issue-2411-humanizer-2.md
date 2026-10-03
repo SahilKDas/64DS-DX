@@ -82,7 +82,7 @@ OneUp's `func_ov002_020af684` no longer has an `int` definition that
 falls through after a `void` call. Its two PMF forwarding helpers also return `void`,
 retaining the player lookup result, null test and actual argument. Key's helper
 and destruction prototype now agree with the existing `void` destruction method;
-Key and PowerStar forwarding declarations agree with their helper definitions.
+Key and daStar_c forwarding declarations agree with their helper definitions.
 Early `return void_expression;` control flow is retained. No arbitrary result,
 assembly, warning suppression, altered address or symbol name was introduced.
 

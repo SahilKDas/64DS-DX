@@ -4,36 +4,34 @@
  * #pragma defer_codegen off lays .text down in source order. The destructor
  * is the key function: the cartridge has D1 below D0 and no D2.
  *
- * Known limits, from this TU:
- * - ModelAnim::SetAnim, dCcAc_c::Init, dBgCh_Actr::Init and
- *   dActor_c::DropShadowRadHeight stay mangled. Each takes Fix12 by value
- *   (notes/mwccarm-codegen.md 6az). dBgCh_Actr::Init's header spells Fix12i,
- *   which mangles as int.
- * - Sound::PlaySub and Particle::System::New stay mangled for the same reason.
- * - Animation file handles and the eight state records stay data_ov085_*.
- *   Each call keeps the extern spelling it already matched under. The static
- *   initializer that owns them is another file. g_profile_MIP stays outside.
- * - Player param1 (+8), mCharacter (+0x6d9) and mStateFlags (+0x6ce) stay
- *   raw offsets. A member load there does not match this TU.
- * - Matrix copies use a local { s32 m[12] }. math/Matrix.h is included before
- *   common.h, so Matrix4x3 embeds Vector3 and a typed copy emits ~Vector3.
- * - The mirror shadow matrix sits at this+0x3e8, in the pad after
- *   mShadowModel2. UpdateMirrorShadow keeps an overlay so the copy stays
- *   a block move. RenderMirrorImage reflects translation X at this+0x340
- *   (mat4x3 + 0x24); indexing that word as m[9] does not match.
- * - Render's material walk stays an int** over modelFile/materials.
- *   BMD_Material +0x20 is pad in the shared header, and the typed loop
- *   does not match.
- * - StateIdleMain still addresses mStateTimer (this+0x100), mTargetAngY
- *   (this+0x424) and the animation base (this+0x350) from a char*. A
- *   named store in that switch does not match.
- * - Behavior's mEatenTimer increment is a (long long)(int) round-trip.
- *   mEatenTimer + 1 changes the function. Animation::Advance offsets from
- *   this+0x350; &mModelAnim + 0x50 costs a word.
- * - StateFleeMain copies the player's position as s32[3]. A three-scalar
- *   struct scalarises; the ROM block-moves.
- * - TestWaterBelow's ground probe is a stack buffer. A dBgCh_Gnd local would
- *   run ~dBgCh_Gnd. clsnY is read at detect[12] (probe + 0x44).
+ * Leftover: calls that take Fix12 by value stay mangled (ModelAnim::SetAnim,
+ *   dCcAc_c::Init, dBgCh_Actr::Init, DropShadowRadHeight, Sound::PlaySub,
+ *   Particle::System::New). dBgCh_Actr::Init's header spells Fix12i, which
+ *   mangles as int. Animation handles and the eight state records stay
+ *   data_ov085_*; their sinit is another file. g_profile_MIP stays outside.
+ *   Matrix copies use a local { s32 m[12] }: Matrix4x3 embeds Vector3, and a
+ *   typed copy emits ~Vector3. StateFleeMain copies the player position
+ *   through V3Blk { s32 w[3] } so the copy stays a block move. TestWaterBelow's
+ *   ground probe stays a stack buffer; clsnY is detect[12] (probe + 0x44).
+ *   UpdateCarriedMatrix still reads the carrier at +0xc8. That word sits in
+ *   dActor_c's pad_0c5, so Player has no name for it. Render and InitResources
+ *   still store the colour at BMD_Material +0x20, which is pad. Render's
+ *   material walk stays an int** over modelFile/materials.
+ *   Naming that walk (mModelAnim.data.modelFile and numMaterials) shrinks
+ *   Render from 0xdc to 0xd8.
+ *   UpdateMirrorShadow keeps the Obj overlay. Spelling the position and
+ *   mShadowModel2 by name, with a Mtx43* at this+0x3e8, stays 0x128 but
+ *   34 words differ. The matrix lives in pad_3e8.
+ *   StateSaveTalkMain's two `player->mStateFlags &= (unsigned short)~0x800`
+ *   updates grow the function from 0x1a0 to 0x1ac. The unsigned-short
+ *   pointer at player+0x6ce matches. StateCaughtMain's three
+ *   `pl->mStateFlags = (u16)(pl->mStateFlags |/~ 0x800)` updates shrink
+ *   it from 0x5f4 to 0x5e4; the same pointer form matches.
+ *   A load of mStateFlags (StateReleasedMain) and `|=` (Behavior) do match.
+ *   StateIdleMain's `mTargetAngY = (s16)(mTargetAngY + delta)` shrinks the
+ *   function from 0x338 to 0x32c. The pointer update through &mTargetAngY
+ *   matches. Behavior's `mEatenTimer = mEatenTimer + 1` shrinks it from
+ *   0x5cc to 0x5c0. The (long long)(int)&mEatenTimer byte update matches.
  */
 
 #include "daMip_c.h"
@@ -46,6 +44,7 @@
 #include "Message.h"
 #include "SaveData.h"
 #include "dBgCh_Gnd.h"
+#include "daObj_Mip_Key_c.h"
 
 bool ApproachLinear(short &value, short target, short step);
 
@@ -369,7 +368,7 @@ int daMip_c::StateReleasedMain()
         }
         obj = mTalkingPlayer;
         if (obj != 0) {
-            if (*(unsigned char *)((char *)obj + 0x706) != 0) {
+            if (obj->mIsUnderwater != 0) {
                 mTalkingPlayer = 0;
             }
         }
@@ -377,7 +376,7 @@ int daMip_c::StateReleasedMain()
 
     cp = ClosestPlayer();
     if (cp != 0) {
-        h = *(unsigned short *)((char *)cp + 0x600 + 0xce);
+        h = cp->mStateFlags;
         h = (unsigned short)(h & 0x800);
         if (h != 0)
             return 1;
@@ -406,14 +405,12 @@ int daMip_c::StateReleasedInit()
     struct G { int w[2]; };
     extern struct G data_ov085_021305c0;
 
-    int *a = (int *)&mdCcAc_c.vulnFlags;
-    int *b = (int *)&mdCcAc_c.flags;
     mVertAccel = -0x1000;
     unk_426 = 1;
-    *a &= ~0x1000;
-    *b |= 0x4000000;
+    mdCcAc_c.vulnFlags &= ~0x1000;
+    mdCcAc_c.flags |= 0x4000000;
     mdCcAc_c.radius = 0x78000;
-    *a &= ~0x8000;
+    mdCcAc_c.vulnFlags &= ~0x8000;
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, (void *)data_ov085_021305c0.w[1], 0, 0x1000, 0);
     return 1;
 }
@@ -483,8 +480,8 @@ int daMip_c::StateCaughtMain()
 
                     if (mRabbitId == 7)
                         goto msg_13c;
-                    if (func_02013890(mRabbitId, *(s32 *)((char *)pl + 8)) == 0) {
-                        if (*(s32 *)((char *)pl + 8) != 3) {
+                    if (func_02013890(mRabbitId, (s32)pl->param1) == 0) {
+                        if ((s32)pl->param1 != 3) {
                             Message::PrepareTalk();
                             {
                                 int z = soundId;
@@ -492,11 +489,11 @@ int daMip_c::StateCaughtMain()
                             }
                             if (mRabbitId == 6)
                                 goto msg_123a;
-                            msg = (s16)(*(s32 *)((char *)pl + 8) + 0x11b);
+                            msg = (s16)((s32)pl->param1 + 0x11b);
                             soundId = 0x163;
                             goto have_msg;
                         msg_123a:
-                            msg = (s16)(*(s32 *)((char *)pl + 8) + 0x123);
+                            msg = (s16)((s32)pl->param1 + 0x123);
                             soundId = 0x161;
                             goto have_msg;
                         }
@@ -506,7 +503,7 @@ int daMip_c::StateCaughtMain()
                             msg = 0x12c;
                         goto have_msg;
                     } else {
-                        if (*(s32 *)((char *)pl + 8) != 3) {
+                        if ((s32)pl->param1 != 3) {
                             Message::PrepareTalk();
                             if (mIsGlowing == 0) {
                                 {
@@ -515,11 +512,11 @@ int daMip_c::StateCaughtMain()
                                 }
                                 if (mRabbitId == 6)
                                     goto msg_127a;
-                                msg = (s16)(*(s32 *)((char *)pl + 8) + 0x11f);
+                                msg = (s16)((s32)pl->param1 + 0x11f);
                                 soundId = 0x163;
                                 goto have_msg;
                             msg_127a:
-                                msg = (s16)(*(s32 *)((char *)pl + 8) + 0x127);
+                                msg = (s16)((s32)pl->param1 + 0x127);
                                 soundId = 0x161;
                             } else {
                                 _ZN5Sound7PlaySubEjjj5Fix12IiEb(0x27, 0x12, 0x7f, 0x15ccc, soundId);
@@ -573,7 +570,7 @@ int daMip_c::StateCaughtMain()
         if (data_0209d660 != 0) {
             if (data_0209d6bc == 9) {
                 if (mRabbitId != 7) {
-                    if (func_02013890(mRabbitId, *(s32 *)((char *)pl + 8)) != 0) {
+                    if (func_02013890(mRabbitId, (s32)pl->param1) != 0) {
                         if (mIsGlowing == 0)
                             goto talk_active_done;
                     }
@@ -589,10 +586,7 @@ int daMip_c::StateCaughtMain()
     }
 
     pl->DropActor();
-    {
-        s32 *p128 = (s32 *)&mdCcAc_c.flags;
-        *p128 = *p128 & ~2;
-    }
+    mdCcAc_c.flags = mdCcAc_c.flags & ~2;
     mHorzSpeed = 0;
 
     if (mRabbitId == 7) {
@@ -603,9 +597,9 @@ int daMip_c::StateCaughtMain()
         {
             s8 cc = mAreaId;
             int m1 = -1;
-            void *spawned = dActor_c::Spawn(0xe5, mRabbitId, *(::Vector3 *)&pos7, (Vector3_16 *)&mAngleX, cc, m1);
+            dActor_c *spawned = dActor_c::Spawn(0xe5, mRabbitId, *(::Vector3 *)&pos7, (Vector3_16 *)&mAngleX, cc, m1);
             if (spawned != 0)
-                *(s32 *)((char *)spawned + 0x190) = uniqueID;
+                ((daObj_Mip_Key_c *)spawned)->unk_190 = uniqueID;
         }
         func_02012790(0xa);
         mTalkState = 0;
@@ -614,7 +608,7 @@ int daMip_c::StateCaughtMain()
         return 1;
     }
 
-    if (func_02013890(mRabbitId, *(s32 *)((char *)pl + 8)) != 0) {
+    if (func_02013890(mRabbitId, (s32)pl->param1) != 0) {
         if (mIsGlowing == 0)
             goto no_spawn;
         if (SaveData::NumGlowingRabbitsFound() != 7)
@@ -634,9 +628,9 @@ int daMip_c::StateCaughtMain()
             {
                 s8 cc = mAreaId;
                 int m1 = -1;
-                void *spawned = dActor_c::Spawn(0xe5, param, *(::Vector3 *)&posR, 0, cc, m1);
+                dActor_c *spawned = dActor_c::Spawn(0xe5, param, *(::Vector3 *)&posR, 0, cc, m1);
                 if (spawned != 0)
-                    *(s32 *)((char *)spawned + 0x190) = uniqueID;
+                    ((daObj_Mip_Key_c *)spawned)->unk_190 = uniqueID;
             }
             func_02012790(0xa);
             mTalkState = 0;
@@ -699,7 +693,7 @@ int daMip_c::StateRestMain()
 {
     extern int data_ov085_021306cc[];
 
-    if (((Animation *)((char *)this + 0x350))->Finished() != 0) {
+    if (mModelAnim.Finished() != 0) {
         SetState(data_ov085_021306cc);
     }
     return 1;
@@ -741,7 +735,7 @@ int daMip_c::StateFleeMain()
     pl = ClosestPlayer();
     if (pl != 0)
     {
-      v = *((struct V3Blk *)((char *)pl + 0x5c));
+      v = *((struct V3Blk *)&pl->mPosX);
       if (Vec3_Dist((struct Vector3 *)&mPosX, &v) > 0x4b0000)
       {
         SetState(data_ov085_0213069c);
@@ -901,7 +895,7 @@ int daMip_c::StateStartleMain()
 {
     extern int data_ov085_0213067c[];
 
-    if (((Animation *)((char *)this + 0x350))->Finished() != 0)
+    if (mModelAnim.Finished() != 0)
         SetState(data_ov085_0213067c);
     return 1;
 }
@@ -918,8 +912,7 @@ int daMip_c::StateStartleInit()
 // @symbol _ZN7daMip_c13StateIdleMainEv
 /* Startle when the closest player comes inside 0x3e8000 from below.
    Otherwise cycle the idle and drift facing around the spot StateIdleInit
-   stored. mStateTimer and mTargetAngY stay addressed from this: a named
-   store in this switch does not match. */
+   stored. */
 int daMip_c::StateIdleMain()
 {
     extern int data_0209e650[];
@@ -928,9 +921,8 @@ int daMip_c::StateIdleMain()
     extern void *data_ov085_021305b0[];
     extern void *data_ov085_021305c0[];
     extern void *data_ov085_021305c8[];
-    char *c = (char *)this;
 
-    char *player = (char *)ClosestPlayer();
+    Player *player = ClosestPlayer();
     if (player == 0) return 1;
 
     if (TestWaterBelow() == 1) {
@@ -949,14 +941,14 @@ int daMip_c::StateIdleMain()
     }
 
     Vector3 pp;
-    Vector3* ppp = (Vector3*)(player + 0x5c);
+    Vector3* ppp = (Vector3*)&player->mPosX;
     pp.x = ppp->x;
     pp.y = ppp->y;
     pp.z = ppp->z;
     int lim = 0x3e8000;
     if (mRabbitId == 7) lim = 0x2ee000;
 
-    if (Vec3_HorzDist((Vector3*)(c + 0x5c), &pp) < lim) {
+    if (Vec3_HorzDist((Vector3*)&mPosX, &pp) < lim) {
         int t = mRabbitId;
         int cond = 0;
         if (t == 7 || t == 1 ||
@@ -973,41 +965,43 @@ int daMip_c::StateIdleMain()
 
     u32 r = (u32)RandomIntInternal(data_0209e650) >> 8;
     if (mRabbitId == 1) {
-        if (Vec3_HorzDist((Vector3*)(c + 0x5c), &pp) < 0x4b0000) {
-            mTargetAngY = Vec3_HorzAngle((Vector3*)(c + 0x5c), &pp) + 0x8000;
-            *(s16*)(c + 0x100) = 0x1e;
+        if (Vec3_HorzDist((Vector3*)&mPosX, &pp) < 0x4b0000) {
+            mTargetAngY = Vec3_HorzAngle((Vector3*)&mPosX, &pp) + 0x8000;
+            mStateTimer = 0x1e;
         }
     }
 
-    if (((Animation *)(c + 0x350))->Finished() != 0) {
+    if (mModelAnim.Finished() != 0) {
         switch (mActionStep) {
         case 1:
             mHorzSpeed = 0x4000;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, data_ov085_021305d0[1], 0x40000000, 0x1000, 0);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov085_021305d0[1], 0x40000000, 0x1000, 0);
             (mActionStep)++;
             break;
         case 2:
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, data_ov085_021305b0[1], 0x40000000, 0x1000, 0);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov085_021305b0[1], 0x40000000, 0x1000, 0);
             mHorzSpeed = 0;
             (mActionStep)++;
             break;
         case 3:
-            *(s16*)(c + 0x100) = (r & 0x1f) + 0x1e;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, data_ov085_021305c0[1], 0, 0x1000, 0);
+            mStateTimer = (s16)((r & 0x1f) + 0x1e);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov085_021305c0[1], 0, 0x1000, 0);
             mActionStep = 0;
             break;
         }
     }
 
-    if (mActionStep == 0 && *(u16*)(c + 0x100) == 0) {
-        mTargetAngY = Vec3_HorzAngle((Vector3*)(c + 0x5c), (Vector3*)(c + 0x42c));
-        s16* ang = (s16*)(c + 0x424);
-        *ang = *ang + (0x1800 - ((r & 3) << 12));
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, data_ov085_021305c8[1], 0x40000000, 0x1000, 0);
+    if (mActionStep == 0 && *(u16 *)&mStateTimer == 0) {
+        mTargetAngY = Vec3_HorzAngle((Vector3*)&mPosX, (Vector3*)&mIdlePosX);
+        {
+            s16 *ang = &mTargetAngY;
+            *ang = *ang + (0x1800 - ((r & 3) << 12));
+        }
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov085_021305c8[1], 0x40000000, 0x1000, 0);
         mActionStep = 1;
     }
 
-    ApproachAngle((short*)(c + 0x94), mTargetAngY, 1, 0x500, 0x500);
+    ApproachAngle(&mPrevAngleY, mTargetAngY, 1, 0x500, 0x500);
     return 1;
 }
 
@@ -1078,7 +1072,7 @@ void daMip_c::UpdateCarriedMatrix()
     if (mTalkingPlayer->IsFrontSliding() || mTalkingPlayer->LostGrabbedObject()) {
         idx = 1;
     }
-    if (*(int *)((char *)mTalkingPlayer + 8) == 2) {
+    if ((int)mTalkingPlayer->param1 == 2) {
         idx = (idx + 2) & 0xff;
     }
     res = UpdateCarry(*mTalkingPlayer, *(Vector3 *)(data_ov085_021306ec + idx * 0xc));
@@ -1092,7 +1086,8 @@ void daMip_c::UpdateCarriedMatrix()
 // @symbol _ZN7daMip_c18UpdateMirrorShadowEv
 /* Second shadow, on the far side of the mirror plane at x = 0x1086000.
    The matrix is the 0x30 bytes at this+0x3e8, in the pad after mShadowModel2.
-   A named member store does not match; the overlay keeps the block move. */
+   Naming mPosX and mShadowModel2, with the matrix as its own Mtx43*, stays
+   the same size and differs by 34 words. The overlay keeps the block move. */
 void daMip_c::UpdateMirrorShadow()
 {
     struct Mtx43 { s32 m[12]; };
@@ -1205,27 +1200,27 @@ int daMip_c::Render()
 }
 
 // @symbol _ZN7daMip_c17RenderMirrorImageEv
-/* Mirrored second copy. 0x340 is mat4x3 + 0x24, the translation X.
-   0x421800 is (0x1086000 >> 3) << 1, so the subtract reflects that
-   component across UpdateMirrorShadow's plane. Indexing m[9] does not match. */
+/* Mirrored second copy. mat4x3.t is the translation. 0x421800 is
+   (0x1086000 >> 3) << 1, so the subtract reflects X across
+   UpdateMirrorShadow's plane. The saved and restored matrix is a flat
+   { s32 m[12] } so the copy stays a block move. */
 void daMip_c::RenderMirrorImage()
 {
     struct Mtx43 { s32 m[12]; };
     extern int data_020a0e68;
-    char *c = (char *)this;
 
     struct Mtx43 tmp;
-    tmp = *(struct Mtx43 *)(c + 0x31c);
-    *(int *)(c + 0x340) = 0x421800 - *(int *)(c + 0x340);
+    tmp = *(struct Mtx43 *)&mModelAnim.mat4x3;
+    mModelAnim.mat4x3.t.x = 0x421800 - mModelAnim.mat4x3.t.x;
     func_0203c178(&data_020a0e68, -0x1000, 0x1000, 0x1000);
-    MulMat3x3Mat3x3((void *)(c + 0x31c), &data_020a0e68, (void *)(c + 0x31c));
-    func_02016acc((void *)(c + 0x300), 0x80);
-    func_02016b24((void *)(c + 0x300), 0x40);
-    ((ModelAnim *)((void *)(c + 0x300)))->ModelAnim::Render((const Vector3 *)(c + 0x80));
+    MulMat3x3Mat3x3(&mModelAnim.mat4x3, &data_020a0e68, &mModelAnim.mat4x3);
+    func_02016acc(&mModelAnim, 0x80);
+    func_02016b24(&mModelAnim, 0x40);
+    mModelAnim.ModelAnim::Render((const Vector3 *)&mScaleX);
     mModelAnim.ApplyOpacity(0xff, 0);
-    func_02016b24((void *)(c + 0x300), 0x80);
-    func_02016acc((void *)(c + 0x300), 0x40);
-    *(struct Mtx43 *)(c + 0x31c) = tmp;
+    func_02016b24(&mModelAnim, 0x80);
+    func_02016acc(&mModelAnim, 0x40);
+    *(struct Mtx43 *)&mModelAnim.mat4x3 = tmp;
 }
 
 // @symbol _ZN7daMip_c8BehaviorEv
@@ -1249,21 +1244,17 @@ void daMip_c::RenderMirrorImage()
  * The block before Animation::Advance is the ARM/Itanium pointer-to-member
  * sequence written out -- adjustment word, virtual bit, vtable index or direct
  * address -- run on whatever mState points at. It is kept verbatim because there
- * is no recovered type for the descriptor to call a member through.
+ * is no recovered type for the descriptor to call a member through. `c` is the
+ * char* base that sequence adds the adjustment to.
  *
- * `((Animation *)((char *)this + 0x350))->Advance()` must offset from THIS.
- * 0x350 is mModelAnim's Animation base at +0x50; `(char *)&mModelAnim + 0x50`
- * costs a word.
- *
- * The `(long long)(int)` round-trip on c+0x42a (mEatenTimer) is measured:
- * replacing it with `c + 0x42a` or `mEatenTimer = mEatenTimer + 1` size-DIFFs
- * Behavior (0x5cc). The same round-trip on c+0x448 is a no-op and was dropped. */
+ * mEatenTimer's increment is a byte update through (long long)(int)&mEatenTimer.
+ * `mEatenTimer = mEatenTimer + 1` shrinks Behavior from 0x5cc to 0x5c0. */
 int daMip_c::Behavior()
 {
     /* A LOCAL COORDINATE TRIPLE, NOT A Vector3 OBJECT. Vector3 declares a
        destructor (see include/types.h -- the ROM's __cxa_vec_cleanup calls prove the
        type has one), so a Vector3 local would be destroyed at scope exit and this
-       function would come out 8 bytes long. The ROM emits no cleanup for either of
+       function would come out 8 bytes longer. The ROM emits no cleanup for either of
        these, which is itself the evidence that they were never Vector3s: they are
        scratch x/y/z the code fills and reads back. */
     typedef volatile struct { Fix12i x, y, z; } Vec3Scratch;
@@ -1291,7 +1282,7 @@ int daMip_c::Behavior()
         r0p = ClosestPlayer();
         if (r0p == 0)
             return 1;
-        if (!(data_0209caa0[2] & 0x20000) || mCharacterId != *(u8*)((char*)r0p + 0x6d9)) {
+        if (!(data_0209caa0[2] & 0x20000) || mCharacterId != ((Player *)r0p)->mCharacter) {
             mIsDisabled = 1;
             return 1;
         }
@@ -1329,7 +1320,7 @@ int daMip_c::Behavior()
                         Message::PrepareTalk();
                         t = mRabbitId;
                         if (t != 7) {
-                            if (func_02013890(t, *(s32*)((char*)temp_r4 + 8)) == 0) {
+                            if (func_02013890(t, (s32)((Player *)temp_r4)->param1) == 0) {
                                 _ZN5Sound7PlaySubEjjj5Fix12IiEb(0x27, 0x12, 0x7f, 0x15ccc, 0);
                                 if (mRabbitId != 6) { var_r6 = 0x162; var_r2 = 0x11e; }
                                 else { var_r6 = 0x160; var_r2 = 0x126; }
@@ -1354,7 +1345,7 @@ int daMip_c::Behavior()
                     } else if (temp_r1 == 1 && ((Player *)temp_r4)->GetTalkState() == -1) {
                         ((Player *)temp_r4)->DropActor();
                         mTalkState = 2;
-                        *(u16*)((char*)temp_r4 + 0x6ce) |= 0x800;
+                        ((Player *)temp_r4)->mStateFlags |= 0x800;
                     }
                 }
             }
@@ -1370,7 +1361,7 @@ int daMip_c::Behavior()
                 mdCcAc_c.Update();
         }
         if (mEatenByYoshi == 1) {
-            *(u8*)((long long)(int)(c + 0x42a)) = *(u8*)((long long)(int)(c + 0x42a)) + 1;
+            *(u8 *)((long long)(int)&mEatenTimer) = *(u8 *)((long long)(int)&mEatenTimer) + 1;
             if (mEatenTimer > 0x96) {
                 mEatenByYoshi = 0;
                 mEatenTimer = 0;
@@ -1412,7 +1403,7 @@ int daMip_c::Behavior()
         }
     }
 
-    ((Animation *)(c + 0x350))->Advance();
+    mModelAnim.Advance();
 
     {
         int v = (mFlags & 0x4000) ? 1 : 0;
@@ -1515,10 +1506,10 @@ check18:
 skip17:
     mVertAccel = -0x1000;
     mTerminalVelocity = -0x1e000;
-    _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, ((char*)this), 0x50000, 0x64000, 0xb00004, 0x9000);
+    _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, this, 0x50000, 0x64000, 0xb00004, 0x9000);
     mTalkingPlayer = 0;
     mModelAnim.speed = 0x1000;
-    _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, ((char*)this), 0x28000, 0x28000, 0, 0);
+    _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, this, 0x28000, 0x28000, 0, 0);
     {
         PathPtr path;
         path.FromID(mPathId);
@@ -1543,7 +1534,7 @@ skip17:
     if (player == 0)
         return 0;
     if (data_0209f2f8 != 0x32) {
-        if (mCharacterId != *(u8*)((char*)player + 0x6d9))
+        if (mCharacterId != ((Player *)player)->mCharacter)
             return 0;
     }
 
@@ -1563,13 +1554,13 @@ block_26:
 
     {
         int v;
-        v = *(s32*)((char*)closest + 8);
+        v = (s32)((Player *)closest)->param1;
         if (data_0209f2f8 == 0x32)
             v = 1;
         if (func_02013890(mRabbitId, v) != 0 && data_ov085_021305ac < 8) {
             u32 rnd = RandomIntInternal(&data_0209e650) >> 8;
             if (NumStars() >= 0x51) {
-                if (*(s32*)((char*)closest + 8) == 3) {
+                if ((s32)((Player *)closest)->param1 == 3) {
                     if ((rnd & 0xf) == 0)
                         mColorVariant = 5;
                 } else {
@@ -1577,7 +1568,7 @@ block_26:
                         mColorVariant = 5;
                 }
             } else if (NumStars() >= 0x28) {
-                if (*(s32*)((char*)closest + 8) == 3) {
+                if ((s32)((Player *)closest)->param1 == 3) {
                     if ((rnd & 0x1f) == 0)
                         mColorVariant = 5;
                 } else {

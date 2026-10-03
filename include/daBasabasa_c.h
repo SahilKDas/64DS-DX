@@ -72,6 +72,10 @@ struct daBasabasa_c : dEnemyBase_c {
     void OnPendingDestroy();
     int Render();
 
+    /* The address is the name. The first argument is this swoop. */
+    void func_ov065_0211704c();
+    void func_ov065_02117994();
+
     /* Coined names. SetState enters a state; the four states follow, each
        as its enter and execute pair. */
     int SetState(State *state);

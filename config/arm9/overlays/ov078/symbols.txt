@@ -93,6 +93,7 @@ _ZTI12daBombking_c kind:data(any) addr:0x02126e0c
 _ZTS12daBombking_c kind:data(any) addr:0x02126e18
 g_profile_BOMBKING kind:data(any) addr:0x02126e28 ambiguous
 _ZTV12daBombking_c kind:data(any) addr:0x02126e4c
+data_ov078_02126ec8 kind:data(any) addr:0x02126ec8
 data_ov078_02126ee0 kind:bss addr:0x02126ee0
 data_ov078_02126ee8 kind:bss addr:0x02126ee8
 data_ov078_02126ef0 kind:bss addr:0x02126ef0

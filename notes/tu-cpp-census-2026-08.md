@@ -67,7 +67,7 @@ Gates every one passed: >=2 members; both boundaries high or module-edge; carrie
 
 EMPIRICAL SIZE CLIFF: 80% of 1-4-member TUs compiled; **0 of 159 with >=10 members did**. All-or-nothing.
 
-19 of the 173 are MULTI-CLASS (MegaMushroom+OneUpMushroom 38 files; BowserPuzzleManager+Piece; Boo family; CccArena+CccBigIce+CccSmallIce). Ship each as ONE file or not at all.
+19 of the 173 are MULTI-CLASS (MegaMushroom+OneUpMushroom 38 files; daObjFl_Coin_c+Piece; Boo family; CccArena+CccBigIce+CccSmallIce). Ship each as ONE file or not at all.
 
 Composition: 171/173 are mixed `.c`+`.cpp`, 2 all-`.cpp`, 0 all-`.c`. 811 `.c` + 1,194 `.cpp` members.
 - 155/173 contain a member wrapped in an `extern "C" { }` block — `tubuild.py create` REFUSES those ("scanned to end of file without finding a function body"); hand-assemble via `tubuild.build_manifest_entry`.

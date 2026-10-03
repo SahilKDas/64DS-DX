@@ -167,7 +167,7 @@ registers is a `volatile`-qualified pointer, so the criterion failed the code th
 had no alternative:
 
 ```sh
-src/_ZN8dScene_c22ResetHardwareRegistersEv.cpp   74 volatile hits, all 0x0400xxxx
+src/actors/dScene_c.cpp (ResetHardwareRegisters)  74 volatile hits, all 0x0400xxxx
 src/_ZN2GX13SetBankForTexEt.cpp                  25 volatile hits, all VRAM banks
 src/_ZN3G2x12SetBGyAffineEPVtP9Matrix2x2iiii.cpp  the register block is a PARAMETER
 ```

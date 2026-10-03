@@ -6,7 +6,7 @@
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "contiguous linker run: 0x0213269c..0x02132fe8, 12 function(s), all complete delinks with no hole. build/tu_map.json names the same run ov090/daManta_c+daMenbo_c because rtti_vtables.py reads the words at 0x021341e4 and 0x021341ec as extra daMenbo_c vtable slots. Those words are not slots: daMenbo_c's table is 31 slots and ends at 0x021341e4, and both words relocate to func_ov090_021327e4 and func_ov090_02132a58 in this run. No daMenbo_c function is in the span.",
+    "contiguous linker run: 0x0213269c..0x02132fe8, 12 function(s), all complete delinks with no hole. build/tu_map.json names the same run ov090/daManta_c+daMenbo_c because rtti_vtables.py reads the words at 0x021341e4 and 0x021341ec as extra daMenbo_c vtable slots. Those words are not slots: daMenbo_c's table is 31 slots and ends at 0x021341e4, and both words relocate to _ZN9daManta_c19func_ov090_021327e4Ev and _ZN9daManta_c19func_ov090_02132a58Ev in this run. No daMenbo_c function is in the span.",
     "class label: daManta_c. Cartridge type name at ov090:0x021341f4 is the bytes 9daManta_c.",
     "daManta_c_classInit at 0x02132fe8..0x02133034 abuts this run and is left in src/d_a_manta.c.",
     "module sinit corroboration: 4 sinit(s) / 4 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, not narrowed to this TU).",
@@ -35,35 +35,35 @@
       "ordinal": 1
     },
     {
-      "symbol": "func_ov090_02132730",
+      "symbol": "_ZN9daManta_c19func_ov090_02132730Ev",
       "address": "0x02132730",
       "size": "0x000000b4",
       "legacy_source": "src/func_ov090_02132730.cpp",
       "ordinal": 2
     },
     {
-      "symbol": "func_ov090_021327e4",
+      "symbol": "_ZN9daManta_c19func_ov090_021327e4Ev",
       "address": "0x021327e4",
       "size": "0x00000274",
       "legacy_source": "src/func_ov090_021327e4.cpp",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov090_02132a58",
+      "symbol": "_ZN9daManta_c19func_ov090_02132a58Ev",
       "address": "0x02132a58",
       "size": "0x0000006c",
       "legacy_source": "src/func_ov090_02132a58.cpp",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov090_02132ac4",
+      "symbol": "_ZN9daManta_c19func_ov090_02132ac4EP10MantaState",
       "address": "0x02132ac4",
       "size": "0x00000050",
       "legacy_source": "src/func_ov090_02132ac4.cpp",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov090_02132b14",
+      "symbol": "_ZN9daManta_c19func_ov090_02132b14Ev",
       "address": "0x02132b14",
       "size": "0x00000108",
       "legacy_source": "src/func_ov090_02132b14.c",

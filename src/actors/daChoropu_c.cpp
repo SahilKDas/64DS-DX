@@ -15,23 +15,61 @@
  * and is deadstripped (policy rows in the TU manifest). The two classes'
  * members are interleaved in the ROM, and so they are here.
  *
- * daChoropu_c::Behavior dispatches through the state table at
- * data_ov080_02128438 -- one pointer-to-member per state, indexed by mState.
- * The table is .bss, filled outside this span; the state bodies are among
- * the raw-offset helpers below.
+ * What the actors do, as far as these functions show. A daChoropu_c is a mole that
+ * stays underground until the nearest Player is 250..1500 units away (horizontal
+ * distance) and it holds the turn, then emerges, throws a daChoro_Rock_c (or waits),
+ * leaps, and dives back, passing the turn to another mole of its group. Moles
+ * gather into a group through param1 (see InitResources); the group's total of
+ * knock-backs (mTimesHit) is tallied over the mole and up to four partners, and the
+ * knock-back that finds the tally at 7 spawns a 1-Up mushroom (actor 0x114,
+ * ONEUPKINOKO) and pins that mole's mTimesHit at 8. A hit that matches the
+ * vulnerability mask, a stomp, or a Metal or Mega Player knocks the mole back
+ * underground; other Player contact hurts the Player, except a Vanish Player, which has
+ * no effect (func_ov080_02124208).
  *
- * Leftover (still to deslop; each change needs a rematch):
- *  - the eleven func_ov080_* helpers take a raw `char *` and reach fields by
- *    offset; they are state/member bodies whose real names and member form
- *    are not yet recovered (same shape as the daBttBk_c TU);
+ * daChoropu_c::Behavior dispatches through the six-row state table at
+ * data_ov080_02128438 -- one pointer-to-member per state, indexed by mState. The
+ * table is .bss, filled by __sinit_ov080_021278c0 from six records in .data
+ * (the row-to-record order and each state's handler are in the table comment in
+ * include/daChoropu_c.h). The state names there (SETUP, HIDDEN, EMERGE, THROW_ROCK,
+ * WAIT, LEAP) say what each handler does; they are not labels from the cartridge.
+ *
+ * Helpers: func_ov080_02124088 knocks the mole underground, func_ov080_02124208
+ * reacts to contact, func_ov080_02124360 passes the turn, func_ov080_021243d8 and
+ * func_ov080_02124418 rebuild the model matrices. All eleven are unmangled
+ * extern "C" and take the class pointer.
+ *
+ * Leftover (each change needs a rematch):
  *  - calls that pass Fix12<int> by value (ModelAnim::SetAnim, dCcAc_c::Init,
  *    dBgCh_Actr::Init, Player::Hurt, Particle::System::New/NewSimple) are
  *    still spelled as mangled extern "C" calls: the headers declare those
  *    parameters as Fix12i (a plain s32), so a member call would mangle to a
- *    symbol the ROM does not have;
- *  - LAUND() keeps three field addresses opaque in func_ov080_02124088;
+ *    symbol the ROM does not have; dActor_c::Spawn from the Throw
+ *    handler and from the 1-Up spawn in func_ov080_02124088 is also still the mangled
+ *    call (the odd `py ? 0x137 : 0x137` id expression is Throw-only, and the match
+ *    needs it);
+ *  - LAUND() keeps three field addresses opaque in func_ov080_02124088 (the
+ *    cylinder flags, mFlags and mTimesHit);
+ *  - a few reads keep a cast the ROM's instruction choice needs: mAngleX/Y/Z are read
+ *    as unsigned short in the Throw state, and mHasTurn as signed char in Hidden;
  *  - data_ov080_021283d0..021283e8 are still typed `int[]` (they are
- *    SharedFilePtr animation slots -- data_ov080_0212766c points at them).
+ *    SharedFilePtr animation slots -- data_ov080_0212766c points at them); word 1
+ *    of each is the loaded animation file that ModelAnim::SetAnim takes.
+ *    Files: 021283c0 = 0x2d1 (mole model), 021283c8 = 0x2d6 (rock model),
+ *    021283e8 = 0x2d2, 021283d0 = 0x2d3, 021283d8 = 0x2d4, 021283e0 = 0x2d5
+ *    (the ids __sinit_ov080_021278c0 constructs them with);
+ *  - the SetAnim flag word is 0 in InitResources but 0x40000000 in every state
+ *    handler; what that bit does is not recovered;
+ *  - the collision flag words (0x200000 for the mole, 0x200004 for the rock) and the
+ *    Player::Hurt arguments (2, 0xc000, 1, 0, 1) and (1, 0xc000, 1, 0, 1) are not
+ *    decoded;
+ *  - the sound ids (0xd2 throw, 0xd5 knocked back, 0x116 emerge, 0x1d Mega kill) and
+ *    particle effect ids (0x29, 0x2a, 0x2b) are only named by when they fire; which
+ *    banks and effects they are is not recovered;
+ *  - pad_0d0 (4 bytes at 0xd0 in daChoropu_c) is untouched by any function here;
+ *  - the tables data_ov080_0212767c (Leap cylinder heights) and data_ov080_021276c4
+ *    (Emerge cylinder heights) are read through int arrays and described in
+ *    the handler comments; the hit-flag mask 0x66fe0 is spelled as a literal.
  *
  * The registry factories daChoro_Rock_c_classInit (0x02124998) and
  * daChoropu_c_classInit (0x021249e0) come last, in ROM order. Neither class
@@ -55,21 +93,12 @@ struct ChoropuStateRow { ChoropuStateFn fn[1]; };
 #define LAUND(p) ((void*)((((long long)(int)(p)))))
 
 extern "C" {
-void  _ZN9Animation7AdvanceEv(void *anim);
-int   _ZN9Animation8FinishedEv(void *anim);
 void  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *self, void *file, int a, int b, unsigned int c);
 void  _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned int id, int x, int y, int z);
 unsigned int _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
     unsigned int a, unsigned int b, int x, int y, int z, void *vel, void *cb);
 void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned int id, unsigned int param,
     const Vector3 &pos, const Vector3_16 *ang, int area, int unk);
-void *_ZN8dActor_c10FindWithIDEj(unsigned int id);
-dActor_c *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned int id, dActor_c *after);
-char *_ZN8dActor_c13ClosestPlayerEv(void *self);
-int   _ZN8dActor_c13DistToCPlayerEv(void *self);
-void  _ZN8dActor_c10PoofDustAtERK7Vector3(void *self, const Vector3 &v);
-int   _ZN8dActor_c16JumpedOnByPlayerER5dCc_cR6Player(void *self, void *clsn, void *player);
-void  _ZN6Player16IncMegaKillCountEv(void *player);
 void  _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *player, void *pos, unsigned int a, int b,
     unsigned int d, unsigned int e, unsigned int f);
 void  _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void *self, void *actor, int r, int h,
@@ -83,11 +112,11 @@ void  Matrix4x3_FromRotationY(void *m, int ang);
 void  func_0201267c(unsigned int id, const void *pos);
 void  func_02012694(int a, void *p);
 
-void *func_ov080_02124360(char *c);
-void  func_ov080_02124088(char *c);
-void  func_ov080_02124208(char *c);
-void  func_ov080_021243d8(char *t);
-void  func_ov080_02124418(char *t);
+void *func_ov080_02124360(daChoropu_c *c);
+void  func_ov080_02124088(daChoropu_c *c);
+void  func_ov080_02124208(daChoropu_c *c);
+void  func_ov080_021243d8(daChoropu_c *t);
+void  func_ov080_02124418(daChoro_Rock_c *t);
 }
 
 extern int data_0209e650;
@@ -117,146 +146,193 @@ daChoro_Rock_c::~daChoro_Rock_c()
 }
 
 // @symbol _ZN11daChoropu_c16OnAimedAtWithEggEv
+/* Returns the constant 0x28000 (40.0 read as a Fix12). What the caller does with it is
+ * not recovered here. */
 s32 daChoropu_c::OnAimedAtWithEgg()
 {
     return 0x28000;
 }
 
 // @symbol func_ov080_02123860
-extern "C" void func_ov080_02123860(char *self)
+/* State 5 (Leap) update handler (table row 5, data_ov080_02127f90).
+ *
+ * Animation file 0x2d2 (data_ov080_021283e8). The collision cylinder's height follows
+ * a table of whole units indexed by frame (data_ov080_0212767c, 18 words: 90, 78,
+ * 62, 116, 176, 228, 252, 264, 288, 288, 288, 248, 208, 128, 32, 0, 0, 0; frames 15 to 17
+ * read 0, and the handler does not bound the index). From
+ * frame 15 on the cylinder is disabled and the mFlags bit is cleared; on frame 15
+ * exactly it also spawns particle effects 0x2a at the mole's position and 0x2b
+ * 30 units (0x1e000) above it. When the animation finishes the mole is back in
+ * state 1 (Hidden) and hands its turn on. */
+extern "C" void func_ov080_02123860(daChoropu_c *self)
 {
     unsigned int idx;
 
-    _ZN9Animation7AdvanceEv(self + 0x124);
-    idx = (unsigned int)(*(int *)(self + 0x12c) << 4) >> 0x10;
+    self->mModelAnim.Advance();
+    idx = (unsigned int)(self->mModelAnim.currFrame << 4) >> 0x10;   /* whole frame number */
     if (idx >= 0xf) {
-        *(int *)((int)(self + 0x150)) |= 1;
-        *(int *)((int)(self + 0xb0)) &= ~0x10000000;
+        self->mdCcAc_c.flags |= daChoropu_CC_DISABLED;
+        self->mFlags &= ~daChoropu_FLAG_EMERGED;
         if (idx == 0xf) {
-            _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x2a, *(int *)(self + 0x5c), *(int *)(self + 0x60), *(int *)(self + 0x64));
-            _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x2b, *(int *)(self + 0x5c), *(int *)(self + 0x60) + 0x1e000, *(int *)(self + 0x64));
+            _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x2a, self->mPosX, self->mPosY, self->mPosZ);
+            _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x2b, self->mPosX, self->mPosY + 0x1e000, self->mPosZ);
         }
     }
     {
-        int raw = *(int *)(self + 0x12c);
+        int raw = self->mModelAnim.currFrame;
         int *tbl = (int *)(int)(data_ov080_0212767c);
         idx = (unsigned int)(raw << 4) >> 0x10;
-        *(int *)(self + 0x140) = tbl[idx] << 0xc;
+        self->mdCcAc_c.height = tbl[idx] << 0xc;
     }
-    if (_ZN9Animation8FinishedEv(self + 0x124) == 0)
+    if (self->mModelAnim.Finished() == 0)
         return;
-    *(int *)(self + 0x17c) = 1;
+    self->mState = daChoropu_ST_HIDDEN;
     func_ov080_02124360(self);
 }
 
 // @symbol func_ov080_02123924
-extern "C" void func_ov080_02123924(char *c)
+/* State 4 (Wait) update handler (table row 4, data_ov080_02127f98).
+ *
+ * Animation file 0x2d3 (data_ov080_021283d0). Plays the animation out and then
+ * goes to state 5 (Leap); it goes there early when the nearest Player is within a
+ * quarter turn (< 0x4000 = 90 degrees) of the way the mole faces (mAngleY) and
+ * less than 500 units (0x1f4000) away horizontally. With no Player it just waits for the
+ * animation to end. */
+extern "C" void func_ov080_02123924(daChoropu_c *c)
 {
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    if (_ZN9Animation8FinishedEv(c + 0x124)) {
-        *(int *)(c + 0x17c) = 5;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
+    c->mModelAnim.Advance();
+    if (c->mModelAnim.Finished()) {
+        c->mState = daChoropu_ST_LEAP;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
         return;
     }
     {
-        char *p = _ZN8dActor_c13ClosestPlayerEv(c);
+        Player *p = c->ClosestPlayer();
         Vector3 v;
         Fix12i *q;
         if (p == 0) return;
-        q = (Fix12i *)(((int)p + 0x5c));
+        q = (Fix12i *)(((int)&p->mPosX));
         v.x = q[0];
         v.y = q[1];
         v.z = q[2];
-        if ((short)AngleDiff(*(short *)(c + 0x8e), Vec3_HorzAngle((Vector3 *)(c + 0x5c), &v)) >= 0x4000) return;
-        if (Vec3_HorzDist((Vector3 *)(c + 0x5c), &v) >= 0x1f4000) return;
-        *(int *)(c + 0x17c) = 5;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
+        if ((short)AngleDiff(c->mAngleY, Vec3_HorzAngle((Vector3 *)&c->mPosX, &v)) >= 0x4000) return;
+        if (Vec3_HorzDist((Vector3 *)&c->mPosX, &v) >= 0x1f4000) return;
+        c->mState = daChoropu_ST_LEAP;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
     }
 }
 
 // @symbol func_ov080_02123a34
-extern "C" void func_ov080_02123a34(char *c)
+/* State 3 (ThrowRock) update handler (table row 3, data_ov080_02127f80).
+ *
+ * Animation file 0x2d5 (data_ov080_021283e0). When the animation steps across
+ * frame 10 it spawns a daChoro_Rock_c (actor 0x137, spawn parameter 0 = the big
+ * rock) 80 units out from the mole along (mAngleY - 0x4000), a quarter turn off the way it
+ * faces, looked up in the
+ * sine/cosine pair table data_02082214 (entries are Fix12, indexed by angle >> 4),
+ * 10 units (0xa000) above its position, with the angle triple (mAngleX, mAngleY +
+ * 0x400, mAngleZ) and the mole's area. The rock is then given horizontal speed
+ * 30 units/frame (0x1e000) and vertical speed 4 units (0x4000) plus 4% of the
+ * distance to the nearest Player (that distance capped at 600 units = 0x258000),
+ * and the sound effect 0xd2 plays at the mole.
+ * When the animation finishes: Player closer than 1000 units (0x3e8000) -> state 5
+ * (Leap), otherwise state 4 (Wait). */
+extern "C" void func_ov080_02123a34(daChoropu_c *c)
 {
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    if (_ZNK9Animation12WillHitFrameEi(c + 0x124, 0xa)) {
+    c->mModelAnim.Advance();
+    if (c->mModelAnim.WillHitFrame(10)) {
         Vector3_16 v16;
         Vector3 pos;
         unsigned short ax, ay;
-        void *a;
+        dActor_c *a;
         int d;
         short s;
         int idx;
         int px, py, pz;
         Vector3_16 *pAng = &v16;
 
-        ax = *(unsigned short *)(c + 0x8c);
-        ay = *(unsigned short *)(c + 0x8e);
+        ax = *(unsigned short *)&c->mAngleX;
+        ay = *(unsigned short *)&c->mAngleY;
         *(volatile short *)&v16.y = (short)ay;
         *(volatile short *)&v16.x = (short)ax;
         {
-            unsigned short z = *(unsigned short *)(c + 0x90);
+            unsigned short z = *(unsigned short *)&c->mAngleZ;
             pAng->z = z;
             short yv = (short)v16.y;
-            px = *(int *)(c + 0x5c);
+            px = c->mPosX;
             pos.x = px;
             yv = (short)(yv + 0x400);
-            py = *(int *)(c + 0x60);
+            py = c->mPosY;
             pos.y = py;
-            pz = *(int *)(c + 0x64);
+            pz = c->mPosZ;
             pAng->y = yv;
             pos.z = pz;
             pos.y = py + 0xa000;
         }
 
-        idx = (unsigned short)(short)(*(short *)(c + 0x8e) - 0x4000) >> 4;
+        idx = (unsigned short)(short)(c->mAngleY - 0x4000) >> 4;
         s = data_02082214[idx << 1];
         pos.x = s * (short)0x50 + px;
 
-        idx = (unsigned short)(short)(*(short *)(c + 0x8e) - 0x4000) >> 4;
+        idx = (unsigned short)(short)(c->mAngleY - 0x4000) >> 4;
         s = data_02082214[(idx << 1) + 1];
         pos.z = s * (short)0x50 + pz;
 
-        a = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
-            py ? 0x137u : 0x137u, 0, pos, pAng, *(signed char *)(c + 0xcc), -1);
-        d = _ZN8dActor_c13DistToCPlayerEv(c);
+        a = (dActor_c *)_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
+            py ? (unsigned)daChoro_Rock_ACTOR_ID : (unsigned)daChoro_Rock_ACTOR_ID, 0, pos, pAng, c->mAreaId, -1);
+        d = c->DistToCPlayer();
         if (d >= 0x258000)
             d = 0x258000;
-        *(int *)((char *)a + 0x98) = 0x1e000;
-        *(int *)((char *)a + 0xa4) = 0;
-        *(int *)((char *)a + 0xa8) = (d << 2) / 100 + 0x4000;
-        *(int *)((char *)a + 0xac) = 0;
-        func_0201267c(0xd2, c + 0x74);
+        a->mHorzSpeed = 0x1e000;
+        a->unk_0a4 = 0;
+        a->mVertSpeed = (d << 2) / 100 + 0x4000;
+        a->unk_0ac = 0;
+        func_0201267c(0xd2, &c->mCamSpacePosX);
     }
 
-    if (_ZN9Animation8FinishedEv(c + 0x124) == 0)
+    if (c->mModelAnim.Finished() == 0)
         return;
 
-    if (_ZN8dActor_c13DistToCPlayerEv(c) < 0x3e8000) {
-        *(int *)(c + 0x17c) = 5;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
+    if (c->DistToCPlayer() < 0x3e8000) {
+        c->mState = daChoropu_ST_LEAP;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
     } else {
-        *(int *)(c + 0x17c) = 4;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283d0[1], 0x40000000, 0x1000, 0);
+        c->mState = daChoropu_ST_WAIT;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283d0[1], 0x40000000, 0x1000, 0);
     }
 }
 
 // @symbol func_ov080_02123c24
-extern "C" void func_ov080_02123c24(char *c)
+/* State 2 (Emerge) update handler (table row 2, data_ov080_02127fa8).
+ *
+ * Animation file 0x2d4 (data_ov080_021283d8). The collision cylinder's height is 0
+ * for frames 0..5; the cylinder is already enabled and the mFlags bit already set from
+ * the start of Emerge (func_ov080_02123ecc does both), and frame 6 does both again. From
+ * frame 6 through 25 the height follows data_ov080_021276c4 (24, 32, 40, 48, 56, 68,
+ * 76, 80, 88, 94, 100, 100 x8, 90, 80 whole units, indexed by frame - 6) and particle
+ * effect 0x29 is refreshed at the mole's position every frame (its ID is kept in
+ * mEmergeSystemID); from frame 26 on the height is 80 units (0x50000).
+ * When the animation finishes, the effect ID is cleared and the next state is picked:
+ *   - mGroupMode == 2: random, one in three each: state 3 (ThrowRock), 4 (Wait),
+ *     5 (Leap);
+ *   - otherwise state 3 when there is no Player or the Player is within a quarter turn
+ *     (< 0x4000) of the way the mole faces, state 4 (Wait) when it is behind. */
+extern "C" void func_ov080_02123c24(daChoropu_c *c)
 {
     int amt;
     unsigned int state;
     int raw;
 
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    raw = *(int *)(c + 0x12c);
+    c->mModelAnim.Advance();
+    raw = c->mModelAnim.currFrame;
     amt = 0;
-    state = ((unsigned int)raw << 4) >> 16;
+    state = ((unsigned int)raw << 4) >> 16;   /* whole frame number */
 
     if (state == 6) {
-        int *p150 = (int *)(((int)c + 0x150));
-        int *pb0 = (int *)(((int)c + 0xb0));
-        *p150 = *p150 & ~1;
-        *pb0 = *pb0 | 0x10000000;
+        u32 *p150 = (u32 *)(((int)&c->mdCcAc_c.flags));
+        u32 *pb0 = (u32 *)(((int)&c->mFlags));
+        *p150 = *p150 & ~daChoropu_CC_DISABLED;
+        *pb0 = *pb0 | daChoropu_FLAG_EMERGED;
     }
 
     if (state >= 6) {
@@ -264,288 +340,342 @@ extern "C" void func_ov080_02123c24(char *c)
             amt = 0x50000;
         } else {
             amt = data_ov080_021276c4[state - 6] << 12;
-            *(unsigned int *)(c + 0x188) = _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
-                *(unsigned int *)(c + 0x188), 0x29,
-                *(int *)(c + 0x5c), *(int *)(c + 0x60), *(int *)(c + 0x64),
+            c->mEmergeSystemID = _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
+                c->mEmergeSystemID, 0x29,
+                c->mPosX, c->mPosY, c->mPosZ,
                 0, 0);
         }
     }
 
-    *(int *)(c + 0x140) = amt;
+    c->mdCcAc_c.height = amt;
 
-    if (_ZN9Animation8FinishedEv(c + 0x124) == 0)
+    if (c->mModelAnim.Finished() == 0)
         return;
 
-    *(unsigned int *)(c + 0x188) = 0;
+    c->mEmergeSystemID = 0;
 
-    if (*(unsigned char *)(c + 0x180) == 2) {
+    if (c->mGroupMode == daChoropu_GROUP_RANDOM) {
         unsigned int rv = (unsigned int)RandomIntInternal(&data_0209e650) >> 8;
         unsigned int rem = (rv % 3) & 0xff;
         if (rem == 0) {
-            *(int *)(c + 0x17c) = 3;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e0[1], 0x40000000, 0x1000, 0);
+            c->mState = daChoropu_ST_THROW_ROCK;
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e0[1], 0x40000000, 0x1000, 0);
             return;
         }
         if (rem == 1) {
-            *(int *)(c + 0x17c) = 4;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283d0[1], 0x40000000, 0x1000, 0);
+            c->mState = daChoropu_ST_WAIT;
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283d0[1], 0x40000000, 0x1000, 0);
             return;
         }
-        *(int *)(c + 0x17c) = 5;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
+        c->mState = daChoropu_ST_LEAP;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e8[1], 0x40000000, 0x1000, 0);
         return;
     }
 
     {
-        char *player = _ZN8dActor_c13ClosestPlayerEv(c);
+        Player *player = c->ClosestPlayer();
         if (player == 0) {
-            *(int *)(c + 0x17c) = 3;
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e0[1], 0x40000000, 0x1000, 0);
+            c->mState = daChoropu_ST_THROW_ROCK;
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e0[1], 0x40000000, 0x1000, 0);
             return;
         }
         {
             Vector3 pos;
             short horz;
             int diff;
-            int *pb = (int *)(((int)player + 0x5c));
+            int *pb = (int *)(((int)&player->mPosX));
             pos.x = pb[0];
             pos.y = pb[1];
             pos.z = pb[2];
-            horz = Vec3_HorzAngle((Vector3 *)(c + 0x5c), &pos);
-            diff = (short)AngleDiff(*(short *)(c + 0x8e), horz);
+            horz = Vec3_HorzAngle((Vector3 *)&c->mPosX, &pos);
+            diff = (short)AngleDiff(c->mAngleY, horz);
             if (diff < 0x4000) {
-                *(int *)(c + 0x17c) = 3;
-                _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283e0[1], 0x40000000, 0x1000, 0);
+                c->mState = daChoropu_ST_THROW_ROCK;
+                _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283e0[1], 0x40000000, 0x1000, 0);
             } else {
-                *(int *)(c + 0x17c) = 4;
-                _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283d0[1], 0x40000000, 0x1000, 0);
+                c->mState = daChoropu_ST_WAIT;
+                _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283d0[1], 0x40000000, 0x1000, 0);
             }
         }
     }
 }
 
 // @symbol func_ov080_02123ecc
-extern "C" void func_ov080_02123ecc(dActor_c *self)
+/* State 1 (Hidden) update handler (table row 1, data_ov080_02127f88).
+ *
+ * The mole is underground. Nothing happens unless the nearest Player is within 1500
+ * units (0x5dc000) horizontally (no Player counts as exactly 1500, so no) and this
+ * mole holds the turn (mHasTurn == 1). Then:
+ *   - Player 250 units (0xfa000) or more away: start emerging -- state 2, animation
+ *     file 0x2d4, face the Player (mAngleY and mPrevAngleY), enable the collision
+ *     cylinder, set the mFlags bit, sound effect 0x116 at the mole;
+ *   - Player closer than 250 units: stay hidden and pass the turn on (func_ov080_02124360). */
+extern "C" void func_ov080_02123ecc(daChoropu_c *self)
 {
-    char *s = (char *)self;
-    char *p = (char *)self->ClosestPlayer();
+    Player *p = self->ClosestPlayer();
     int dist;
     if (p == 0) dist = 0x5dc000;
-    else dist = Vec3_HorzDist((Vector3 *)(s + 0x5c), (Vector3 *)(p + 0x5c));
+    else dist = Vec3_HorzDist((Vector3 *)&self->mPosX, (Vector3 *)&p->mPosX);
     if (dist >= 0x5dc000) return;
-    if (*(signed char *)(s + 0x181) != 1) return;
+    if (*(signed char *)&self->mHasTurn != 1) return;   /* read signed, as the ROM does (ldrsb) */
     if (dist >= 0xfa000) {
-        *(int *)(s + 0x17c) = 2;
-        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(s + 0xd4, (void *)data_ov080_021283d8[1], 0x40000000, 0x1000, 0);
-        char *p2 = (char *)self->ClosestPlayer();
-        *(short *)(s + 0x8e) = Vec3_HorzAngle((Vector3 *)(s + 0x5c), (Vector3 *)(p2 + 0x5c));
+        self->mState = daChoropu_ST_EMERGE;
+        _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim, (void *)data_ov080_021283d8[1], 0x40000000, 0x1000, 0);
+        Player *p2 = self->ClosestPlayer();
+        self->mAngleY = Vec3_HorzAngle((Vector3 *)&self->mPosX, (Vector3 *)&p2->mPosX);
         {
-            int *a = (int *)((int)s + 0x150);
-            int *b = (int *)((int)s + 0xb0);
-            *(short *)(s + 0x94) = *(short *)(s + 0x8e);
-            *a = *a & ~1;
-            *b = *b | 0x10000000;
-            func_0201267c(0x116, s + 0x74);
+            u32 *a = (u32 *)((int)&self->mdCcAc_c.flags);
+            u32 *b = (u32 *)((int)&self->mFlags);
+            self->mPrevAngleY = self->mAngleY;
+            *a = *a & ~daChoropu_CC_DISABLED;
+            *b = *b | daChoropu_FLAG_EMERGED;
+            func_0201267c(0x116, &self->mCamSpacePosX);
         }
         return;
     }
-    func_ov080_02124360(s);
+    func_ov080_02124360(self);
 }
 
 // @symbol func_ov080_02123fcc
-extern "C" void func_ov080_02123fcc(char *thiz)
+/* State 0 (Setup) update handler (table row 0, data_ov080_02127fa0); the state
+ * InitResources installs.
+ *
+ * Disables the collision cylinder and clears the mFlags bit (the mole starts
+ * underground). A mole with mGroupMode != 0 then collects the unique IDs of the other
+ * daChoropu_c actors with the same mGroupId into mPartnerIDs (at most four,
+ * counted in mNumPartners). Either way the next state is 1 (Hidden). */
+extern "C" void func_ov080_02123fcc(daChoropu_c *thiz)
 {
-    char *c = thiz;
+    daChoropu_c *c = thiz;
     {
-        int *p150 = (int *)(((int)c + 0x150));
-        int *pb0 = (int *)(((int)c + 0xb0));
-        *p150 = *p150 | 1;
-        *pb0 = *pb0 & ~0x10000000;
+        u32 *p150 = (u32 *)(((int)&c->mdCcAc_c.flags));
+        u32 *pb0 = (u32 *)(((int)&c->mFlags));
+        *p150 = *p150 | daChoropu_CC_DISABLED;
+        *pb0 = *pb0 & ~daChoropu_FLAG_EMERGED;
     }
-    if (*(unsigned char *)(c + 0x180) != 0) {
+    if (c->mGroupMode != 0) {
         dActor_c *a = 0;
         while (1) {
-            a = _ZN8dActor_c15FindWithActorIDEjPS_(0x136, a);
+            a = dActor_c::FindWithActorID(daChoropu_ACTOR_ID, a);
             if (a == 0) break;
             if (a != (dActor_c *)c) {
-                if (*(unsigned char *)(c + 0x182) == *(unsigned char *)((char *)a + 0x182)) {
-                    *(int *)(c + *(unsigned char *)(c + 0x183) * 4 + 0x16c) = *(int *)((char *)a + 4);
-                    (*(unsigned char *)(c + 0x183))++;
-                    if (*(unsigned char *)(c + 0x183) == 4) break;
+                if (c->mGroupId == ((daChoropu_c *)a)->mGroupId) {
+                    c->mPartnerIDs[c->mNumPartners] = ((daChoropu_c *)a)->uniqueID;
+                    (c->mNumPartners)++;
+                    if (c->mNumPartners == 4) break;
                 }
             }
         }
-        *(int *)(c + 0x17c) = 1;
+        c->mState = daChoropu_ST_HIDDEN;
         return;
     }
-    *(int *)(c + 0x17c) = 1;
+    c->mState = daChoropu_ST_HIDDEN;
 }
 
 // @symbol func_ov080_02124088
-extern "C" void func_ov080_02124088(char *c)
+/* The mole has been knocked back underground (called from func_ov080_02124208 on a
+ * hit, a stomp, or contact while the Player is Metal or Mega).
+ *
+ * Back to state 1 (Hidden) with animation file 0x2d4 at frame 0, collision cylinder
+ * disabled, mFlags bit cleared, sound effect 0xd5 at the mole, and a dust puff
+ * (dActor_c::PoofDustAt) at the mole's position with y raised by its cylinder height
+ * minus 80 units (0x50000). The turn is passed on (func_ov080_02124360).
+ *
+ * Then the group's hits are tallied: acc is this mole's mTimesHit plus that of every
+ * partner that can still be found. While acc < 7 this mole's mTimesHit is incremented.
+ * When acc == 7 exactly (this is the eighth hit counted) it spawns actor 0x114
+ * (ONEUPKINOKO) 100 units (0x64000) above itself and sets mTimesHit to 8; with
+ * acc > 7 nothing more happens. */
+extern "C" void func_ov080_02124088(daChoropu_c *c)
 {
     Vector3 v1;
     Vector3 v3;
     Vector3 v2;
     u8 acc;
     int i;
-    void *a;
+    daChoropu_c *a;
 
-    *(int *)(c + 0x17c) = 1;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0xd4, (void *)data_ov080_021283d8[1], 0x40000000, 0x1000, 0);
+    c->mState = daChoropu_ST_HIDDEN;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, (void *)data_ov080_021283d8[1], 0x40000000, 0x1000, 0);
 
-    *(int *)(c + 0x12c) = 0;
+    c->mModelAnim.currFrame = 0;
     {
-        u32 *p150 = (u32 *)LAUND(c + 0x150);
-        *p150 |= 1;
+        u32 *p150 = (u32 *)LAUND(&c->mdCcAc_c.flags);
+        *p150 |= daChoropu_CC_DISABLED;
     }
     {
-        u32 *pb0 = (u32 *)LAUND(c + 0xb0);
-        *pb0 &= ~0x10000000;
+        u32 *pb0 = (u32 *)LAUND(&c->mFlags);
+        *pb0 &= ~daChoropu_FLAG_EMERGED;
     }
 
-    func_0201267c(0xd5, c + 0x74);
+    func_0201267c(0xd5, &c->mCamSpacePosX);
 
-    v1.x = *(int *)(c + 0x5c);
+    v1.x = c->mPosX;
     {
-        int y1 = *(int *)(c + 0x60);
+        int y1 = c->mPosY;
         v1.y = y1;
-        v1.z = *(int *)(c + 0x64);
-        v1.y = y1 + (*(int *)(c + 0x140) - 0x50000);
+        v1.z = c->mPosZ;
+        v1.y = y1 + (c->mdCcAc_c.height - 0x50000);
     }
     ((int *)&v2)[0] = ((int *)&v1)[0];
     ((int *)&v2)[1] = ((int *)&v1)[1];
     ((int *)&v2)[2] = ((int *)&v1)[2];
-    _ZN8dActor_c10PoofDustAtERK7Vector3(c, v2);
+    c->PoofDustAt(v2);
 
     func_ov080_02124360(c);
 
-    acc = *(u8 *)(c + 0x184);
+    acc = c->mTimesHit;
     i = 0;
-    while (i < *(u8 *)(c + 0x183)) {
-        a = _ZN8dActor_c10FindWithIDEj(((u32 *)(c + 0x16c))[i]);
+    while (i < c->mNumPartners) {
+        a = (daChoropu_c *)dActor_c::FindWithID(c->mPartnerIDs[i]);
         i = i + 1;
         if (a != 0) {
-            acc = (u8)(acc + *(u8 *)((char *)a + 0x184));
+            acc = (u8)(acc + a->mTimesHit);
         }
     }
 
     if (acc < 7) goto tail_inc;
     if (acc != 7) return;
 
-    v3.x = *(int *)(c + 0x5c);
+    v3.x = c->mPosX;
     {
-        int y3 = *(int *)(c + 0x60);
+        int y3 = c->mPosY;
         v3.y = y3;
-        v3.z = *(int *)(c + 0x64);
+        v3.z = c->mPosZ;
         v3.y = y3 + 0x64000;
     }
-    _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0x114, 0, v3, 0, (int)*(signed char *)(c + 0xcc), -1);
+    _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(daChoropu_ACTOR_ONEUPKINOKO, 0, v3, 0, (int)c->mAreaId, -1);
 
-    *(u8 *)(c + 0x184) = 8;
+    c->mTimesHit = 8;
     return;
 
 tail_inc:
     {
-        u8 *p184 = (u8 *)LAUND(c + 0x184);
+        u8 *p184 = (u8 *)LAUND(&c->mTimesHit);
         (*p184)++;
     }
 }
 
 // @symbol func_ov080_02124208
-extern "C" void func_ov080_02124208(char *c)
+/* Reacts to what touched the mole's collision cylinder this frame; run after the
+ * state handler by Behavior. Does nothing without an otherOwner (mdCcAc_c.otherOwner
+ * is the unique ID of whatever hit it) or when that actor cannot be found. With the
+ * hit flags (mdCcAc_c.hitFlags):
+ *   - any bit of 0x66fe0, the vulnerability mask InitResources registers: the mole is
+ *     knocked underground (func_ov080_02124088);
+ *   - otherwise nothing unless bit 0x400000 (the Player) is set;
+ *   - Player stomped the mole (JumpedOnByPlayer): knocked underground, then
+ *     Player::Bounce is called with 0x28000 (40.0 read as a Fix12);
+ *   - Player is Vanish (mIsVanish): no effect;
+ *   - Player is Metal (mIsMetal): knocked underground;
+ *   - hit by a Mega Player (bit 0x10): sound effect 0x1d, IncMegaKillCount, knocked
+ *     underground;
+ *   - anything else: Player::Hurt, with the mole's position and the arguments
+ *     (2, 0xc000, 1, 0, 1), which are not decoded here. */
+extern "C" void func_ov080_02124208(daChoropu_c *c)
 {
-    char *p;
-    unsigned int id = *(unsigned int *)(c + 0x15c);
+    Player *p;
+    unsigned int id = c->mdCcAc_c.otherOwner;
 
     if (id == 0)
         return;
 
-    p = (char *)_ZN8dActor_c10FindWithIDEj(id);
+    p = (Player *)dActor_c::FindWithID(id);
     if (p == 0)
         return;
 
-    if ((*(int *)(c + 0x158) & 0x66fe0) != 0) {
+    if ((c->mdCcAc_c.hitFlags & 0x66fe0) != 0) {
         func_ov080_02124088(c);
         return;
     }
 
-    if ((*(int *)(c + 0x158) & 0x400000) == 0)
+    if ((c->mdCcAc_c.hitFlags & daChoropu_HIT_PLAYER) == 0)
         return;
 
-    if (_ZN8dActor_c16JumpedOnByPlayerER5dCc_cR6Player(c, c + 0x138, p)) {
+    if (c->JumpedOnByPlayer(c->mdCcAc_c, *p)) {
         func_ov080_02124088(c);
         _ZN6Player6BounceE5Fix12IiE(p, 0x28000);
         return;
     }
 
-    if (*(unsigned char *)(p + 0x6fb) != 0)
+    if (p->mIsVanish != 0)
         return;
 
-    if (*(unsigned char *)(p + 0x6f9) != 0) {
+    if (p->mIsMetal != 0) {
         func_ov080_02124088(c);
         return;
     }
 
-    if ((*(int *)(c + 0x158) & 0x10) != 0) {
-        func_02012694(0x1d, c + 0x74);
-        _ZN6Player16IncMegaKillCountEv(p);
+    if ((c->mdCcAc_c.hitFlags & daChoropu_HIT_MEGA) != 0) {
+        func_02012694(0x1d, &c->mCamSpacePosX);
+        p->IncMegaKillCount();
         func_ov080_02124088(c);
         return;
     }
 
     {
         Vector3 pos;
-        pos.x = *(int *)(c + 0x5c);
-        pos.y = *(int *)(c + 0x60);
-        pos.z = *(int *)(c + 0x64);
+        pos.x = c->mPosX;
+        pos.y = c->mPosY;
+        pos.z = c->mPosZ;
         _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(p, &pos, 2, 0xc000, 1, 0, 1);
     }
 }
 
 // @symbol func_ov080_02124360
-extern "C" void *func_ov080_02124360(char *c)
+/* Passes the turn to another mole of the group. A mole with mGroupMode == 0 returns
+ * 0 and keeps its turn. Otherwise it clears its own mHasTurn and picks partners at
+ * random (mPartnerIDs[r % mNumPartners]) until it finds one that still exists and does
+ * not hold the turn; that one gets mHasTurn = 1 and is returned. */
+extern "C" void *func_ov080_02124360(daChoropu_c *c)
 {
-    unsigned char n = *(unsigned char *)(c + 0x180);
-    void *obj;
+    unsigned char n = c->mGroupMode;
+    daChoropu_c *obj;
     if (n == 0)
         return (void *)(unsigned int)n;
-    *(unsigned char *)(c + 0x181) = 0;
+    c->mHasTurn = 0;
     for (;;) {
         unsigned int r = ((unsigned int)RandomIntInternal(&data_0209e650)) >> 8;
-        unsigned int cnt = *(unsigned char *)(c + 0x183);
+        unsigned int cnt = c->mNumPartners;
         unsigned int idx = r % cnt;
-        unsigned int id = *(unsigned int *)(c + 0x16c + (idx * 4));
-        obj = _ZN8dActor_c10FindWithIDEj(id);
+        unsigned int id = c->mPartnerIDs[idx];
+        obj = (daChoropu_c *)dActor_c::FindWithID(id);
         if (obj == 0)
             continue;
-        if (*(unsigned char *)((char *)obj + 0x181) != 0)
+        if (obj->mHasTurn != 0)
             continue;
-        *(unsigned char *)((char *)obj + 0x181) = 1;
+        obj->mHasTurn = 1;
         return obj;
     }
 }
 
 // @symbol func_ov080_021243d8
-extern "C" void func_ov080_021243d8(char *t)
+/* Rebuilds the model's matrix (mModelAnim.mat4x3): a rotation about Y by mAngleY,
+ * with the translation (words 9..11 of the flat 12-word spelling this TU sees) set to
+ * the actor's position >> 3. */
+extern "C" void func_ov080_021243d8(daChoropu_c *t)
 {
-    Matrix4x3_FromRotationY(t + 0xf0, *(short *)(t + 0x8e));
-    *(int *)(t + 0x114) = *(int *)(t + 0x5c) >> 3;
-    *(int *)(t + 0x118) = *(int *)(t + 0x60) >> 3;
-    *(int *)(t + 0x11c) = *(int *)(t + 0x64) >> 3;
+    Matrix4x3_FromRotationY(&t->mModelAnim.mat4x3, t->mAngleY);
+    t->mModelAnim.mat4x3.m[9] = t->mPosX >> 3;
+    t->mModelAnim.mat4x3.m[10] = t->mPosY >> 3;
+    t->mModelAnim.mat4x3.m[11] = t->mPosZ >> 3;
 }
 
 // @symbol func_ov080_02124418
-extern "C" void func_ov080_02124418(char *t)
+/* Same as func_ov080_021243d8, for the rock's model (mModel.mat4x3). */
+extern "C" void func_ov080_02124418(daChoro_Rock_c *t)
 {
-    Matrix4x3_FromRotationY(t + 0x12c, *(short *)(t + 0x8e));
-    *(int *)(t + 0x150) = *(int *)(t + 0x5c) >> 3;
-    *(int *)(t + 0x154) = *(int *)(t + 0x60) >> 3;
-    *(int *)(t + 0x158) = *(int *)(t + 0x64) >> 3;
+    Matrix4x3_FromRotationY(&t->mModel.mat4x3, t->mAngleY);
+    t->mModel.mat4x3.m[9] = t->mPosX >> 3;
+    t->mModel.mat4x3.m[10] = t->mPosY >> 3;
+    t->mModel.mat4x3.m[11] = t->mPosZ >> 3;
 }
 
 // @symbol _ZN11daChoropu_c16CleanupResourcesEv
-/* Releases the shared model and animation files; never touches `this`. */
+/* Releases the shared model and animation files; never touches `this`: the model file
+ * shared from ov002 (data_ov002_0210d9d8), the mole model (data_ov080_021283c0 = file
+ * 0x2d1), the rock model (021283c8 = 0x2d6), then the four animation slots through
+ * data_ov080_0212766c (files 0x2d2, 0x2d3, 0x2d4, 0x2d5). */
 s32 daChoropu_c::CleanupResources()
 {
     data_ov002_0210d9d8.Release();
@@ -560,6 +690,7 @@ s32 daChoropu_c::CleanupResources()
 }
 
 // @symbol _ZN14daChoro_Rock_c16CleanupResourcesEv
+/* Releases the rock model file (data_ov080_021283c8 = file 0x2d6). */
 s32 daChoro_Rock_c::CleanupResources()
 {
     data_ov080_021283c8.Release();
@@ -567,6 +698,7 @@ s32 daChoro_Rock_c::CleanupResources()
 }
 
 // @symbol _ZN11daChoropu_c6RenderEv
+/* Draws the mole's model (mModelAnim) with no scale argument. */
 s32 daChoropu_c::Render()
 {
     Model *m = &mModelAnim;
@@ -575,6 +707,7 @@ s32 daChoropu_c::Render()
 }
 
 // @symbol _ZN14daChoro_Rock_c6RenderEv
+/* Draws the rock's model, scaled by (mScaleX, mScaleY, mScaleZ). */
 s32 daChoro_Rock_c::Render()
 {
     Model *m = &mModel;
@@ -583,18 +716,33 @@ s32 daChoro_Rock_c::Render()
 }
 
 // @symbol _ZN11daChoropu_c8BehaviorEv
+/* The mole's per-frame update (vtable slot 6): Luigi-vanish bookkeeping for the
+ * cylinder, the current state's update handler through the state table, then
+ * func_ov080_02124208 (react to whatever touched the cylinder), func_ov080_021243d8
+ * (rebuild the model matrix), and the cylinder's Clear and Update. */
 s32 daChoropu_c::Behavior()
 {
     MakeVanishLuigiWork(mdCcAc_c);
     (this->*data_ov080_02128438[mState].fn[0])();
-    func_ov080_02124208((char *)this);
-    func_ov080_021243d8((char *)this);
+    func_ov080_02124208(this);
+    func_ov080_021243d8(this);
     mdCcAc_c.Clear();
     mdCcAc_c.Update();
     return 1;
 }
 
 // @symbol _ZN14daChoro_Rock_c8BehaviorEv
+/* The rock's per-frame update (vtable slot 6).
+ *
+ * If the Player touches the rock (otherOwner found, hitFlags bit 0x400000) it is hurt
+ * with Player::Hurt (arguments (1, 0xc000, 1, 0, 1), not decoded here -- the mole
+ * passes 2 for the first one) when it is Metal, or when it is not Vanish. On the
+ * ground (mWithMeshClsn.IsOnGround) a big rock (mIsSmall == 0) first spawns two
+ * small rocks (actor 0x137, spawn parameter 1) at its own position, each with a
+ * random heading (RandomIntInternal >> 8 as mPrevAngleY), half its horizontal speed
+ * and vertical speed 5 units (0x5000); then, big or small, it is marked for
+ * destruction. After that: UpdatePos, UpdateWMClsn, the model matrix
+ * (func_ov080_02124418), and the cylinder's Clear and Update. */
 s32 daChoro_Rock_c::Behavior()
 {
     MakeVanishLuigiWork(mdCcAc_c);
@@ -602,7 +750,7 @@ s32 daChoro_Rock_c::Behavior()
     u32 id = mdCcAc_c.otherOwner;
     if (id != 0) {
         Player *player = (Player *)FindWithID(id);
-        if (player != 0 && (mdCcAc_c.hitFlags & 0x400000)) {
+        if (player != 0 && (mdCcAc_c.hitFlags & daChoropu_HIT_PLAYER)) {
             if (player->mIsMetal) {
                 Vector3 pos;
                 pos.x = mPosX;
@@ -625,7 +773,7 @@ s32 daChoro_Rock_c::Behavior()
             dActor_c *s;
             int r;
 
-            s = dActor_c::Spawn(0x137, 1, *(Vector3 *)&mPosX, 0, mAreaId, -1);
+            s = dActor_c::Spawn(daChoro_Rock_ACTOR_ID, 1, *(Vector3 *)&mPosX, 0, mAreaId, -1);
             r = RandomIntInternal(&data_0209e650);
             s->mPrevAngleX = 0;
             s->mPrevAngleY = (short)((unsigned int)r >> 8);
@@ -635,7 +783,7 @@ s32 daChoro_Rock_c::Behavior()
             s->mVertSpeed = 0x5000;
             s->unk_0ac = 0;
 
-            s = dActor_c::Spawn(0x137, 1, *(Vector3 *)&mPosX, 0, mAreaId, -1);
+            s = dActor_c::Spawn(daChoro_Rock_ACTOR_ID, 1, *(Vector3 *)&mPosX, 0, mAreaId, -1);
             r = RandomIntInternal(&data_0209e650);
             s->mPrevAngleX = 0;
             s->mPrevAngleY = (short)((unsigned int)r >> 8);
@@ -650,13 +798,23 @@ s32 daChoro_Rock_c::Behavior()
 
     UpdatePos(0);
     UpdateWMClsn(mWithMeshClsn, 0);
-    func_ov080_02124418((char *)this);
+    func_ov080_02124418(this);
     mdCcAc_c.Clear();
     mdCcAc_c.Update();
     return 1;
 }
 
 // @symbol _ZN11daChoropu_c13InitResourcesEv
+/* Loads the four animation files through data_ov080_0212766c, the ov002 shared model
+ * file, the rock model and the mole model (data_ov080_021283c0, set on mModelAnim with
+ * flags 1 and -1). Starts animation file 0x2d4 (data_ov080_021283d8) with flags 0, speed
+ * 1.0 (0x1000) from frame 0, and initialises the collision cylinder: radius 80 units
+ * (0x50000), height 100 units (0x64000), flags 0x200000 (not decoded here), vulnerability
+ * mask 0x66fe0. Then unpacks param1:
+ *   bits 0..3  mGroupMode (0 = solo)
+ *   bits 4..7  mGroupId
+ *   bit  8     initial mHasTurn for a grouped mole (a solo mole always starts with it)
+ * and starts in state 0 (Setup) with no hits tallied, no partners and no particle ID. */
 s32 daChoropu_c::InitResources()
 {
     int i;
@@ -666,19 +824,25 @@ s32 daChoropu_c::InitResources()
     mModelAnim.SetFile((BMD_File *)Model::LoadFile(data_ov080_021283c0), 1, -1);
     _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, (void *)data_ov080_021283d8[1], 0, 0x1000, 0);
     _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, this, 0x50000, 0x64000, 0x200000, 0x66fe0);
-    unk_180 = param1 & 0xf;
-    mState = 0;
-    if (unk_180 == 0) unk_181 = 1;
-    else unk_181 = (param1 >> 8) & 1;
-    unk_182 = (param1 >> 4) & 0xf;
-    unk_184 = 0;
+    mGroupMode = param1 & 0xf;
+    mState = daChoropu_ST_SETUP;
+    if (mGroupMode == daChoropu_GROUP_SOLO) mHasTurn = 1;
+    else mHasTurn = (param1 >> 8) & 1;
+    mGroupId = (param1 >> 4) & 0xf;
+    mTimesHit = 0;
     mNumPartners = 0;
     for (i = 0; i < 4; i++) mPartnerIDs[i] = 0;
-    unk_188 = 0;
+    mEmergeSystemID = 0;
     return 1;
 }
 
 // @symbol _ZN14daChoro_Rock_c13InitResourcesEv
+/* Fails (returns 0) if the rock model cannot be set. Otherwise: collision cylinder with
+ * radius 30 units and height 30 units (0x1e000), flags 0x200004 (not decoded here) and
+ * no vulnerability mask; mIsSmall = param1 & 1; the mesh collision object with both size
+ * arguments 30 units; gravity -2 units/frame^2 (mVertAccel -0x2000) and terminal fall
+ * speed -60 units/frame (-0x3c000); scale 1.0 (0x1000) on all three axes for a big rock,
+ * 0.5 (0x800) for a small one. */
 s32 daChoro_Rock_c::InitResources()
 {
     if (!mModel.SetFile((BMD_File *)Model::LoadFile(data_ov080_021283c8), 1, -1)) return 0;
@@ -700,12 +864,14 @@ s32 daChoro_Rock_c::InitResources()
 }
 
 // @symbol daChoro_Rock_c_classInit
+/* Registry factory for the CHORO_ROCK profile. */
 extern "C" daChoro_Rock_c *daChoro_Rock_c_classInit()
 {
     return new daChoro_Rock_c();
 }
 
 // @symbol daChoropu_c_classInit
+/* Registry factory for the CHOROPU profile. */
 extern "C" daChoropu_c *daChoropu_c_classInit()
 {
     return new daChoropu_c();

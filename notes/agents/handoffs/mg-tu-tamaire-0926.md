@@ -89,7 +89,7 @@ readability pass 2, issue 3171):
     and [func_ov006_02103994](../../../src/actors/dScMgPachinko2_c.cpp)(ROM Ordinal 66). `Render`'s pass-1 form leaned on the `void *` spellings in
     `include/decl_common.h`, which this TU cannot include because its helper
     spellings contradict the definitions.
-  - 4 `(void *)` casts on the data word passed to [func_ov004_020afdd0](../../../src/func_ov004_020afdd0.cpp),
+  - 4 `(void *)` casts on the data word passed to [func_ov004_020afdd0](../../../src/minigames/d_s_mg_base.cpp),
     whose one declaration takes `void *`: in [func_ov006_020ff47c](../../../src/actors/dScMgPachinko2_c.cpp)(ROM Ordinal 2),
     [func_ov006_02100314](../../../src/actors/dScMgPachinko2_c.cpp)(ROM Ordinal 17), [func_ov006_0210068c](../../../src/actors/dScMgPachinko2_c.cpp)(ROM Ordinal 24) and [func_ov006_02102de4](../../../src/actors/dScMgPachinko2_c.cpp)(ROM Ordinal 56). The last three declared an `int`
     first parameter; in [func_ov006_020ff47c](../../../src/actors/dScMgPachinko2_c.cpp)(ROM Ordinal 2) the cast follows from
@@ -129,9 +129,9 @@ readability pass 2, issue 3171):
   All-raw offsets also match but drop the view.
 - Declarations aligned with their definitions, still 74 of 74: the returns of
   `G2S::GetBG2ScrPtr` and `G2S::GetBG3CharPtr` (`unsigned`),
-  [func_ov004_020af2f8](../../../src/func_ov004_020af2f8.cpp)'s `char` argument, [func_ov004_020b0a54](../../../src_tu/actors/unit_ov004_020b0a38.cpp)(ROM Ordinal 17)'s `int`
+  [func_ov004_020af2f8](../../../src/minigames/d_s_mg_base.cpp)'s `char` argument, [func_ov004_020b0a54](../../../src/minigames/d_s_mg_base.cpp)(ROM Ordinal 17)'s `int`
   argument (`Behavior` now passes `0x10` without a cast),
-  [func_ov004_020b1a5c](../../../src/func_ov004_020b1a5c.c)'s `void` return (unused at its one call), and
+  [func_ov004_020b1a5c](../../../src/minigames/d_s_mg_base.cpp)'s `void` return (unused at its one call), and
   [data_ov006_02136b80](../../../config/arm9/overlays/ov006/symbols.txt) as `int []` with a `(void *)` cast at its use, as
   `src/actors/dScMgPachinko_c.cpp` spells it.
 
@@ -258,7 +258,7 @@ Round 2 touched no ledger.
 - Remaining issue scope:
   - naming the helpers and their fields;
   - the three banked declaration disagreements (`DecompressLZ16`,
-    [func_ov004_020aff38](../../../src/func_ov004_020aff38.cpp), [func_ov004_020b19f0](../../../src/func_ov004_020b19f0.c));
+    [func_ov004_020aff38](../../../src/minigames/d_s_mg_base.cpp), [func_ov004_020b19f0](../../../src/minigames/d_s_mg_base.cpp));
   - the factory as a `new` expression, which is blocked on the separate
     objisolate fix;
   - TU-V7 and TU-V8 above.

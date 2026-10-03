@@ -42,7 +42,7 @@
 #include "Sound.h"
 #include "SharedFilePtr.h"
 #include "dBgCh_Gnd.h"
-#include "PowerStar.h"
+#include "daStar_c.h"
 
 #define U64 0xFFFFFFFFFFFFFFFFLL
 
@@ -460,7 +460,7 @@ void daObjFallBlock_c_FindLinkedStar(daObjFallBlock_c *self)
     dActor_c *star;
     star = dActor_c::FindWithActorID(ACTOR_STAR, 0);
     while (star) {
-        if (static_cast<PowerStar *>(star)->unk_49d == (self->param1 & 0xf)) {
+        if (static_cast<daStar_c *>(star)->unk_49d == (self->param1 & 0xf)) {
             self->mLinkedStarID = (s32)star->uniqueID;
         }
         star = dActor_c::FindWithActorID(ACTOR_STAR, star);
@@ -469,7 +469,7 @@ void daObjFallBlock_c_FindLinkedStar(daObjFallBlock_c *self)
 }
 
 // @symbol daObjFallBlock_c_PollLinkedStar
-/* unk_440 is PowerStar's state index into data_ov002_021109d8.
+/* unk_440 is daStar_c's state index into data_ov002_021109d8.
    Slot 4 is func_ov002_020ea420. Reaching it clears mSuppressed so
    this FL_KUZURE block renders and runs. A missing star destroys it. */
 extern "C" {
@@ -480,7 +480,7 @@ void daObjFallBlock_c_PollLinkedStar(daObjFallBlock_c *c)
         c->MarkForDestruction();
         return;
     }
-    if (static_cast<PowerStar *>(a)->unk_440 == 4)
+    if (static_cast<daStar_c *>(a)->unk_440 == 4)
         c->mSuppressed = 0;
 }
 }

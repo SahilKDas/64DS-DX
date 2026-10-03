@@ -35,23 +35,23 @@
  * (CT_MECHA10) and func_ov035_0211168c (CT_MECHA12L); CT_MECHA12S has none
  * on record.
  *
- * Known limits:
- * - dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay spelled as mangled
- *   extern-C free functions. Each takes Fix12<int> by value, and a real
- *   method call homes the argument and size-DIFFs the caller
- *   (notes/mwccarm-codegen.md 6az); include/dBgW_KcMbg.h records the same.
- * - DecIfAbove0_Short and RandomIntInternal keep linker names: no header home,
- *   the kaitendai precedent.
- * - func_020393d4 and func_020396c0 are small stores into dBgW (the collision
- *   callback and the range flag). This TU calls them; naming belongs with
- *   dBgW in arm9.
- * - data_ov035_02112c60 / c68 / c70 / c78 are this overlay's four shared-file
- *   handles, data_ov035_021121d8 its CLPS block, and data_ov035_02111ef0 /
- *   02111ef4 the two rotation tables. None of them is owned by this TU.
- * - data_0209f2c0 is arm9's clock-setting byte and data_0209e650 the shared
- *   RNG state.
- * - g_profile_CT_MECHA10 / CT_MECHA12L / CT_MECHA12S (the registry
- *   descriptors the three factories back) live outside this TU.
+ * Leftover: measured, and left in the form that matches.
+ * Folding both actorID tests into their ifs: InitResources 0x17c -> 0x164
+ * (5 reloc destinations wrong) and CleanupResources 0x88 -> 0x7c (1 reloc
+ * destination wrong). The widened int idMatch / isMecha12L stay.
+ * dBgW_KcMbg::SetFile with a Fix12<int> local: InitResources 0x17c -> 0x184
+ * and a 4-byte local .data symbol. The mangled call with scalar 0x1000 stays.
+ * IsClsnInRange(int, int) does not compile (no conversion to Fix12<int>).
+ * IsClsnInRange with two Fix12<int> zeros: Behavior 0x1f4 -> 0x224. The
+ * mangled (this, 0, 0) call stays.
+ * Writing mMeshCollider.unk_48 and beforeClsnCallback directly:
+ * InitResources 0x17c -> 0x170. func_020396c0 and func_020393d4 stay.
+ * One local for both data_ov035_02111ef0 stores: InitResources 0x17c -> 0x170.
+ * Both stores stay. unk_326 is written and has no reader in this TU.
+ * DecIfAbove0_Short, RandomIntInternal, the data_ov035_* files, tables and
+ * CLPS block, data_0209f2c0 and data_0209e650 keep linker names. The three
+ * g_profile_* descriptors live outside this TU. func_ov035_0211168c is the
+ * historical alias of classInit_CT_MECHA12L, not a function defined here.
  */
 
 #include "daObjCtMecha10_c.h"
@@ -59,6 +59,15 @@
 #include "dBgW.h"
 
 bool ApproachLinear(short &value, short target, short step);
+
+/* Actor ids are the registry profile ids. Clock settings are the byte at
+ * data_0209f2c0: 2 re-rolls the dwell, 3 holds the cog still. */
+enum {
+    ACTOR_CT_MECHA10 = 0x77,
+    ACTOR_CT_MECHA12L = 0x79,
+    CLOCK_SETTING_RANDOM = 2,
+    CLOCK_SETTING_STOPPED = 3
+};
 
 extern "C" {
 extern SharedFilePtr data_ov035_02112c60;   /* model of the fall-through profile (CT_MECHA12S) */
@@ -68,15 +77,19 @@ extern SharedFilePtr data_ov035_02112c78;   /* model of id 0x77 (CT_MECHA10) */
 extern CLPS_Block    data_ov035_021121d8;
 extern s16 data_ov035_02111ef0[];           /* |angle step| by rotation state */
 extern s16 data_ov035_02111ef4[][4];        /* dwell by state, by clock setting */
-extern u8  data_0209f2c0[];                 /* arm9 clock setting */
-extern int data_0209e650[];                 /* arm9 RNG state */
+extern u8  data_0209f2c0;                  /* arm9 clock setting */
+extern int data_0209e650;                  /* arm9 RNG state */
 
 u16 DecIfAbove0_Short(u16 *p);
 int RandomIntInternal(int *state);
 void func_020393d4(dBgW *collider, void *callback);
 void func_020396c0(dBgW *collider, int v);
 
+/* local extern: not declared on dBgActor_c. int arguments do not convert to
+   Fix12<int>, and a Fix12<int> pair grows Behavior (see the file banner). */
 int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
+/* local extern: dBgW_KcMbg::SetFile takes Fix12<int> by value, and a method
+   call homes the scale (see the file banner). The scalar 0x1000 stays. */
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     dBgW_KcMbg *self, KCL_File *file, const Matrix4x3 *mat,
     Fix12i scale, s16 angle, CLPS_Block *clps);
@@ -107,14 +120,10 @@ extern "C" daObjCtMecha10_c *daObjCtMecha10_c_classInit_CT_MECHA12S()
    indexed by the state this function just chose. */
 int daObjCtMecha10_c::InitResources()
 {
-    /* MEASURED: both ID tests are widened into an int and branched on, rather
-       than written `if (actorID == 0x77)`. mwccarm keeps the comparison result
-       in a register across the arm and re-tests it; folding either test into
-       its `if` re-orders the whole body and DIFFs. The reuse of one local for
-       both tests is what the second branch's codegen wants. */
+    /* Both ID tests are widened into one int and branched on. Folding them
+       into the ifs reorders the body (see the file banner). */
     int idMatch;
-
-    idMatch = (actorID == 0x77);
+    idMatch = (actorID == ACTOR_CT_MECHA10);
     if (idMatch) {
         mModel.SetFile((BMD_File *)Model::LoadFile(data_ov035_02112c78), 1, -1);
         UpdateModelPosAndRotY();
@@ -128,7 +137,7 @@ int daObjCtMecha10_c::InitResources()
             (void *)&dBgW::UpdatePosAndAngs);
         mRotationState = 0;
     } else {
-        idMatch = (actorID == 0x79);
+        idMatch = (actorID == ACTOR_CT_MECHA12L);
         if (idMatch)
             mModel.SetFile((BMD_File *)Model::LoadFile(data_ov035_02112c70), 1, -1);
         else
@@ -137,7 +146,7 @@ int daObjCtMecha10_c::InitResources()
         mRotationState = 1;
     }
 
-    mStepTimer = data_ov035_02111ef4[mRotationState][data_0209f2c0[0]];
+    mStepTimer = data_ov035_02111ef4[mRotationState][data_0209f2c0];
     mAngleYStep = data_ov035_02111ef0[mRotationState];
     unk_326 = data_ov035_02111ef0[mRotationState];
     return 1;
@@ -152,7 +161,7 @@ int daObjCtMecha10_c::InitResources()
    reversed for 0x1e frames. */
 int daObjCtMecha10_c::Behavior()
 {
-    if (data_0209f2c0[0] == 3) {
+    if (data_0209f2c0 == CLOCK_SETTING_STOPPED) {
         UpdateModelPosAndRotY();
         if (mRotationState == 0 &&
             _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0, 0))
@@ -160,24 +169,24 @@ int daObjCtMecha10_c::Behavior()
         return 1;
     }
 
-    if (ApproachLinear(mAngleY, mTargetAngleY, 0xc8) != 0 &&
+    if (ApproachLinear(mAngleY, mTargetAngleY, 0xc8) &&
         DecIfAbove0_Short((u16 *)&mStepTimer) == 0) {
         mTargetAngleY += mAngleYStep;
 
-        u8 setting = data_0209f2c0[0];
+        u8 setting = data_0209f2c0;
         mStepTimer = data_ov035_02111ef4[mRotationState][setting];
-        if (setting == 2) {
-            int rnd = RandomIntInternal(data_0209e650);
+        if (setting == CLOCK_SETTING_RANDOM) {
+            int rnd = RandomIntInternal(&data_0209e650);
             if (DecIfAbove0_Short((u16 *)&mDirTimer) == 0) {
                 if ((unsigned int)rnd % 3 != 0) {
                     mAngleYStep = data_ov035_02111ef0[mRotationState];
                     mDirTimer = (rnd & 3) * 0x3c + 0x5a;
                 } else {
                     mAngleYStep = -data_ov035_02111ef0[mRotationState];
-                    mDirTimer = ((unsigned int)rnd % 3 + 1) * 0x1e;
+                    mDirTimer = (((unsigned int)rnd % 3) + 1) * 0x1e;
                 }
             }
-            mStepTimer = (unsigned int)rnd % 3 * 0x14 + 0xa;
+            mStepTimer = ((unsigned int)rnd % 3) * 0x14 + 0xa;
         }
     }
 
@@ -206,8 +215,7 @@ int daObjCtMecha10_c::CleanupResources()
         data_ov035_02112c78.Release();
         data_ov035_02112c68.Release();
     } else {
-        /* MEASURED: widened, like InitResources' pair above. */
-        int isMecha12L = (actorID == 0x79);
+        int isMecha12L = (actorID == ACTOR_CT_MECHA12L);
         if (isMecha12L)
             data_ov035_02112c70.Release();
         else

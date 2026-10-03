@@ -25,8 +25,8 @@
  *
  * SIZE IS THE ROM'S OWN, not a rounded-up field span: `daPopoi_c_classInit` calls
  * `fBase_c::operator new(1068)` -- 0x42c -- and stores `_ZTV9daPopoi_c`,
- * so that literal IS this class's sizeof. The observed fields only span to
- * 0x428; the difference is trailing space no source reads.
+ * so that literal IS this class's sizeof. The last field, mSoundHandle at
+ * 0x428, ends exactly there.
  *
  * SM64DS RTTI names the implementation daPopoi_c. The reconstructed
  * factory daPopoi_c_classInit (historical alias
@@ -43,24 +43,79 @@
 #include "TextureTransformer.h"
 #include "dBgCh_Actr.h"
 
+/* Actor IDs this class compares against (symbols/actor_debug_names.tsv). */
+enum {
+    daPopoi_ACTOR_PLAYER = 191      /* PLAYER */
+};
+
+/* Sound IDs, both bank 3. Neither is a name recovered from the cartridge; they say
+ * when the sound plays. */
+enum {
+    daPopoi_SND_MOVE_LOOP    = 0x186,   /* PlayLong (with its argument 3), kept alive through mSoundHandle
+                                           by the Wander and Chase update handlers */
+    daPopoi_SND_THROW_PLAYER = 0x10b    /* played at the actor's position right after the launch call succeeds */
+};
+
+/* The state machine is a pointer (mState) to one of five 16-byte records built at
+ * startup by __sinit_ov077_021275fc into data_ov077_02127cd8..02127d18. Each record
+ * is two pointer-to-member words: an ENTER handler (run once by func_ov077_02126d5c as
+ * the state is installed) then an UPDATE handler (run each frame by Behavior). The
+ * names below describe what each pair does; they are not labels from the cartridge.
+ *
+ *   record (data_ov077_...)   enter / update               what it does
+ *   02127ce8  Wander          02126cd4 / 02126ad0          random heading, walks; home pull, chase trigger
+ *   02127cf8  Pause           02126a84 / 02126a50          stands still 70 frames, then back to Wander
+ *   02127d08  Chase           02126930 / 0212679c          turns toward the Player; gives up to Pause
+ *   02127d18  TurnAway        02126a04 / 021269a8          turns a quarter turn after the ahead probe fires (only in level 0x2a)
+ *   02127cd8  Grab            02126758 / 02126640          plays its animation; launches the Player; then Pause
+ */
+struct daPopoi_StateRecord;
+
 struct daPopoi_c : dEnemyBase_c {
     dCcAc_c           mdCcAc_c;   /* 0x110 */
     dCcAcPos_c    mdCcAcPos_c; /* 0x144 */
     dBgCh_Actr                 mWithMeshClsn;         /* 0x184 */
     ModelAnim                    mModelAnim;            /* 0x340 */
     ShadowModel                  mShadowModel;          /* 0x3a4 */
-    u8  pad_3cc[0x30];
-    s32                          unk_3fc;               /* 0x3fc */
-    s32                          unk_400;               /* 0x400 */
-    s32                          unk_404;               /* 0x404 */
-    s32                          unk_408;               /* 0x408 */
-    s32                          unk_40c;               /* 0x40c */
-    s32                          unk_410;               /* 0x410 */
-    s32                          unk_414;               /* 0x414 */
-    s32                          unk_418;               /* 0x418 */
-    u8  pad_41c[0xa];
-    u8                           unk_426;               /* 0x426 */
-    u8  pad_427[0x5];
+    u8  pad_3cc[0x30];                                   /* 0x3cc -- no function here touches it */
+    /* The current state's record; see the table above. Installed by
+       func_ov077_02126d5c, which also runs the record's enter handler. */
+    struct daPopoi_StateRecord  *mState;                /* 0x3fc */
+    /* The Player the sensor was touching when func_ov077_02126528 entered the Grab
+       state. Zero from InitResources; cleared by func_ov077_02126640 once its launch
+       call returns nonzero. If Grab ends (animation Finished) without a launch it is
+       left set. */
+    Player                      *mCaughtPlayer;         /* 0x400 */
+    /* InitResources copies the actor's own position here once; nothing in this
+       file writes it again. Behavior snaps the actor back to it when it falls
+       below the water height, and the Wander/Chase handlers measure their
+       distances from it. */
+    s32                          mHomePosX;             /* 0x404 */
+    s32                          mHomePosY;             /* 0x408 */
+    s32                          mHomePosZ;             /* 0x40c */
+    /* The actor's position at the end of the previous Behavior call. Behavior
+       restores it when this frame's step would walk off a ledge or onto steep
+       ground; the Wander/Chase handlers and the ahead probe restore it when
+       the actor is against a wall (or the probe fires). */
+    s32                          mSavedPosX;            /* 0x410 */
+    s32                          mSavedPosY;            /* 0x414 */
+    s32                          mSavedPosZ;            /* 0x418 */
+    s32                          unk_41c;               /* 0x41c -- only ever zeroed (Wander and Chase enter) */
+    /* The heading mPrevAngleY is stepped toward (ApproachLinear); Behavior then
+       copies mPrevAngleY into mAngleY. Wander enter picks a random multiple of
+       0x1000, Chase update sets the heading to the Player, TurnAway enter sets
+       mAngleY + 0x4000. */
+    s16                          mTargetAngleY;         /* 0x420 */
+    /* Chase's per-frame angle step toward mTargetAngleY; Chase enter zeroes it
+       and Chase update raises it toward 0x600 by 0x100 a frame. */
+    s16                          mTurnRate;             /* 0x422 */
+    u8  pad_424[0x2];
+    /* A countdown (DecIfAbove0_Short in Behavior). TurnAway sets it to 30 frames
+       when it finishes; while it is nonzero the Wander update skips the test for
+       a Player to chase. */
+    u16                          mCooldown;             /* 0x426 */
+    /* Sound::PlayLong's return, fed back on the next call (daPopoi_SND_MOVE_LOOP). */
+    u32                          mSoundHandle;          /* 0x428 */
 
     /* --- vtable --- */
     /* Inline and first: measured (class-form skill) that mwccarm 2004/b56

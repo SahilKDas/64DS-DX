@@ -82,9 +82,11 @@ declared `virtual ~dScene_c();` cannot be inlined and emits `bl _ZN8dScene_cD2Ev
 the ROM has none (measured on a `Stage` trial: 80 bytes with the call vs the ROM's 104
 with none).
 
-The cost is what `dBase_c` already pays: `src/_ZN8dScene_cD1Ev.cpp` and `_ZN8dScene_cD0Ev.cpp`
-can no longer *define* `~dScene_c()`, and a bare include emits nothing. Both carry a
-forcing call instead; see the note in each file.
+The production [Scene TU](../src/actors/dScene_c.cpp) defines the key function,
+`BeforeInitResources`. Its vtable references emit both out-of-line copies of the
+inline destructor in ROM order. The former per-function forcing calls are no
+longer needed. The emitted metadata is checked against its existing ROM homes
+before the duplicate storage is discarded.
 
 ### Layout — why dScene_c declares no fields
 

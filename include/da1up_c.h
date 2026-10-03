@@ -49,23 +49,72 @@
 
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
+/* mMushroomType, intended range 0..13 (Behavior indexes the array without a
+   bounds check), is picked from the low nibble of param1 in
+   InitResources and indexes the 14-element dispatch array Behavior calls. The
+   enumerators name what each dispatched handler DOES, not what the original
+   source called it -- no original name survives in the image. Each is spelled
+   out at its handler in src/actors/da1up_c.cpp.
+   Groups the code makes visible:
+     5 / 7      stay hidden until mUnlockCount reaches 0, then pop out;
+     6 / 8      invisible and stationary (mShown stays 0); touching them
+                decrements a waiting 5 / 7
+                (func_ov002_020af684);
+     11 / 12    spinning variants of 6 / 8 that also give a coin and a heal;
+     9          spawns one type 5 and two type 11 around its spawn point. */
+enum da1up_MushroomType {
+    MUSHROOM_POP_OUT_DRIFT        = 0,  /* arc out, drift at 2 units a frame, blink, vanish */
+    MUSHROOM_POP_OUT_FLEE         = 1,  /* arc out, then walk away from the player */
+    MUSHROOM_WAIT_THEN_ACCELERATE = 2,  /* wait for the player, then speed up along mPrevAngleY */
+    MUSHROOM_STATIONARY           = 3,  /* no movement; just waits to be touched */
+    MUSHROOM_WAIT_THEN_FACE_AWAY  = 4,  /* wait for the player, hop, then face away from him; no horizontal speed is set here */
+    MUSHROOM_HIDDEN_FLEE          = 5,  /* hidden, then arc out and walk away */
+    MUSHROOM_TRIGGER_FOR_5        = 6,  /* invisible and stationary; touching it unlocks a type 5 */
+    MUSHROOM_HIDDEN_CHASE         = 7,  /* hidden, then arc out and steer toward the player */
+    MUSHROOM_TRIGGER_FOR_7        = 8,  /* invisible and stationary; touching it unlocks a type 7 */
+    MUSHROOM_SPAWNER              = 9,  /* spawns three mushrooms, then removes itself */
+    MUSHROOM_RISE_THEN_POP_OUT    = 10, /* rises 100 units, then continues as type 0 */
+    MUSHROOM_SPIN_TRIGGER_FOR_5   = 11, /* spinning 6, plus a coin and a heal */
+    MUSHROOM_SPIN_TRIGGER_FOR_7   = 12, /* spinning 8, plus a coin and a heal */
+    MUSHROOM_FALL_THEN_WAIT       = 13  /* falls to the ground, then waits to be touched */
+};
+
 struct da1up_c : dEnemyBase_c {
     dCcAc_c           mdCcAc_c;   /* 0x110 */
     dBgCh_Actr                 mWithMeshClsn;         /* 0x144 */
     Model                        mModel;                /* 0x300 */
     ShadowModel                  mShadowModel;          /* 0x350 */
-    s32                          unk_378;               /* 0x378 */
-    s32                          unk_37c;               /* 0x37c */
-    s32                          unk_380;               /* 0x380 */
-    s32                          mMushroomType;         /* 0x384 */
-    s32                          unk_388;               /* 0x388 */
+    /* mPos as InitResources found it (the three words are copied from
+       mPosX/Y/Z). Type 10 rises to 100 units above mSpawnPosY; type 9 spawns
+       its three mushrooms relative to it. */
+    s32                          mSpawnPosX;            /* 0x378 */
+    s32                          mSpawnPosY;            /* 0x37c */
+    s32                          mSpawnPosZ;            /* 0x380 */
+    s32                          mMushroomType;         /* 0x384 -- param1 & 0xf, see da1up_MushroomType */
+    /* Step within the current behaviour, 0..3. Handlers 0, 1, 2, 4, 5, 7 and 13
+       switch on it; the others never read it.
+       Behavior zeroes mStateTimer and mStateFrames whenever a handler changes it. */
+    s32                          mState;                /* 0x388 */
     /* 0x38c is live and distinct from dEnemyBase_c::mStateTimer at 0x100.
-       Naming it mStateTimer shadowed the base field. */
-    u16                          unk_38c;               /* 0x38c */
-    u8                           unk_38e;               /* 0x38e */
-    u8                           unk_38f;               /* 0x38f */
-    s32                          unk_390;               /* 0x390 */
-    s32                          unk_394;               /* 0x394 */
+       Naming it mStateTimer shadowed the base field. Behavior advances it and
+       clears it exactly as it does mStateTimer, and func_ov002_020af7cc sets
+       both to 0xffff; it is the counter func_ov002_020af248 reads for the
+       blink-then-vanish countdown. */
+    u16                          mStateFrames;          /* 0x38c */
+    /* 0x38e: nonzero lets Render and the drop shadow run. func_ov002_020af218
+       stores IsPlayerInRange there each frame; types 5 and 7 hold it at 0 while
+       hidden; type 10 forces it to 1. 0x38f: the blink phase, written by
+       func_ov002_020af248 during the final 40 frames and otherwise left at 1
+       (InitResources sets it). Render needs both. */
+    u8                           mShown;                /* 0x38e */
+    u8                           mBlinkOn;              /* 0x38f */
+    /* param1 >> 4 & 0xf. Types 5 and 7 stay hidden in state 0 while it is
+       nonzero; func_ov002_020af684 decrements it. Type 9 spawns a type 5 with
+       it set to 2 (spawn param 0x25) next to two type 11. */
+    s32                          mUnlockCount;          /* 0x390 */
+    /* The handle func_ov002_020aeee4 hands Particle::System::New and stores
+       its result back into, so one effect is carried from frame to frame. */
+    u32                          mParticleID;           /* 0x394 */
 
     /* --- vtable ---
        Nine own overrides, and _ZTV7da1up_c at 0x021083c8 is what says which:

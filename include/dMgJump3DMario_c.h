@@ -86,9 +86,10 @@ struct dMg3DHeyhoObjAdapter_c {
  * Eight further members keep the address as the method name
  * (func_ov006_020c76e0, func_ov006_020c7734, func_ov006_020c7860,
  * func_ov006_020c8084, func_ov006_020c81e0, func_ov006_020c862c,
- * func_ov006_020c8658, func_ov006_020c87d0). The unpromoted C shards
- * below this run call them by the mangled linker symbol. Those names
- * are inferred labels and carry no claim about the original spellings.
+ * func_ov006_020c8658, func_ov006_020c87d0). The front helpers at the
+ * bottom of the TU (func_ov006_020c6f8c..func_ov006_020c7574) call them
+ * as members. Those names are inferred labels and carry no claim about
+ * the original spellings.
  */
 struct dMgJump3DMario_c : dMg3DHeyhoObjAdapter_c {
     dMgJump3DMario_c();

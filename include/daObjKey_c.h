@@ -67,6 +67,12 @@ struct daObjKey_c : dEnemyBase_c {
     void StateStarJump();               /* 0x0213162c, kind 7 */
     void StateDrop();                   /* 0x02131b18, the other six kinds */
     void UpdateModelTransform();        /* 0x02131f54 */
+
+    /* The address is the method name. The actor was the first parameter. */
+    void func_ov089_02130fb4(int *target, int height); /* 0x02130fb4 */
+    void func_ov089_0213115c(int anim);                /* 0x0213115c */
+    void func_ov089_02131dcc(char *player);            /* 0x02131dcc */
+    void func_ov089_02131df4(char *player);            /* 0x02131df4 */
 };
 
 #ifndef SM64DS_PLATFORM_PC

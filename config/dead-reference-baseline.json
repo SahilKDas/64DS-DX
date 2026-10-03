@@ -626,6 +626,10 @@
    "ref": "src/func_ov065_021183c8.c"
   },
   {
+   "file": "tools/check_drafts_compile.py",
+   "ref": "src/func_ov006_020fc8c0.c"
+  },
+  {
    "file": "tools/check_header_offsets.py",
    "ref": "include/ClsnResult.h"
   },

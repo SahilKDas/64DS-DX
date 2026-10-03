@@ -12,17 +12,26 @@
  * of the section list, which is the cartridge's own order. See the header for
  * why the in-class form is load-bearing.
  *
- * Known limits:
- * - dBgActor_c::IsClsnInRange, dActor_c::Earthquake and
- *   Particle::System::NewSimple take Fix12<int> by value (see
- *   notes/mwccarm-codegen.md 6az), so they stay mangled TU-local externs.
- * - The 0x39e / 0x39f accesses in func_ov025_021119a4, 021119f4 and 02111a84
- *   keep their (int)this + 0x39e integer-cast form: the named stores CSE.
- * - func_ov091_* are shared daDsnBase leaf helpers; data_ov025_02113814 is
- *   the file-table handle.
- * - Leaf operator new(unsigned long): fBase_c declares none yet.
- * - g_profile_DONKAKU stays overlay data (not this TU).
- * - func_0201267c stays a free function.
+ * Leftover:
+ * - func_ov025_021119f4: `unk_39e = unk_39e - 1` and `(u8)(unk_39e - 1)`
+ *   size-DIFF 0x90->0x84. `unk_39e--`, `--unk_39e` and `unk_39e -= 1` match.
+ * - func_ov025_02111a84: `unk_39f = unk_39f + 1` size-DIFF 0xe0->0xd4.
+ *   `unk_39f++`, `++unk_39f` and `unk_39f += 1` match. Two Vector3 locals
+ *   instead of `Vector3 v[2]` stay 0xe0 and DIFF 8 words.
+ * - func_ov025_02111a84: Earthquake as Fix12<int> size-DIFF 0xe0->0xe8.
+ *   Particle::System::NewSimple as Fix12<int> size-DIFF 0xe0->0x104.
+ *   `Fix12<int>{...}` does not compile ("( expected"). Sound::Play(3, id,
+ *   pos) size-DIFF 0xe0->0xe4; the ROM calls func_0201267c.
+ * - Behavior: IsClsnInRange as Fix12<int> size-DIFF 0xc0->0xdc.
+ *   `Fix12<int>{0}` does not compile. The scalar (void *, Fix12i, Fix12i)
+ *   call with (0, 0) matches.
+ * - InitResources: writing va then vb size-DIFF 0xd0->0xcc. One GetClsnPos
+ *   size-DIFF 0xd0->0xc4. The first copy is unread.
+ * - func_ov091_02132ff4, func_ov091_02132e98 and func_ov091_02132e64 stay
+ *   C calls into src/actors/daDsnBase_c.cpp. The other four func_ov091_*
+ *   this file calls are already daDsnBase_c methods.
+ * - data_ov025_02113814 is the file-table handle. g_profile_DONKAKU stays
+ *   overlay data. Leaf operator new(unsigned long): fBase_c declares none.
  */
 
 /* INCLUDE ORDER IS LOAD-BEARING, the same way it is in the base class's own TU:
@@ -37,16 +46,14 @@
 
 bool ApproachLinear(short &value, short target, short step);
 
-/* decl_common.h already declares the address-named symbols this TU touches
- * (func_ov025_021119a4/021119f4/02111a84, func_ov091_02132e64/02132e98/
- * 02132ff4, data_ov025_02113814), all taking char*.
+/* decl_common.h declares func_ov091_02132e64/02132e98/02132ff4 (char *) and
+ * data_ov025_02113814. The three func_ov025_* bodies below are methods; they
+ * are not declared there.
  *
- * These are the ones no header declares. func_0201267c is `void`: its own
- * enrolled definition is `void func_0201267c(unsigned int id, const Vector3
- * *v)`, the tree spells it void in 83 files against 21 for int, and neither
- * call site here reads the result. The `(int, void*)` parameter spelling is
- * the tree's majority shorthand for that signature and links because the
- * symbol is extern "C". */
+ * func_0201267c is void. Its enrolled definition is
+ * `void func_0201267c(unsigned int id, const Vector3 *v)`, and neither call
+ * here reads a result. `(int, void *)` is the shorthand that links, because
+ * the symbol is extern "C". */
 extern "C" {
 extern void func_0201267c(int a, void *b);
 extern int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *p, Fix12i a, Fix12i b);
@@ -90,6 +97,7 @@ int daDkk_c::InitResources()
         dBgCh_Lin ray;
         Vector3 va;
         Vector3 vb;
+        /* Store order is the ROM's. va then vb shrinks this function 0xd0->0xcc. */
         int x = mPosX;
         vb.x = x;
         int y = mPosY;
@@ -102,6 +110,7 @@ int daDkk_c::InitResources()
         vb.y = y + 0x7d0000;
         ray.SetObjAndLine(va, vb, this);
         if (ray.DetectClsn()) {
+            /* First copy is unread. One GetClsnPos shrinks this function 0xd0->0xc4. */
             Vector3 p1 = ray.GetClsnPos();
             Vector3 p2 = ray.GetClsnPos();
             mProbeHeight = p2.y - 0x190000;
@@ -118,20 +127,19 @@ int daDkk_c::InitResources()
  * post-step housekeeping every daDsnBase_c leaf needs. */
 int daDkk_c::Behavior()
 {
-    char *c = (char *)this;
     switch (mState) {
     case 0: func_ov091_02133020(); break;
-    case 1: func_ov091_02132ff4(c); break;
+    case 1: func_ov091_02132ff4((char *)this); break;
     case 2: func_ov091_02132f04(); break;
-    case 3: func_ov091_02132e98(c); break;
-    case 4: func_ov091_02132e64(c); break;
+    case 3: func_ov091_02132e98((char *)this); break;
+    case 4: func_ov091_02132e64((char *)this); break;
     case 5: func_ov025_02111a84(); break;
     case 6: func_ov025_021119f4(); break;
     case 7: func_ov025_021119a4(); break;
     }
     UpdateModelPosAndRotY();
     func_ov091_02133098();
-    if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(c, 0, 0) != 0 ||
+    if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0, 0) != 0 ||
         func_ov091_02132dc0() != 0) {
         UpdateClsnPosAndRot();
     }
@@ -144,6 +152,7 @@ int daDkk_c::Behavior()
  * over to state 6. */
 void daDkk_c::func_ov025_02111a84()
 {
+    /* Two Vector3 locals stay 0xe0 and DIFF 8 words. */
     Vector3 v[2];
     UpdatePos(0);
     if (mVertSpeed >= 0)
@@ -158,8 +167,7 @@ void daDkk_c::func_ov025_02111a84()
     v[1].z = mPosZ;
     _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(this, v[1], 0x7d0000);
     unk_39e = 0x3c;
-    *(unsigned char *)(((int)this + 0x39f)) =
-        *(unsigned char *)(((int)this + 0x39f)) + 1;
+    unk_39f++;
     mState = 6;
     v[0].x = mPosX;
     v[0].y = mPosY;
@@ -175,8 +183,7 @@ void daDkk_c::func_ov025_02111a84()
  * opposite way (state 7). */
 void daDkk_c::func_ov025_021119f4()
 {
-    *(u8 *)(((int)this + 0x39e)) =
-        *(u8 *)(((int)this + 0x39e)) - 1;
+    unk_39e--;
     if (unk_39e != 0) return;
     if (unk_39f != 4) {
         mState = 5;

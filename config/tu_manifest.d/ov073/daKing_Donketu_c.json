@@ -35,35 +35,35 @@
       "ordinal": 1
     },
     {
-      "symbol": "func_ov073_0211f144",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211f144Ev",
       "address": "0x0211f144",
       "size": "0x0000017c",
       "legacy_source": "src/func_ov073_0211f144.c",
       "ordinal": 2
     },
     {
-      "symbol": "func_ov073_0211f2c0",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211f2c0Ei",
       "address": "0x0211f2c0",
       "size": "0x000001d4",
       "legacy_source": "src/func_ov073_0211f2c0.c",
       "ordinal": 3
     },
     {
-      "symbol": "func_ov073_0211f494",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211f494EPv",
       "address": "0x0211f494",
       "size": "0x00000188",
       "legacy_source": "src/func_ov073_0211f494.c",
       "ordinal": 4
     },
     {
-      "symbol": "func_ov073_0211f61c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211f61cEv",
       "address": "0x0211f61c",
       "size": "0x00000458",
       "legacy_source": "src/func_ov073_0211f61c.cpp",
       "ordinal": 5
     },
     {
-      "symbol": "func_ov073_0211fa74",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211fa74Ev",
       "address": "0x0211fa74",
       "size": "0x00000178",
       "legacy_source": "src/func_ov073_0211fa74.c",
@@ -77,7 +77,7 @@
       "ordinal": 7
     },
     {
-      "symbol": "func_ov073_0211fbf4",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211fbf4Ev",
       "address": "0x0211fbf4",
       "size": "0x0000007c",
       "legacy_source": "src/func_ov073_0211fbf4.cpp",
@@ -91,7 +91,7 @@
       "ordinal": 9
     },
     {
-      "symbol": "func_ov073_0211fc78",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211fc78Ev",
       "address": "0x0211fc78",
       "size": "0x0000020c",
       "legacy_source": "src/func_ov073_0211fc78.c",
@@ -105,182 +105,182 @@
       "ordinal": 11
     },
     {
-      "symbol": "func_ov073_0211fe8c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0211fe8cEv",
       "address": "0x0211fe8c",
       "size": "0x00000180",
       "legacy_source": "src/func_ov073_0211fe8c.c",
       "ordinal": 12
     },
     {
-      "symbol": "func_ov073_0212000c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0212000cEv",
       "address": "0x0212000c",
       "size": "0x00000050",
       "legacy_source": "src/func_ov073_0212000c.cpp",
       "ordinal": 13
     },
     {
-      "symbol": "func_ov073_0212005c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0212005cEv",
       "address": "0x0212005c",
       "size": "0x0000003c",
       "legacy_source": "src/func_ov073_0212005c.cpp",
       "ordinal": 14
     },
     {
-      "symbol": "func_ov073_02120098",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120098Ev",
       "address": "0x02120098",
       "size": "0x00000048",
       "legacy_source": "src/func_ov073_02120098.cpp",
       "ordinal": 15
     },
     {
-      "symbol": "func_ov073_021200e0",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_021200e0Ev",
       "address": "0x021200e0",
       "size": "0x000002b0",
       "legacy_source": "src/func_ov073_021200e0.c",
       "ordinal": 16
     },
     {
-      "symbol": "func_ov073_02120390",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120390Ev",
       "address": "0x02120390",
       "size": "0x0000001c",
       "legacy_source": "src/func_ov073_02120390.c",
       "ordinal": 17
     },
     {
-      "symbol": "func_ov073_021203ac",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_021203acEv",
       "address": "0x021203ac",
       "size": "0x00000244",
       "legacy_source": "src/func_ov073_021203ac.c",
       "ordinal": 18
     },
     {
-      "symbol": "func_ov073_021205f0",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_021205f0Ev",
       "address": "0x021205f0",
       "size": "0x00000020",
       "legacy_source": "src/func_ov073_021205f0.c",
       "ordinal": 19
     },
     {
-      "symbol": "func_ov073_02120610",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120610Ev",
       "address": "0x02120610",
       "size": "0x0000020c",
       "legacy_source": "src/func_ov073_02120610.c",
       "ordinal": 20
     },
     {
-      "symbol": "func_ov073_0212081c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0212081cEv",
       "address": "0x0212081c",
       "size": "0x00000028",
       "legacy_source": "src/func_ov073_0212081c.c",
       "ordinal": 21
     },
     {
-      "symbol": "func_ov073_02120844",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120844Ev",
       "address": "0x02120844",
       "size": "0x000000a0",
       "legacy_source": "src/func_ov073_02120844.c",
       "ordinal": 22
     },
     {
-      "symbol": "func_ov073_021208e4",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_021208e4Ev",
       "address": "0x021208e4",
       "size": "0x0000002c",
       "legacy_source": "src/func_ov073_021208e4.c",
       "ordinal": 23
     },
     {
-      "symbol": "func_ov073_02120910",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120910Ev",
       "address": "0x02120910",
       "size": "0x000001c8",
       "legacy_source": "src/func_ov073_02120910.c",
       "ordinal": 24
     },
     {
-      "symbol": "func_ov073_02120ad8",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120ad8Ev",
       "address": "0x02120ad8",
       "size": "0x000000a0",
       "legacy_source": "src/func_ov073_02120ad8.c",
       "ordinal": 25
     },
     {
-      "symbol": "func_ov073_02120b78",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120b78Ev",
       "address": "0x02120b78",
       "size": "0x00000090",
       "legacy_source": "src/func_ov073_02120b78.c",
       "ordinal": 26
     },
     {
-      "symbol": "func_ov073_02120c08",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120c08Ev",
       "address": "0x02120c08",
       "size": "0x00000074",
       "legacy_source": "src/func_ov073_02120c08.c",
       "ordinal": 27
     },
     {
-      "symbol": "func_ov073_02120c7c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120c7cEv",
       "address": "0x02120c7c",
       "size": "0x00000104",
       "legacy_source": "src/func_ov073_02120c7c.cpp",
       "ordinal": 28
     },
     {
-      "symbol": "func_ov073_02120d80",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120d80Ev",
       "address": "0x02120d80",
       "size": "0x0000006c",
       "legacy_source": "src/func_ov073_02120d80.cpp",
       "ordinal": 29
     },
     {
-      "symbol": "func_ov073_02120dec",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120decEv",
       "address": "0x02120dec",
       "size": "0x00000074",
       "legacy_source": "src/func_ov073_02120dec.c",
       "ordinal": 30
     },
     {
-      "symbol": "func_ov073_02120e60",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120e60Ev",
       "address": "0x02120e60",
       "size": "0x00000070",
       "legacy_source": "src/func_ov073_02120e60.cpp",
       "ordinal": 31
     },
     {
-      "symbol": "func_ov073_02120ed0",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02120ed0Ev",
       "address": "0x02120ed0",
       "size": "0x0000035c",
       "legacy_source": "src/func_ov073_02120ed0.c",
       "ordinal": 32
     },
     {
-      "symbol": "func_ov073_0212122c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0212122cEv",
       "address": "0x0212122c",
       "size": "0x00000060",
       "legacy_source": "src/func_ov073_0212122c.c",
       "ordinal": 33
     },
     {
-      "symbol": "func_ov073_0212128c",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_0212128cEv",
       "address": "0x0212128c",
       "size": "0x000000ec",
       "legacy_source": "src/func_ov073_0212128c.c",
       "ordinal": 34
     },
     {
-      "symbol": "func_ov073_02121378",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02121378Ev",
       "address": "0x02121378",
       "size": "0x00000010",
       "legacy_source": "src/func_ov073_02121378.c",
       "ordinal": 35
     },
     {
-      "symbol": "func_ov073_02121388",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02121388Ev",
       "address": "0x02121388",
       "size": "0x000001b0",
       "legacy_source": "src/func_ov073_02121388.c",
       "ordinal": 36
     },
     {
-      "symbol": "func_ov073_02121538",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_02121538Ev",
       "address": "0x02121538",
       "size": "0x00000044",
       "legacy_source": "src/func_ov073_02121538.cpp",
@@ -294,7 +294,7 @@
       "ordinal": 38
     },
     {
-      "symbol": "func_ov073_021215cc",
+      "symbol": "_ZN16daKing_Donketu_c19func_ov073_021215ccEv",
       "address": "0x021215cc",
       "size": "0x00000214",
       "legacy_source": "src/func_ov073_021215cc.c",

@@ -2,15 +2,20 @@
 /* daYegg_c -- the Yoshi egg (registry profile YOSHI_EGG).
  *
  * The egg a Yoshi carries and throws. The state table at 0x02110a5c holds
- * two member-function pointers per state, enter and execute, and the state
- * number lives at +0x3f0: func_ov002_020ed63c installs a state and runs its
- * enter, func_ov002_020ed684 runs the current execute from Behavior. While
- * held it follows the player at +0x38c (func_ov002_020ed0d4,
- * func_ov002_020ed5b0); once thrown it homes on the nearest actor it has
- * not hit yet (func_ov002_020edb3c), and on contact or after five hits it bursts
- * (func_ov002_020edca4), paying out coins, a blue coin or the tracked star
- * as param1 asks (func_ov002_020ec610 / 020ec628 / 020ec640 read the bits of
- * +0x428).
+ * two member-function pointers per state, enter and execute (see daYegg_State
+ * in daYegg_c.h), and the state number is mState: func_ov002_020ed63c installs
+ * a state and runs its enter, func_ov002_020ed684 runs the current execute
+ * from Behavior. An egg in state 0 trails the player (mPlayer;
+ * func_ov002_020ed0d4, func_ov002_020ed5b0); Player::St_YoshiPower_Init takes
+ * one from the Player's held-object queue, sets its 0x100 flag bit and enters
+ * state 1, where it homes on the nearest actor not yet targeted
+ * (func_ov002_020edb3c), and on contact or
+ * after five payouts it bursts (func_ov002_020edca4), paying out coins, a
+ * blue coin or the tracked star as param1 asks (func_ov002_020ec610 /
+ * 020ec628 / 020ec640 read the bits of mParamHigh, which is param1 >> 4).
+ * param1 bits 0-1 are the starting state (and the egg's size), bits 4-5 the
+ * variant func_ov002_020ec654 tests, bits 6-9 the coin count, bit 10 the blue
+ * coin and bit 11 the star.
  *
  * This file is the whole linker unit 0x020ec56c..0x020ee42c, 33 functions:
  * D1 and D0 (src/game/actors/d_a_warpkun.cpp ends exactly at 0x020ec56c
@@ -33,14 +38,33 @@
  * two members whose sources carried it; with codegen deferred the pragma is
  * last-wins over the whole file.
  *
- * Leftover: most helpers keep their C-ABI cartridge names and reach the egg
- *   through raw offsets. daYegg_c.h names the fields InitResources and
- *   Behavior use; the rest is padding there, and naming it is its own change.
+ * Leftover: the helpers keep their C-ABI cartridge names (func_ov002_...);
+ *   the comments above each say what it does, not what the original called it.
  * Leftover: the callees with Fix12<int> parameters (ModelAnim::SetAnim,
  *   dCcAc_c::Init, dBgCh_Actr::Init, the shadow drops, Particle::System::New)
  *   stay spelled as mangled extern-C free functions. A real method call homes
  *   a class-typed by-value argument and size-DIFFs the caller
  *   (notes/mwccarm-codegen.md 6az).
+ * Leftover: still raw offsets: the words written into each spawned coin in
+ *   func_ov002_020ec80c (+0x92..+0x98), the DOSUN byte at +0x3a2 in
+ *   func_ov002_020ec670, the word at Player+0xc8 in func_ov002_020ed998 and
+ *   the dBgCh_Gnd result at +0x44 in func_ov002_020ed7f8.
+ * Leftover: mSpawnPos is named in daYegg_c.h but its purpose is not known
+ *   (written once, never read here); unk_41e and the 4-byte gap at 0x3f8 are
+ *   unnamed. dActor_c::unk_0a4/unk_0ac and Player::unk_37c are read through
+ *   their unk_ names, and func_ov002_020ed738 reads the floor result +4 raw.
+ * Leftover: this list is representative, not exhaustive: the flag and mask
+ *   literals (mFlags 0x40000/0x10000000/0x8, the hit flags 0x8000/0x26fe0,
+ *   the cylinder words 0x202000/0x200002/0xa08000) are also left numeric, and
+ *   the extern-C Fix12 callees include SpawnCoins, Player::Hurt,
+ *   Particle::NewSimple and RunningSlidingDustAt as well.
+ * Leftover: the particle, sound, shadow and animation-file arguments are
+ *   numeric (0x3f..0x42, 0x2c, 0x93, 0x103, the two shared animation files)
+ *   and the egg's flag bits 0x100/0x400/0x2000 are named by use only. The IDs'
+ *   names are not recovered. 0x100 is set by Player::St_YoshiPower_Init (on the
+ *   egg it takes from the held-object queue); who sets 0x400 and 0x2000 is not
+ *   recovered. The "idle" and "moving" animation names say when the code
+ *   picks each file, not recovered names.
  */
 
 #pragma defer_codegen off
@@ -116,34 +140,48 @@ struct VObjQuery {
    called by name. */
 typedef struct dBgCh_Gnd { char buf[0x68 - 0x18]; } dBgCh_Gnd;
 
+/* Actor registry IDs this file tests or spawns (symbols/actor_debug_names.tsv). */
+enum {
+    ACTOR_DOSUN       = 0xa1,
+    ACTOR_BATAN       = 0xa4,
+    ACTOR_BATANKING   = 0xa5,
+    ACTOR_SILVER_STAR = 0xb3,
+    ACTOR_BOMBKING    = 0xbd,
+    ACTOR_HOLHEI      = 0xbe,
+    ACTOR_PLAYER      = 0xbf,
+    ACTOR_KURIKING    = 0xc6,
+    ACTOR_KURIBO_L    = 0xca,
+    ACTOR_WANWAN      = 0xdb,
+    ACTOR_BLUE_COIN   = 0x122,
+    ACTOR_WANWAN2     = 0x151
+};
+
 /* The state table at 0x02110a5c: two member-function pointers per state,
-   enter and execute, indexed by the state number at +0x3f0. The receiver is
-   completed after the pointer type is formed, as the legacy shards did. */
-struct C; typedef void (C::*PMF)();
+   enter and execute, indexed by mState. __sinit_ov002_02107118 fills it. */
+typedef void (daYegg_c::*PMF)();
 struct Entry { PMF pmf[2]; };
 extern Entry data_ov002_02110a5c[];
-struct C { char pad[0x3f0]; int idx; };
 
 extern "C" {
 /* Defined below. */
-int func_ov002_020ec610(unsigned char *p);
-int func_ov002_020ec628(unsigned char *p);
+int func_ov002_020ec610(daYegg_c *p);
+int func_ov002_020ec628(daYegg_c *p);
 unsigned char func_ov002_020ec640(unsigned char *p);
-int func_ov002_020ec654(unsigned char *p);
-void func_ov002_020ec670(char *self, int arg);
+int func_ov002_020ec654(daYegg_c *p);
+void func_ov002_020ec670(daYegg_c *self, int arg);
 void func_ov002_020ec728(char *c);
 void func_ov002_020ec80c(char *a, void *b, int count, int sl, short arg5);
-void func_ov002_020ecb0c(void *arg0);
-void func_ov002_020ecd18(void *arg0);
-void func_ov002_020ed63c(C *c, int i);
-void func_ov002_020ed684(C *c);
-int func_ov002_020ed6cc(void *c);
+void func_ov002_020ecb0c(daYegg_c *c);
+void func_ov002_020ecd18(daYegg_c *c);
+void func_ov002_020ed63c(daYegg_c *c, int i);
+void func_ov002_020ed684(daYegg_c *c);
+int func_ov002_020ed6cc(daYegg_c *c);
 void func_ov002_020ed738(char *c);
 void func_ov002_020ed7f8(void *self);
 void func_ov002_020ed998(char *c);
 int func_ov002_020edb3c(char *self, int a1, int best);
-void func_ov002_020edca4(char *self);
-int func_ov002_020eddc4(char *self);
+void func_ov002_020edca4(daYegg_c *self);
+int func_ov002_020eddc4(daYegg_c *self);
 
 /* Data. 0x0210e6b0 and 0x0210eb78 are the two shared animation files; +4 of
    each is the file the shared loader put there. */
@@ -263,9 +301,11 @@ extern "C" daYegg_c *_ZN8daYegg_cD0Ev(daYegg_c *thiz)
 /* ROM ordinal 2 -- func_ov002_020ec610, 0x020ec610, size 0x18 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec610
+/* Reads mParamHigh bit 7 (param1 bit 11): nonzero when the egg pays out the
+ * tracked star when it bursts. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-int func_ov002_020ec610(unsigned char *p){
-  return ((p[0x428] >> 7) & 1) != 0;
+int func_ov002_020ec610(daYegg_c *p){
+  return ((p->mParamHigh >> 7) & 1) != 0;
 }
 }
 
@@ -273,9 +313,12 @@ int func_ov002_020ec610(unsigned char *p){
 /* ROM ordinal 3 -- func_ov002_020ec628, 0x020ec628, size 0x18 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec628
+/* Reads mParamHigh bit 6 (param1 bit 10): nonzero when the egg pays out a
+ * blue coin. InitResources loads the blue-coin model for it and
+ * CleanupResources unloads it. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-int func_ov002_020ec628(unsigned char *p){
-  return ((p[0x428] >> 6) & 1) != 0;
+int func_ov002_020ec628(daYegg_c *p){
+  return ((p->mParamHigh >> 6) & 1) != 0;
 }
 }
 
@@ -283,9 +326,12 @@ int func_ov002_020ec628(unsigned char *p){
 /* ROM ordinal 4 -- func_ov002_020ec640, 0x020ec640, size 0x14 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec640
+/* Reads mParamHigh bits 2-5 (param1 bits 6-9): the number of coins to pay out,
+ * 0 to 15. The parameter stays an unsigned char pointer, as the declaration
+ * shared with other files has it. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
 unsigned char func_ov002_020ec640(unsigned char *p){
-  return (p[0x428] >> 2) & 0xf;
+  return (((daYegg_c *)p)->mParamHigh >> 2) & 0xf;
 }
 }
 
@@ -293,9 +339,15 @@ unsigned char func_ov002_020ec640(unsigned char *p){
 /* ROM ordinal 5 -- func_ov002_020ec654, 0x020ec654, size 0x1c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec654
+/* The egg's variant bit: reads mParamHigh bits 0-1 (param1 bits 4-5) and is
+ * nonzero when that value is 0 or 2, zero when it is 1 or 3. It chooses the
+ * model, the shadow shape (cylinder when zero, cuboid when nonzero), the
+ * flight handler in state 1 and the state-1 enter's gravity, target-search
+ * range and ground-collision setup (the cylinder it builds is the same for
+ * both). What the two variants are in the game is not recovered. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-int func_ov002_020ec654(unsigned char *p) {
-    return (((p[0x428] & 3) - 1) & 1) != 0;
+int func_ov002_020ec654(daYegg_c *p) {
+    return (((p->mParamHigh & 3) - 1) & 1) != 0;
 }
 }
 
@@ -303,8 +355,14 @@ int func_ov002_020ec654(unsigned char *p) {
 /* ROM ordinal 6 -- func_ov002_020ec670, 0x020ec670, size 0xb8 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec670
+/* What the egg did to the wall it hit. `arg` is the egg's dBgCh_Actr as an
+ * integer; func_0203567c turns it into a dBgPi, whose collision ID names the
+ * actor owning the surface hit. Returns without doing anything if there is no
+ * such ID or actor. A DOSUN gets its byte at +0x3a2 set to 1; a BATAN or
+ * BATANKING is handed the egg through daBtn_c's hit reaction. Any other actor
+ * is left alone. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ec670(char* self, int arg)
+void func_ov002_020ec670(daYegg_c* self, int arg)
 {
     struct dBgPi* cr;
     struct dActor_c* actor;
@@ -316,20 +374,20 @@ void func_ov002_020ec670(char* self, int arg)
     actor = (struct dActor_c*)_ZN8dActor_c10FindWithIDEj(_ZNK5dBgPi9GetClsnIDEv(cr));
     if (actor == 0) return;
 
-    type = *(u16*)((char*)actor + 0xc);
+    type = actor->actorID;
     {
-        int t = (int)(type == 0xa1);
+        int t = (int)(type == ACTOR_DOSUN);
         if (t != 0) {
             *(u8*)((char*)actor + 0x3a2) = 1;
             return;
         }
     }
     {
-        int t = (int)(type == 0xa4);
+        int t = (int)(type == ACTOR_BATAN);
         if (t != 0) goto docall;
     }
     {
-        int t = (int)(type == 0xa5);
+        int t = (int)(type == ACTOR_BATANKING);
         if (t == 0) return;
     }
 docall:
@@ -343,19 +401,26 @@ docall:
 // @symbol func_ov002_020ec728
 /* recovered: shared common types, declarations from a shared header */
 /* recovered: shared common types */
+/* Pays out once for the current payout slot (mPayoutIdx). Does nothing if the
+ * index is already 5 or the slot is already marked paid. Otherwise it spawns
+ * the coin count from func_ov002_020ec640 as coins, and one blue coin if
+ * func_ov002_020ec628 says so, both at the egg's position raised by 0x28000
+ * (40 units), then marks the slot paid. The 0x2000 handed on is 2.0 in
+ * Fix12; what that argument controls is not recovered here. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
 void func_ov002_020ec728(char* c)
 {
-    unsigned int idx = *(unsigned char*)(c + 0x420);
+    daYegg_c *y = (daYegg_c *)c;
+    unsigned int idx = y->mPayoutIdx;
     unsigned int n;
     struct Vector3 vec;
     if (idx >= 5) return;
-    if (*(unsigned char*)(c + idx + 0x421) != 0) return;
+    if (y->mPayoutDone[idx] != 0) return;
     n = func_ov002_020ec640((unsigned char*)c);
     {
-        int tx = *(int*)(c + 0x5c);
-        int tz = *(int*)(c + 0x64);
-        int ty = *(int*)(c + 0x60) + 0x28000;
+        int tx = y->mPosX;
+        int tz = y->mPosZ;
+        int ty = y->mPosY + 0x28000;
         vec.x = tx;
         vec.y = ty;
         vec.z = tz;
@@ -367,14 +432,14 @@ void func_ov002_020ec728(char* c)
         v2.z = vec.z;
         _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(c, &v2, n, 0x2000, 0);
     }
-    if (func_ov002_020ec628((unsigned char*)c)) {
+    if (func_ov002_020ec628((daYegg_c *)c)) {
         struct Vector3 v3;
         v3.x = *(int*)&vec.x;
         v3.y = *(int*)&vec.y;
         v3.z = *(int*)&vec.z;
         func_ov002_020ec80c(c, &v3, 1, 0x2000, 0);
     }
-    *(unsigned char*)(c + *(unsigned char*)(c + 0x420) + 0x421) = 1;
+    y->mPayoutDone[y->mPayoutIdx] = 1;
 }
 }
 
@@ -382,6 +447,16 @@ void func_ov002_020ec728(char* c)
 /* ROM ordinal 8 -- func_ov002_020ec80c, 0x020ec80c, size 0x12c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec80c
+/* Spawns `count` blue coins (actor BLUE_COIN, param1 2) at *b in the egg's
+ * area. When more than one is asked for, the speed `sl` is raised to at least
+ * 0x4000 (4 units). Each coin gets a heading of `arg5` plus a random multiple
+ * of 0x800 (a 32nd of a turn) that differs from the previous coin's, and a
+ * speed of `sl` scaled by a random 100 to 149 percent. The scaling compounds,
+ * because the product is stored back into `sl`. The four fields written at
+ * +0x92, +0x94, +0x96 and +0x98 of each new actor (three halfwords and a
+ * word) are dActor_c's
+ * mPrevAngleX/Y/Z and mHorzSpeed; whether the coin reads them as spawn
+ * arguments is not shown here. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
     void func_ov002_020ec80c(char* a, void* b, int count, int sl, short arg5)
     {
@@ -399,7 +474,7 @@ extern "C" {  /* .c-derived member: C linkage for the whole block */
         if (count <= 0) return;
         zero = i;
         do {
-            n = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0x122, 2, b, 0, *(signed char*)(a + 0xcc), -1);
+            n = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(ACTOR_BLUE_COIN, 2, b, 0, ((dActor_c *)a)->mAreaId, -1);
             if (n != 0) {
                 do {
                     rv = (int)(((unsigned int)RandomIntInternal(&data_0209e650) >> 16) << 27) >> 16;
@@ -422,13 +497,16 @@ extern "C" {  /* .c-derived member: C linkage for the whole block */
 /* ROM ordinal 9 -- func_ov002_020ec938, 0x020ec938, size 0x40 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec938
+/* State 3 (DROP), execute: moves the egg by its speed and gravity, bursts it
+ * if it is on the ground, then runs the ground collision and clears the
+ * cylinder's hit record. */
 extern "C" {
-void func_ov002_020ec938(char* c){
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x110);
-    if (_ZNK10dBgCh_Actr10IsOnGroundEv(c + 0x144))
+void func_ov002_020ec938(daYegg_c* c){
+    _ZN8dActor_c9UpdatePosEP5dCc_c(c, &c->mdCcAc_c);
+    if (_ZNK10dBgCh_Actr10IsOnGroundEv(&c->mWithMeshClsn))
         func_ov002_020edca4(c);
-    dBgCh_Actr_UpdateContinuous_Veneer(c + 0x144);
-    _ZN5dCc_c5ClearEv(c + 0x110);
+    dBgCh_Actr_UpdateContinuous_Veneer(&c->mWithMeshClsn);
+    _ZN5dCc_c5ClearEv(&c->mdCcAc_c);
 }
 }
 
@@ -436,11 +514,14 @@ void func_ov002_020ec938(char* c){
 /* ROM ordinal 10 -- func_ov002_020ec978, 0x020ec978, size 0x4c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec978
+/* State 3 (DROP), enter: plays the idle animation (file 0x0210eb78) at normal
+ * speed, zeroes the horizontal speed and sets gravity to -0x2000 (-2 units
+ * per frame squared). */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ec978(char *p) {
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(p + 0x300, *(void **)(data_ov002_0210eb78 + 4), 0, 0x1000, 0);
-    *(int *)(p + 0x98) = 0;
-    *(int *)(p + 0x9c) = -0x2000;
+void func_ov002_020ec978(daYegg_c *p) {
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&p->mModelAnim, *(void **)(data_ov002_0210eb78 + 4), 0, 0x1000, 0);
+    p->mHorzSpeed = 0;
+    p->mVertAccel = -0x2000;
 }
 }
 
@@ -448,33 +529,42 @@ void func_ov002_020ec978(char *p) {
 /* ROM ordinal 11 -- func_ov002_020ec9c4, 0x020ec9c4, size 0x110 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ec9c4
+/* State 2 (WOBBLE), execute. While mWobbling is set it steps the X and Z tilt
+ * (mAngleX, mAngleZ) toward 0 by 0x400 a frame (a 64th of a turn) and clears
+ * mWobbling once the X tilt and the Y angle are both 0. Otherwise it asks
+ * func_ov002_020d5f98 about the Player; on a yes, it sets the tilt from
+ * the answer (b times two entries of the s16 table at 0x021000a8, indexed by
+ * a*2) and sets mWobbling. Then, every frame: destroys the egg if
+ * func_ov002_020d6048 says no for the Player, clears and updates the
+ * cylinder, moves the egg when it is not on the ground, and runs the ground
+ * collision. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ec9c4(char* c){
-  if (*(unsigned char*)(c + 0x41d) != 0){
-    _Z15ApproachLinear2Rsss((s16*)(c + 0x8c), 0, 0x400);
-    _Z15ApproachLinear2Rsss((s16*)(c + 0x90), 0, 0x400);
-    if (*(s16*)(c + 0x8c) == 0){
-      if (*(s16*)(c + 0x8e) == 0)
-        *(unsigned char*)(c + 0x41d) = 0;
+void func_ov002_020ec9c4(daYegg_c* c){
+  if (c->mWobbling != 0){
+    _Z15ApproachLinear2Rsss(&c->mAngleX, 0, 0x400);
+    _Z15ApproachLinear2Rsss(&c->mAngleZ, 0, 0x400);
+    if (c->mAngleX == 0){
+      if (c->mAngleY == 0)
+        c->mWobbling = 0;
     }
   } else {
     unsigned char a, b;
-    if (func_ov002_020d5f98(*(void**)(c + 0x38c), &a, &b)){
+    if (func_ov002_020d5f98(c->mPlayer, &a, &b)){
       unsigned char ip;
       a = a * 2;
       ip = a;
-      *(s16*)(c + 0x8c) = b * data_ov002_021000a8[ip];
-      *(s16*)(c + 0x90) = b * data_ov002_021000a8[ip + 1];
-      *(unsigned char*)(c + 0x41d) = 1;
+      c->mAngleX = b * data_ov002_021000a8[ip];
+      c->mAngleZ = b * data_ov002_021000a8[ip + 1];
+      c->mWobbling = 1;
     }
   }
-  if (!func_ov002_020d6048(*(void**)(c + 0x38c)))
+  if (!func_ov002_020d6048(c->mPlayer))
     _ZN7fBase_c18MarkForDestructionEv(c);
-  _ZN5dCc_c5ClearEv(c + 0x110);
-  _ZN5dCc_c6UpdateEv(c + 0x110);
-  if (!_ZNK10dBgCh_Actr10IsOnGroundEv(c + 0x144))
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x110);
-  dBgCh_Actr_UpdateContinuous_Veneer(c + 0x144);
+  _ZN5dCc_c5ClearEv(&c->mdCcAc_c);
+  _ZN5dCc_c6UpdateEv(&c->mdCcAc_c);
+  if (!_ZNK10dBgCh_Actr10IsOnGroundEv(&c->mWithMeshClsn))
+    _ZN8dActor_c9UpdatePosEP5dCc_c(c, &c->mdCcAc_c);
+  dBgCh_Actr_UpdateContinuous_Veneer(&c->mWithMeshClsn);
 }
 }
 
@@ -482,10 +572,12 @@ void func_ov002_020ec9c4(char* c){
 /* ROM ordinal 12 -- func_ov002_020ecad4, 0x020ecad4, size 0x38 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ecad4
+/* State 2 (WOBBLE), enter: zeroes the horizontal speed and plays the idle
+ * animation (file 0x0210eb78) at normal speed. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ecad4(char *p) {
-    *(int *)(p + 0x98) = 0;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(p + 0x300, *(void **)(data_ov002_0210eb78 + 4), 0, 0x1000, 0);
+void func_ov002_020ecad4(daYegg_c *p) {
+    p->mHorzSpeed = 0;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&p->mModelAnim, *(void **)(data_ov002_0210eb78 + 4), 0, 0x1000, 0);
 }
 }
 
@@ -493,11 +585,23 @@ void func_ov002_020ecad4(char *p) {
 /* ROM ordinal 13 -- func_ov002_020ecb0c, 0x020ecb0c, size 0x20c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ecb0c
+/* State 1 (SEEK), execute, for the egg variant func_ov002_020ec654 calls
+ * nonzero (see ecf94). If the actor it is seeking (mTargetId) exists and no
+ * longer has profile bit 0x10000000, it pays out and re-enters state 1 so a
+ * new target is picked. Otherwise, unless daYegg_FLAG_ATTACHED is set: with
+ * daYegg_FLAG_DROPPED it enters state 3; with daYegg_FLAG_FLYING it feeds
+ * its saved handles back into Particle::System::New (0x2c) and
+ * Sound::PlayLong (3, 0x93), runs func_ov002_020ed738 (tilt), returns if
+ * func_ov002_020eddc4 handled a contact (nonzero), and bursts if IsOnWall is
+ * set or bit 0x10 of the same result byte is. The particle's rotation pair comes from the sine
+ * table indexed by mAngleY >> 4 (sin then cos). Every pass that gets this far
+ * bursts if func_ov002_020ed6cc reports the egg stalled, and otherwise clears
+ * and, if flying, updates the cylinder, moves the egg and runs the ground
+ * collision. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ecb0c(void *arg0)
+void func_ov002_020ecb0c(daYegg_c *c)
 {
-    char *c = (char *)arg0;
-    char *o;
+    dActor_c *o;
     u32 id;
     s32 flag;
     s32 b;
@@ -511,53 +615,53 @@ void func_ov002_020ecb0c(void *arg0)
     s32 pz;
     s32 px;
 
-    id = *(u32 *)(c + 0x410);
+    id = c->mTargetId;
     o = 0;
     if (id != 0)
-        o = _ZN8dActor_c10FindWithIDEj(id);
+        o = (dActor_c *)_ZN8dActor_c10FindWithIDEj(id);
     if (o != 0) {
-        b = (s32)((*(u32 *)(o + 0xb0) & 0x10000000) != 0);
+        b = (s32)((o->mFlags & 0x10000000) != 0);
         if (b == 0) {
-            func_ov002_020ec728(c);
-            func_ov002_020ed63c((C *)c, 1);
+            func_ov002_020ec728((char *)c);
+            func_ov002_020ed63c(c, daYegg_STATE_SEEK);
             return;
         }
     }
-    fb0 = *(u32 *)(c + 0xb0);
+    fb0 = c->mFlags;
     flag = 0;
-    b = (s32)((fb0 & 0x100) != 0);
+    b = (s32)((fb0 & daYegg_FLAG_ATTACHED) != 0);
     if (b == 0) {
-        b = (s32)((fb0 & 0x2000) != 0);
+        b = (s32)((fb0 & daYegg_FLAG_DROPPED) != 0);
         if (b != 0) {
-            func_ov002_020ed63c((C *)c, 3);
+            func_ov002_020ed63c(c, daYegg_STATE_DROP);
         } else {
-            b = (s32)((fb0 & 0x400) != 0);
+            b = (s32)((fb0 & daYegg_FLAG_FLYING) != 0);
             if (b != 0) {
-                s32 py = *(volatile s32 *)(c + 0x60) + 0x28000;
-                pz = *(s32 *)(c + 0x64);
-                px = *(s32 *)(c + 0x5c);
+                s32 py = *(volatile s32 *)&c->mPosY + 0x28000;
+                pz = c->mPosZ;
+                px = c->mPosX;
                 sp.pos.y = py;
                 sp.pos.z = pz;
                 sp.pos.x = px;
-                ang = *(u16 *)(c + 0x8e);
+                ang = *(u16 *)&c->mAngleY;
                 onwall = data_02082214[(ang >> 4) * 2];
                 rx = (s16)onwall;
                 sp.rot.y = 0;
                 pr = &sp.rot;
                 sp.rot.x = rx;
-                ang = *(u16 *)(c + 0x8e);
+                ang = *(u16 *)&c->mAngleY;
                 rz = data_02082214[(ang >> 4) * 2 + 1];
                 sp.rot.z = rz;
-                *(s32 *)(c + 0x414) = _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
-                    *(u32 *)(c + 0x414), 0x2c, sp.pos.x, sp.pos.y, pz, pr, 0);
-                *(s32 *)(c + 0x418) = _ZN5Sound8PlayLongEjjjRK7Vector3s(
-                    *(u32 *)(c + 0x418), 3, 0x93, c + 0x74, 0);
+                c->mParticleHandle = _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(
+                    c->mParticleHandle, 0x2c, sp.pos.x, sp.pos.y, pz, pr, 0);
+                c->mSoundHandle = _ZN5Sound8PlayLongEjjjRK7Vector3s(
+                    c->mSoundHandle, 3, 0x93, &c->mCamSpacePosX, 0);
                 flag = 1;
-                func_ov002_020ed738(c);
+                func_ov002_020ed738((char *)c);
                 if (func_ov002_020eddc4(c) != 0)
                     return;
-                onwall = _ZNK10dBgCh_Actr8IsOnWallEv(c + 0x144);
-                if ((onwall | func_02035638((u8 *)(c + 0x144))) != 0) {
+                onwall = _ZNK10dBgCh_Actr8IsOnWallEv(&c->mWithMeshClsn);
+                if ((onwall | func_02035638((u8 *)&c->mWithMeshClsn)) != 0) {
                     func_ov002_020edca4(c);
                     return;
                 }
@@ -568,11 +672,11 @@ void func_ov002_020ecb0c(void *arg0)
         func_ov002_020edca4(c);
         return;
     }
-    _ZN5dCc_c5ClearEv(c + 0x110);
+    _ZN5dCc_c5ClearEv(&c->mdCcAc_c);
     if (flag == 1)
-        _ZN5dCc_c6UpdateEv(c + 0x110);
-    _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x110);
-    dBgCh_Actr_UpdateContinuous_Veneer(c + 0x144);
+        _ZN5dCc_c6UpdateEv(&c->mdCcAc_c);
+    _ZN8dActor_c9UpdatePosEP5dCc_c(c, &c->mdCcAc_c);
+    dBgCh_Actr_UpdateContinuous_Veneer(&c->mWithMeshClsn);
 }
 }
 
@@ -580,66 +684,79 @@ void func_ov002_020ecb0c(void *arg0)
 /* ROM ordinal 14 -- func_ov002_020ecd18, 0x020ecd18, size 0x27c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ecd18
-void func_ov002_020ecd18(void *arg0)
+/* State 1 (SEEK), execute, for the other egg variant (see ecf94). `o` is the
+ * actor being sought (mTargetId). If it is gone, or has lost profile bit
+ * 0x10000000, the egg re-enters state 1 to pick again. Unless
+ * daYegg_FLAG_ATTACHED is set: with daYegg_FLAG_DROPPED it enters state 3; with
+ * daYegg_FLAG_FLYING it checks the wall hit record first (func_ov002_020ec670,
+ * then bursts), then, if it has a target, moves toward the position that
+ * actor's vtable slot 30 returns, at mHorzSpeed per step. Having arrived, it
+ * bursts when the target is one of the six burst actors (BOMBKING, HOLHEI,
+ * KURIKING, KURIBO_L, WANWAN, WANWAN2) and otherwise pays out and re-enters
+ * state 1; if not yet there it turns to face the target. Flying then kicks up
+ * sliding dust at its position and runs func_ov002_020eddc4 (a nonzero result
+ * ends the frame). Every pass bursts if func_ov002_020ed6cc reports the egg
+ * stalled, otherwise clears and, if flying, updates the cylinder, moves the
+ * egg only when it has no target, and runs the ground collision. */
+void func_ov002_020ecd18(daYegg_c *c)
 {
-    char *c = (char *)arg0;
-    char *o;
+    dActor_c *o;
     s32 flag;
     s32 b;
     u32 fb0;
 
     o = 0;
-    if (*(u32 *)(c + 0x410) != 0)
-        o = _ZN8dActor_c10FindWithIDEj(*(u32 *)(c + 0x410));
+    if (c->mTargetId != 0)
+        o = (dActor_c *)_ZN8dActor_c10FindWithIDEj(c->mTargetId);
     if (o != 0) {
-        b = (s32)((*(u32 *)(o + 0xb0) & 0x10000000) != 0);
+        b = (s32)((o->mFlags & 0x10000000) != 0);
         if (b == 0) {
-            func_ov002_020ed63c((C *)c, 1);
+            func_ov002_020ed63c(c, daYegg_STATE_SEEK);
             return;
         }
     }
-    if (*(s32 *)(c + 0x410) != 0 && o == 0) {
-        func_ov002_020ed63c((C *)c, 1);
+    if (c->mTargetId != 0 && o == 0) {
+        func_ov002_020ed63c(c, daYegg_STATE_SEEK);
         return;
     }
-    fb0 = *(u32 *)(c + 0xb0);
+    fb0 = c->mFlags;
     flag = 0;
-    b = (s32)((fb0 & 0x100) != 0);
+    b = (s32)((fb0 & daYegg_FLAG_ATTACHED) != 0);
     if (b == 0) {
-        b = (s32)((fb0 & 0x2000) != 0);
+        b = (s32)((fb0 & daYegg_FLAG_DROPPED) != 0);
         if (b != 0) {
-            func_ov002_020ed63c((C *)c, 3);
+            func_ov002_020ed63c(c, daYegg_STATE_DROP);
         } else {
-            b = (s32)((fb0 & 0x400) != 0);
+            b = (s32)((fb0 & daYegg_FLAG_FLYING) != 0);
             if (b != 0) {
-                if (_ZNK10dBgCh_Actr14GetResultFlag1Ev(c + 0x144) != 0) {
-                    func_ov002_020ec670(c, (int)(c + 0x144));
+                if (_ZNK10dBgCh_Actr14GetResultFlag1Ev(&c->mWithMeshClsn) != 0) {
+                    func_ov002_020ec670(c, (int)&c->mWithMeshClsn);
                     func_ov002_020edca4(c);
                     return;
                 }
                 if (o != 0) {
                     struct Vec3 tmp = ((struct VObj *)o)->v30();
                     if (_Z14ApproachLinearR7Vector3RKS_5Fix12IiE(
-                            (struct Vec3 *)(c + 0x5c), &tmp, *(s32 *)(c + 0x98)) != 0) {
-                        switch (*(u16 *)(o + 0xc)) {
-                        case 0xbd:
-                        case 0xbe:
-                        case 0xc6:
-                        case 0xca:
-                        case 0xdb:
-                        case 0x151:
+                            &c->mPosX, &tmp, c->mHorzSpeed) != 0) {
+                        switch (o->actorID) {
+                        case ACTOR_BOMBKING:
+                        case ACTOR_HOLHEI:
+                        case ACTOR_KURIKING:
+                        case ACTOR_KURIBO_L:
+                        case ACTOR_WANWAN:
+                        case ACTOR_WANWAN2:
                             func_ov002_020edca4(c);
                             return;
                         default:
-                            func_ov002_020ec728(c);
-                            func_ov002_020ed63c((C *)c, 1);
+                            func_ov002_020ec728((char *)c);
+                            func_ov002_020ed63c(c, daYegg_STATE_SEEK);
                             return;
                         }
                     }
-                    *(s16 *)(c + 0x8e) = Vec3_HorzAngle((struct Vec3 *)(c + 0x5c), &tmp);
+                    c->mAngleY = Vec3_HorzAngle(&c->mPosX, &tmp);
                 }
                 _ZN8Particle20RunningSlidingDustAtE5Fix12IiES1_S1_(
-                    *(s32 *)(c + 0x5c), *(s32 *)(c + 0x60), *(s32 *)(c + 0x64));
+                    c->mPosX, c->mPosY, c->mPosZ);
                 flag = 1;
                 if (func_ov002_020eddc4(c) != 0)
                     return;
@@ -650,20 +767,21 @@ void func_ov002_020ecd18(void *arg0)
         func_ov002_020edca4(c);
         return;
     }
-    _ZN5dCc_c5ClearEv(c + 0x110);
+    _ZN5dCc_c5ClearEv(&c->mdCcAc_c);
     if (flag == 1)
-        _ZN5dCc_c6UpdateEv(c + 0x110);
+        _ZN5dCc_c6UpdateEv(&c->mdCcAc_c);
     if (o == 0)
-        _ZN8dActor_c9UpdatePosEP5dCc_c(c, c + 0x110);
-    dBgCh_Actr_UpdateContinuous_Veneer(c + 0x144);
+        _ZN8dActor_c9UpdatePosEP5dCc_c(c, &c->mdCcAc_c);
+    dBgCh_Actr_UpdateContinuous_Veneer(&c->mWithMeshClsn);
 }
 
 /* -------------------------------------------------------------------------- */
 /* ROM ordinal 15 -- func_ov002_020ecf94, 0x020ecf94, size 0x34 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ecf94
+/* State 1 (SEEK), execute: picks the variant's handler. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ecf94(unsigned char *p)
+void func_ov002_020ecf94(daYegg_c *p)
 {
     if (func_ov002_020ec654(p))
         func_ov002_020ecb0c(p);
@@ -678,30 +796,41 @@ void func_ov002_020ecf94(unsigned char *p)
 // @symbol func_ov002_020ecfc8
 /* recovered: shared common types, declarations from a shared header */
 /* recovered: shared common types */
+/* State 1 (SEEK), enter. Clears the target, plays the moving animation (file
+ * 0x0210e6b0) at normal speed and sets the horizontal speed to 0x64000 (100
+ * units). For the variant func_ov002_020ec654 calls zero: no gravity, a
+ * target search within 0x7d0000 (2000 units) and func_0203568c on the ground
+ * collision with 0x2a000 (42 units; what that sets is not recovered). For the other variant: gravity -0xa000
+ * (-10 units per frame squared) and a search within 0xfa0000 (4000 units). If
+ * a target is found the egg turns to face it; if not, and it has already
+ * targeted at least one actor, the zero variant bursts at once. Finally the
+ * cylinder is re-initialised with radius 0x64000 (100 units), height 0xc8000
+ * (200 units), own flags 0x202000 and hit mask 0 -- in dCc_c.h's bit table
+ * that is the enemy and egg bits, with nothing able to hit it. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ecfc8(char* c){
-  char* r5;
-  *(int*)(c + 0x410) = 0;
-  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(c + 0x300, *(void **)(data_ov002_0210e6b0 + 4), 0, 0x1000, 0);
-  *(int*)(c + 0x98) = 0x64000;
-  if (!func_ov002_020ec654((unsigned char*)c)){
-    *(int*)(c + 0x9c) = 0;
-    r5 = (char*)func_ov002_020edb3c(c, 0, 0x7d0000);
-    func_0203568c(c + 0x144, 0x2a000);
+void func_ov002_020ecfc8(daYegg_c* c){
+  dActor_c* r5;
+  c->mTargetId = 0;
+  _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&c->mModelAnim, *(void **)(data_ov002_0210e6b0 + 4), 0, 0x1000, 0);
+  c->mHorzSpeed = 0x64000;
+  if (!func_ov002_020ec654(c)){
+    c->mVertAccel = 0;
+    r5 = (dActor_c*)func_ov002_020edb3c((char*)c, 0, 0x7d0000);
+    func_0203568c(&c->mWithMeshClsn, 0x2a000);
   } else {
-    *(int*)(c + 0x9c) = -0xa000;
-    r5 = (char*)func_ov002_020edb3c(c, 0, 0xfa0000);
+    c->mVertAccel = -0xa000;
+    r5 = (dActor_c*)func_ov002_020edb3c((char*)c, 0, 0xfa0000);
   }
   if (r5){
-    *(s16*)(c + 0x8e) = Vec3_HorzAngle((struct Vector3*)(c + 0x5c), (struct Vector3*)(r5 + 0x5c));
+    c->mAngleY = Vec3_HorzAngle((struct Vector3*)&c->mPosX, (struct Vector3*)&r5->mPosX);
   } else {
-    if (*(unsigned char*)(c + 0x41c)){
-      if (!func_ov002_020ec654((unsigned char*)c))
+    if (c->mTargetedCount){
+      if (!func_ov002_020ec654(c))
         func_ov002_020edca4(c);
     }
   }
-  _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(c + 0x110, c, 0x64000, 0xc8000, 0x202000, 0);
-  *(s16*)(c + 0x94) = *(s16*)(c + 0x8e);
+  _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&c->mdCcAc_c, c, 0x64000, 0xc8000, 0x202000, 0);
+  c->mPrevAngleY = c->mAngleY;
 }
 }
 
@@ -709,68 +838,96 @@ void func_ov002_020ecfc8(char* c){
 /* ROM ordinal 17 -- func_ov002_020ed0d4, 0x020ed0d4, size 0x4dc */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed0d4
-// recovered name: daWarpkun_c_Kill
+// obsolete provenance (this is daYegg_c state 0 execute): recovered name: daWarpkun_c_Kill
 /* recovered: shared common types, renamed to Class_Method, declarations from a shared header */
 /* recovered: shared common types, renamed to Class_Method */
-/* daWarpkun_c::Kill - recovered from vtable slot identity */
+/* (obsolete provenance) daWarpkun_c::Kill - recovered from vtable slot identity */
+/* State 0 (FOLLOW_PLAYER), execute. `com` is the followed Player. Each call:
+ *  - copies the Player's 0xa4/0xa8/0xac words and its horizontal speed;
+ *  - while unk_41e is zero (nothing in this file sets it nonzero, so every
+ *    call) rebuilds the hold target and the goal angles. The target is the
+ *    Player's position plus the vector (0, 0, mHoldOffsetZ = -104 units)
+ *    rotated by the egg's eased angles. If the Player's word at +0x37c or
+ *    func_ov002_020cf700 or func_ov002_020d0d2c is nonzero, the goal X/Z
+ *    angles are the Player's when the egg is on the ground and -0x4000 (a
+ *    quarter turn) and 0 when it is not. Otherwise they are the Player's, and
+ *    the goal Y angle becomes the direction from the Player's previous to its
+ *    current position when those are at least 0x5000 (5 units) apart
+ *    horizontally;
+ *  - eases mPos toward the hold target (Math_Function_0203b14c: a third of
+ *    the remaining distance per call, at most 1000 units) and each eased
+ *    angle toward its goal (ApproachAngle: an eighth of the remaining angle,
+ *    at most 0x4000 a call, at least 0x100), then copies the eased Y angle
+ *    into mAngleY;
+ *  - sets the animation: the moving one (file 0x0210e6b0) when mHorzSpeed is
+ *    nonzero, else the idle one (0x0210eb78), at a speed of 1.0 to 2.0 that
+ *    grows with mHorzSpeed and saturates at 0x20000 (32 units); the speed is
+ *    0 while the Player's mIsAirborne is set;
+ *  - for the variant func_ov002_020ec654 calls zero, rewrites the 0xa4/0xac
+ *    words as absolute values capped at 0x20000 (32 units) and tilts mAngleX
+ *    (negative) and mAngleZ by up to 0xe39 (20 degrees) in proportion to
+ *    them; for the other variant it runs func_ov002_020ed738 instead;
+ *  - clears the cylinder, and runs the discrete ground collision unless the
+ *    Player's mIsNoControl is set or the Player is 0x190000 (400 units) or
+ *    more away. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ed0d4(char* self)
+void func_ov002_020ed0d4(daYegg_c* self)
 {
     struct Vector3 in, out;
-    char* com;
+    Player* com;
     int* p;
     volatile struct Vector3 t1, t2;
     struct Vector3 v1, v2;
     struct Vector3 sumA, sumB, sumC;
     int *pt1, *pt2, *pv1, *pv2;
 
-    com = *(char**)(self + 0x38c);
-    *(int*)(self + 0x3f4) = -0x68000;
-    p = (int*)(com + 0xa4);
-    *(int*)(self + 0xa4) = p[0];
-    *(int*)(self + 0xa8) = p[1];
-    *(int*)(self + 0xac) = p[2];
-    *(int*)(self + 0x98) = *(int*)(com + 0x98);
+    com = self->mPlayer;
+    self->mHoldOffsetZ = -0x68000;
+    p = &com->unk_0a4;
+    self->unk_0a4 = p[0];
+    self->mVertSpeed = p[1];
+    self->unk_0ac = p[2];
+    self->mHorzSpeed = com->mHorzSpeed;
 
-    if (DecIfAbove0_Byte((unsigned char*)(self + 0x41e)) == 0) {
+    if (DecIfAbove0_Byte(&self->unk_41e) == 0) {
         in.x = 0; in.y = 0; in.z = 0;
         out.x = 0; out.y = 0; out.z = 0;
-        in.z = *(int*)(self + 0x3f4);
+        in.z = self->mHoldOffsetZ;
 
-        Matrix4x3_FromRotationZXYExt(&data_020a0e68, *(short*)(self + 0x3ea), *(short*)(self + 0x3ec), *(short*)(self + 0x3ee));
+        Matrix4x3_FromRotationZXYExt(&data_020a0e68, self->mEasedAngleX, self->mEasedAngleY, self->mEasedAngleZ);
         MulVec3Mat4x3(&in, &data_020a0e68, &out);
 
-        if (*(int*)(*(char**)(self + 0x38c) + 0x37c) != 0
-            || func_ov002_020cf700(*(char**)(self + 0x38c)) != 0
-            || func_ov002_020d0d2c(*(char**)(self + 0x38c)) != 0) {
-            if (_ZNK10dBgCh_Actr10IsOnGroundEv(self + 0x144) != 0) {
-                *(short*)(self + 0x3e4) = *(short*)(*(char**)(self + 0x38c) + 0x8c);
-                *(short*)(self + 0x3e8) = *(short*)(*(char**)(self + 0x38c) + 0x90);
-                pt1 = (int*)(com + 0x68);
-                pt2 = (int*)(com + 0x5c);
+        if (*(int*)&self->mPlayer->unk_37c != 0
+            || func_ov002_020cf700(self->mPlayer) != 0
+            || func_ov002_020d0d2c(self->mPlayer) != 0) {
+            if (_ZNK10dBgCh_Actr10IsOnGroundEv(&self->mWithMeshClsn) != 0) {
+                self->mGoalAngleX = self->mPlayer->mAngleX;
+                self->mGoalAngleZ = self->mPlayer->mAngleZ;
+                pt1 = &com->mPrevPosX;
+                pt2 = &com->mPosX;
                 t1.x = pt1[0];
                 t1.y = pt1[1];
                 t1.z = pt1[2];
                 t2.x = pt2[0];
                 t2.y = pt2[1];
                 t2.z = pt2[2];
-                Vec3_Add(&sumA, com + 0x5c, &out);
-                *(int*)(self + 0x3d8) = sumA.x;
-                *(int*)(self + 0x3dc) = sumA.y;
-                *(int*)(self + 0x3e0) = sumA.z;
+                Vec3_Add(&sumA, &com->mPosX, &out);
+                self->mHoldTargetX = sumA.x;
+                self->mHoldTargetY = sumA.y;
+                self->mHoldTargetZ = sumA.z;
             } else {
-                *(short*)(self + 0x3e4) = -0x4000;
-                *(short*)(self + 0x3e8) = 0;
-                Vec3_Add(&sumB, com + 0x5c, &out);
-                *(int*)(self + 0x3d8) = sumB.x;
-                *(int*)(self + 0x3dc) = sumB.y;
-                *(int*)(self + 0x3e0) = sumB.z;
+                self->mGoalAngleX = -0x4000;
+                self->mGoalAngleZ = 0;
+                Vec3_Add(&sumB, &com->mPosX, &out);
+                self->mHoldTargetX = sumB.x;
+                self->mHoldTargetY = sumB.y;
+                self->mHoldTargetZ = sumB.z;
             }
         } else {
-            *(short*)(self + 0x3e4) = *(short*)(com + 0x8c);
-            *(short*)(self + 0x3e8) = *(short*)(com + 0x90);
-            pv1 = (int*)(com + 0x68);
-            pv2 = (int*)(com + 0x5c);
+            self->mGoalAngleX = com->mAngleX;
+            self->mGoalAngleZ = com->mAngleZ;
+            pv1 = &com->mPrevPosX;
+            pv2 = &com->mPosX;
             v1.x = pv1[0];
             v1.y = pv1[1];
             v1.z = pv1[2];
@@ -778,31 +935,32 @@ void func_ov002_020ed0d4(char* self)
             v2.y = pv2[1];
             v2.z = pv2[2];
             if (Vec3_HorzDist(&v1, &v2) >= 0x5000) {
-                *(short*)(self + 0x3e6) = Vec3_HorzAngle(&v1, &v2);
+                self->mGoalAngleY = Vec3_HorzAngle(&v1, &v2);
             }
-            Vec3_Add(&sumC, com + 0x5c, &out);
-            *(int*)(self + 0x3d8) = sumC.x;
-            *(int*)(self + 0x3dc) = sumC.y;
-            *(int*)(self + 0x3e0) = sumC.z;
+            Vec3_Add(&sumC, &com->mPosX, &out);
+            self->mHoldTargetX = sumC.x;
+            self->mHoldTargetY = sumC.y;
+            self->mHoldTargetZ = sumC.z;
         }
-        *(unsigned char*)(self + 0x41e) = 0;
+        self->unk_41e = 0;
     }
 
     {
+        /* 0x1000 / 0x3000 as Fix12: a third. */
         int fd = _ZN4cstd4fdivEii(0x1000, 0x3000);
-        Math_Function_0203b14c(self + 0x5c, *(int*)(self + 0x3d8), fd, 0x3e8000, 4);
-        Math_Function_0203b14c(self + 0x60, *(int*)(self + 0x3dc), fd, 0x3e8000, 4);
-        Math_Function_0203b14c(self + 0x64, *(int*)(self + 0x3e0), fd, 0x3e8000, 4);
+        Math_Function_0203b14c(&self->mPosX, self->mHoldTargetX, fd, 0x3e8000, 4);
+        Math_Function_0203b14c(&self->mPosY, self->mHoldTargetY, fd, 0x3e8000, 4);
+        Math_Function_0203b14c(&self->mPosZ, self->mHoldTargetZ, fd, 0x3e8000, 4);
     }
 
-    ApproachAngle(self + 0x3ea, *(short*)(self + 0x3e4), 8, 0x4000, 0x100);
-    ApproachAngle(self + 0x3ec, *(short*)(self + 0x3e6), 8, 0x4000, 0x100);
-    ApproachAngle(self + 0x3ee, *(short*)(self + 0x3e8), 8, 0x4000, 0x100);
+    ApproachAngle(&self->mEasedAngleX, self->mGoalAngleX, 8, 0x4000, 0x100);
+    ApproachAngle(&self->mEasedAngleY, self->mGoalAngleY, 8, 0x4000, 0x100);
+    ApproachAngle(&self->mEasedAngleZ, self->mGoalAngleZ, 8, 0x4000, 0x100);
 
-    *(short*)(self + 0x8e) = *(short*)(self + 0x3ec);
+    self->mAngleY = self->mEasedAngleY;
 
     {
-        int v98 = *(int*)(self + 0x98);
+        int v98 = self->mHorzSpeed;
         int t = v98 >> 5;
         if (t > 0x1000) t = 0x1000;
         if (t < 0) t = 0;
@@ -810,48 +968,48 @@ void func_ov002_020ed0d4(char* self)
         unsigned char byteVal = (unsigned char)t;
         int idx = byteVal & 0x3f;
         int speed = idx << 8;
-        if (*(unsigned char*)(*(char**)(self + 0x38c) + 0x6de) != 0) speed = 0;
+        if (self->mPlayer->mIsAirborne != 0) speed = 0;
         if (v98 != 0) {
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(self + 0x300, *(void **)(data_ov002_0210e6b0 + 4), 0, speed, 0);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim, *(void **)(data_ov002_0210e6b0 + 4), 0, speed, 0);
         } else {
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(self + 0x300, *(void **)(data_ov002_0210eb78 + 4), 0, speed, 0);
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim, *(void **)(data_ov002_0210eb78 + 4), 0, speed, 0);
         }
     }
 
-    if (func_ov002_020ec654((unsigned char*)self) == 0) {
-        int a4 = *(int*)(self + 0xa4);
+    if (func_ov002_020ec654(self) == 0) {
+        int a4 = self->unk_0a4;
         if (a4 < 0) a4 = -a4;
-        *(int*)(self + 0xa4) = a4;
-        int ac = *(int*)(self + 0xac);
+        self->unk_0a4 = a4;
+        int ac = self->unk_0ac;
         if (ac < 0) ac = -ac;
-        *(int*)(self + 0xac) = ac;
-        a4 = *(int*)(self + 0xa4);
-        if (a4 > 0x20000) { a4 = 0x20000; *(int*)(self + 0xa4) = a4; }
-        a4 = *(int*)(self + 0xa4);
+        self->unk_0ac = ac;
+        a4 = self->unk_0a4;
+        if (a4 > 0x20000) { a4 = 0x20000; self->unk_0a4 = a4; }
+        a4 = self->unk_0a4;
         {
             int fd1 = _ZN4cstd4fdivEii(a4, 0x20000);
             int r1 = (int)(((long long)fd1 * 0xe39 + 0x800) >> 12);
             short a4ang = (short)(-r1);
-            ac = *(int*)(self + 0xac);
-            if (ac > 0x20000) { ac = 0x20000; *(int*)(self + 0xac) = ac; }
-            ac = *(int*)(self + 0xac);
+            ac = self->unk_0ac;
+            if (ac > 0x20000) { ac = 0x20000; self->unk_0ac = ac; }
+            ac = self->unk_0ac;
             {
                 int fd2 = _ZN4cstd4fdivEii(ac, 0x20000);
                 int r2 = (int)(((long long)fd2 * 0xe39 + 0x800) >> 12);
-                *(short*)(self + 0x8c) = a4ang;
-                *(short*)(self + 0x90) = (short)r2;
+                self->mAngleX = a4ang;
+                self->mAngleZ = (short)r2;
             }
         }
     } else {
-        func_ov002_020ed738(self);
+        func_ov002_020ed738((char *)self);
     }
 
-    _ZN5dCc_c5ClearEv(self + 0x110);
+    _ZN5dCc_c5ClearEv(&self->mdCcAc_c);
     {
-        int dist = Vec3_Dist(self + 0x5c, com + 0x5c);
-        if (*(unsigned char*)(*(char**)(self + 0x38c) + 0x709) != 0) return;
+        int dist = Vec3_Dist(&self->mPosX, &com->mPosX);
+        if (self->mPlayer->mIsNoControl != 0) return;
         if (dist >= 0x190000) return;
-        dBgCh_Actr_UpdateDiscreteNoLava_veneer(self + 0x144);
+        dBgCh_Actr_UpdateDiscreteNoLava_veneer(&self->mWithMeshClsn);
     }
 }
 }
@@ -860,35 +1018,36 @@ void func_ov002_020ed0d4(char* self)
 /* ROM ordinal 18 -- func_ov002_020ed5b0, 0x020ed5b0, size 0x8c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed5b0
-// Snaps this object to the actor it follows (+0x38c): copies its position
-// (three words at +0x5c) and Y angle (+0x8e), mirrors the position into
-// +0x3d8, and copies its rotation triple (+0x8c) into both +0x3e4 and +0x3ea.
+// State 0 (FOLLOW_PLAYER), enter. Snaps this object to the actor it follows
+// (mPlayer): copies its position (mPosX/Y/Z) and Y angle (mAngleY), mirrors
+// the position into mHoldTarget, and copies its rotation triple (mAngleX/Y/Z)
+// into both the goal angles and the eased angles.
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020ed5b0(char* c)
+void func_ov002_020ed5b0(daYegg_c* c)
 {
-    char* src;
+    Player* src;
     int* sp;
     short* m;
-    src = *(char**)(c + 0x38c);
-    sp = (int*)(src + 0x5c);
-    *(int*)(c + 0x5c) = sp[0];
-    *(int*)(c + 0x60) = sp[1];
-    *(int*)(c + 0x64) = sp[2];
-    src = *(char**)(c + 0x38c);
-    *(short*)(c + 0x8e) = *(short*)(src + 0x8e);
-    *(int*)(c + 0x3d8) = *(int*)(c + 0x5c);
-    *(int*)(c + 0x3dc) = *(int*)(c + 0x60);
-    *(int*)(c + 0x3e0) = *(int*)(c + 0x64);
-    src = *(char**)(c + 0x38c);
-    m = (short*)(src + 0x8c);
-    *(short*)(c + 0x3e4) = m[0];
-    *(short*)(c + 0x3e6) = m[1];
-    *(short*)(c + 0x3e8) = m[2];
-    src = *(char**)(c + 0x38c);
-    m = (short*)(src + 0x8c);
-    *(short*)(c + 0x3ea) = m[0];
-    *(short*)(c + 0x3ec) = m[1];
-    *(short*)(c + 0x3ee) = m[2];
+    src = c->mPlayer;
+    sp = &src->mPosX;
+    c->mPosX = sp[0];
+    c->mPosY = sp[1];
+    c->mPosZ = sp[2];
+    src = c->mPlayer;
+    c->mAngleY = src->mAngleY;
+    c->mHoldTargetX = c->mPosX;
+    c->mHoldTargetY = c->mPosY;
+    c->mHoldTargetZ = c->mPosZ;
+    src = c->mPlayer;
+    m = &src->mAngleX;
+    c->mGoalAngleX = m[0];
+    c->mGoalAngleY = m[1];
+    c->mGoalAngleZ = m[2];
+    src = c->mPlayer;
+    m = &src->mAngleX;
+    c->mEasedAngleX = m[0];
+    c->mEasedAngleY = m[1];
+    c->mEasedAngleZ = m[2];
 }
 }
 
@@ -896,30 +1055,40 @@ void func_ov002_020ed5b0(char* c)
 /* ROM ordinal 19 -- func_ov002_020ed63c, 0x020ed63c, size 0x48 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed63c
-extern "C" void func_ov002_020ed63c(C *c, int i) { c->idx = i; int j = c->idx; (c->*data_ov002_02110a5c[j].pmf[0])(); }
+/* Switches to state `i` and runs that state's enter handler. Player's
+ * St_YoshiPower_Init calls it with state 1 on the egg it holds. */
+extern "C" void func_ov002_020ed63c(daYegg_c *c, int i) { c->mState = i; int j = c->mState; (c->*data_ov002_02110a5c[j].pmf[0])(); }
 
 /* -------------------------------------------------------------------------- */
 /* ROM ordinal 20 -- func_ov002_020ed684, 0x020ed684, size 0x48 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed684
-extern "C" void func_ov002_020ed684(C *c) { int j = c->idx; (c->*data_ov002_02110a5c[j].pmf[1])(); }
+/* Runs the current state's execute handler. */
+extern "C" void func_ov002_020ed684(daYegg_c *c) { int j = c->mState; (c->*data_ov002_02110a5c[j].pmf[1])(); }
 
 /* -------------------------------------------------------------------------- */
 /* ROM ordinal 21 -- func_ov002_020ed6cc, 0x020ed6cc, size 0x6c */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed6cc
 /* recovered: shared common types */
+/* Stall detector. Measures the horizontal distance from the position saved
+ * on the previous call (mLastPos) to the current one, then saves the current
+ * position. A move of 0x32000 (50 units) or more reloads mStallTimer to 0xf
+ * and returns 0. A shorter move counts the timer down, and the function
+ * returns 1 whenever the timer is zero after the countdown (first reached
+ * after 15 shorter moves in a row; it stays 1 while the egg stays put), else
+ * 0. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-int func_ov002_020ed6cc(void* c) {
-  Fix12i d = Vec3_HorzDist((struct Vector3*)((char*)c+0x3cc), (struct Vector3*)((char*)c+0x5c));
-  *(int*)((char*)c+0x3cc) = *(int*)((char*)c+0x5c);
-  *(int*)((char*)c+0x3d0) = *(int*)((char*)c+0x60);
-  *(int*)((char*)c+0x3d4) = *(int*)((char*)c+0x64);
+int func_ov002_020ed6cc(daYegg_c* c) {
+  Fix12i d = Vec3_HorzDist((struct Vector3*)&c->mLastPosX, (struct Vector3*)&c->mPosX);
+  c->mLastPosX = c->mPosX;
+  c->mLastPosY = c->mPosY;
+  c->mLastPosZ = c->mPosZ;
   if (d >= 0x32000) goto fail;
-  if (DecIfAbove0_Byte((unsigned char*)((char*)c+0x41f))) goto ret0;
+  if (DecIfAbove0_Byte(&c->mStallTimer)) goto ret0;
   return 1;
 fail:
-  *(unsigned char*)((char*)c+0x41f) = 0xf;
+  c->mStallTimer = 0xf;
 ret0:
   return 0;
 }
@@ -930,27 +1099,34 @@ ret0:
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed738
 /* recovered: shared common types */
+/* Eases the X and Z tilt (mAngleX, mAngleZ) toward a target pair, each by a
+ * quarter of the remaining angle, at most 0x1000 (a 16th of a turn) a call
+ * (UpdateAngle). On the ground the pair comes from the floor normal
+ * (func_02010844 evaluated at the Y angle and at the Y angle minus 0x4000, a
+ * quarter turn). In the air it is the Player's own X and Z angles when mState
+ * is 0 and there is a Player, and 0 otherwise. */
 extern "C" {
 void func_ov002_020ed738(char* c) {
+    daYegg_c *y = (daYegg_c *)c;
     int e4 = 0;
     int e6 = 0;
-    if (_ZNK10dBgCh_Actr10IsOnGroundEv(c+0x144)) {
+    if (_ZNK10dBgCh_Actr10IsOnGroundEv(&y->mWithMeshClsn)) {
         struct Vector3 n;
-        void* fr = _ZNK10dBgCh_Actr14GetFloorResultEv(c+0x144);
+        void* fr = _ZNK10dBgCh_Actr14GetFloorResultEv(&y->mWithMeshClsn);
         _ZNK11SurfaceInfo12CopyNormalToER7Vector3((char*)fr+4, &n);
-        e4 = func_02010844(c, &n, *(short*)(c+0x8e));
-        e6 = func_02010844(c, &n, (short)(*(short*)(c+0x8e) - 0x4000));
+        e4 = func_02010844(c, &n, y->mAngleY);
+        e6 = func_02010844(c, &n, (short)(y->mAngleY - 0x4000));
     } else {
-        if (*(int*)(c+0x3f0) == 0) {
-            short* p = *(short**)(c+0x38c);
+        if (y->mState == 0) {
+            Player* p = y->mPlayer;
             if (p != 0) {
-                e4 = p[0x8c/2];
-                e6 = p[0x90/2];
+                e4 = p->mAngleX;
+                e6 = p->mAngleZ;
             }
         }
     }
-    _Z11UpdateAngleRssis((short*)(c+0x8c), e4, 4, 0x1000);
-    _Z11UpdateAngleRssis((short*)(c+0x90), e6, 4, 0x1000);
+    _Z11UpdateAngleRssis(&y->mAngleX, e4, 4, 0x1000);
+    _Z11UpdateAngleRssis(&y->mAngleZ, e6, 4, 0x1000);
 }
 }
 
@@ -958,48 +1134,59 @@ void func_ov002_020ed738(char* c) {
 /* ROM ordinal 23 -- func_ov002_020ed7f8, 0x020ed7f8, size 0x1a0 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed7f8
+/* Drop shadow, called from Behavior. Skipped when the followed Player's
+ * mOpacity is below 1. It probes the floor with a dBgCh_Gnd from 0x28000 (40
+ * units) above the egg (its +0x44 is the floor height, dBgCh_Gnd's clsnY);
+ * r5 is the egg's height over that floor when one was found (the probe's start
+ * point otherwise), at least 0x1000 (1 unit), and r4 the
+ * shadow size, 0x50000 (80 units) less 3/32 of r5 and never below 0xa000 (10
+ * units). It fills mShadowMtx with a Y rotation and the position >> 3, then
+ * draws the shadow, cylinder or cuboid by the variant bit, unless the egg's
+ * flags have 0x40000 (dActor_c.h lists 0x020000 / 0x040000 as yoshi-mouth
+ * states written by actor code), or the Player's word at +0x37c is nonzero, or either of
+ * func_ov002_020cf700 / func_ov002_020d0d2c says so for the Player. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
 void func_ov002_020ed7f8(void *self)
 {
-    char *c = (char*)self;
+    daYegg_c *c = (daYegg_c*)self;
     dBgCh_Gnd rg;
     struct Vec3i v;
     int r5;
     int r4;
     int b;
 
-    if (*(unsigned char*)(*(char**)(c + 0x38c) + 0x6f5) < 1)
+    if (c->mPlayer->mOpacity < 1)
         return;
 
-    v.x = *(int*)(c + 0x5c);
-    v.y = *(int*)(c + 0x60);
-    v.z = *(int*)(c + 0x64);
+    v.x = c->mPosX;
+    v.y = c->mPosY;
+    v.z = c->mPosZ;
     v.y += 0x28000;
     _ZN9dBgCh_GndC1Ev(&rg);
     _ZN9dBgCh_Gnd12SetObjAndPosERK7Vector3P8dActor_c(&rg, &v, 0);
     r4 = v.y;
     if (_ZN9dBgCh_Gnd10DetectClsnEv(&rg))
         r4 = *(int*)((char*)&rg + 0x44);
-    r5 = *(int*)(c + 0x60) - r4;
+    r5 = c->mPosY - r4;
     if (r5 <= 0x1000) r5 = 0x1000;
     r4 = 0x50000 - (int)(((long long)r5 * 0x180 + 0x800) >> 12);
     if (r4 < 0xa000) r4 = 0xa000;
-    Matrix4x3_FromRotationY(c + 0x390, *(short*)(c + 0x8e));
-    *(int*)(c + 0x3b4) = *(int*)(c + 0x5c) >> 3;
-    *(int*)(c + 0x3b8) = *(int*)(c + 0x60) >> 3;
-    *(int*)(c + 0x3bc) = *(int*)(c + 0x64) >> 3;
-    b = (*(int*)(c + 0xb0) & 0x40000) ? 1 : 0;
+    Matrix4x3_FromRotationY(c->mShadowMtx, c->mAngleY);
+    c->mShadowMtx[9] = c->mPosX >> 3;
+    c->mShadowMtx[10] = c->mPosY >> 3;
+    c->mShadowMtx[11] = c->mPosZ >> 3;
+    b = (c->mFlags & 0x40000) ? 1 : 0;
     if (b == 0
-        && *(int*)(*(char**)(c + 0x38c) + 0x37c) == 0
-        && !func_ov002_020cf700(*(void**)(c + 0x38c))
-        && !func_ov002_020d0d2c(*(void**)(c + 0x38c)))
+        && *(int*)&c->mPlayer->unk_37c == 0
+        && !func_ov002_020cf700(c->mPlayer)
+        && !func_ov002_020d0d2c(c->mPlayer))
     {
-        if (func_ov002_020ec654((unsigned char*)c) == 0) {
+        if (func_ov002_020ec654(c) == 0) {
             _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
-                c, c + 0x364, c + 0x390, r4, r5 + 0x28000, 0xf);
+                c, &c->mShadowModel, c->mShadowMtx, r4, r5 + 0x28000, 0xf);
         } else {
             _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-                c, c + 0x364, c + 0x390, r4, r5 + 0x28000, r4, 0xf);
+                c, &c->mShadowModel, c->mShadowMtx, r4, r5 + 0x28000, r4, 0xf);
         }
     }
     _ZN9dBgCh_GndD1Ev(&rg);
@@ -1010,17 +1197,28 @@ void func_ov002_020ed7f8(void *self)
 /* ROM ordinal 24 -- func_ov002_020ed998, 0x020ed998, size 0x1a4 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020ed998
+/* Places the egg's model matrix, called from Behavior. With
+ * daYegg_FLAG_ATTACHED set and a Player, it copies the 12-word matrix the
+ * word at Player+0xc8 points to (that field is padding in dActor_c.h), shifts
+ * its translation by (0x3f, 9, 0xb) and applies a ZXY rotation of
+ * (-0x49f5, -0xc17, -0x293f), then moves the egg's mPos to the resulting
+ * translation << 3 and returns; matrix units are mPos >> 3 throughout.
+ * Otherwise it builds the matrix from the egg's own pose: the translation is
+ * mPos with 0x14000 (20 units) added to Y, scaled by 1/8 (x << 9 >> 12, rounded),
+ * rotated by (mAngleX, mAngleY, mAngleZ), and stored into the model's own
+ * matrix (mModelAnim.mat4x3). */
 extern "C" {
-void func_ov002_020ed998(char *c)
+void func_ov002_020ed998(char *cc)
 {
-    int on = (*(int *)(c + 0xb0) & 0x100) != 0;
-    if (on && *(int *)(c + 0x38c)) {
+    daYegg_c *c = (daYegg_c *)cc;
+    int on = (c->mFlags & daYegg_FLAG_ATTACHED) != 0;
+    if (on && *(int *)&c->mPlayer) {
         volatile struct Vec3i v;
         int t9, t10, t11;
         v.x = 0;
         v.y = 0;
         v.z = 0;
-        data_020a0e68 = *(M48 *)(*(char **)(*(char **)(c + 0x38c) + 0xc8));
+        data_020a0e68 = *(M48 *)(*(char **)((char *)c->mPlayer + 0xc8));
         Matrix4x3_ApplyInPlaceToTranslation(&data_020a0e68, 0x3f, 9, 0xb);
         Matrix4x3_ApplyInPlaceToRotationZXYExt(&data_020a0e68, 0xffffb60b, 0xfffff3e9, 0xffffd6c1);
         t9  = ((volatile M48 *)&data_020a0e68)->w[9];
@@ -1029,18 +1227,18 @@ void func_ov002_020ed998(char *c)
         v.y = t10;
         v.z = t11;
         v.x = t9;
-        *(int *)(c + 0x5c) = t9 << 3;
-        *(int *)(c + 0x60) = v.y << 3;
-        *(int *)(c + 0x64) = v.z << 3;
+        c->mPosX = t9 << 3;
+        c->mPosY = v.y << 3;
+        c->mPosZ = v.z << 3;
         return;
     }
     Matrix4x3_FromTranslation(&data_020a0e68,
-        (int)((((long long)*(int *)(c + 0x5c) << 9) + 0x800) >> 12),
-        (int)((((long long)(*(int *)(c + 0x60) + 0x14000) << 9) + 0x800) >> 12),
-        (int)((((long long)*(int *)(c + 0x64) << 9) + 0x800) >> 12));
+        (int)((((long long)c->mPosX << 9) + 0x800) >> 12),
+        (int)((((long long)(c->mPosY + 0x14000) * 0x200) + 0x800) >> 12),
+        (int)((((long long)c->mPosZ << 9) + 0x800) >> 12));
     Matrix4x3_ApplyInPlaceToRotationXYZExt(&data_020a0e68,
-        *(short *)(c + 0x8c), *(short *)(c + 0x8e), *(short *)(c + 0x90));
-    *(M48 *)(c + 0x31c) = data_020a0e68;
+        c->mAngleX, c->mAngleY, c->mAngleZ);
+    *(M48 *)&c->mModelAnim.mat4x3 = data_020a0e68;
 }
 }
 
@@ -1048,62 +1246,72 @@ void func_ov002_020ed998(char *c)
 /* ROM ordinal 25 -- func_ov002_020edb3c, 0x020edb3c, size 0x168 */
 /* -------------------------------------------------------------------------- */
 // @symbol func_ov002_020edb3c
+/* Target search. If five actors have already been targeted it bursts the egg
+ * (for the variant func_ov002_020ec654 calls zero) and returns 0. Otherwise it
+ * walks the actor list for the nearest actor, closer than `best` (the
+ * caller's range), that is not the egg or the followed Player, has profile
+ * bit 0x10000000 and not the off-screen bit 0x8, is not in mTargetedIds and,
+ * for the other variant, answers nonzero to vtable slot 20. The winner's
+ * uniqueID is appended to mTargetedIds, becomes mTargetId and bumps
+ * mTargetedCount; the winner is returned, or 0 if none qualified. `a1` is
+ * not used. */
 extern "C" {
 #pragma opt_strength_reduction off
 int func_ov002_020edb3c(char *self, int a1, int best)
 {
-    char *found;
-    char *actor;
+    daYegg_c *y = (daYegg_c *)self;
+    dActor_c *found;
+    dActor_c *actor;
     int matched;
     int b;
     struct P { int a, b, c, d; };
     volatile struct P _p;
     struct P *_q = (struct P *)&_p;
 
-    if (*(unsigned char *)(self + 0x41c) >= 5) {
-        if (func_ov002_020ec654((unsigned char *)self) == 0) {
-            func_ov002_020edca4(self);
+    if (y->mTargetedCount >= 5) {
+        if (func_ov002_020ec654(y) == 0) {
+            func_ov002_020edca4(y);
         }
         return 0;
     }
 
     found = 0;
-    actor = (char *)_ZN8dActor_c4NextEPKS_(0);
+    actor = (dActor_c *)_ZN8dActor_c4NextEPKS_(0);
     if (actor == 0) goto end;
 
 loop:
-    if (actor == self) goto next;
-    if (actor == *(char **)(self + 0x38c)) goto next;
-    b = (*(int *)(actor + 0xb0) & 0x10000000) != 0;
+    if ((char *)actor == self) goto next;
+    if (actor == (dActor_c *)y->mPlayer) goto next;
+    b = (actor->mFlags & 0x10000000) != 0;
     if (!b) goto next;
-    b = (*(int *)(actor + 0xb0) & 8) != 0;
+    b = (actor->mFlags & 8) != 0;
     if (b) goto next;
     matched = 0;
     for (int i = 0; i < 5; i++) {
-        int bv = *(int *)(self + (i << 2) + 0x3fc);
-        if (bv == *(int *)(actor + 4)) matched = 1;
+        int bv = y->mTargetedIds[i];
+        if (bv == actor->uniqueID) matched = 1;
     }
     if (matched != 0) goto next;
-    if (func_ov002_020ec654((unsigned char *)self) != 0) {
+    if (func_ov002_020ec654(y) != 0) {
         if (((VObjQuery *)actor)->s20() == 0) goto next;
     }
     {
-        int d = Vec3_Dist(self + 0x5c, actor + 0x5c);
+        int d = Vec3_Dist(&y->mPosX, &actor->mPosX);
         if (d < best) {
             best = d;
             found = actor;
         }
     }
 next:
-    actor = (char *)_ZN8dActor_c4NextEPKS_(actor);
+    actor = (dActor_c *)_ZN8dActor_c4NextEPKS_(actor);
     if (actor != 0) goto loop;
 
 end:
     if (found != 0) {
-        int idx = *(unsigned char *)(self + 0x41c);
-        *(int *)(self + (idx << 2) + 0x3fc) = *(int *)(found + 4);
-        *(int *)(self + 0x410) = *(int *)(found + 4);
-        *(unsigned char *)(self + 0x41c) += 1;
+        int idx = y->mTargetedCount;
+        y->mTargetedIds[idx] = found->uniqueID;
+        y->mTargetId = found->uniqueID;
+        y->mTargetedCount += 1;
     }
     return (int)found;
 }
@@ -1116,42 +1324,49 @@ end:
 // @symbol func_ov002_020edca4
 /* recovered: shared common types, declarations from a shared header */
 /* recovered: shared common types */
+/* The burst. Does nothing if mBurstDone is already set. Otherwise it pays out
+ * (func_ov002_020ec728), and when the star bit is set gives up the tracked
+ * star slot and spawns a SILVER_STAR (param1 0x10) 40 units above the egg,
+ * which func_ov002_020e7218 then takes together with the Player. It then
+ * starts four particle effects (ids 0x3f to 0x42) at the egg, marks the egg
+ * for destruction, plays Sound::PlayCharVoice id 0x103 at its camera-space
+ * position and sets mBurstDone. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-void func_ov002_020edca4(char* self)
+void func_ov002_020edca4(daYegg_c* self)
 {
     struct Vector3 pos;
     char* spawned;
     int xv, zv, yv, sy;
 
-    if (*(u8*)(self + 0x426) != 0) return;
+    if (self->mBurstDone != 0) return;
 
-    func_ov002_020ec728(self);
+    func_ov002_020ec728((char *)self);
 
-    yv = *(int*)(self + 0x60);
-    zv = *(int*)(self + 0x64);
+    yv = self->mPosY;
+    zv = self->mPosZ;
     sy = yv + 0x28000;
-    xv = *(int*)(self + 0x5c);
+    xv = self->mPosX;
     pos.x = xv;
     pos.y = sy;
     pos.z = zv;
-    if (func_ov002_020ec610((unsigned char*)self) != 0) {
-        _ZN8dActor_c11UntrackStarERa((struct dActor_c*)self, (signed char*)(self + 0x427));
+    if (func_ov002_020ec610(self) != 0) {
+        _ZN8dActor_c11UntrackStarERa((struct dActor_c*)self, (signed char*)&self->mStarSlot);
 
-        spawned = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0xb3, 0x10,
-            &pos, 0, *(signed char*)(*(char**)(self + 0x38c) + 0xcc), -1);
+        spawned = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(ACTOR_SILVER_STAR, 0x10,
+            &pos, 0, self->mPlayer->mAreaId, -1);
         if (spawned != 0) {
-            func_ov002_020e7218((char*)spawned, *(char**)(self + 0x38c), 1);
+            func_ov002_020e7218((char*)spawned, (char*)self->mPlayer, 1);
         }
     }
 
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x3f, *(int*)(self + 0x5c), *(int*)(self + 0x60), *(int*)(self + 0x64));
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x40, *(int*)(self + 0x5c), *(int*)(self + 0x60), *(int*)(self + 0x64));
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x41, *(int*)(self + 0x5c), *(int*)(self + 0x60), *(int*)(self + 0x64));
-    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x42, *(int*)(self + 0x5c), *(int*)(self + 0x60), *(int*)(self + 0x64));
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x3f, self->mPosX, self->mPosY, self->mPosZ);
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x40, self->mPosX, self->mPosY, self->mPosZ);
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x41, self->mPosX, self->mPosY, self->mPosZ);
+    _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x42, self->mPosX, self->mPosY, self->mPosZ);
     _ZN7fBase_c18MarkForDestructionEv((struct dActor_c*)self);
-    _ZN5Sound13PlayCharVoiceEjjRK7Vector3(0, 0x103, (const struct Vector3*)(self + 0x74));
+    _ZN5Sound13PlayCharVoiceEjjRK7Vector3(0, 0x103, (const struct Vector3*)&self->mCamSpacePosX);
 
-    *(u8*)(self + 0x426) = 1;
+    self->mBurstDone = 1;
 }
 }
 
@@ -1165,8 +1380,20 @@ void func_ov002_020edca4(char* self)
  *
  * Matched byte-for-byte with mwccarm 1.2/sp2p3 (ov002).
  */
+/* Contact handling, run each frame the egg is flying. The actor that touched
+ * the egg's cylinder is looked up from the cylinder's otherOwner
+ * (mdCcAc_c.otherOwner, +0x134); the answer is 0 and nothing happens if
+ * there is none or it is the followed Player. When it is some other actor of
+ * type PLAYER (any Player-type actor except the followed one):
+ * if the cylinder's hit flags (mdCcAc_c.hitFlags, +0x130) have bit 0x8000 the
+ * egg enters state 3 and returns 1; if none of the bits 0x26fe0 are set, the
+ * Player is hurt (Player::Hurt at the egg's position with 1, 12 units in
+ * Fix12, 1, 0, 1). When the touched actor is one of the six burst actors
+ * (BOMBKING, HOLHEI, KURIKING, KURIBO_L, WANWAN, WANWAN2) the egg bursts and
+ * returns 1. When it is the actor currently sought (mTargetId) the egg pays
+ * out, re-enters state 1 and returns 1. Any other case returns 0. */
 extern "C" {  /* .c-derived member: C linkage for the whole block */
-int func_ov002_020eddc4(char* self)
+int func_ov002_020eddc4(daYegg_c* self)
 {
     struct dActor_c* actor;
     struct dActor_c* other;
@@ -1174,53 +1401,53 @@ int func_ov002_020eddc4(char* self)
     u32 flags;
     u16 type;
 
-    id = *(u32*)(self + 0x134);
+    id = self->mdCcAc_c.otherOwner;
     if (id == 0) goto fail;
 
     actor = (struct dActor_c*)_ZN8dActor_c10FindWithIDEj(id);
     if (actor == 0) goto fail;
 
-    if (actor == *(struct dActor_c**)(self + 0x38c)) goto fail;
+    if (actor == (struct dActor_c*)self->mPlayer) goto fail;
 
     {
-        int t = (int)(*(u16*)((char*)actor + 0xc) == 0xbf);
+        int t = (int)(actor->actorID == ACTOR_PLAYER);
         if (t != 0) {
-            flags = *(u32*)(self + 0x130);
+            flags = self->mdCcAc_c.hitFlags;
             if (flags & 0x8000) {
-                func_ov002_020ed63c((C *)self, 3);
+                func_ov002_020ed63c(self, daYegg_STATE_DROP);
                 return 1;
             }
             if (!(flags & 0x26fe0)) {
                 struct Vector3 pos;
-                pos.x = *(int*)(self + 0x5c);
-                pos.y = *(int*)(self + 0x60);
-                pos.z = *(int*)(self + 0x64);
+                pos.x = self->mPosX;
+                pos.y = self->mPosY;
+                pos.z = self->mPosZ;
                 _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(actor, &pos, 1, 0xc000, 1, 0, 1);
             }
         }
     }
 
-    type = *(u16*)((char*)actor + 0xc);
+    type = actor->actorID;
     switch (type) {
-    case 0xbd:
-    case 0xbe:
-    case 0xc6:
-    case 0xca:
-    case 0xdb:
-    case 0x151:
+    case ACTOR_BOMBKING:
+    case ACTOR_HOLHEI:
+    case ACTOR_KURIKING:
+    case ACTOR_KURIBO_L:
+    case ACTOR_WANWAN:
+    case ACTOR_WANWAN2:
         func_ov002_020edca4(self);
         return 1;
     }
 
     other = 0;
-    id = *(u32*)(self + 0x410);
+    id = self->mTargetId;
     if (id != 0) {
         other = (struct dActor_c*)_ZN8dActor_c10FindWithIDEj(id);
     }
     if (other != actor) goto fail;
 
-    func_ov002_020ec728(self);
-    func_ov002_020ed63c((C *)self, 1);
+    func_ov002_020ec728((char *)self);
+    func_ov002_020ed63c(self, daYegg_STATE_SEEK);
     return 1;
 
 fail:
@@ -1233,11 +1460,13 @@ fail:
 /* -------------------------------------------------------------------------- */
 // @symbol _ZN8daYegg_c16CleanupResourcesEv
 /* recovered: named members + shared header, real C++ method */
+/* Releases the two shared animation files and, if the egg pays a blue coin,
+   unloads the blue-coin model InitResources loaded. */
 int daYegg_c::CleanupResources()
 {
   ((SharedFilePtr *)(&data_ov002_0210e6b0))->Release();
   ((SharedFilePtr *)(&data_ov002_0210eb78))->Release();
-  if (func_ov002_020ec628((unsigned char *)this) != 0)
+  if (func_ov002_020ec628(this) != 0)
     UnloadBlueCoinModel(((void*)this));
   return 1;
 }
@@ -1247,6 +1476,9 @@ int daYegg_c::CleanupResources()
 /* -------------------------------------------------------------------------- */
 // @symbol _ZN8daYegg_c6RenderEv
 /* recovered: named members + shared header, real C++ method -- vtable slot 9 */
+/* Draws the egg's model unless it is hidden: skipped when mFlags has 0x40000,
+   when the followed Player is inside a cannon, or when the Player's opacity
+   is below 1. */
 int daYegg_c::Render()
 {
     /* The temporary is load-bearing and must not be folded into the `if`, the
@@ -1268,14 +1500,22 @@ int daYegg_c::Render()
 // @symbol _ZN8daYegg_c8BehaviorEv
 /* recovered: named members + shared header, real C++ method, declarations from a shared header */
 /* recovered: named members + shared header, real C++ method */
+/* Per-frame update: runs the current state's execute handler and advances the
+ * model animation. In every state but 1 the egg takes the followed Player's
+ * opacity; while that opacity is below 10 it is also pinned to the Player's
+ * position plus the vector (0, 0, -104 units) rotated by the Player's angles.
+ * In state 1 it is fully opaque (31). Then it places the model matrix
+ * (func_ov002_020ed998), draws the drop shadow (func_ov002_020ed7f8), moves to
+ * the next payout slot once the current one is paid, and bursts when all five
+ * slots are used. */
 int daYegg_c::Behavior()
 {
     Vector3 vin;
     Vector3 vmid;
     Vector3 vout;
-    func_ov002_020ed684((C *)this);
+    func_ov002_020ed684(this);
     mModelAnim.Advance();
-    if (unk_3f0 != 1) {
+    if (mState != daYegg_STATE_SEEK) {
         if (mPlayer->mOpacity < 0xa) {
             /* BOTH oddities below are load-bearing, measured one at a time.
 
@@ -1307,10 +1547,10 @@ int daYegg_c::Behavior()
     }
     func_ov002_020ed998((char *)this);
     func_ov002_020ed7f8(this);
-    if (unk_421[unk_420] != 0)
-        unk_420++;
-    if (unk_420 >= 5) {
-        func_ov002_020edca4((char *)this);
+    if (mPayoutDone[mPayoutIdx] != 0)
+        mPayoutIdx++;
+    if (mPayoutIdx >= 5) {
+        func_ov002_020edca4(this);
     }
     return 1;
 }
@@ -1325,17 +1565,31 @@ int daYegg_c::Behavior()
  * function reaching every field through a raw offset -- it named not one member,
  * which is why it could not even include its own header once daYegg_c became a
  * real dEnemyBase_c subclass.
- */
+ *
+ * Sets up the egg: mParamHigh from param1; the model by the variant
+ * (func_ov002_020ec654 picks which of the two models at data_ov002_021000a0
+ * and whether the shadow is a cylinder or a cuboid); the idle animation;
+ * gravity -0x2000 (-2 units per frame squared) and a terminal velocity of
+ * -0x3c000 (-60 units per frame); and the starting state from param1 & 3. The
+ * same two bits choose the size: states 0 and 1 are normal size (scale 1.0,
+ * collision cylinder 0x46000 by 0x8c000, i.e. 70 by 140 units, ground-collision
+ * radius and height 0x28000 = 40 units), state 2 is the big egg (scale 2.0,
+ * 0x78000 by 0xa0000 = 120 by 160 units, ground-collision radius and height
+ * 0x64000 = 100 units), state 3 gets neither.
+ * The cylinder's own flags 0x200002 and hit mask 0xa08000 are left as raw
+ * numbers. It then clears the targeted-ID list, seeds both angle triples from
+ * the actor's own angles, arms mStallTimer, loads the blue-coin model if the
+ * egg pays one and tracks a star slot if it pays the star. */
 #pragma opt_strength_reduction off
 int daYegg_c::InitResources()
 {
     int idx;
     int i;
 
-    unk_428 = (u8)(param1 >> 4);
+    mParamHigh = (u8)(param1 >> 4);
 
     idx = 0;
-    if (func_ov002_020ec654((unsigned char *)this) != 0)
+    if (func_ov002_020ec654(this) != 0)
         idx = 1;
 
     Animation::LoadFile(*(SharedFilePtr *)data_ov002_0210e6b0);
@@ -1345,7 +1599,7 @@ int daYegg_c::InitResources()
 
     /* The predicate is asked a SECOND time rather than reusing idx: the ROM calls
        0x020ec654 twice, and folding it into the index above loses a bl. */
-    if (func_ov002_020ec654((unsigned char *)this) == 0) {
+    if (func_ov002_020ec654(this) == 0) {
         if (mShadowModel.InitCylinder() == 0)
             return 0;
     } else {
@@ -1362,9 +1616,9 @@ int daYegg_c::InitResources()
     mSpawnPosZ = mPosZ;
     mVertAccel = -0x2000;
     mTerminalVelocity = -0x3c000;
-    unk_3f0 = param1 & 3;
+    mState = param1 & 3;
 
-    switch (unk_3f0) {
+    switch (mState) {
     case 0:
     case 1:
         mScaleX = 0x1000;
@@ -1389,19 +1643,19 @@ int daYegg_c::InitResources()
     }
 
     for (i = 0; i < 5; i++)
-        unk_3fc[i] = 0;
+        mTargetedIds[i] = 0;
 
-    unk_3ea = mAngleX;
-    unk_3ec = mAngleY;
-    unk_3ee = mAngleZ;
-    unk_3e4 = mAngleX;
-    unk_3e6 = mAngleY;
-    unk_3e8 = mAngleZ;
-    unk_41f = 0xf;
+    mEasedAngleX = mAngleX;
+    mEasedAngleY = mAngleY;
+    mEasedAngleZ = mAngleZ;
+    mGoalAngleX = mAngleX;
+    mGoalAngleY = mAngleY;
+    mGoalAngleZ = mAngleZ;
+    mStallTimer = 0xf;
 
-    if (func_ov002_020ec628((unsigned char *)this) != 0)
+    if (func_ov002_020ec628(this) != 0)
         LoadBlueCoinModel((char *)this);
-    if (func_ov002_020ec610((unsigned char *)this) != 0)
+    if (func_ov002_020ec610(this) != 0)
         mStarSlot = _ZN8dActor_c9TrackStarEjj(this, 0, 1);
     return 1;
 }

@@ -32,8 +32,8 @@
 #include "SharedFilePtr.h"
 #include "Model.h"
 #include "Player.h"
-#include "PowerStar.h"
-#include "StarMarker.h"
+#include "daStar_c.h"
+#include "daStarBase_c.h"
 #include "daObjBlockL_c.h"
 
 namespace Event { s32 GetBit(u32 bit); void SetBit(u32 bit); }
@@ -104,12 +104,12 @@ void func_ov002_020b1008(daCoin_c *coin)
  * char * because include/decl_common.h declares it that way. */
 // @symbol func_ov002_020b10a0
 extern "C" {
-StarMarker *func_ov002_020b1328(daCoin_c *coin);
+daStarBase_c *func_ov002_020b1328(daCoin_c *coin);
 
 int func_ov002_020b10a0(char *self)
 {
     daCoin_c *coin = (daCoin_c *)self;
-    StarMarker *marker;
+    daStarBase_c *marker;
 
     if (coin->GetBitInDeathTable() == 0) return 0;
     marker = func_ov002_020b1328(coin);
@@ -240,15 +240,15 @@ int func_ov002_020b12ec(char *self)
 }
 }
 
-/* Finds the STARBASE actor (0xb4, a StarMarker) whose star id equals this
+/* Finds the STARBASE actor (0xb4, a daStarBase_c) whose star id equals this
  * coin's mSpawnFilter and whose state is 0. Null if there is none. */
 // @symbol func_ov002_020b1328
 extern "C" {
-StarMarker *func_ov002_020b1328(daCoin_c *coin)
+daStarBase_c *func_ov002_020b1328(daCoin_c *coin)
 {
-    StarMarker *marker = 0;
+    daStarBase_c *marker = 0;
     while (1) {
-        marker = (StarMarker *)dActor_c::FindWithActorID(0xb4, marker);
+        marker = (daStarBase_c *)dActor_c::FindWithActorID(0xb4, marker);
         if (!marker) break;
         if (coin->mSpawnFilter == marker->mStarID)
             if (marker->mState == 0)
@@ -424,8 +424,8 @@ void func_ov002_020b16c4(char *coinArg, char *playerArg)
     volatile Vector3 unusedPos; /* written but never read; the ROM stores it */
     Vector3 starPos;
     Vector3 popupPos;
-    StarMarker *marker;
-    PowerStar *star;
+    daStarBase_c *marker;
+    daStar_c *star;
     Vector3 *markerPos;
     int x, y, z;
     u8 filter;
@@ -469,7 +469,7 @@ void func_ov002_020b16c4(char *coinArg, char *playerArg)
     *(volatile int *)&starPos.z = z;
     y += 0x78000;
     *(volatile int *)&starPos.y = y;
-    star = (PowerStar *)_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
+    star = (daStar_c *)_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
         0xb2, coin->mSpawnFilter | 0x40, &starPos, 0, marker->mAreaId, -1);
     if (star == 0) return;
     if (coin->mAreaId != star->mAreaId)
@@ -521,7 +521,7 @@ void func_ov002_020b18f0(char* self)
     extern char* _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned int a, unsigned int b, struct Vector3* v, struct Vector3_16* rot, int e, int f);
 
     Player* player = (Player*)self;
-    PowerStar* star;
+    daStar_c* star;
     struct Vector3 spawnPos;
     struct Vector3* playerPos;
     int y;
@@ -535,7 +535,7 @@ void func_ov002_020b18f0(char* self)
     spawnPos.y = y;
     spawnPos.z = playerPos->z;
     spawnPos.y = y + 0x12c000;
-    star = (PowerStar*)_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0xb2, 0x20, &spawnPos, 0, player->mAreaId, -1);
+    star = (daStar_c*)_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0xb2, 0x20, &spawnPos, 0, player->mAreaId, -1);
     if (star == 0) return;
     Event::SetBit(0x1f);
     star->AddStarMarker();

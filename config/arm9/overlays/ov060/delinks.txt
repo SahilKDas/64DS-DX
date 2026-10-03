@@ -32,41 +32,9 @@ src/d_a_kpa2_bg.c:
     complete
     .text start:0x02117cdc end:0x02117d1c
 
-src/_ZN17BowserSkyPlatformD1Ev.cpp:
+src/actors/daKpa3Bg_c.cpp:
     complete
-    .text start:0x02117d1c end:0x02117d60
-
-src/_ZN17BowserSkyPlatformD0Ev.cpp:
-    complete
-    .text start:0x02117d60 end:0x02117db8
-
-src/func_ov060_02117db8.c:
-    complete
-    .text start:0x02117db8 end:0x021180e0
-
-src/func_ov060_021180e0.cpp:
-    complete
-    .text start:0x021180e0 end:0x021181b4
-
-src/func_ov060_021181b4.c:
-    complete
-    .text start:0x021181b4 end:0x021181e8
-
-src/_ZN17BowserSkyPlatform16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021181e8 end:0x0211822c
-
-src/_ZN17BowserSkyPlatform6RenderEv.cpp:
-    complete
-    .text start:0x0211822c end:0x02118254
-
-src/_ZN17BowserSkyPlatform8BehaviorEv.cpp:
-    complete
-    .text start:0x02118254 end:0x021182b0
-
-src/_ZN17BowserSkyPlatform13InitResourcesEv.cpp:
-    complete
-    .text start:0x021182b0 end:0x021183cc
+    .text start:0x02117d1c end:0x021183cc
 
 src/func_ov060_021183cc.c:
     complete

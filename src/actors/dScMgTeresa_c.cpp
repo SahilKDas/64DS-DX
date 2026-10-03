@@ -2,31 +2,38 @@
 /* Hide and Boo Seek. The player watches the Boo cross the room, the lights
  * go out, and they rub the Touch Screen to uncover every hiding Boo. The
  * first 15 rounds give three seconds; after that the clock is two. This
- * file is the low 48 functions of dScMgTeresa_c (.text
- * 0x0211cbd0..0x0211e72c): that Boo's flight, the countdown and the reveal
- * sprites.
+ * file is all 81 functions of dScMgTeresa_c's ov006 unit (.text
+ * 0x0211cbd0..0x021207a8): the big Boo's flight, the countdown and the
+ * reveal sprites, the 16 hiding Boos (spawn, flight, wall bounce, fade and
+ * the touch test against the rubbed-out BG0 tiles), the scene states, and
+ * the class's own overrides. Below it is dScMgSound_c; above it is
+ * dScMgTeresa_c_classInit in src/d_s_mg_teresa.cpp, which stays its own
+ * file.
  *
- * func_ov006_0211e72c, next in ROM, is not matched, so the 32 functions
- * above the hole stay in their own files. Nothing in the ROM names the
- * helpers, and those files call them by their func_ov006_ names.
+ * The upper 33 functions were folded in from their own files, one per
+ * function. func_ov006_0211e72c, which draws the 16 Boos, was the last of
+ * them to match. Nothing in the ROM names the helpers, so they keep their
+ * func_ov006_ names. InitResources, Behavior, Render and OnYoshiTryEat were
+ * named from their vtable slots; Virtual50 and Virtual88 are placeholders
+ * (see dScMgBase_c.h).
  *
  * Functions run in ROM order, lowest address first, because of
  * `#pragma defer_codegen off` below. Do not reorder, and do not drop that
  * pragma. It makes the out-of-line destructor come out D1, D0 as in the
  * ROM (the unused D2 trails it and is deadstripped), and it is what lets
- * the push and pop brackets on func_ov006_0211d924, 0211db7c and 0211e220
- * bind. All three brackets are needed; each was measured. The destructor
- * stays out of line: inline, the key function would be InitResources,
- * which is above the gap, and this file would emit no vtable. Out of
- * line, this file emits the vtable and RTTI for the whole base chain.
+ * the seven push and pop brackets bind. Each bracket was measured: without
+ * it, its function stops matching. The destructor is out of line, so it is
+ * the key function and this file emits the vtable and RTTI for the whole
+ * base chain.
  *
  * OAM::Render takes Fix12<int> by value, so that call stays mangled. The
- * two pointer-to-member receivers stay incomplete on purpose.
+ * pointer-to-member receivers stay incomplete or empty on purpose.
  *
- * Leftover: dScMgTeresa_c.h leaves 0x4660..0x4be8 as padding, so the
- * 0x20-stride pair at 0x4bac, the HUD sprites at 0x4960, and the bytes at
- * 0x4c1b and 0x4c1f are still reached through local views or raw offsets.
- * Naming them in the header is what would unblock typed access.
+ * Leftover: dScMgTeresa_c.h leaves 0x4660..0x4be8 as padding, so the 16
+ * 0x24-byte Boo rows at 0x4660, the 0x20-stride pair at 0x4bac, the HUD
+ * sprites at 0x4960, and the bytes at 0x4c1b and 0x4c1f are still reached
+ * through local views or raw offsets. Naming them in the header is what
+ * would unblock typed access.
  */
 
 #pragma defer_codegen off
@@ -87,6 +94,23 @@ struct TeresaPmfA { char pad[0x4be0]; unsigned char g; unsigned char idx; };
 struct TeresaPmfB;
 typedef void (TeresaPmfB::*PmfB)(int);
 struct TeresaPmfB { char pad[0x4bba]; unsigned char idx; char gap; unsigned char g; };
+
+/* func_ov006_0211f6fc's receiver: the per-Boo state handlers in
+   data_ov006_02142ed8, one call per live 0x24-byte row. */
+struct TeresaPmfC;
+typedef void (TeresaPmfC::*PmfC)(int);
+struct TeresaPmfC { };
+
+/* Behavior's receiver: the scene-state handlers in data_ov006_02142eb0,
+   indexed by unk_4be8. */
+struct TeresaPmfD;
+typedef void (TeresaPmfD::*PmfD)();
+struct TeresaPmfDEntry { PmfD pmf; };
+
+/* func_ov006_0211fd44's view of the ov004 score block at data_ov004_020beb68
+   (dScMgBase_c.h declares it void *): the current score at +0xb4 and the best
+   at +0xb8. */
+struct ScoreView { unsigned char pad[0xb4]; int b4; int b8; };
 
 /* func_ov006_0211e0c8's `struct C`: a 0x24-stride row walk, no fields named. */
 struct Row { char pad[0x24]; };
@@ -155,6 +179,20 @@ extern int   GetGameLanguage(void);
 extern void  DrawOamSprite(int, int, int, int);
 extern void  Hud_RenderSprite(void *fn, int a, int b, int c, int d);
 extern void  func_ov004_020b2220(int, int, int, int, int, int, int);
+extern void  func_ov004_020b1e34(void *, int, int, int);
+extern int   func_ov004_020ae5c4(void *a, int b, int c, int d, int e, int f, int g);
+extern int   func_ov004_020adbe0(void);
+extern int   func_020126e8(int a);
+extern int   func_02012468(int a, int b, int c, int d, int e, int f, int g, short h);
+extern void  MultiStore16(u16 val, void *dst, int nbytes);
+/* func_ov006_0211ebdc and 0211f224 pass `0x10 - alpha` as computed: the
+   cartridge does not narrow it to 16 bits at either call, which G2x.h's
+   unsigned short parameters would. So those two call the mangled name. */
+extern void  _ZN3G2x13SetBlendAlphaEPVttttj(volatile unsigned short *reg, int a, int b,
+                                            int c, int d);
+/* G2's own name is taken: decl_common.h declares `int G2[]`. */
+extern void *_ZN2G212GetBG2ScrPtrEv(void);
+extern void *_ZN2G213GetBG2CharPtrEv(void);
 extern void  _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(int sub, struct OamAttr *data,
                                                          s32 x, s32 y, s32 palette,
                                                          s32 priority, s32 scaleX,
@@ -176,13 +214,24 @@ extern int            data_ov006_02137cd8[];
 extern void          *data_ov006_0213a5f4;
 extern struct OamAttr *data_ov006_0213a628[];
 extern int           *data_ov006_0213f9d0[];
+extern void          *data_ov006_0213a964[];
+extern int            data_ov006_0212efec[];
+extern int            data_ov006_0212f014[];
+extern int            data_ov006_0212f050[];
+extern int            data_ov006_0212f08c[];
+extern int            data_ov006_0213f9e4[];
+extern short          data_02082214[];
+extern u8             data_020a0e40;
+extern u8             data_020a0de8[];
+extern u8             data_020a0dea[];
+extern u8             data_020a0deb[];
+extern int            data_ov004_020beb6c;
 
-/* The two pointer-to-member tables, each typed to its own view of the object. */
+/* The four pointer-to-member tables, each typed to its own view of the object. */
 extern PmfA data_ov006_02142f18[];
 extern PmfB data_ov006_02142e88[];
-
-/* A member of this class above the gap, still in its own file. */
-extern void func_ov006_0211f51c(char *c);
+extern PmfC data_ov006_02142ed8[];
+extern struct TeresaPmfDEntry data_ov006_02142eb0[];
 
 /* Defined below. The ones decl_common.h declares are left out. */
 extern void func_ov006_0211cc2c(unsigned char *self);
@@ -200,7 +249,7 @@ extern void func_ov006_0211d5a8(TeresaPmfA *c);
 extern void func_ov006_0211d608(char *c);
 extern void func_ov006_0211d688(char *p);
 extern void func_ov006_0211d69c(char *obj);
-extern void func_ov006_0211d7b0(void);
+extern void func_ov006_0211d7b0(void *unused);
 extern void func_ov006_0211d7d8(char *p);
 extern void func_ov006_0211d86c(char *thiz, int idx);
 extern void func_ov006_0211d924(char *p, int i);
@@ -222,10 +271,47 @@ extern void func_ov006_0211e4e0(char *base);
 extern void func_ov006_0211e55c(char *c, int idx);
 extern void func_ov006_0211e5cc(char *c);
 extern void func_ov006_0211e658(unsigned char *base);
+extern void func_ov006_0211e7d8(char *self);
+extern void func_ov006_0211e8a8(char *c, int idx);
+extern void func_ov006_0211ea70(char *self, int idx);
+extern void func_ov006_0211eb90(char *c, int i);
+extern void func_ov006_0211ebdc(char *c, int i);
+extern void func_ov006_0211ee34(char *c, int i);
+extern void func_ov006_0211f040(char *c, int idx);
+extern void func_ov006_0211f0d0(unsigned char *base, int idx);
+extern void func_ov006_0211f1a4(char *c, int i);
+extern void func_ov006_0211f224(char *c, int i);
+extern void func_ov006_0211f34c(char *o, int i);
+extern void func_ov006_0211f454(char *c, int i);
+extern void func_ov006_0211f51c(char *c);
+extern void func_ov006_0211f554(char *c, int i);
+extern void func_ov006_0211f5d4(char *c, int idx);
+extern void func_ov006_0211f664(char *c, int i);
+extern void func_ov006_0211f6fc(TeresaPmfC *c);
+extern void func_ov006_0211f9fc(int self);
+extern void func_ov006_0211fb1c(char *c);
+extern void func_ov006_0211fd44(char *c);
+extern void func_ov006_0211fe78(char *c);
+extern void func_ov006_02120008(char *c);
+extern void func_ov006_021200a8(void *c);
+extern void func_ov006_021200cc(char *p);
 
 }  /* extern "C" */
 
 namespace Sound { void PlayBank2_2D(unsigned int id); }
+namespace G2S {
+char *GetBG0CharPtr();
+void *GetBG0ScrPtr();
+void *GetBG2CharPtr();
+}
+namespace GX {
+void LoadBGPltt(const void *src, u32 offset, u32 size);
+void LoadOBJPltt(const void *src, u32 offset, u32 size);
+}
+namespace GXS {
+void LoadBGPltt(const void *src, u32 offset, u32 size);
+void LoadOBJPltt(const void *src, u32 offset, u32 size);
+}
 
 
 // @symbol _ZN13dScMgTeresa_cD1Ev
@@ -612,7 +698,8 @@ extern "C" void func_ov006_0211d75c(void* arg){
 
 
 // @symbol func_ov006_0211d7b0
-extern "C" void func_ov006_0211d7b0(void)
+/* Empty. func_ov006_021200a8 calls it with the object. */
+extern "C" void func_ov006_0211d7b0(void *unused)
 {
 }
 
@@ -1185,4 +1272,1120 @@ extern "C" void func_ov006_0211e658(unsigned char* raw)
         func_ov006_0211cc90(raw);
         *(unsigned char*)(raw + 0x4c1f) = 1;
     }
+}
+
+
+// @symbol func_ov006_0211e72c
+/* Draws the 16 Boo sprites. Each 0x24-byte slot at +0x4660 holds a position
+ * (x, y in 20.12), a translucency flag, a visible flag, an OAM priority and an
+ * animation/frame pair that picks the sprite's attribute block from a table of
+ * seven frames per animation. Visible slots go through OAM::Render at unit
+ * scale, forced semi-transparent (mode 1) when the flag is set and in the
+ * attribute's own mode (-1) otherwise. The mode is declared between the frame
+ * index and the y read on purpose: that is what puts the -1 where the ROM
+ * keeps it. decl_common.h declares this one with a `void *` parameter. */
+extern "C" void func_ov006_0211e72c(void *arg)
+{
+    char *row = (char *)arg;
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        if (*(u8 *)(row + 0x4000 + 0x67a) != 0) {
+            void **frames = data_ov006_0213a964;
+            int translucent = *(u8 *)(row + 0x4000 + 0x676);
+            int x = *(int *)(row + 0x4000 + 0x660) >> 12;
+            int frame = *(u8 *)(row + 0x4000 + 0x67d);
+            int anim = *(u8 *)(row + 0x4000 + 0x67e);
+            int idx = anim * 7 + frame;
+            int mode = -1;
+            int y = *(int *)(row + 0x4000 + 0x664) >> 12;
+            int priority = *(u8 *)(row + 0x4000 + 0x67b);
+
+            if (translucent != 0)
+                mode = 1;
+            _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(
+                1, (struct OamAttr *)frames[idx], x, y, -1, priority, 0x1000, 0x1000, 0, mode);
+        }
+        row += 0x24;
+    }
+}
+
+
+// @symbol func_ov006_0211e7d8
+extern "C" void func_ov006_0211e7d8(char *self)
+{
+    int found = 0;
+    int i = 0;
+    char *p = self;
+    for (; i < 0x10; i++) {
+        if (*(unsigned char*)(p + 0x4677) != 0) {
+            unsigned int t = (*(unsigned char*)(p + 0x4678) + 0xfd) & 0xff;
+            if (t <= 1) {
+                *(unsigned char*)(p + 0x4678) = 6;
+                *(unsigned short*)(p + 0x466e) = 0;
+                *(unsigned char*)(p + 0x4676) = 0;
+                *(unsigned char*)(p + 0x4679) = 1;
+                *(unsigned char*)(p + 0x467d) = 3;
+                *(unsigned char*)(p + 0x4681) = 0;
+                *(unsigned char*)(self + 0x4c22) = (unsigned char)i;
+                *(unsigned short*)(p + 0x4674) = 1;
+                found++;
+            }
+        }
+        p += 0x24;
+    }
+    if (found != 0) {
+        unsigned char idx = *(unsigned char*)(self + 0x4c22);
+        *(unsigned char*)(self + idx * 0x24 + 0x4681) = 1;
+    } else {
+        unsigned char idx = *(unsigned char*)(self + 0x4c22);
+        *(unsigned char*)(self + idx * 0x24 + 0x4681) = 0;
+    }
+}
+
+
+#define A(a) (*(u8*)(a))
+// @symbol func_ov006_0211e8a8
+extern "C" void func_ov006_0211e8a8(char* c, int idx)
+{
+    int x;
+    int y;
+    int count;
+    int firstOk;
+    int i;
+    int* r;
+    int word;
+    int off;
+
+    if (*(u8*)(c + 0x467c + idx * 0x24) != 0)
+        return;
+
+    count = 0;
+    firstOk = 0;
+    for (i = 0; i < 5; i++) {
+        x = (*(int*)(c + idx * 0x24 + 0x4660) >> 12) - data_ov006_0212efec[i * 2];
+        y = (*(int*)(c + idx * 0x24 + 0x4664) >> 12) - data_ov006_0212efec[i * 2 + 1];
+        r = ((int (*)[8])G2S::GetBG0CharPtr())[(x >> 3) + ((y >> 3) << 5)];
+        word = r[y & 7];
+        if (((word >> ((x & 7) << 2)) & 0xf) == 0) {
+            count++;
+            if (i == 0)
+                firstOk++;
+        }
+    }
+
+    if (count < 2)
+        return;
+    if (firstOk == 0)
+        return;
+
+    *(u8*)(c + 0x467c + idx * 0x24) = 1;
+    off = ((char (*)[0x24])0)[idx] - (char*)0;
+    *(u8*)&((char (*)[0x24])c)[idx][0x467b] = 0;
+    *(u8*)&((char (*)[0x24])c)[idx][0x4678] = 5;
+    *(u8*)&((char (*)[0x24])c)[idx][0x4680] = *(u8*)(c + 0x4c21);
+    *(s16*)&((char (*)[0x24])c)[idx][0x466e] = 0x40;
+    A(c + 0x4c21)++;
+    func_ov006_0211e55c(c, idx);
+    func_02012718(0x1f0, *(int*)(c + off + 0x4660));
+    if (*(u8*)(c + 0x4c26) == 0xff)
+        *(u8*)(c + 0x4c26) = (u8)idx;
+}
+#undef A
+
+
+#pragma push
+#pragma opt_common_subs off
+// @symbol func_ov006_0211ea70
+extern "C" void func_ov006_0211ea70(char *self, int idx)
+{
+    int gx, gy;
+    int cnt;
+    int y;
+    int x;
+    int *pA;
+    int *pB;
+    char *tile;
+    int tidx;
+    int *row;
+    int word;
+    int off;
+
+    off = idx * 0x24;
+    cnt = 0;
+    pA = (int *)(self + off + 0x4660);
+    pB = (int *)(self + off + 0x4664);
+    for (y = 0; y < 8; y++) {
+        for (x = 0; x < 8; x++) {
+            gx = x + ((*pA >> 12) - 4);
+            gy = y + ((*pB >> 12) - 4);
+            tile = (char *)G2S::GetBG0CharPtr();
+            tidx = (gx >> 3) + ((gy >> 3) << 5);
+            row = (int *)(tile + (tidx << 5));
+            /* pin row complete before nibble extract */
+            row = (int *)((char *)row + (gy - gy));
+            word = row[gy & 7];
+            if (((word >> ((gx & 7) << 2)) & 0xf) == 0)
+                cnt++;
+        }
+    }
+    if (cnt == 0)
+        return;
+    if (*(u8 *)(self + off + 0x467f) == 0)
+        return;
+    *(u16 *)(self + 0x466c + idx * 0x24) += 0x8000;
+}
+#pragma pop
+
+
+// @symbol func_ov006_0211eb90
+extern "C" void func_ov006_0211eb90(char *c, int i) {
+    if (*(unsigned char *)(c + i * 0x24 + 0x467f) == 0) {
+        return;
+    }
+    func_ov006_0211f454(c, i);
+    func_ov006_0211f34c(c, i);
+}
+
+
+// @symbol func_ov006_0211ebdc
+extern "C" void func_ov006_0211ebdc(char *c, int i)
+{
+    u8 *s;
+    int o = i * 0x24;
+    u8 *fade;
+
+    if (*(u16 *)(c + 0x4674 + o) != 0) {
+        (*(u16 *)((c + 0x4674) + o))--;
+        if (*(u16 *)((c + 0x4674) + o) == 0)
+            Sound::PlayBank2_2D(0x1f1);
+    }
+
+    s = (u8 *)(c + 0x467d + o);
+    if (*s != 6) {
+        u16 *p70 = (u16 *)(c + 0x4670 + o);
+        *p70 = *p70 + 1;
+        if (*p70 >= 0xf) {
+            *p70 = 0;
+            (*s)++;
+            if (*s >= 6)
+                *s = 3;
+        }
+    }
+
+    func_ov006_0211f454(c, i);
+    func_ov006_0211f34c(c, i);
+
+    {
+        char *row = c + o;
+        if (data_02082214[((*(u16 *)(row + 0x466c) >> 4) << 1) + 1] >= 0)
+            *(u8 *)(row + 0x467e) = 1;
+        else
+            *(u8 *)(row + 0x467e) = 0;
+    }
+
+    if (*(u16 *)(((char *)c + o) + 0x4672) != 0) {
+        u16 *p72 = (u16 *)((c + 0x4672) + o);
+        *p72 = *p72 - 1;
+        if (*p72 != 0)
+            return;
+        *(u16 *)((c + 0x466c) + o) += 0x8000;
+        *s = 6;
+        if (*(u8 *)(((char *)c + o) + 0x4681) != 0)
+            Sound::PlayBank2_2D(0x1f4);
+        return;
+    }
+
+    {
+        u16 *p6e = (u16 *)(c + 0x466e + o);
+        *p6e = *p6e + 1;
+        if (*p6e < 4)
+            return;
+        fade = (u8 *)((c + 0x4676) + o);
+        *fade = *fade + 1;
+        *p6e = 0;
+        if (i == *(u8 *)(c + 0x4c22)) {
+            _ZN3G2x13SetBlendAlphaEPVttttj((volatile unsigned short *)0x4001050, 0, 4,
+                0x10 - *fade, 0x10);
+        }
+        if (*fade >= 0x10) {
+            *(u8 *)(c + 0x4677 + o) = 0;
+            *(u8 *)(c + 0x467a + o) = 0;
+        }
+    }
+}
+
+
+// @symbol func_ov006_0211ee34
+extern "C" void func_ov006_0211ee34(char *c, int i)
+{
+    int k = i * 0x24;
+
+    if (*(u16 *)(c + 0x4674 + k) != 0) {
+        (*(u16 *)(c + 0x4674 + k))--;
+        if (*(u16 *)(c + 0x4674 + k) == 0) {
+            if (*(u8 *)(c + 0x4681 + k) != 0)
+                Sound::PlayBank2_2D(0x1f1);
+        }
+    }
+
+    (*(u16 *)(c + 0x4670 + k))++;
+    if (*(u16 *)(c + 0x4670 + k) >= 0xf) {
+        *(u16 *)(c + 0x4670 + k) = 0;
+        (*(u8 *)(c + 0x467d + k))++;
+        if (*(u8 *)(c + 0x467d + k) >= 6)
+            *(u8 *)(c + 0x467d + k) = 3;
+    }
+
+    func_ov006_0211f454(c, i);
+    func_ov006_0211f34c(c, i);
+
+    if (data_02082214[2 * (*(u16 *)(c + 0x466c + k) >> 4) + 1] >= 0)
+        *(u8 *)(c + 0x467e + k) = 1;
+    else
+        *(u8 *)(c + 0x467e + k) = 0;
+
+    if (*(u8 *)(c + 0x4676 + k) >= 0x10)
+        return;
+
+    (*(u16 *)(c + 0x466e + k))++;
+    if (*(u16 *)(c + 0x466e + k) < 4)
+        return;
+
+    (*(u8 *)(c + 0x4676 + k))++;
+    *(u8 *)(c + 0x467b + k) = 0;
+    *(u16 *)(c + 0x466e + k) = 0;
+
+    if (i == *(u8 *)(c + 0x4c22)) {
+        G2x::SetBlendAlpha((volatile unsigned short *)0x4001050, 0, 1,
+            *(u8 *)(c + 0x4676 + k), 0x10);
+    }
+
+    if (*(u8 *)(c + 0x4676 + k) < 0x10)
+        return;
+
+    *(u16 *)(c + 0x4672 + k) = 0x80;
+    *(u16 *)(c + 0x466e + k) = 0;
+    *(u8 *)(c + 0x4676 + k) = 0;
+    *(u8 *)(c + 0x4678 + k) = 7;
+}
+
+
+// @symbol func_ov006_0211f040
+extern "C" void func_ov006_0211f040(char *c, int idx)
+{
+    int off;
+    if (*(int *)(c + 0x4000 + 0xbe8) != 4)
+        return;
+    off = idx * 0x24;
+    if (*(unsigned short *)(c + 0x466e + off) != 0) {
+        *(unsigned short *)(c + 0x466e + off) = *(unsigned short *)(c + 0x466e + off) - 1;
+        return;
+    }
+    func_ov006_0211e220((unsigned char *)c, idx);
+    *(unsigned char *)(c + off + 0x4000 + 0x67a) = 0;
+    *(unsigned char *)(c + off + 0x4000 + 0x677) = 0;
+    if (*(unsigned char *)(c + 0x4000 + 0xc26) != idx)
+        return;
+    Sound::PlayBank2_2D(0x1c7);
+}
+
+
+// @symbol func_ov006_0211f0d0
+extern "C" void func_ov006_0211f0d0(unsigned char* base, int idx)
+{
+    int off = idx * 0x24;
+    unsigned short* cnt = (unsigned short*)((unsigned char*)(base + 0x466e) + off);
+    if (*cnt != 0) {
+        *cnt = *cnt - 1;
+        if (*(short*)cnt <= 0) {
+            *cnt = 0;
+            *(unsigned char*)((unsigned char*)(base + 0x4678) + off) = 3;
+            return;
+        }
+    }
+    func_ov006_0211f454((char *)base, idx);
+    func_ov006_0211f34c((char *)base, idx);
+    {
+        int v = *(unsigned short*)((unsigned char*)(base + 0x466c) + off);
+        short look = data_02082214[(v >> 4) * 2 + 1];
+        if (look >= 0)
+            *(unsigned char*)((unsigned char*)(base + 0x467e) + off) = 1;
+        else
+            *(unsigned char*)((unsigned char*)(base + 0x467e) + off) = 0;
+    }
+    func_ov006_0211e8a8((char *)base, idx);
+}
+
+
+// @symbol func_ov006_0211f1a4
+extern "C" void func_ov006_0211f1a4(char *c, int i)
+{
+    char *e;
+    int v;
+    func_ov006_0211eb90(c, i);
+    func_ov006_0211ea70(c, i);
+    func_ov006_0211e8a8(c, i);
+    e = c + i * 0x24;
+    v = data_02082214[(*(unsigned short *)(e + 0x466c) >> 4) * 2 + 1];
+    if (v >= 0)
+        *(unsigned char *)(e + 0x467e) = 1;
+    else
+        *(unsigned char *)(e + 0x467e) = 0;
+}
+
+
+// @symbol func_ov006_0211f224
+extern "C" void func_ov006_0211f224(char *c, int i)
+{
+    int k;
+    func_ov006_0211f454(c, i);
+    func_ov006_0211f34c(c, i);
+    k = i * 0x24;
+    if (data_02082214[2 * (*(unsigned short *)(c + 0x466c + k) >> 4) + 1] >= 0)
+        *(unsigned char *)(c + 0x467e + k) = 1;
+    else
+        *(unsigned char *)(c + 0x467e + k) = 0;
+    (*(unsigned short *)(c + 0x466e + k))++;
+    if (*(unsigned short *)(c + 0x466e + k) < 4)
+        return;
+    (*(unsigned char *)(c + 0x4676 + k))++;
+    *(unsigned short *)(c + 0x466e + k) = 0;
+    if (i == 0)
+        _ZN3G2x13SetBlendAlphaEPVttttj((volatile unsigned short *)0x4001050, 0, 1,
+            0x10 - *(unsigned char *)(c + 0x4676 + k), 0x10);
+    if (*(unsigned char *)(c + 0x4676 + k) < 0x10)
+        return;
+    *(unsigned char *)(c + 0x4676 + k) = 0;
+    *(unsigned char *)(c + 0x4678 + k) = 3;
+    *(unsigned char *)(c + 0x467b + k) = 1;
+}
+
+
+// @symbol func_ov006_0211f34c
+extern "C" void func_ov006_0211f34c(char *o, int i)
+{
+    int m = i * 0x24;
+    int xt = *(int *)((char *)(((int)o + 0x4660)) + m) >> 12;
+    int yt = *(int *)((char *)(((int)o + 0x4664)) + m) >> 12;
+    if (xt + 8 > 0xfe) {
+        u16 *pa = (u16 *)((char *)(((int)o + 0x466c)) + m);
+        *pa = 0x8000 - *pa;
+        *(int *)((char *)(((int)o + 0x4660)) + m) = 0xf6000;
+    } else if (xt - 8 < 2) {
+        u16 *pa = (u16 *)((char *)(((int)o + 0x466c)) + m);
+        *pa = 0x8000 - *pa;
+        *(int *)((char *)(((int)o + 0x4660)) + m) = 0xa000;
+    }
+    if (yt + 8 > 0xbe) {
+        u16 *pa = (u16 *)((char *)(((int)o + 0x466c)) + m);
+        *pa = -*pa;
+        *(int *)((char *)(((int)o + 0x4664)) + m) = 0xb6000;
+    } else if (yt - 8 < 2) {
+        u16 *pa = (u16 *)((char *)(((int)o + 0x466c)) + m);
+        *pa = -*pa;
+        *(int *)((char *)(((int)o + 0x4664)) + m) = 0xa000;
+    }
+}
+
+
+// @symbol func_ov006_0211f454
+extern "C" void func_ov006_0211f454(char *c, int i)
+{
+  int n = i * 0x24;
+  char *pm = c + 0x4668;
+  char *pa = c + 0x466c;
+  int *new_var;
+  short *tbl = data_02082214;
+  int angle = *((unsigned short *) (pa + n));
+  int s = tbl[((angle >> 4) * 2) + 1];
+  int mult = *((int *) (pm + n));
+  char *p0 = c + 0x4660;
+  *((int *) (p0 + n)) = (*((int *) (p0 + n))) + ((int) (((((long long) (*(new_var = &s))) * mult) + 0x800) >> 12));
+  {
+    int angle2 = *((unsigned short *) (pa + n));
+    int mult2 = *((int *) (pm + n));
+    int s2 = tbl[(angle2 >> 4) * 2];
+    char *p1 = c + 0x4664;
+    *((int *) (p1 + n)) = (*((int *) (p1 + n))) + ((int) (((((long long) s2) * mult2) + 0x800) >> 12));
+  }
+}
+
+
+// @symbol func_ov006_0211f51c
+extern "C" void func_ov006_0211f51c(char *c) {
+    int i;
+    for (i = 0; i < 0x10; i++) {
+        if (*(unsigned char*)(c + 0x4677) != 0 && *(unsigned char*)(c + 0x4678) == 1) {
+            *(unsigned char*)(c + 0x4678) = 2;
+        }
+        c += 0x24;
+    }
+}
+
+
+// @symbol func_ov006_0211f554
+extern "C" void func_ov006_0211f554(char *c, int i)
+{
+    int off;
+    char *e;
+    int v;
+    unsigned short h;
+    int t;
+
+    off = i;
+    off *= 0x24;
+    e = c;
+    e += off;
+    *(unsigned short *)(e + 0x466e) = 0;
+    func_ov006_0211f454(c, i);
+    func_ov006_0211f34c(c, i);
+    e = c;
+    e += off;
+    h = *(unsigned short *)(e + 0x466c);
+    t = (int)(h >> 4);
+    t = t * 2 + 1;
+    v = data_02082214[t];
+    if (v >= 0)
+        *(unsigned char *)(e + 0x467e) = 1;
+    else
+        *(unsigned char *)(e + 0x467e) = 0;
+}
+
+
+// @symbol func_ov006_0211f5d4
+extern "C" void func_ov006_0211f5d4(char *c, int idx)
+{
+    int off = idx * 0x24;
+    char *e = c + off;
+    unsigned char t;
+    *(unsigned char *)(e + 0x4000 + 0x67a) = 1;
+    *(short *)(e + 0x4600 + 0x6e) = 0x60;
+    *(unsigned char *)(e + 0x4000 + 0x679) = 0;
+    *(unsigned char *)(e + 0x4000 + 0x678) = 1;
+    *(int *)(c + 0x4668 + off) = 0xc00;
+    t = *(unsigned char *)(e + 0x4000 + 0x67f);
+    if (t == 0)
+        return;
+    if (t == 8)
+        *(int *)(c + 0x4668 + off) = *(int *)(c + 0x4668 + off) - 0x200;
+    else
+        *(int *)(c + 0x4668 + off) = *(int *)(c + 0x4668 + off) + ((t - 1) << 9);
+}
+
+
+// @symbol func_ov006_0211f664
+extern "C" void func_ov006_0211f664(char* c, int i) {
+  int idx = i * 0x24;
+  if (*(unsigned char*)(c + 0x4678 + idx) >= 6) return;
+  *(short*)(c + 0x4670 + idx) = *(unsigned short*)(c + 0x4670 + idx) + 1;
+  if (*(unsigned short*)(c + 0x4670 + idx) < 0xf) return;
+  *(short*)(c + 0x4670 + idx) = 0;
+  *(unsigned char*)(c + 0x467d + idx) = *(unsigned char*)(c + 0x467d + idx) + 1;
+  if (*(unsigned char*)(c + 0x467d + idx) >= 3)
+    *(unsigned char*)(c + 0x467d + idx) = 0;
+}
+
+
+// @symbol func_ov006_0211f6fc
+extern "C" void func_ov006_0211f6fc(TeresaPmfC *c) {
+    int i;
+    char *e = (char*)c;
+    for (i = 0; i < 0x10; i++, e += 0x24) {
+        if (*(unsigned char*)(e + 0x4677)) {
+            (c->*data_ov006_02142ed8[*(unsigned char*)(e + 0x4678)])(i);
+            func_ov006_0211f664((char *)c, i);
+        }
+    }
+}
+
+
+// @symbol func_ov006_0211f77c
+extern "C" void func_ov006_0211f77c(char *c)
+{
+    int sel;
+    int count;
+    unsigned short phase;
+    int i;
+    int valA;
+    int flagA;
+    int valB;
+    int cval;
+    int full;
+    unsigned int r;
+
+    sel = *(int *)(c + 0xbc);
+    if (sel >= 0xf) {
+        int k;
+        r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+        k = (r << 2) >> 15;
+        if (k + 0xa == *(unsigned char *)(c + 0x4c23)) {
+            k += (((((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff) * 3) >> 15) + 1;
+            if (k >= 4) k -= 4;
+        }
+        sel = k + 0xa;
+    }
+    *(unsigned char *)(c + 0x4c23) = sel;
+    count = data_ov006_0212f014[sel];
+    *(unsigned char *)(c + 0x4c25) = count;
+
+    r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    phase = ((r << 4) >> 15) << 12;
+    r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    valA = ((((r << 3) >> 15) << 3) + 0x60) << 12;
+    r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+    valB = ((((r << 3) >> 15) << 3) + 0x60) << 12;
+
+    i = 0;
+    if (count <= 0) {
+        return;
+    }
+    flagA = data_ov006_0212f08c[sel];
+    cval = data_ov006_0212f050[sel];
+    full = 0x10000;
+    do {
+        if (flagA == 0) {
+            r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+            *(int *)(c + 0x4660) = ((((r * 0xf) >> 15) << 4) + 0x10) << 12;
+            r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+            *(int *)(c + 0x4664) = ((((r * 0xb) >> 15) << 4) + 0x10) << 12;
+            r = ((unsigned int)RandomIntInternal(&data_0209d4b8) >> 16) & 0x7fff;
+            *(unsigned short *)(c + 0x466c) = ((r << 5) >> 15) << 11;
+        } else {
+            *(int *)(c + 0x4660) = valA;
+            *(int *)(c + 0x4664) = valB;
+            int q = full / count;
+            *(unsigned short *)(c + 0x466c) = q * i + phase;
+        }
+        *(unsigned char *)(c + 0x467f) = cval;
+        *(unsigned short *)(c + 0x466e) = 0;
+        *(unsigned short *)(c + 0x4670) = 0;
+        *(unsigned short *)(c + 0x4672) = 0;
+        *(unsigned short *)(c + 0x4674) = 0;
+        *(unsigned char *)(c + 0x4677) = 1;
+        *(unsigned char *)(c + 0x4678) = 0;
+        *(unsigned char *)(c + 0x4679) = 0;
+        *(unsigned char *)(c + 0x467b) = 0;
+        *(unsigned char *)(c + 0x467c) = 0;
+        *(unsigned char *)(c + 0x467d) = 0;
+        {
+            int ang = *(unsigned short *)(c + 0x466c);
+            if (data_02082214[(ang >> 4) * 2 + 1] >= 0) {
+                *(unsigned char *)(c + 0x467e) = 1;
+            } else {
+                *(unsigned char *)(c + 0x467e) = 0;
+            }
+        }
+        i++;
+        c += 0x24;
+    } while (i < count);
+}
+
+
+#pragma push
+#pragma opt_common_subs off
+// @symbol func_ov006_0211f9fc
+extern "C" void func_ov006_0211f9fc(int self)
+{
+    int close;
+
+    if (((u8 *)self + 0x4000)[0xC20] == 0)
+        return;
+    if (((u8 *)self + 0x4000)[0xC27] != 0)
+        return;
+
+    close = 0;
+    func_ov006_0211fb1c((char *)self);
+
+    if (((u8 *)self + 0x4000)[0xC1D] != 0) {
+        /* Not Vector3: its C++ destructor changes this frame. */
+        struct { Fix12i x, y, z; } d;
+        int dist;
+        d.x = *(int *)((char *)self + 0x4000 + 0xBEC) - *(int *)((char *)self + 0x4000 + 0xBF4);
+        d.y = *(int *)((char *)self + 0x4000 + 0xBF0) - *(int *)((char *)self + 0x4000 + 0xBF8);
+        dist = _ZN4cstd4sqrtEy((u64)((d.x) * (d.x) + (d.y) * (d.y)));
+        if (dist <= 3)
+            close = 1;
+        if (close == 0) {
+            int snd;
+            int cur;
+            func_ov004_020ae5c4(
+                (void *)self,
+                *(int *)((char *)self + 0x4000 + 0xBF4),
+                *(int *)((char *)self + 0x4000 + 0xBF8),
+                *(int *)((char *)self + 0x4000 + 0xBEC),
+                *(int *)((char *)self + 0x4000 + 0xBF0),
+                0,
+                8);
+            snd = func_020126e8(*(int *)((char *)self + 0x4000 + 0xBEC) << 12);
+            cur = *(int *)((char *)self + 0x4000 + 0xC08);
+            *(int *)((char *)self + 0x4000 + 0xC08) = func_02012468(
+                cur,
+                2,
+                0x1F8,
+                4,
+                0,
+                0,
+                snd,
+                0);
+        }
+    }
+    if (close == 0) {
+        *(int *)((char *)self + 0x4000 + 0xBF4) = *(int *)((char *)self + 0x4000 + 0xBEC);
+        *(int *)((char *)self + 0x4000 + 0xBF8) = *(int *)((char *)self + 0x4000 + 0xBF0);
+    }
+}
+#pragma pop
+
+
+#define AT(p, off) ((void*)(int)((char*)(p) + (off)))
+// @symbol func_ov006_0211fb1c
+extern "C" void func_ov006_0211fb1c(char* c) {
+    int i = data_020a0e40;
+    if (data_020a0de8[(unsigned int)i * 4] != 0 && *(u8*)(c + 0x4c1d) == 0) {
+        *(int*)(c + 0x4bec) = data_020a0dea[i * 4];
+        *(int*)(c + 0x4bf0) = data_020a0deb[i * 4];
+        *(int*)(c + 0x4bf4) = *(int*)(c + 0x4bec);
+        *(int*)(c + 0x4bf8) = *(int*)(c + 0x4bf0);
+        *(u8*)AT(c, 0x4c1d) += 1;
+    }
+    if (data_020a0de8[(unsigned int)data_020a0e40 * 4] == 0) {
+        *(u8*)(c + 0x4c1d) = 0;
+    }
+    if (*(u8*)(c + 0x4c1d) == 0) return;
+    *(int*)(c + 0x4bec) = data_020a0dea[(unsigned int)data_020a0e40 * 4];
+    *(int*)(c + 0x4bf0) = data_020a0deb[(unsigned int)data_020a0e40 * 4];
+}
+#undef AT
+
+
+#pragma push
+#pragma opt_strength_reduction off
+// @symbol func_ov006_0211fbf8
+extern "C" void func_ov006_0211fbf8(char *p)
+{
+  int v;
+  int i;
+  char *new_var;
+  char *q;
+  v = 0;
+  q = p;
+  i = 0;
+  do
+  {
+    *((int *) (q + 0x4660)) = v;
+    *((int *) (q + 0x4664)) = v;
+    *((short *) (q + 0x466e)) = v;
+    *((short *) (q + 0x4670)) = v;
+    *((short *) (q + 0x4672)) = v;
+    *((char *) (q + 0x4677)) = v;
+    *((char *) (q + 0x4678)) = v;
+    *((char *) (q + 0x4679)) = v;
+    new_var = q;
+    *((char *) (new_var + 0x467a)) = v;
+    *((char *) (q + 0x467b)) = v;
+    *((char *) (q + 0x467c)) = v;
+    *((char *) (q + 0x467d)) = v;
+    *((char *) (q + 0x467e)) = v;
+    i++;
+    *((char *) (q + 0x4676)) = v;
+    q += 0x24;
+  }
+  while (i < 0x10);
+  q = p;
+  v = 0;
+  i = 0;
+  do
+  {
+    *((int *) (q + 0x48a0)) = i;
+    *((int *) (q + 0x48a4)) = i;
+    *((char *) (q + 0x48a8)) = i;
+    *((char *) (q + 0x48a9)) = i;
+    v++;
+    *((char *) (q + 0x48aa)) = i;
+    q += 0xc;
+  }
+  while (v < 0x10);
+  v = 0;
+  do
+  {
+    *((char *) ((p + (v << 4)) + 0x496d)) = i;
+    *((char *) ((p + (v << 4)) + 0x496e)) = i;
+    v++;
+  }
+  while (v < 0x10);
+  *((int *) (p + 0x4bec)) = i;
+  *((int *) (p + 0x4bf0)) = i;
+  *((int *) (p + 0x4bf4)) = i;
+  *((int *) (p + 0x4bf8)) = i;
+  *((int *) (p + 0x4bfc)) = i;
+  *((int *) (p + 0x4c00)) = i;
+  *((short *) (p + 0x4c10)) = i;
+  *((short *) (p + 0x4c0c)) = i;
+  *((short *) (p + 0x4c0e)) = i;
+  *((char *) (p + 0x4c1d)) = i;
+  *((char *) (p + 0x4c1f)) = i;
+  *((char *) (p + 0x4c20)) = i;
+  *((short *) (p + 0x4c14)) = i;
+  *((char *) (p + 0x4c1a)) = i;
+  *((char *) (p + 0x4c1b)) = i;
+  *((char *) (p + 0x4c1c)) = i;
+  *((char *) (p + 0x4c21)) = i;
+  func_ov006_0211ddb8(p);
+  func_ov006_0211d7d8(p);
+  *((short *) (p + 0x4c18)) = i;
+  *((char *) (p + 0x4c24)) = i;
+  func_ov006_0211d688(p);
+  *((int *) (p + 0x4c08)) = i;
+  *((unsigned char *) (p + 0x4c26)) = 0xff;
+  *((char *) (p + 0x4c27)) = i;
+}
+#pragma pop
+
+
+// @symbol func_ov006_0211fd44
+extern "C" void func_ov006_0211fd44(char *c)
+{
+    func_ov006_0211d5a8((TeresaPmfA *)c);
+    func_ov006_0211f6fc((TeresaPmfC *)c);
+    func_ov006_0211e184(c);
+    if (*(unsigned short *)(c + 0x4c0c) == 0) return;
+    *(unsigned short *)(((int)c + 0x4c0c)) -= 1;
+    if (*(short *)(c + 0x4c0c) > 0) return;
+    *(unsigned short *)(c + 0x4c0c) = 0;
+    if (*(unsigned char *)(c + 0x4000 + 0xc1f) != 0) {
+        struct ScoreView *p;
+        func_ov004_020b0a54(0);
+        p = (struct ScoreView *)data_ov004_020beb68;
+        if (p != 0) {
+            if (p->b4 < 0x270f) {
+                *(int *)(((int)p + 0xb4)) += 1;
+            }
+            if (p->b4 > p->b8) {
+                p->b8 = p->b4;
+            }
+        }
+        func_ov004_020adb1c(data_ov004_020beb68 ? ((struct ScoreView *)data_ov004_020beb68)->b4 : 0);
+    } else {
+        if (func_ov004_020adbe0() != 0) {
+            *(unsigned char *)(c + 0x4000 + 0xc1b) = 0;
+        }
+        func_ov004_020b0cac(8, 0x80, 0x60, 1, -1, 0xd);
+        func_ov004_020b0a54(0x12);
+    }
+    *(unsigned char *)(c + 0xc3) = 0;
+}
+
+
+// @symbol func_ov006_0211fe78
+extern "C" void func_ov006_0211fe78(char *c)
+{
+    func_ov006_0211d5a8((TeresaPmfA *)c);
+    func_ov006_0211f9fc((int)c);
+    if (*(u16 *)(c + 0x4c0c) != 0) {
+        {
+            u16 *p = (u16 *)((int)c + 0x4c0c);
+            *p = *p - 1;
+        }
+        if (*(s16 *)(c + 0x4c0c) > 0)
+            return;
+        if (*(u8 *)(c + 0x4c1f) != 0) {
+            func_ov006_0211e0c8((RowArray *)c);
+            *(s16 *)(c + 0x4c0e) = 0x60;
+            return;
+        }
+        func_ov006_0211e0c8((RowArray *)c);
+        func_ov006_0211e7d8(c);
+        *(s16 *)(c + 0x4c0e) = 0x60;
+        return;
+    }
+    func_ov006_0211dec0(c);
+    func_ov006_0211f6fc((TeresaPmfC *)c);
+    if (func_ov006_0211de7c(c) != 0)
+        return;
+    if (*(u16 *)(c + 0x4c0e) != 0) {
+        func_ov006_0211d69c(c);
+        {
+            u16 *q = (u16 *)((int)c + 0x4c0e);
+            *q = *q - 1;
+        }
+        if (*(s16 *)(c + 0x4c0e) < 0)
+            *(s16 *)(c + 0x4c0e) = 0;
+        return;
+    }
+    func_ov006_0211de54(c);
+    *(int *)(c + 0x4be8) = 4;
+    *(s16 *)(c + 0x4c0c) = 0x60;
+    *(int *)0x4001000 = *(int *)0x4001000 & ~0xe000;
+    data_0209d454 = data_0209d454 & ~1;
+    Sound::PlayBank2_2D(0x1f7);
+    func_ov006_0211cc2c((unsigned char *)c);
+    if (*(u8 *)(c + 0x4c1f) == 0)
+        return;
+    Sound::PlayBank2_2D(0x1f2);
+}
+
+
+// @symbol func_ov006_02120008
+extern "C" void func_ov006_02120008(char *c)
+{
+  unsigned short *g = (unsigned short *) (c + 0x4c00);
+  int new_var;
+  if (g[0xb] != 0)
+  {
+    new_var = ((int) c) + 0x4c16;
+    *((unsigned short *) (new_var)) = (*((unsigned short *) (new_var))) - 1;
+    if (((unsigned short *) (c + 0x4c00))[0xb] == 0)
+    {
+      FreeGfxSlotsById(0xd);
+      if ((*((unsigned char *) (c + 0xc4))) == 0)
+      {
+        *((unsigned char *) (c + 0xc3)) = 1;
+        *((unsigned char *) (c + 0xc4)) = 1;
+        *((short *) (c + 0xc0)) = 0;
+      }
+    }
+  }
+  func_ov006_0211e318(c);
+  func_ov006_0211f9fc((int)c);
+  func_ov006_0211f6fc((TeresaPmfC *)c);
+  func_ov006_0211e5cc(c);
+  func_ov006_0211e3e0(c);
+  func_ov006_0211d5a8((TeresaPmfA *)c);
+  func_ov006_0211e658((unsigned char *)c);
+}
+
+
+// @symbol func_ov006_021200a8
+extern "C" void func_ov006_021200a8(void* c) {
+    func_ov006_0211dd0c((TeresaPmfB *)c);
+    func_ov006_0211d7b0(c);
+    func_ov006_0211f6fc((TeresaPmfC *)c);
+}
+
+
+// @symbol func_ov006_021200cc
+extern "C" void func_ov006_021200cc(char *p)
+{
+    *(int *)(p + 0x4be8) = 1;
+}
+
+
+#pragma push
+#pragma opt_loop_invariants off
+// @symbol _ZN13dScMgTeresa_c9Virtual88Eiiii
+/* dScMgTeresa_c::Virtual88 - slot 34, a STIPPLED brush.
+
+   Same square walk and the same 4bpp nibble arithmetic as dScMgBase_c's, with
+   one difference that changes what it is for: each cell is painted only if
+   `data_ov006_0213f9e4[row] & (1 << (col*4))` is set, so the table is a
+   bitmapped shape and this stamps that shape rather than a solid block.
+
+   It also never consults the layer index at +0x6c -- it always draws into sub
+   BG0 -- which is why `this` arrives and is never read.  The comment in
+   include/dScMgTeresa_c.h predicted both of these before the slot was
+   declared. */
+void dScMgTeresa_c::Virtual88(int cx, int cy, int val, int n)
+{
+    int half;
+    int x0;
+    int j;
+    int x;
+    int buf;
+    int *addr;
+    int i;
+    int y;
+
+    half = n / 2;
+    j = 0;
+    if (j < n) {
+        y = cy - half;
+        x0 = cx - half;
+        do {
+            for (i = 0; i < n; i++) {
+                if (data_ov006_0213f9e4[j] & (1 << (i * 4))) {
+                    x = i + x0;
+                    if (x >= 0 && x < 0x100) {
+                        if (y >= -0xc0 - data_ov004_020beb6c && y >= 0 && y < 0xc0) {
+                            addr = (int *)((char *)G2S::GetBG0CharPtr() + ((x / 8) + (y / 8) * 32) * 32 + (y & 7) * 4);
+                            MultiCopy_Int(addr, &buf, 4);
+                            buf = (buf & (-1 ^ (0xf << ((x & 7) * 4)))) | (val << ((x & 7) * 4));
+                            MultiCopy_Int(&buf, addr, 4);
+                        }
+                    }
+                }
+            }
+            y++;
+            j++;
+        } while (j < n);
+    }
+}
+#pragma pop
+
+
+// @symbol _ZN13dScMgTeresa_c9Virtual50Ev
+/* Minigame slot 20; Virtual50 is a placeholder, not an original name. The
+   reconstructed void contract is documented in dScMgBase_c.h. A thunk:
+   FreeGfxSlotsById(8). */
+void dScMgTeresa_c::Virtual50()
+{
+    FreeGfxSlotsById(8);
+}
+
+
+// @symbol _ZN13dScMgTeresa_c13OnYoshiTryEatEi
+/* Vtable slot 18, an override of dScMgBase_c::OnYoshiTryEat(int). The
+   signature must repeat the base declaration exactly, or mwcc appends a slot
+   instead of overriding. */
+void dScMgTeresa_c::OnYoshiTryEat(int reset)
+{
+    char *self = (char *)this;
+
+    volatile unsigned short val;
+    if (reset == 0) {
+        /* `const` on the read is load-bearing: without it mwcc CSEs the +0xbc
+           field address into its own register (add r2,r4,#0xbc / ldr [r2] /
+           str [r2]) and the function grows a word; the cartridge re-issues
+           ldr r1,[r4,#0xbc]. Same lever as dScMgHanachan_c::OnYoshiTryEat. */
+        *(unsigned int*)(self + 0xbc) = *(const unsigned int*)(self + 0xbc) + 1;
+        if (*(unsigned int*)(self + 0xbc) > 0x270e)
+            *(unsigned int*)(self + 0xbc) = 0x270e;
+    } else {
+        *(int*)(self + 0xb4) = 0;
+        *(unsigned int*)(self + 0xbc) = 0;
+        if (*(unsigned int*)(self + 0xbc) > 0x270e)
+            *(unsigned int*)(self + 0xbc) = 0x270e;
+    }
+    func_ov006_0211fbf8(self);
+    func_ov006_0211dd6c(self);
+    func_ov006_0211d7b4(self);
+    func_ov006_0211f77c(self);
+    char* dst = (char *)G2S::GetBG0CharPtr();
+    val = 0x1111;
+    MultiStore16(val, dst, 0x6000);
+    *(int*)(self + 0x4be8) = 0;
+    FreeGfxSlotsById(0x1d);
+    *(short*)(self + 0x4c16) = 0x20;
+    func_ov004_020b0cac(0xd, 0x80, 0xa8, 1, -1, 0xd);
+    void *h = LoadFile(0x101);
+    DecompressLZ16(h, (void *)0x6400000);
+    Deallocate(h);
+}
+
+
+// @symbol _ZN13dScMgTeresa_c6RenderEv
+/* Vtable slot 9. */
+s32 dScMgTeresa_c::Render()
+{
+    func_ov004_020b1e34(this, 0xe0, 0x14, 1);
+    func_ov006_0211ddcc(this);
+    func_ov006_0211e29c(this);
+    func_ov006_0211e460(this);
+    func_ov006_0211e118(this);
+    func_ov006_0211e72c(this);
+    func_ov006_0211d7ec(this);
+    func_ov006_0211d75c(this);
+    func_ov006_0211cca8(this);
+    return 1;
+}
+
+
+// @symbol _ZN13dScMgTeresa_c8BehaviorEv
+/* Vtable slot 6: runs the current state's handler from the pointer-to-member
+   table data_ov006_02142eb0, indexed by unk_4be8. */
+s32 dScMgTeresa_c::Behavior()
+{
+    (((TeresaPmfD *)this)->*data_ov006_02142eb0[unk_4be8].pmf)();
+    func_ov006_0211e4e0((char *)this);
+    return 1;
+}
+
+
+// @symbol _ZN13dScMgTeresa_c13InitResourcesEv
+/* Vtable slot 0. */
+s32 dScMgTeresa_c::InitResources()
+{
+    char *self = (char *)this;
+    void *f1;
+    void *f2;
+    void *t;
+    volatile u16 fa;
+    volatile u16 fb;
+    volatile u16 fc;
+    *((volatile u16 *) 0x400000c) &= ~3;
+    *((volatile u16 *) 0x400000c) &= ~0x40;
+    *((volatile u32 *) 0x4000018) = 0;
+    *((volatile u16 *) 0x400000c) = ((*((volatile u16 *) 0x400000c)) & 0x43) | 0x1210;
+    {
+        void *p = _ZN2G212GetBG2ScrPtrEv();
+        fa = 0x5300;
+        MultiStore16(fa, p, 0x800);
+    }
+    data_0209d45c |= 8;
+    *((volatile u16 *) 0x400000e) = (*((volatile u16 *) 0x400000e)) & (~3);
+    *((volatile u16 *) 0x400000e) &= ~0x40;
+    *((volatile u32 *) 0x400001c) = 0;
+    *((volatile u16 *) 0x400000e) = ((*((volatile u16 *) 0x400000e)) & 0x43) | 0x9310;
+    t = LoadFile(0x9b);
+    DecompressLZ16(t, _ZN2G213GetBG2CharPtrEv());
+    Deallocate(t);
+    t = LoadFile(0x9c);
+    GX::LoadBGPltt(t, 0x60, 0x1a0);
+    Deallocate(t);
+    t = LoadFile(0x9e);
+    func_02056314(t, 0, 0x800);
+    Deallocate(t);
+    t = LoadFile(0x9d);
+    func_02056314(t, 0x800, 0x800);
+    Deallocate(t);
+    f1 = LoadFile(0x101);
+    f2 = LoadFile(0x102);
+    DecompressLZ16(f1, (void *) 0x6400000);
+    GX::LoadOBJPltt(f2, 0, 0x100);
+    *((volatile u16 *) 0x4001008) = ((*((volatile u16 *) 0x4001008)) & 0x43) | 0x218;
+    *((volatile u16 *) 0x4001008) &= ~0x40;
+    *((volatile u32 *) 0x4001010) = 0;
+    *((volatile u16 *) 0x4001008) &= ~3;
+    {
+        void *p = G2S::GetBG0ScrPtr();
+        fb = 0;
+        MultiStore16(fb, p, 0x800);
+    }
+    func_ov004_020af2f8(self, 0, 0, 0);
+    {
+        void *p = G2S::GetBG0CharPtr();
+        fc = 0x1111;
+        MultiStore16(fc, p, 0x6000);
+    }
+    data_0209d454 |= 4;
+    *((volatile u16 *) 0x400100c) = ((*((volatile u16 *) 0x400100c)) & (~3)) | 1;
+    *((volatile u16 *) 0x400100c) &= ~0x40;
+    *((volatile u32 *) 0x4001018) = 0;
+    *((volatile u16 *) 0x400100c) = ((*((volatile u16 *) 0x400100c)) & 0x43) | 0x408;
+    t = LoadFile(0x9f);
+    DecompressLZ16(t, G2S::GetBG2CharPtr());
+    Deallocate(t);
+    t = LoadFile(0xa0);
+    GXS::LoadBGPltt(t, 0x60, 0x1a0);
+    Deallocate(t);
+    t = LoadFile(0xa1);
+    func_02056374(t, 0, 0x800);
+    Deallocate(t);
+    DecompressLZ16(f1, (void *) 0x6600000);
+    GXS::LoadOBJPltt(f2, 0, 0x100);
+    Deallocate(f1);
+    Deallocate(f2);
+    func_ov004_020b04d0(0x20);
+    func_ov006_0211fbf8(self);
+    *((u8 *) (self + 0x4c23)) = 0xff;
+    func_ov006_0211d7b4(self);
+    func_ov006_0211dd6c(self);
+    func_ov006_0211f77c(self);
+    *((int *) (self + 0x4be8)) = 1;
+    *((u16 *) (self + 0x4c16)) = 0x20;
+    func_ov004_020b0cac(0xd, 0x80, 0xa8, 1, -1, 0xd);
+    data_ov004_020bc880 = 0x80;
+    data_ov004_020bc884 = -128;
+    *((int *) (self + 0xb4)) = 0;
+    return 1;
 }

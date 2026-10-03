@@ -6651,7 +6651,7 @@ void Player::func_ov002_020c7350()
     extern int _ZN6Player12FinishedAnimEv(void*);
     extern void _ZN6Player7SetAnimEji5Fix12IiEj(void*, unsigned int anim, int a, int b, unsigned int d);
     extern void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned int a, unsigned int b, void*, void*, int e, int f);
-    extern void func_ov089_0213115c(void*, int i);
+    extern void _ZN10daObjKey_c19func_ov089_0213115cEi(void*, int i);
     extern u8 data_0209f20c;
     extern u8 data_0209f2d8;
     extern char data_0209caa0[];
@@ -6703,9 +6703,9 @@ void Player::func_ov002_020c7350()
             _ZN6Player7SetAnimEji5Fix12IiEj(this, 0x94, 0x40000000, 0x1000, 0);
             actor = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0x11a, mKeyModelId, (Vec3i *)((char *)this + 0x5c), (Vector3_16 *)((char *)this + 0x8c), *(s8 *)((char *)this + 0xcc), -1);
             if (*(int *)((char *)this + 8) == 2) {
-                func_ov089_0213115c(actor, 4);
+                _ZN10daObjKey_c19func_ov089_0213115cEi(actor, 4);
             } else {
-                func_ov089_0213115c(actor, 1);
+                _ZN10daObjKey_c19func_ov089_0213115cEi(actor, 1);
             }
             mStateWork = 6;
             return;

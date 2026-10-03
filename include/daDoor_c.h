@@ -54,11 +54,11 @@
  * (include/dActor_c.h) and ModelAnim is 0x64 (include/ModelAnim.h), so the
  * embedded ModelAnim runs 0xd4..0x138 (the same 4-byte alignment pad
  * include/dBgActor_c.h takes before its own Model member). That leaves
- * 0x138..0x147 (0x10 = 16 bytes) as this class's own storage, all of it
- * touched by the five sources above: two heap-owned pointers at 0x138/0x13c,
- * a state pointer at 0x140 (read in Behavior as a pointer-to-member
- * dispatch, written by func_ov100_021453d8), and a key-model index byte at
- * 0x144.
+ * 0x138..0x147 (0x10 = 16 bytes) as this class's own storage, touched by the sources in src/actors/daDoor_c.cpp: two pointers at
+ * 0x138/0x13c, a state pointer at 0x140 (read in Behavior as a
+ * pointer-to-member dispatch, written by func_ov100_021453d8), a key-model
+ * index byte at 0x144 and a countdown byte at 0x145 (touched only by the
+ * state helpers). 0x146..0x147 are untouched padding.
  *
  * 0x138 IS A Model*, and this header used to say the opposite -- that the
  * virtual calls through it "resolve to unidentified Model vtable slots" and
@@ -94,23 +94,27 @@ struct daDoor_c : dActor_c {
     ModelAnim mModel;        /* 0x0d4 */
 
     /* This class's own storage, 0x138..0x147 -- see SIZE above.
-       The decoration group. A door variant may hang a second model off itself:
-       the key hanging on a locked door, or the star on a star door. Only
+       The decoration group. A door variant may hang a second model off itself. Only
        InitResources fills it and only when data_ov100_02148204[param1] carries
-       a second file (`e->sfp2`).
+       a second file (`e->keyFile`). Which doors carry one: variant 1, the
+       star doors (the file is chosen by star count) and the key doors (one
+       shared file); what each of those models shows is not identified.
          mKeyModel  -- `new Model` + ModelBase::SetFile in InitResources,
                        Model::Virtual10(mModel.data.transforms) + Render in
                        Render (the local there is literally called `key`), and
                        `delete key` through Model's vtable slot 1 in
                        CleanupResources. Owned by this class.
-         mKeyFile   -- the SharedFilePtr that model's file came from, handed to
-                       Model::LoadFile and Release()d in CleanupResources. Three
-                       sources: data_ov002_0211094c when the entry's b8 is
-                       positive, data_ov089_02132894[mKeyModelIdx + 1] for the
-                       param1 9..0xd (keyed-door) range, else
-                       data_ov089_02132c50.
-         mKeyModelIdx -- param1 - 8 for that same 9..0xd range, re-zeroed for
-                       param1 0xc; indexes LoadKeyModels/data_ov089_02132894.
+         mKeyFile   -- a separate file the door pre-loads (Model::LoadFile) only
+                       in game mode 0 and Release()s in CleanupResources; it is
+                       not mKeyModel's file (that is e->keyFile). Three
+                       sources: data_ov002_0211094c when the entry's
+                       starsNeeded is positive, data_ov089_02132894[mKeyModelIdx
+                       + 1] for a key door in the param1 9..0xd range, else
+                       data_ov089_02132c50; it stays null for a door with
+                       neither stars nor a key.
+         mKeyModelIdx -- param1 - 8 for the 9..0xd range, re-zeroed for param1
+                       0xc; mKeyModelIdx + 1 (taken before that re-zero, so
+                       param1 - 7) indexes LoadKeyModels/data_ov089_02132894.
        [src/actors/daDoor_c.cpp] */
     Model *mKeyModel;          /* 0x138 -- owned, see SIZE above */
     void *mKeyFile;           /* 0x13c -- released through SharedFilePtr */
@@ -119,9 +123,15 @@ struct daDoor_c : dActor_c {
        data_ov100_02148924. func_ov100_021453d8 stores it and calls the enter
        half; Behavior calls the execute half, a `void (daDoor_c::*)(int)` at
        +0x8, on this daDoor_c. [src/actors/daDoor_c.cpp] */
-    void *mCallbackNode;           /* 0x140 -- callback-node pointer, see SIZE above */
+    void *mState;                 /* 0x140 -- the state pair, see SIZE above */
     s8   mKeyModelIdx;            /* 0x144 -- key-model index */
-    u8   pad_145[0x3];
+    /* A countdown/phase byte. func_ov100_02144528 and func_ov100_02145080 tick
+       it with DecIfAbove0_Byte and also set it directly (0x40 and 0x78 ticks,
+       or the 0/1 result of Player::TryExitWhiteDoorWithStar), and it is zeroed
+       when a swing starts. The comments in src/actors/daDoor_c.cpp say what
+       each does with it. */
+    u8   mTimer;                  /* 0x145 */
+    u8   pad_146[0x2];
 
     /* --- vtable. The out-of-line destructor is the key function:
        src/actors/daDoor_c.cpp defines it, so that TU emits D1, D0, the vtable
@@ -162,17 +172,18 @@ typedef char daDoor_c_size_must_be_0x148[sizeof(daDoor_c) == 0x148 ? 1 : -1];
    Every field daDoor_c.h named has a home: 0x05c/0x060/0x064 are
    base.mPosX/Y/Z, 0x080/0x084/0x088 base.mScaleX/Y/Z, 0x08c/0x08e/0x090
    base.mAngleX/Y/Z, 0x0a4/0x0a8/0x0ac base.unk_0a4/mVertSpeed/unk_0ac,
-   0x0e8 mModel.data.transforms, and mKeyModelIdx is this class's own and keeps
-   its name. */
+   0x0e8 mModel.data.transforms, and mState, mKeyModelIdx and mTimer are
+   this class's own. */
 struct daDoor_c {
     struct dActor_c base;    /* 0x000..0x0cf */
     u8  pad_0d0[0x4];
     ModelAnim mModel;        /* 0x0d4..0x137 */
     Model *mKeyModel;          /* 0x138 -- owned, see SIZE above */
     void *mKeyFile;           /* 0x13c -- released through SharedFilePtr */
-    void *mCallbackNode;           /* 0x140 -- callback-node pointer, see SIZE above */
+    void *mState;                 /* 0x140 -- the state pair, see SIZE above */
     s8   mKeyModelIdx;            /* 0x144 -- key-model index */
-    u8   pad_145[0x3];
+    u8   mTimer;                  /* 0x145 -- countdown byte */
+    u8   pad_146[0x2];
 };
 
 /* The C++ branch's assert, restated over the nested spelling: if either base

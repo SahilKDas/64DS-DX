@@ -1,16 +1,39 @@
 //cpp
-/* dScMgAmida_c -- the ladder-lottery (Amida) minigame, ov006, 13 functions
- * (.text 0x020d3624..0x020d5a54).
+/* dScMgAmida_c -- the ladder-lottery (Amida) minigame, ov006, 28 functions
+ * (.text 0x020d1018..0x020d5a54).
  *
- * This is the upper part of the class's run: the unmatched function just
- * below 0x020d3624 splits it, and the destructor pair, which owns the
- * vtable, lives with the lower part. Functions run in ROM order here, lowest
- * address first, under `#pragma defer_codegen off`.
+ * This file is the class's whole ov006 unit, in ROM order, lowest address
+ * first, under `#pragma defer_codegen off`: from the destructor pair at
+ * 0x020d1018 to func_ov006_020d5a50, the piece array's element constructor.
+ * The previous unit ends at 0x020d1018 with func_ov006_020d100c, and
+ * dScMgBomroom_c's D1 starts the next at 0x020d5a54. tu_map stops this unit
+ * at 0x020d5974; the relocation census in the manifest shows that the
+ * factory and func_ov006_020d5a50 above it belong to it too. The destructor
+ * is the key function, so this file also emits the vtable and RTTI.
+ *
+ * The fifteen functions below func_ov006_020d3624 came from one-function
+ * files. Their bodies are kept as they matched there, with these changes:
+ *   - func_ov006_020d122c, func_ov006_020d1958, func_ov006_020d1a3c and
+ *     func_ov006_020d27dc called slot 36 through stand-in vtable structs;
+ *     they now call Unk36().
+ *   - func_ov006_020d2580 took the two rung ends as int pointers; it now
+ *     takes them as by-value Points, the way the pen handler already
+ *     declared it, and uses the member names.
+ *   - data_020a0dea/deb are declared as 4-byte rows, the form
+ *     func_ov006_020d1958 matched under. Indexing them as flat arrays costs
+ *     it four words.
+ *   - each shard's file-wide optimisation pragma is now a push/pop bracket
+ *     around its own function.
+ *   - func_ov006_020d27dc was the last to match. It was an unmatched draft
+ *     from 2026-09-14 and was matched on 2026-10-02.
  *
  * Still raw: the func_ and data_ helpers are unnamed in symbols.txt; the
  * pattern table is five separate data symbols (0x0212e1a8..0x0212e1b8), so
  * it is read by byte offset rather than as one array of structs; the words
- * at 0x5370 and 0x5378..0x539b are padding in dScMgAmida_c.h; and the
+ * at 0x5370 and 0x5378..0x539b are padding in dScMgAmida_c.h; Virtual88
+ * reads the class through a local layout struct, and func_ov006_020d122c,
+ * func_ov006_020d1450, func_ov006_020d1958, func_ov006_020d1a3c,
+ * func_ov006_020d25fc and func_ov006_020d27dc through raw offsets; and the
  * factory builds the object by hand because the class has no constructor
  * declared yet.
  */
@@ -31,22 +54,24 @@ extern void MultiStore16(u16 val, void *dst, int nbytes);
 extern int  RandomIntInternal(int *seed);
 extern int  Vec2_Len(int *v);
 extern void FreeGfxSlotsById(int a);
-extern u32  LoadCompressedFileAt(u16 fileID, void *target);
+extern u32  LoadCompressedFileAt(int fileID, void *target);
 extern int  LoadFile(int handle);
 extern void _ZN3G2x13SetBlendAlphaEPVttttj(void *p, u16 a, u16 b, u16 c, u16 d);
 extern void SetSubBg2Offset(int a, int b);
 extern void __cxa_vec_ctor(void *obj, int a, int b, void *cb1, void *cb2);
 extern void func_0203d738(void *p);
-
-/* --- the class's own functions that live OUTSIDE this licensed range --- */
-extern void func_ov006_020d122c(void *sb, int v);
-extern void func_ov006_020d1958(char *c);
-extern void func_ov006_020d1a3c(char *c);
-extern void func_ov006_020d1ba0(char *c);
-extern void func_ov006_020d27dc(char *c);
+extern void func_02012dbc(int a);
+extern int  func_020126e8(int a);
+extern void func_020126ac(int a0, int a1, int a2, int a3, int a4);
+extern int  func_02012468(int handle, int a, int sfx, int b, int c, int d, int pan, short e);
+extern void func_02012790(int sfx);
+extern int  GetGameLanguage(void);
+extern unsigned int _ZN3G2S13GetBG1CharPtrEv(void);
+extern void *_ZN3G2S12GetBG1ScrPtrEv(void);
 
 /* --- the class's own functions defined below --- */
-extern void func_ov006_020d3624(void);
+extern int  func_ov006_020d2580(dScMgAmida_c *self, dScMgAmida_c::Point p1, dScMgAmida_c::Point p2);
+extern void func_ov006_020d3624(void *);
 extern void func_ov006_020d3668(void *sb);
 extern void func_ov006_020d36a4(dScMgAmida_c *self);
 extern void func_ov006_020d452c(void *thiz);
@@ -58,9 +83,12 @@ extern void *dScMgAmida_c_classInit(void);
 extern s16 data_02082214[];
 extern u8  data_0209d45c;
 extern u8  data_0209d454;
-extern u8  data_020a0e40[];
+extern u8  data_020a0e40;
 extern u8  data_020a0de8[];
 extern u8  data_020a0de9[];
+extern u8  data_020a0dea[][4];
+extern u8  data_020a0deb[][4];
+extern int data_ov006_0212e1c0[];
 extern s32 data_0208ee44;
 extern char data_ov006_0212e1a8[];
 extern char data_ov006_0212e1ac[];
@@ -101,6 +129,10 @@ namespace G2S {
     char *GetBG3CharPtr();
 }
 
+namespace Sound {
+    void PlayBank2_2D(unsigned int id);
+}
+
 namespace Memory {
     void *Allocate(unsigned int size);
     void Deallocate(void *ptr);
@@ -126,8 +158,1140 @@ extern Buf14 data_ov006_0213b880;
 
 #pragma defer_codegen off
 
+// @symbol _ZN12dScMgAmida_cD1Ev
+// @symbol _ZN12dScMgAmida_cD0Ev
+/* The four member arrays go down last-built first: the 0x80 pieces, then
+   the lane velocities, the lane positions and the cells. Both element
+   destructors do nothing. D1 stores the vptr and ends in dScMgBase_c's D2;
+   D0 repeats the same body and adds the delete. */
+dScMgAmida_c::~dScMgAmida_c()
+{
+    __cxa_vec_cleanup((char *)this + 0x4768, 0x80, 0x18, (void *)func_ov006_020d116c);
+    __cxa_vec_cleanup((char *)this + 0x4744, 4, 8, (void *)NullDestructor_0203d47c);
+    __cxa_vec_cleanup((char *)this + 0x4724, 4, 8, (void *)NullDestructor_0203d47c);
+    __cxa_vec_cleanup((char *)this + 0x4660, 4, 8, (void *)NullDestructor_0203d47c);
+}
+
+#ifdef _MSC_VER
+/* THE HOST NEEDS THE ROM'S FLAT D0 NAME, AND MSVC NEVER EMITS IT. MSVC
+ * folds the Itanium destructor variants into the one ~dScMgAmida_c() above,
+ * so this spells out what the deleting destructor does in terms of it: the
+ * D1 body, called qualified so it is a direct call, then the class-specific
+ * operator delete. mwccarm never defines _MSC_VER, so nothing here reaches
+ * the cartridge object. */
+extern "C" dScMgAmida_c *_ZN12dScMgAmida_cD0Ev(dScMgAmida_c *thiz)
+{
+    thiz->dScMgAmida_c::~dScMgAmida_c();
+    dScMgAmida_c::operator delete(thiz);
+    return thiz;
+}
+#endif
+
+// @symbol func_ov006_020d116c
+/* Element destructor for the 0x80 falling pieces: nothing to undo. */
+extern "C" void func_ov006_020d116c(void)
+{
+}
+
+// @symbol _ZN12dScMgAmida_c9Virtual8CEv
+/* Slot 35, the family's only override of it. The base asks whether the low
+   byte of fBase_c::param1 is nonzero; this asks whether it is exactly 1.
+   Nothing in this class calls it; the callers are in dScMgCoin_c,
+   dScMgPanel_c, dScMgSound_c and dScMgSnowball_c. */
+int dScMgAmida_c::Virtual8C()
+{
+    return (param1 & 0xff) == 1;
+}
+
+// @symbol _ZN12dScMgAmida_c5Unk36Ev
+/* Slot 36, this class's own: whether the low byte of the word at this+8,
+   a field from above dScMgBase_c, is 2. Left as a raw offset, as
+   dScMgSlot1_c.h does for the same word. */
+int dScMgAmida_c::Unk36()
+{
+    return ((*(int *)((char *)this + 8)) & 0xff) == 2;
+}
+
+// @symbol _ZN12dScMgAmida_c9Virtual7CEv
+/* Slot 31: the sub screen's BG1 set up for this game. Same shape as the
+   base's, with 4 for the BG1CNT base bits and this class's own language
+   table. Not a Kill; see the slot-31 block in include/dScMgBase_c.h. */
+int dScMgAmida_c::Virtual7C()
+{
+    volatile unsigned short *reg = (volatile unsigned short*)0x400100a;
+    int id;
+    void *t;
+    *reg = (unsigned short)((*reg & 0x43) | 4);
+    *reg = (unsigned short)(*reg & ~0x40);
+    *reg = (unsigned short)(*reg & ~3);
+    SetSubBg1Offset(0, 0);
+    data_0209d454 = (unsigned char)(data_0209d454 & ~2);
+    id = GetGameLanguage();
+    t = (void*)_ZN3G2S13GetBG1CharPtrEv();
+    LoadCompressedFileAt(data_ov006_0213b838[id], t);
+    LoadCompressedFileAt(0x5b, _ZN3G2S12GetBG1ScrPtrEv());
+}
+
+// @symbol func_ov006_020d122c
+/* Refills and shuffles the four-entry table at 0x4714. When Unk36() holds,
+   the entries come from the pattern index, are copied to 0x46a4, and the
+   table is reshuffled until it differs somewhere from that copy as seen
+   through 0x4694; otherwise the first arg1 entries (at most 4) are 1 and
+   the rest 0, shuffled once. */
+#pragma push
+#pragma opt_strength_reduction off
+#define A714(i) (((int *)(self + 0x4714))[i])
+#define A46A4(i) (((int *)(self + 0x46a4))[i])
+#define A4694(i) (((int *)(self + 0x4694))[i])
+
+extern "C" void func_ov006_020d122c(char *self, int arg1)
+{
+    int i;
+    int k;
+    int j;
+    int t;
+    int u;
+    int *pi;
+
+    if (AMIDA(self)->Unk36()) {
+        switch (*(int *)(self + 0x53d4)) {
+        case 0:
+            A714(0) = 0;
+            A714(1) = 0;
+            A714(2) = 3;
+            A714(3) = 3;
+            break;
+        case 1:
+        case 3:
+        case 5:
+            A714(0) = 0;
+            A714(1) = 0;
+            A714(2) = 1;
+            A714(3) = 3;
+            break;
+        default:
+            for (i = 0; i < 4; i++)
+                A714(i) = i;
+            break;
+        }
+        for (i = 0; i < 4; i++)
+            A46A4(i) = A714(i);
+        {
+            int off = 0x4714;
+            arg1 = 1;
+            do {
+                for (i = 0; i < 4; i++) {
+                    t = RandomIntInternal(&data_0209d4b8);
+                    pi = (int *)(self + (i << 2) + off);
+                    j = ((u32)(((u32)t >> 16) & 0x7fff) * 4) >> 15;
+                    t = *pi;
+                    {
+                        int *pjx = (int *)(self + (j << 2) + off);
+                        u = *pjx;
+                        *pi = u;
+                        *pjx = t;
+                    }
+                }
+                for (k = 0; k < 4; k++) {
+                    if (A46A4(k) != A714(A4694(k))) {
+                        arg1 = 0;
+                        break;
+                    }
+                }
+            } while (arg1 == 1);
+        }
+    } else {
+        if (arg1 > 4)
+            arg1 = 4;
+        for (k = 0; k < arg1; k++)
+            A714(k) = 1;
+        for (; arg1 < 4; arg1++)
+            A714(arg1) = 0;
+        {
+            int off = 0x4714;
+            for (i = 0; i < 4; i++) {
+                t = RandomIntInternal(&data_0209d4b8);
+                pi = (int *)(self + (i << 2) + off);
+                j = ((u32)(((u32)t >> 16) & 0x7fff) * 4) >> 15;
+                t = *pi;
+                {
+                    int *pjx = (int *)(self + (j << 2) + off);
+                    u = *pjx;
+                    *pi = u;
+                    *pjx = t;
+                }
+            }
+        }
+    }
+}
+#pragma pop
+#undef A714
+#undef A46A4
+#undef A4694
+
+// @symbol func_ov006_020d1450
+extern "C" void func_ov006_020d1450(char *self)
+{
+    int row = 0;
+    int col;
+    int rowoff = 0;
+    int one = 0;
+    int val = 0;
+    for (; row < 0x100; row++) {
+        for (col = 0; col < 0x158; col++) {
+            unsigned char *base = *(unsigned char **)(self + 0x4000 + 0x70c);
+            unsigned char *p = (unsigned char *)(rowoff + (int)base) + col;
+            if (*p != 0) *p = val;
+        }
+        rowoff += 0x158;
+    }
+    func_ov006_020d3624(self);
+    *(unsigned char *)(self + 0x4704) = 0;
+}
+
+// @symbol _ZN12dScMgAmida_c9Virtual88Eiiii
+/* Slot 34, and the only override in the family that
+   CALLS the base rather than replacing it.
+
+   Amida is the ghost-leg game: you draw a line and it must not cross one that
+   is already there.  So this override is the collision half and the base is the
+   drawing half.  Before painting it probes the 0x158-stride occupancy grid at
+   +0x4710 -- the cell under (x, y), and for a diagonal step also the two cells
+   the diagonal would cut between -- and sets the foul flag at +0x4709 if any of
+   them is already >= 3.  Then it calls the base brush, with a size of 2 or 4
+   chosen per case rather than passed in, which is why this body has one fewer
+   explicit parameter than the slot's signature: the fourth argument arrives on
+   the stack and is never read.
+
+   +0x46f8 / +0x46fc are the previous point, which is how it knows a step is
+   diagonal at all. */
+typedef struct Ctx {
+    u8 pad_0000[0x46d8];
+    int unk46d8;
+    int unk46dc;
+    int unk46e0;
+    int unk46e4;
+    u8 pad_46e8[0x10];
+    int unk46f8;
+    int unk46fc;
+    u8 pad_4700[4];
+    u8 unk4704;
+    u8 unk4705;
+    u8 unk4706;
+    u8 unk4707;
+    u8 unk4708;
+    u8 unk4709;
+    u8 unk470a;
+    u8 pad_470b;
+    u8* unk470c;
+    u8* unk4710;
+} Ctx;
+
+void dScMgAmida_c::Virtual88(int y, int x, int arg3, int /* size */)
+{
+    Ctx *ctx = (Ctx *)this;
+
+    u8 f705;
+    u8 f707;
+    int x2;
+
+    if (ctx->unk4708 == 1) {
+        int py;
+        int pym;
+        int pyp;
+        if ((ctx->unk4710 + y * 0x158)[x + 0xc0] >= 3u) {
+            ctx->unk4709 = 1;
+        }
+        py = ctx->unk46f8;
+        if (y != py || x != ctx->unk46fc) {
+            pym = py - 1;
+            if (y == pym && x == ctx->unk46fc - 1) {
+                u8* b = ctx->unk4710;
+                if ((b + (y + 1) * 0x158)[x + 0xc0] >= 3u) {
+                    ctx->unk4709 = 1;
+                } else if ((b + y * 0x158)[x + 0xc1] >= 3u) {
+                    ctx->unk4709 = 1;
+                }
+            } else {
+                pyp = py + 1;
+                if (y == pyp && x == ctx->unk46fc - 1) {
+                    u8* b = ctx->unk4710;
+                    if ((b + (y - 1) * 0x158)[x + 0xc0] >= 3u) {
+                        ctx->unk4709 = 1;
+                    } else if ((b + y * 0x158)[x + 0xc1] >= 3u) {
+                        ctx->unk4709 = 1;
+                    }
+                } else if (y == pym && x == ctx->unk46fc + 1) {
+                    u8* b = ctx->unk4710;
+                    if ((b + (y + 1) * 0x158)[x + 0xc0] >= 3u) {
+                        ctx->unk4709 = 1;
+                    } else if ((b + y * 0x158)[x + 0xbf] >= 3u) {
+                        ctx->unk4709 = 1;
+                    }
+                } else if (y == pyp && x == ctx->unk46fc + 1) {
+                    u8* b = ctx->unk4710;
+                    if ((b + (y - 1) * 0x158)[x + 0xc0] >= 3u) {
+                        ctx->unk4709 = 1;
+                    } else if ((b + y * 0x158)[x + 0xbf] >= 3u) {
+                        ctx->unk4709 = 1;
+                    }
+                }
+            }
+        }
+        ctx->unk46f8 = y;
+        ctx->unk46fc = x;
+        return;
+    }
+
+    if (ctx->unk4706 == 1) {
+        dScMgBase_c::Virtual88(y, x, arg3, 4);
+        if (y < 0) return;
+        if (y >= 0x100) return;
+        if (x < -0xc0) return;
+        if (x >= 0x98) return;
+        (ctx->unk4710 + y * 0x158)[x + 0xc0] = ctx->unk470a;
+        return;
+    }
+
+    f705 = ctx->unk4705;
+    if (f705 == 1) {
+        dScMgBase_c::Virtual88(y, x, arg3, 2);
+        return;
+    }
+
+    f707 = ctx->unk4707;
+    x2 = x + 0xc0;
+    if (f707 != 0) {
+        dScMgBase_c::Virtual88(y, x, arg3, 4);
+        if (y >= 0 && y < 0x100 && x2 >= 0 && x2 < 0x158) {
+            (ctx->unk4710 + y * 0x158)[x2] = ctx->unk470a;
+        }
+    } else {
+        u8 b;
+        if (y < 0 || y >= 0x100 || x2 < 0 || x2 >= 0x158) {
+            dScMgBase_c::Virtual88(y, x, arg3, 4);
+            return;
+        }
+        if (y == 0x20 || y == 0x60 || y == 0xa0 || y == 0xe0) {
+            if (ctx->unk4704 == 0) {
+                ctx->unk4704 = 1;
+                ctx->unk46d8 = y;
+                ctx->unk46dc = x;
+                ctx->unk46e0 = y;
+                ctx->unk46e4 = x;
+                return;
+            }
+            if (f705 != 0) return;
+            if (y == ctx->unk46d8) {
+                ctx->unk46e4 = x;
+            } else {
+                ctx->unk4705 = 1;
+                ctx->unk46e0 = y;
+                ctx->unk46e4 = x;
+            }
+            return;
+        }
+        if (ctx->unk4704 == 0) {
+            dScMgBase_c::Virtual88(y, x, arg3, 2);
+            return;
+        }
+        b = (ctx->unk470c + y * 0x158)[x2];
+        if (b != 0 && ctx->unk470a != b) goto fail;
+        b = (ctx->unk4710 + y * 0x158)[x2];
+        if (b != 0 && ctx->unk470a != b) {
+        fail:
+            ctx->unk4704 = 0;
+            ctx->unk4705 = 1;
+            return;
+        }
+    }
+
+    dScMgBase_c::Virtual88(y, x, arg3, 2);
+    (ctx->unk470c + y * 0x158)[x2] = ctx->unk470a;
+}
+
+// @symbol func_ov006_020d1958
+extern "C" void func_ov006_020d1958(char *c)
+{
+    if (AMIDA(c)->Unk36() == 0) return;
+    if (*(unsigned char *)(c + 0x5000 + 0x3dd) == 1) return;
+    unsigned int i = 0;
+    int b3 = data_020a0e40;
+    if (data_020a0de8[b3 << 2] != 0) {
+        unsigned int off = b3 << 2;
+        if (data_020a0de9[off] != 0) i = 1;
+    }
+    if (i == 0) return;
+    int v1 = data_020a0dea[b3][0];
+    int v0 = data_020a0deb[b3][0];
+    if (v1 < 0x60) return;
+    if (v1 >= 0xa0) return;
+    if (v0 < 0xa0) return;
+    if (v0 >= 0xc0) return;
+    *(unsigned char *)(c + 0x5000 + 0x3dd) = 1;
+    Sound::PlayBank2_2D(0x151);
+}
+
+// @symbol func_ov006_020d1a3c
+extern "C" void func_ov006_020d1a3c(void *p)
+{
+    int idx;
+    int flag;
+    int a;
+    int b;
+    char *base;
+
+    if (AMIDA(p)->Unk36()) return;
+
+    base = (char *)p;
+    idx = data_020a0e40;
+    flag = 0;
+    if (data_020a0de8[idx * 4]) {
+        if (data_020a0de9[idx * 4] != 0) flag = 1;
+    }
+    if (flag != 0) {
+        *(u8 *)(base + 0x53de) = 0;
+        *(int *)(base + 0x53d8) = 0;
+    }
+    idx = data_020a0e40;
+    if (data_020a0de8[idx * 4] != 0) {
+        a = data_020a0dea[idx][0];
+        b = data_020a0deb[idx][0];
+        if ((a >= 0 && a < 0x10 && b >= 0x40 && b < 0x80) ||
+            (a >= 0xf0 && a < 0x100 && b >= 0x40 && b < 0x80)) {
+            if (*(int *)(base + 0x53d8) >= 5) {
+                *(u8 *)(base + 0x53dc) = 1;
+            } else {
+                *(int *)(base + 0x53d8) += 1;
+                *(u8 *)(base + 0x53dc) = 0;
+            }
+            *(u8 *)(base + 0x53de) = 1;
+        } else {
+            *(u8 *)(base + 0x53dc) = 0;
+            *(u8 *)(base + 0x53de) = 0;
+            *(int *)(base + 0x53d8) = 0;
+        }
+    } else {
+        *(u8 *)(base + 0x53dc) = 0;
+        *(int *)(base + 0x53d8) = 0;
+    }
+}
+
+// @symbol func_ov006_020d1ba0
+/* The pen handler: follows the stylus while it is down, and on release
+   turns the stroke into a rung between two neighbouring lanes, probed with
+   func_ov006_020d2580 before it is painted. Point's special members are
+   what shape the calls; see include/dScMgAmida_c.h. */
+extern "C" void func_ov006_020d1ba0(dScMgAmida_c *self)
+{
+    int oldX;
+    int oldY;
+
+    if (self->mLineCount >= 0xff) return;
+    if (self->unk_53dd == 1) return;
+
+    oldX = self->mPen.x;
+    oldY = self->mPen.y;
+
+    if (data_020a0de8[data_020a0e40 * 4] != 0) {
+        int newX = data_020a0dea[data_020a0e40][0];
+        int newY = data_020a0deb[data_020a0e40][0];
+        if (newX < 0) return;
+        if (newX >= 0x100) return;
+        if (newY < 0) return;
+        if (newY >= self->mLineEndY) return;
+        if (self->unk_53de != 0) return;
+        self->mPen.x = newX;
+        self->mPen.y = newY;
+        if (self->mPenStart.x == -1 || self->mPenStart.y == -1) {
+            self->mPenStart.x = newX;
+            self->mPenStart.y = newY;
+            func_02012718(0xdc, self->mPenStart.x << 12);
+        }
+        if (oldX == -1 && oldY == -1) return;
+        if (oldX == self->mPen.x && oldY == self->mPen.y) {
+            self->mPenTapped = 1;
+            return;
+        }
+        func_ov004_020ae5c4(self, oldX, oldY, self->mPen.x, self->mPen.y, self->unk_53e4, 1);
+        if (self->mPenTapped == 1) {
+            self->mPenSoundHandle = func_02012468(self->mPenSoundHandle, 2, 0xde, 4, 0, 0, func_020126e8(self->mPen.x << 12), 0);
+            return;
+        }
+        self->mPenSoundHandle = func_02012468(self->mPenSoundHandle, 2, 0xdd, 4, 0, 0, func_020126e8(self->mPen.x << 12), 0);
+        return;
+    } else {
+        int released;
+        if (data_020a0de8[data_020a0e40 * 4] == 0 && data_020a0de9[data_020a0e40 * 4] != 0) {
+            released = 1;
+        } else {
+            released = 0;
+        }
+        if (released != 0) {
+            if (self->mPenStart.x != -1 && self->mPenStart.y != -1 && oldX != -1 && oldY != -1) {
+                if (self->mLineStartSet == 0) {
+                    int d1 = oldX - self->mPenStart.x;
+                    if (d1 < 0) d1 = -d1;
+                    if (d1 < 0x10) {
+                        int d2 = oldY - self->mPenStart.y;
+                        if (d2 < 0) d2 = -d2;
+                        if (d2 >= 0x10) goto classify;
+                    } else {
+                    classify:
+                        if (oldX >= 0x21 && oldX <= 0x3f) {
+                            if (self->mPenStart.x >= 0x41 && self->mPenStart.x <= 0x5f) {
+                                self->mLineStart.x = 0x60;
+                                self->mLineStart.y = self->mPenStart.y;
+                                self->mLineEnd.x = 0x20;
+                                self->mLineEnd.y = self->mPen.y;
+                            }
+                        } else if (oldX >= 0x41 && oldX <= 0x5f) {
+                            if (self->mPenStart.x >= 0x21 && self->mPenStart.x <= 0x3f) {
+                                self->mLineStart.x = 0x20;
+                                self->mLineStart.y = self->mPenStart.y;
+                                self->mLineEnd.x = 0x60;
+                                self->mLineEnd.y = self->mPen.y;
+                            }
+                        } else if (oldX >= 0x61 && oldX <= 0x7f) {
+                            if (self->mPenStart.x >= 0x81 && self->mPenStart.x <= 0x9f) {
+                                self->mLineStart.x = 0xa0;
+                                self->mLineStart.y = self->mPenStart.y;
+                                self->mLineEnd.x = 0x60;
+                                self->mLineEnd.y = self->mPen.y;
+                            }
+                        } else if (oldX >= 0x81 && oldX <= 0x9f) {
+                            if (self->mPenStart.x >= 0x61 && self->mPenStart.x <= 0x7f) {
+                                self->mLineStart.x = 0x60;
+                                self->mLineStart.y = self->mPenStart.y;
+                                self->mLineEnd.x = 0xa0;
+                                self->mLineEnd.y = self->mPen.y;
+                            }
+                        } else if (oldX >= 0xa1 && oldX <= 0xbf) {
+                            if (self->mPenStart.x >= 0xc1 && self->mPenStart.x <= 0xdf) {
+                                self->mLineStart.x = 0xe0;
+                                self->mLineStart.y = self->mPenStart.y;
+                                self->mLineEnd.x = 0xa0;
+                                self->mLineEnd.y = self->mPen.y;
+                            }
+                        } else if (oldX >= 0xc1 && oldX <= 0xdf) {
+                            if (self->mPenStart.x >= 0xa1 && self->mPenStart.x <= 0xbf) {
+                                self->mLineStart.x = 0xa0;
+                                self->mLineStart.y = self->mPenStart.y;
+                                self->mLineEnd.x = 0xe0;
+                                self->mLineEnd.y = self->mPen.y;
+                            }
+                        }
+                        if (self->mLineStart.x >= 0 && self->mLineEnd.x >= 0) {
+                            if (func_ov006_020d2580(self, self->mLineStart, self->mLineEnd) == 0) {
+                                self->mLineStartSet = 1;
+                                self->mLineEndSet = 1;
+                            }
+                        }
+                    }
+                } else if (self->mLineEndSet == 0) {
+                    int dx, dsx, adx, adsx;
+                    dx = oldX - self->mLineStart.x;
+                    adx = dx < 0 ? -dx : dx;
+                    dsx = self->mPenStart.x - self->mLineStart.x;
+                    adsx = dsx < 0 ? -dsx : dsx;
+                    if (adx >= adsx) {
+                        dx = dx < 0 ? -dx : dx;
+                        if (dx >= 0x20) {
+                            if (oldX < self->mLineStart.x) {
+                                self->mLineEnd.x = self->mLineStart.x - 0x40;
+                            } else {
+                                self->mLineEnd.x = self->mLineStart.x + 0x40;
+                            }
+                            self->mLineStart.y = self->mLineEnd.y;
+                            self->mLineEnd.y = self->mPen.y;
+                        }
+                    } else {
+                        dsx = dsx < 0 ? -dsx : dsx;
+                        if (dsx >= 0x20) {
+                            if (self->mPenStart.x < self->mLineStart.x) {
+                                self->mLineEnd.x = self->mLineStart.x - 0x40;
+                            } else {
+                                self->mLineEnd.x = self->mLineStart.x + 0x40;
+                            }
+                            self->mLineEnd.y = self->mPenStart.y;
+                        }
+                    }
+                    if (self->mLineStart.x >= 0 && self->mLineEnd.x >= 0) {
+                        if (func_ov006_020d2580(self, self->mLineStart, self->mLineEnd) == 0) {
+                            self->mLineEndSet = 1;
+                        }
+                    }
+                }
+            }
+
+            if (self->mLineStartSet == 0 || self->mLineEndSet == 0) {
+                if (self->unk_53de == 0 && self->unk_53dd == 0) func_02012790(0xe);
+                func_ov006_020d1450((char *)self);
+                self->mLineStart.x = -1;
+                self->mLineStart.y = -1;
+                self->mLineEnd.x = -1;
+                self->mLineEnd.y = -1;
+                return;
+            }
+            if (self->mLineEnd.x == self->mLineStart.x) {
+                func_ov006_020d3624(self);
+                int row = 0;
+                int col;
+                int rowoff = 0;
+                int one = 0;
+                int val = 0;
+                for (; row < 0x100; row++) {
+                    for (col = 0; col < 0x158; col++) {
+                        (self->unk_470c + rowoff)[col] = val;
+                    }
+                    rowoff += 0x158;
+                }
+            } else {
+                dScMgAmida_c::Point a(self->mLineStart);
+                dScMgAmida_c::Point b(self->mLineEnd);
+                int hit;
+                if (a.x < b.x) {
+                    a.x += 2;
+                    b.x -= 2;
+                } else {
+                    a.x -= 2;
+                    b.x += 2;
+                }
+                {
+                    if (func_ov006_020d2580(self, a, b) == 1) {
+                        if (self->unk_53de == 0 && self->unk_53dd == 0) func_02012790(0xe);
+                        func_ov006_020d1450((char *)self);
+                        self->mLineStart.x = -1;
+                        self->mLineStart.y = -1;
+                        self->mLineEnd.x = -1;
+                        self->mLineEnd.y = -1;
+                        return;
+                    }
+                }
+                if (self->mLineStart.x < self->mLineEnd.x) {
+                    u8 *row = self->unk_4710 + self->mLineEnd.x * 0x158;
+                    hit = *(row + self->mLineEnd.y + 0x218);
+                    if (hit == 0) {
+                        hit = *(self->unk_4710 + self->mLineStart.x * 0x158 + self->mLineStart.y - 0x98);
+                    }
+                } else {
+                    u8 *row = self->unk_4710 + self->mLineEnd.x * 0x158;
+                    hit = *(row + self->mLineEnd.y - 0x98);
+                    if (hit == 0) {
+                        hit = *(self->unk_4710 + self->mLineStart.x * 0x158 + self->mLineStart.y + 0x218);
+                    }
+                }
+                if (hit == 0) {
+                    func_ov006_020d1450((char *)self);
+                    self->mLineCommit = 1;
+                    func_ov004_020ae5c4(self, a.x, a.y, b.x, b.y, self->unk_53e4, 1);
+                    if (a.x < b.x) {
+                        func_ov004_020ae5c4(self, a.x - 1, a.y, a.x - 1, a.y, self->unk_53e4, 1);
+                        func_ov004_020ae5c4(self, b.x + 1, b.y, b.x + 1, b.y, self->unk_53e4, 1);
+                    } else {
+                        func_ov004_020ae5c4(self, a.x + 1, a.y, a.x + 1, a.y, self->unk_53e4, 1);
+                        func_ov004_020ae5c4(self, b.x - 1, b.y, b.x - 1, b.y, self->unk_53e4, 1);
+                    }
+                    self->mLineCommit = 0;
+                    func_ov006_020d3668(self);
+                    self->mLineCount++;
+                    Sound::PlayBank2_2D(0xdf);
+                } else {
+                    if (self->unk_53de == 0 && self->unk_53dd == 0) func_02012790(0xe);
+                    func_ov006_020d1450((char *)self);
+                    self->mLineStart.x = -1;
+                    self->mLineStart.y = -1;
+                    self->mLineEnd.x = -1;
+                    self->mLineEnd.y = -1;
+                    return;
+                }
+            }
+        }
+        self->mPen.x = -1;
+        self->mPen.y = -1;
+        self->mPenStart.x = -1;
+        self->mPenStart.y = -1;
+        self->mLineStartSet = 0;
+        self->mLineEndSet = 0;
+        self->mPenTapped = 0;
+    }
+}
+
+// @symbol func_ov006_020d2580
+/* Probes the rung from p1 to p2 without painting it: slot 34 runs in probe
+   mode over the line and reports whether any cell it crosses is taken. */
+extern "C" int func_ov006_020d2580(dScMgAmida_c *self, dScMgAmida_c::Point p1, dScMgAmida_c::Point p2)
+{
+    int hi, lo;
+    self->mProbeHit = 0;
+    self->mProbeMode = 1;
+    hi = p1.y;
+    lo = p1.x;
+    self->mPrev.x = lo;
+    self->mPrev.y = hi;
+    func_ov004_020ae5c4(self, p1.x, p1.y, p2.x, p2.y, self->unk_53e4, 1);
+    self->mProbeMode = 0;
+    return self->mProbeHit;
+}
+
+// @symbol func_ov006_020d25fc
+#pragma push
+#pragma opt_common_subs off
+extern "C" int func_ov006_020d25fc(char *p, int b, int dir)
+{
+    int col, row;
+    u8 cur;
+    u8 *pcur;
+
+    col = *(int *)(p + b * 8 + 0x4660);
+    row = *(int *)(p + b * 8 + 0x4664) + 0xc0;
+
+    switch (dir) {
+        case 0: col--; row--; break;
+        case 1: row--; break;
+        case 2: col++; row--; break;
+        case 3: col--; break;
+        case 4: col++; break;
+        case 5: col--; row++; break;
+        case 6: row++; break;
+        case 7: col++; row++; break;
+        default: return 0;
+    }
+
+    {
+        u8 *t = (u8 *)(p + 0x4680);
+        cur = t[b];
+        pcur = t + b;
+    }
+
+    if (cur >= 2) {
+        u8 mv = *(u8 *)(*(u8 **)(p + 0x4710) + col * 0x158 + row);
+        if (mv != cur)
+            return 0;
+
+        *(int *)(p + b * 4 + 0x4684) = dir;
+        *(int *)(p + b * 8 + 0x4660) = col;
+        *(int *)(p + b * 8 + 0x4664) = row - 0xc0;
+        return 1;
+    } else {
+        int q, r;
+
+        if (*(u8 *)(*(u8 **)(p + 0x4710) + col * 0x158 + row) < 2)
+            return 0;
+
+        *(int *)(p + b * 4 + 0x4684) = dir;
+        *pcur = *(u8 *)(*(u8 **)(p + 0x4710) + col * 0x158 + row);
+        *(int *)(p + b * 8 + 0x4660) = col;
+        *(int *)(p + b * 8 + 0x4664) = row - 0xc0;
+
+        q = (*(int *)(p + b * 8 + 0x4664) + 0xd4) * 0x1f4 /
+            (*(int *)(p + 0x4700) + 0xd4);
+        r = func_020126e8(*(int *)(p + b * 8 + 0x4660) << 0xc);
+        func_020126ac(0x1bf, 6, 0, q, r);
+        return 1;
+    }
+}
+#pragma pop
+
+// @symbol func_ov006_020d27dc
+/* The per-step routine Behavior runs mScrollAccum / 16 times a frame:
+   counts down the per-walker timers at 0x46b8, then steps each walker
+   along the drawn lines with func_ov006_020d25fc; once every walker is in
+   (0x46cc reaches 0x46c8) it closes the round.
+   The `if (*(s32 *)(p + 0x5374) >= 5)` arm returns on its own while the
+   0x1e path and the next-round store share the one `return` after the
+   `sl == 1` if/else. That keeps the two arms in different blocks, so
+   mwccarm keeps the ROM's branch there instead of predicating it
+   (notes/mwccarm-codegen.md 6cn). */
+#pragma push
+#pragma opt_strength_reduction off
+#pragma opt_common_subs off
+extern "C" void func_ov006_020d27dc(void *arg0)
+{
+    char *p = (char *)arg0;
+    s32 var_r4;
+    s32 idx;
+    s32 count;
+
+    for (var_r4 = 0; var_r4 < (count = *(s32 *)(p + 0x46c8)); ) {
+        s32 *slot = (s32 *)((int)p + var_r4 * 4 + 0x46b8);
+        s32 v = *slot;
+        var_r4++;
+        if (v > 0) {
+            *slot = v - 1;
+        }
+    }
+
+    idx = 0;
+    if (count <= 0) {
+        return;
+    }
+
+    {
+        s32 v20 = 0xd7;
+        s32 v1c = 0xcf;
+        s32 v18 = 0xc7;
+        s32 v14 = 0xbf;
+        s32 v10 = 0xe0;
+        s32 v34 = 2;
+        s32 v30 = 5;
+        s32 v38 = 7;
+        s32 vC = 0;
+        s32 v60 = 0;
+        s32 v5c = 0;
+        s32 v58 = 0;
+        s32 v54 = 0;
+        s32 v50 = 0;
+        s32 v4c = 0;
+        s32 v48 = 0;
+        s32 v44 = 0;
+        s32 v40 = 0;
+        s32 c1 = 1;
+        s32 c4 = 4;
+        s32 c6 = 6;
+        s32 v24 = 0x1c0;
+        s32 c3 = 3;
+        s32 v3c = 0;
+        s32 v2c = 0;
+        s32 v28 = 0;
+
+        do {
+            if (*(s32 *)(p + idx * 4 + 0x46b8) > 0) {
+                continue;
+            }
+
+            {
+                int ent = (int)p + idx * 8;
+                s32 tmp;
+                s32 *distp = (s32 *)(ent + 0x4664);
+                s32 dist = *distp;
+                s32 lim = *(s32 *)(p + 0x4700);
+
+                if (dist > lim) {
+                    u8 *flag = (u8 *)(p + idx + 0x46b4);
+                    if (*flag != 1) {
+                        s32 sl = vC;
+                        s32 *dirSlot;
+                        s32 dirVal;
+
+                        if (AMIDA(p)->Unk36() != 0) {
+                            u32 want = *(u32 *)(p + idx * 4 + 0x46a4);
+                            dirSlot = (s32 *)(p + idx * 8 + 0x4660);
+                            dirVal = *dirSlot;
+                            switch (dirVal) {
+                            case 0x20:
+                                if (*(s32 *)(p + 0x4714) == (s32)want) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x5398) = c1;
+                                }
+                                break;
+                            case 0x60:
+                                if (*(s32 *)(p + 0x4718) == (s32)want) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x5399) = c1;
+                                }
+                                break;
+                            case 0xa0:
+                                if (*(s32 *)(p + 0x471c) == (s32)want) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x539a) = c1;
+                                }
+                                break;
+                            case 0xe0:
+                                if (*(s32 *)(p + 0x4720) == (s32)want) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x539b) = c1;
+                                }
+                                break;
+                            }
+                        } else {
+                            dirSlot = (s32 *)(ent + 0x4660);
+                            dirVal = *dirSlot;
+                            switch (dirVal) {
+                            case 0x20:
+                                if (*(s32 *)(p + 0x4714) == 1) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x5398) = c1;
+                                }
+                                break;
+                            case 0x60:
+                                if (*(s32 *)(p + 0x4718) == 1) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x5399) = c1;
+                                }
+                                break;
+                            case 0xa0:
+                                if (*(s32 *)(p + 0x471c) == 1) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x539a) = c1;
+                                }
+                                break;
+                            case 0xe0:
+                                if (*(s32 *)(p + 0x4720) == 1) {
+                                    sl = c1;
+                                } else {
+                                    *(u8 *)(p + 0x539b) = c1;
+                                }
+                                break;
+                            }
+                        }
+
+                        if (sl == 1) {
+                            if (AMIDA(p)->Unk36() != 0) {
+                                if (*(u8 *)(p + 0x46d5) == 0) {
+                                    func_02012718(v10, *dirSlot << 0xc);
+                                    u32 w2 = *(u32 *)(p + idx * 4 + 0x46a4);
+                                    switch (w2) {
+                                    default:
+                                        break;
+                                    case 0:
+                                        func_02012718(v14, *dirSlot << 0xc);
+                                        break;
+                                    case 1:
+                                        func_02012718(v18, *dirSlot << 0xc);
+                                        break;
+                                    case 2:
+                                        func_02012718(v1c, *dirSlot << 0xc);
+                                        break;
+                                    case 3:
+                                        func_02012718(v20, *dirSlot << 0xc);
+                                        break;
+                                    }
+                                } else {
+                                    func_02012718(0x1c3, *dirSlot << 0xc);
+                                }
+                                *flag = c1;
+                                *(s32 *)(p + 0x46cc) += 1;
+                                if (*(s32 *)(p + 0x46cc) < *(s32 *)(p + 0x46c8)) {
+                                    continue;
+                                }
+                                if (*(u8 *)(p + 0x46d5) == 0) {
+                                    *(s32 *)((int)p + 0x5374) += 1;
+                                    *(s32 *)(p + 0x53e8) += 1;
+                                    if (*(s32 *)(p + 0x53e8) > 0x270f) {
+                                        *(s32 *)(p + 0x53e8) = 0x270f;
+                                    }
+                                    *(s32 *)(p + 0x53e0) = 0x78;
+                                    return;
+                                }
+                                *(s32 *)(p + 0x53e0) = 0x1e;
+                            } else {
+                                s32 *d2 = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                s32 t;
+                                func_02012718(v10, *d2 << 0xc);
+                                func_02012718(0x1c1, *d2 << 0xc);
+                                *flag = c1;
+                                *(s32 *)(p + 0x46cc) += 1;
+                                if (*(s32 *)(p + 0x46cc) < *(s32 *)(p + 0x46c8)) {
+                                    continue;
+                                }
+                                *(s32 *)((int)p + 0x5374) += 1;
+                                *(s32 *)(p + 0x53e8) += 1;
+                                if (*(s32 *)(p + 0x53e8) > 0x270f) {
+                                    *(s32 *)(p + 0x53e8) = 0x270f;
+                                }
+                                t = *(s32 *)((char *)data_ov006_0212e1c0 + *(s32 *)(p + 0x53d4) * 0x1c);
+                                switch (t) {
+                                case 0:
+                                    break;
+                                case 1:
+                                    if ((*(s32 *)(p + 0x5374) % 2) == 0) {
+                                        *(s32 *)(p + 0x5368) += 5;
+                                    }
+                                    break;
+                                case 2:
+                                    *(s32 *)(p + 0x5368) += 5;
+                                    break;
+                                }
+                                if (*(s32 *)(p + 0x5368) > 0x64) {
+                                    *(s32 *)(p + 0x5368) = 0x64;
+                                }
+                                if (*(s32 *)(p + 0x5374) >= 5) {
+                                    *(s32 *)(p + 0x53c0) = 0x3c;
+                                    *(s32 *)(p + 0x46d0) = 2;
+                                    *(u8 *)(p + 0x46d4) = 1;
+                                    return;
+                                }
+                                *(s32 *)(p + 0x46d0) = 0;
+                            }
+                            return;
+                        }
+
+                        if (AMIDA(p)->Unk36() != 0) {
+                            func_02012dbc(5);
+                            if (*(u8 *)(p + 0x46d5) == 0) {
+                                func_02012718(0x1c2, *(s32 *)(p + idx * 8 + 0x4660) << 0xc);
+                            } else {
+                                func_02012718(0x1c3, *(s32 *)(p + idx * 8 + 0x4660) << 0xc);
+                            }
+                            *flag = 1;
+                            *(u8 *)(p + 0x46d5) = 1;
+                            *(s32 *)(p + 0x46cc) += 1;
+                            if (*(s32 *)(p + 0x46cc) >= *(s32 *)(p + 0x46c8)) {
+                                *(s32 *)(p + 0x53e0) = 0x3c;
+                            }
+                            return;
+                        }
+                        func_02012718(0xe1, *(s32 *)(p + idx * 8 + 0x4660) << 0xc);
+                        *(s32 *)(p + 0x53c0) = 0x3c;
+                        *(s32 *)(p + 0x46d0) = 2;
+                        *(u8 *)(p + 0x46d5) = 1;
+                        return;
+                    }
+                    continue;
+                }
+
+                if (dist < -0xc0 || dist >= 0x98) {
+                    *distp += 1;
+                } else {
+                    u8 *flag2 = (u8 *)(p + idx + 0x4680);
+                    if ((u32)*flag2 <= 1) {
+                        *distp = dist + 1;
+                        if (func_ov006_020d25fc(p, idx, c3) == 0) {
+                            func_ov006_020d25fc(p, idx, c4);
+                        }
+                    } else {
+                        tmp = ((dist + 0xd4) * 0x1f4) / (lim + 0xd4);
+                        s32 *statePtr = (s32 *)(p + idx * 4 + 0x4684);
+                        u32 state = *statePtr;
+                        switch (state) {
+                        default:
+                            break;
+                        case 0:
+                            if (*(s32 *)(p + idx * 8 + 0x4660) == 0x21 || *(s32 *)(p + idx * 8 + 0x4660) == 0x61 ||
+                                *(s32 *)(p + idx * 8 + 0x4660) == 0xa1 || *(s32 *)(p + idx * 8 + 0x4660) == 0xe1) {
+                                {
+                                    s32 *dirp = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                    *dirp -= 1;
+                                    *statePtr = c6;
+                                    *flag2 = c1;
+                                    func_020126ac(v24, c6, v28, tmp, func_020126e8(*dirp << 0xc));
+                                }
+                            } else if (func_ov006_020d25fc(p, idx, v2c) == 0 && func_ov006_020d25fc(p, idx, c1) == 0 &&
+                                       func_ov006_020d25fc(p, idx, c3) == 0 && func_ov006_020d25fc(p, idx, v30) == 0) {
+                                if (func_ov006_020d25fc(p, idx, v34) == 0) {
+                                    *statePtr = v38;
+                                }
+                            }
+                            break;
+                        case 1:
+                            if (func_ov006_020d25fc(p, idx, c1) == 0 && func_ov006_020d25fc(p, idx, v3c) == 0 &&
+                                func_ov006_020d25fc(p, idx, v34) == 0 && func_ov006_020d25fc(p, idx, c3) == 0) {
+                                if (func_ov006_020d25fc(p, idx, c4) == 0) {
+                                    *statePtr = c6;
+                                }
+                            }
+                            break;
+                        case 2:
+                            if (*(s32 *)(p + idx * 8 + 0x4660) == 0x1f || *(s32 *)(p + idx * 8 + 0x4660) == 0x5f ||
+                                *(s32 *)(p + idx * 8 + 0x4660) == 0x9f || *(s32 *)(p + idx * 8 + 0x4660) == 0xdf) {
+                                {
+                                    s32 *dirp = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                    *dirp += 1;
+                                    *statePtr = c6;
+                                    *flag2 = c1;
+                                    func_020126ac(v24, c6, v40, tmp, func_020126e8(*dirp << 0xc));
+                                }
+                            } else if (func_ov006_020d25fc(p, idx, v34) == 0 && func_ov006_020d25fc(p, idx, c1) == 0 &&
+                                       func_ov006_020d25fc(p, idx, c4) == 0 && func_ov006_020d25fc(p, idx, v44) == 0) {
+                                if (func_ov006_020d25fc(p, idx, v38) == 0) {
+                                    *statePtr = v30;
+                                }
+                            }
+                            break;
+                        case 3:
+                            if (*(s32 *)(p + idx * 8 + 0x4660) == 0x21 || *(s32 *)(p + idx * 8 + 0x4660) == 0x61 ||
+                                *(s32 *)(p + idx * 8 + 0x4660) == 0xa1 || *(s32 *)(p + idx * 8 + 0x4660) == 0xe1) {
+                                {
+                                    s32 *dirp = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                    *dirp -= 1;
+                                    *statePtr = c6;
+                                    *flag2 = c1;
+                                    func_020126ac(v24, c6, v48, tmp, func_020126e8(*dirp << 0xc));
+                                }
+                            } else if (func_ov006_020d25fc(p, idx, c3) == 0 && func_ov006_020d25fc(p, idx, v4c) == 0 &&
+                                       func_ov006_020d25fc(p, idx, v30) == 0 && func_ov006_020d25fc(p, idx, c1) == 0) {
+                                if (func_ov006_020d25fc(p, idx, c6) == 0) {
+                                    *statePtr = c4;
+                                }
+                            }
+                            break;
+                        case 4:
+                            if (*(s32 *)(p + idx * 8 + 0x4660) == 0x1f || *(s32 *)(p + idx * 8 + 0x4660) == 0x5f ||
+                                *(s32 *)(p + idx * 8 + 0x4660) == 0x9f || *(s32 *)(p + idx * 8 + 0x4660) == 0xdf) {
+                                {
+                                    s32 *dirp = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                    *dirp += 1;
+                                    *statePtr = c6;
+                                    *flag2 = c1;
+                                    func_020126ac(v24, c6, v50, tmp, func_020126e8(*dirp << 0xc));
+                                }
+                            } else if (func_ov006_020d25fc(p, idx, c4) == 0 && func_ov006_020d25fc(p, idx, v34) == 0 &&
+                                       func_ov006_020d25fc(p, idx, v38) == 0 && func_ov006_020d25fc(p, idx, c1) == 0) {
+                                if (func_ov006_020d25fc(p, idx, c6) == 0) {
+                                    *statePtr = c3;
+                                }
+                            }
+                            break;
+                        case 5:
+                            if (*(s32 *)(p + idx * 8 + 0x4660) == 0x21 || *(s32 *)(p + idx * 8 + 0x4660) == 0x61 ||
+                                *(s32 *)(p + idx * 8 + 0x4660) == 0xa1 || *(s32 *)(p + idx * 8 + 0x4660) == 0xe1) {
+                                {
+                                    s32 *dirp = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                    *dirp -= 1;
+                                    *statePtr = c6;
+                                    *flag2 = c1;
+                                    func_020126ac(v24, c6, v54, tmp, func_020126e8(*dirp << 0xc));
+                                }
+                            } else if (func_ov006_020d25fc(p, idx, v30) == 0 && func_ov006_020d25fc(p, idx, c6) == 0 &&
+                                       func_ov006_020d25fc(p, idx, c3) == 0 && func_ov006_020d25fc(p, idx, v58) == 0) {
+                                if (func_ov006_020d25fc(p, idx, v38) == 0) {
+                                    *statePtr = v34;
+                                }
+                            }
+                            break;
+                        case 6:
+                            if (func_ov006_020d25fc(p, idx, c6) == 0 && func_ov006_020d25fc(p, idx, v30) == 0 &&
+                                func_ov006_020d25fc(p, idx, v38) == 0 && func_ov006_020d25fc(p, idx, c3) == 0) {
+                                if (func_ov006_020d25fc(p, idx, c4) == 0) {
+                                    *statePtr = c1;
+                                }
+                            }
+                            break;
+                        case 7:
+                            if (*(s32 *)(p + idx * 8 + 0x4660) == 0x1f || *(s32 *)(p + idx * 8 + 0x4660) == 0x5f ||
+                                *(s32 *)(p + idx * 8 + 0x4660) == 0x9f || *(s32 *)(p + idx * 8 + 0x4660) == 0xdf) {
+                                {
+                                    s32 *dirp = (s32 *)((int)(p + idx * 8) + 0x4660);
+                                    *dirp += 1;
+                                    *statePtr = c6;
+                                    *flag2 = c1;
+                                    func_020126ac(v24, c6, v5c, tmp, func_020126e8(*dirp << 0xc));
+                                }
+                            } else if (func_ov006_020d25fc(p, idx, v38) == 0 && func_ov006_020d25fc(p, idx, c6) == 0 &&
+                                       func_ov006_020d25fc(p, idx, c4) == 0 && func_ov006_020d25fc(p, idx, v30) == 0 &&
+                                       func_ov006_020d25fc(p, idx, v34) == 0) {
+                                *statePtr = v60;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        } while (++idx < *(s32 *)(p + 0x46c8));
+    }
+}
+#pragma pop
+
 // @symbol func_ov006_020d3624
-extern "C" void func_ov006_020d3624(void) {
+extern "C" void func_ov006_020d3624(void *) {
   char *mainChars = (char *)func_02054efc();
   MultiCopyHalf((char *)func_02054efc() + 0xc000, mainChars, 0x6000);
   char *subChars = G2S::GetBG0CharPtr();
@@ -789,7 +1953,7 @@ s32 dScMgAmida_c::Behavior()
     case 1:
         func_ov006_020d1a3c(raw);
         func_ov006_020d1958(raw);
-        func_ov006_020d1ba0(raw);
+        func_ov006_020d1ba0(AMIDA(raw));
         if (Unk36() != 0) {
             if (unk_53dd == 1) {
                 mScrollAccum += mRoundCount * 5 + 0x20;
@@ -868,7 +2032,7 @@ s32 dScMgAmida_c::Behavior()
         if (mEndDelayTimer > 0)
             mEndDelayTimer -= 1;
         touched = 0;
-        touch = data_020a0e40[0];
+        touch = data_020a0e40;
         j4 = touch * 4;
         if (data_020a0de8[touch * 4] != 0) {
             if (data_020a0de9[j4] != 0)
@@ -1105,15 +2269,18 @@ void dScMgAmida_c::AfterCleanupResources(u32 vfSuccess)
     dScMgBase_c::AfterCleanupResources(vfSuccess);
 }
 
+extern int _ZTV12dScMgAmida_c[];
+
 // @symbol dScMgAmida_c_classInit
 /* Builds the scene by hand (operator new, base constructor, vtable,
    member arrays) because the class has no constructor declared yet.
-   The vtable address is stored as data: this TU does not own it. */
+   This file emits the vtable, so the store skips its two-word preamble
+   to reach slot 0. */
 extern "C" void *dScMgAmida_c_classInit(void) {
     char *scene = (char *)_ZN7fBase_cnwEj(0x53fc);
     if (scene != 0) {
         _ZN11dScMgBase_cC2Ev(scene);
-        *(int *)scene = (int)&data_ov006_0213b918;
+        *(int *)scene = (int)&_ZTV12dScMgAmida_c[2];
         __cxa_vec_ctor(scene + 0x4660, 4, 8, (void *)func_0203d738, (void *)NullDestructor_0203d47c);
         __cxa_vec_ctor(scene + 0x4724, 4, 8, (void *)func_0203d738, (void *)NullDestructor_0203d47c);
         __cxa_vec_ctor(scene + 0x4744, 4, 8, (void *)func_0203d738, (void *)NullDestructor_0203d47c);

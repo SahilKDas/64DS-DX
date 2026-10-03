@@ -63,35 +63,35 @@
       "ordinal": 5
     },
     {
-      "symbol": "func_ov065_02118248",
+      "symbol": "_ZN9daDossy_c19func_ov065_02118248Ev",
       "address": "0x02118248",
       "size": "0x0000009c",
       "legacy_source": "src/func_ov065_02118248.cpp",
       "ordinal": 6
     },
     {
-      "symbol": "func_ov065_021182e4",
+      "symbol": "_ZN9daDossy_c19func_ov065_021182e4Ev",
       "address": "0x021182e4",
       "size": "0x000000e4",
       "legacy_source": "src/func_ov065_021182e4.cpp",
       "ordinal": 7
     },
     {
-      "symbol": "func_ov065_021183c8",
+      "symbol": "_ZN9daDossy_c19func_ov065_021183c8Ev",
       "address": "0x021183c8",
       "size": "0x0000026c",
       "legacy_source": "src/func_ov065_021183c8.c",
       "ordinal": 8
     },
     {
-      "symbol": "func_ov065_02118634",
+      "symbol": "_ZN9daDossy_c19func_ov065_02118634Ev",
       "address": "0x02118634",
       "size": "0x00000204",
       "legacy_source": "src/func_ov065_02118634.c",
       "ordinal": 9
     },
     {
-      "symbol": "func_ov065_02118838",
+      "symbol": "_ZN9daDossy_c19func_ov065_02118838Ev",
       "address": "0x02118838",
       "size": "0x00000414",
       "legacy_source": "src/func_ov065_02118838.cpp",
@@ -105,7 +105,7 @@
       "ordinal": 11
     },
     {
-      "symbol": "func_ov065_02118cc4",
+      "symbol": "_ZN9daDossy_c19func_ov065_02118cc4Ev",
       "address": "0x02118cc4",
       "size": "0x00000040",
       "legacy_source": "src/func_ov065_02118cc4.c",
@@ -168,14 +168,14 @@
       "ordinal": 20
     },
     {
-      "symbol": "func_ov065_0211956c",
+      "symbol": "_ZN9daDossy_c19func_ov065_0211956cEP8dActor_c",
       "address": "0x0211956c",
       "size": "0x00000028",
       "legacy_source": "src/func_ov065_0211956c.c",
       "ordinal": 21
     },
     {
-      "symbol": "func_ov065_02119594",
+      "symbol": "_ZN9daDossy_c19func_ov065_02119594EP8dActor_c",
       "address": "0x02119594",
       "size": "0x00000028",
       "legacy_source": "src/func_ov065_02119594.c",
@@ -228,7 +228,7 @@
   "bss": [],
   "notes": [
     "Written in descending ROM order (mwccarm's default reverse emission), with `#pragma opt_common_subs off` and `#pragma opt_strength_reduction off` file-wide. Both are needed and neither binds as a push/pop bracket around func_ov065_02118838, the function that needs them; the old per-file `opt_propagation off` on daDossy_c::Behavior is not needed in this TU.",
-    "Deslop leftovers are listed in the source's header comment: the Fix12<int> by-value mangled calls (wall 6az, measured again here on ModelAnim::SetAnim), the decl_common.h char* parameters of func_ov065_021180d4/02118838/02118c4c/02118cc4/02119210, the char*-stepped DorriePlatform walks, and address-named data."
+    "Leftovers are listed in the source's header comment: the Fix12<int> by-value mangled calls (wall 6az, measured again here on ModelAnim::SetAnim), the decl_common.h char* parameters of func_ov065_021180d4/02118c4c/02119210, the char*-stepped DorriePlatform walks, and address-named data."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",

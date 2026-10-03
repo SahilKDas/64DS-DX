@@ -16,6 +16,22 @@
  * emits _ZTV, _ZTI and _ZTS: D1 (0x021111a0), D0 (0x021112b0), then a D2 the
  * cartridge has no home for (manifest: deadstrip). The registry factory
  * daHanachan_c_classInit (0x021136a4) closes the unit and ov034's .text.
+ *
+ * Leftover: indexing the segment fields instead of the row pointers DIFFs.
+ * StateDemoWaitInit as mSegmentPos[seg] / mSegmentRot[seg]: 47 words, size
+ * stays 0x134. UpdateSegments indexed the same way: size 0x178 grows to
+ * 0x18c. UpdateSegments with &mSegmentPos[seg - 1] in place of
+ * (char *)&mSegmentPos[0] + (seg - 1) * 0xc: size 0x178 grows to 0x180 and
+ * the NormalizeVec3IfNonZero relocation moves. UpdateSegmentModels with
+ * &mModelAnims[i].mat4x3: 2 words (add r6, r8, #0x110 / add r0, r6, #0x1c
+ * become add r6, r8, #0x12c / mov r0, r6). Dropping that function's rot
+ * induction and keeping only the model walk: 2 words, add r8, #6 and
+ * add r6, #0x64 swap. InitResources with the row pointers removed: 152
+ * words. The pointers stay; the stores name the member off that base.
+ * data_0209f318 + 0x154 and camera + 0x80 / + 0x8c (func_020092c4) are not
+ * daHanachan_c fields. SharedFilePtr has no fields, so the loaded file
+ * stays the word at +4. func_ov002_020c51d0 is ov002. Fix12 by-value calls
+ * stay the mangled bridges. The factory is still not `new` (comment there).
  */
 
 #pragma defer_codegen off
@@ -607,8 +623,9 @@ void daHanachan_c::StateDemoWaitMain()
 // @symbol _ZN12daHanachan_c17StateDemoWaitInitEv
 void daHanachan_c::StateDemoWaitInit()
 {
-    /* The loop steps two row pointers through this object by hand (strength
-       reduction is off for this function) and reaches the segment arrays off them. */
+    /* Strength reduction is off. posRow and rotRow start at this and step by
+       one element. Indexing mSegmentPos[seg] is 47 words off, so the fields
+       are named off the shifted pointer. */
     char *self = (char *)this;
     int seg;
     char *posRow;
@@ -626,13 +643,13 @@ void daHanachan_c::StateDemoWaitInit()
     zero = seg;
     for (; seg < 5; seg++, posRow += sizeof(Vector3), rotRow += sizeof(Vector3s)) {
         if (seg == 0) {
-            *(s32 *)(posRow + 0x3cc) = mPosX;
-            *(s32 *)(posRow + 0x3d0) = mPosY;
-            *(s32 *)(posRow + 0x3d4) = mPosZ;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].x = mPosX;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].y = mPosY;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].z = mPosZ;
             {
                 short ang = HorzAngleToCPlayer();
-                *(s16 *)(rotRow + 0x446) = ang;
-                mPrevAngleY = *(s16 *)(rotRow + 0x446);
+                ((daHanachan_c *)rotRow)->mSegmentRot[0].y = ang;
+                mPrevAngleY = ((daHanachan_c *)rotRow)->mSegmentRot[0].y;
             }
         } else {
             int prev;
@@ -648,10 +665,10 @@ void daHanachan_c::StateDemoWaitInit()
             MulVec3Mat4x3(&in, data_020a0e68, &out);
             prev = seg - 1;
             Vec3_Add(&sum, &mSegmentPos[prev], &out);
-            *(s32 *)(posRow + 0x3cc) = sum.x;
-            *(s32 *)(posRow + 0x3d0) = sum.y;
-            *(s32 *)(posRow + 0x3d4) = sum.z;
-            *(s16 *)(rotRow + 0x446) = mSegmentRot[prev].y;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].x = sum.x;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].y = sum.y;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].z = sum.z;
+            ((daHanachan_c *)rotRow)->mSegmentRot[0].y = mSegmentRot[prev].y;
         }
     }
 }
@@ -767,9 +784,10 @@ void daHanachan_c::HandlePlayerHits()
 // @symbol _ZN12daHanachan_c14UpdateSegmentsEv
 void daHanachan_c::UpdateSegments()
 {
-    /* Strength reduction and CSE are off here. rotRow and posRow are row
-       pointers into this object that the ROM loop steps by hand and addresses
-       mSegmentRot and mSegmentPos from; typed pointers change the loop. */
+    /* Strength reduction and CSE are off. rotRow starts at this+6 and posRow
+       at this+0xc, then each steps by one element, so member [0] on that
+       pointer is segment `seg` (the loop starts at 1). An index, or
+       &mSegmentPos[seg - 1] for the segment behind, changes the size. */
     char *self = (char *)this;
     int seg;
     Vector3 *cur;
@@ -794,33 +812,33 @@ void daHanachan_c::UpdateSegments()
         {
             char *prev = (char *)&mSegmentPos[0] + off;
             short ang = Vec3_HorzAngle(cur, prev);
-            *(short *)(rotRow + 0x446) = ang;
+            ((daHanachan_c *)rotRow)->mSegmentRot[0].y = ang;
             Vec3_Add(&sum, prev, &diff);
         }
 
-        *(int *)(posRow + 0x3cc) = sum.x;
-        *(int *)(posRow + 0x3d0) = sum.y;
-        *(int *)(posRow + 0x3d4) = sum.z;
-        mdCc_cs1[seg].pos.x = *(int *)(posRow + 0x3cc);
-        mdCc_cs1[seg].pos.y = *(int *)(posRow + 0x3d0);
-        mdCc_cs1[seg].pos.z = *(int *)(posRow + 0x3d4);
-        mdCc_cs2[seg].pos.x = *(int *)(posRow + 0x3cc);
-        mdCc_cs2[seg].pos.y = *(int *)(posRow + 0x3d0);
-        mdCc_cs2[seg].pos.z = *(int *)(posRow + 0x3d4);
+        ((daHanachan_c *)posRow)->mSegmentPos[0].x = sum.x;
+        ((daHanachan_c *)posRow)->mSegmentPos[0].y = sum.y;
+        ((daHanachan_c *)posRow)->mSegmentPos[0].z = sum.z;
+        mdCc_cs1[seg].pos.x = ((daHanachan_c *)posRow)->mSegmentPos[0].x;
+        mdCc_cs1[seg].pos.y = ((daHanachan_c *)posRow)->mSegmentPos[0].y;
+        mdCc_cs1[seg].pos.z = ((daHanachan_c *)posRow)->mSegmentPos[0].z;
+        mdCc_cs2[seg].pos.x = ((daHanachan_c *)posRow)->mSegmentPos[0].x;
+        mdCc_cs2[seg].pos.y = ((daHanachan_c *)posRow)->mSegmentPos[0].y;
+        mdCc_cs2[seg].pos.z = ((daHanachan_c *)posRow)->mSegmentPos[0].z;
 
         if (mFalling == 0) {
             int py;
             dBgCh_Gnd ray;
-            castPos.x = *(int *)(posRow + 0x3cc);
-            py = *(int *)(posRow + 0x3d0);
+            castPos.x = ((daHanachan_c *)posRow)->mSegmentPos[0].x;
+            py = ((daHanachan_c *)posRow)->mSegmentPos[0].y;
             castPos.y = py;
-            castPos.z = *(int *)(posRow + 0x3d4);
+            castPos.z = ((daHanachan_c *)posRow)->mSegmentPos[0].z;
             castPos.y = py + 0x3c000;
             ray.SetObjAndPos(castPos, 0);
             if (ray.DetectClsn() != 0) {
                 int clY = ray.clsnY;
-                if (*(int *)(posRow + 0x3d0) <= clY)
-                    *(int *)(posRow + 0x3d0) = clY;
+                if (((daHanachan_c *)posRow)->mSegmentPos[0].y <= clY)
+                    ((daHanachan_c *)posRow)->mSegmentPos[0].y = clY;
             }
         }
     }
@@ -832,23 +850,20 @@ void daHanachan_c::UpdateSegments()
 // @symbol _ZN12daHanachan_c19UpdateSegmentModelsEv
 void daHanachan_c::UpdateSegmentModels()
 {
-    /* Four separate induction pointers, one per stride, as the ROM loop keeps them;
-       indexing the members instead folds the model pointer's +0x1c into its start. */
-    char *self = (char *)this;
+    /* rot steps by one Vector3s from this, so the y load keeps add #0x400.
+       model steps by one ModelAnim. &mModelAnims[i].mat4x3 folds +0x1c into
+       the base and drops that add; a Model* walk keeps it. */
     int i;
-    char *rot = self;
+    char *rot = (char *)this;
     char *model = (char *)&mModelAnims[0];
-    char *pos = self;
-    char *mtx = self;
     for (i = 0; i < 5; i++) {
-        Matrix4x3_FromRotationY(model + 0x1c, *(s16 *)(rot + 0x446));
-        *(s32 *)(mtx + 0x150) = *(s32 *)(pos + 0x3cc) >> 3;
-        *(s32 *)(mtx + 0x154) = *(s32 *)(pos + 0x3d0) >> 3;
-        *(s32 *)(mtx + 0x158) = *(s32 *)(pos + 0x3d4) >> 3;
+        Matrix4x3_FromRotationY(&((Model *)model)->mat4x3,
+            ((daHanachan_c *)rot)->mSegmentRot[0].y);
+        mModelAnims[i].mat4x3.t.x = mSegmentPos[i].x >> 3;
+        mModelAnims[i].mat4x3.t.y = mSegmentPos[i].y >> 3;
+        mModelAnims[i].mat4x3.t.z = mSegmentPos[i].z >> 3;
         rot += sizeof(Vector3s);
         model += sizeof(ModelAnim);
-        pos += sizeof(Vector3);
-        mtx += sizeof(ModelAnim);
     }
 }
 
@@ -1082,6 +1097,8 @@ int daHanachan_c::InitResources()
     cyl1Flags = 0x200000;
     cyl2Height = 0x32000;
     one = 1;
+    /* These three start at this and step by one element. Dropping them for
+       mSegmentPos[i] / mSegmentRot[i] / mTextureSequences[i] is 152 words off. */
     texRow = c;
     posRow = c;
     rotRow = c;
@@ -1108,15 +1125,15 @@ int daHanachan_c::InitResources()
         _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(animRow, *(void **)((char *)animFile + 4), zeroA, 0x1000, zeroA);
         TextureSequence::Prepare(**(BMD_File **)((char *)modelFile + 4), **(BTP_File **)((char *)texFile + 4));
         _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(texSeq, *(void **)((char *)texFile + 4), zeroB, 0x1000, zeroB);
-        *(s32 *)(texRow + 0x374) = zeroC;
+        ((daHanachan_c *)texRow)->mTextureSequences[0].speed = zeroC;
         if (i == 0) {
-            *(s32 *)(posRow + 0x3cc) = mPosX;
-            *(s32 *)(posRow + 0x3d0) = mPosY;
-            *(s32 *)(posRow + 0x3d4) = mPosZ;
-            *(s16 *)(rotRow + 0x444) = mAngleX;
-            *(s16 *)(rotRow + 0x446) = mAngleY;
-            *(s16 *)(rotRow + 0x448) = mAngleZ;
-            mPrevAngleY = *(s16 *)(rotRow + 0x446);
+            ((daHanachan_c *)posRow)->mSegmentPos[0].x = mPosX;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].y = mPosY;
+            ((daHanachan_c *)posRow)->mSegmentPos[0].z = mPosZ;
+            ((daHanachan_c *)rotRow)->mSegmentRot[0].x = mAngleX;
+            ((daHanachan_c *)rotRow)->mSegmentRot[0].y = mAngleY;
+            ((daHanachan_c *)rotRow)->mSegmentRot[0].z = mAngleZ;
+            mPrevAngleY = ((daHanachan_c *)rotRow)->mSegmentRot[0].y;
         } else {
             va[2] = 0 - mSegmentSpacing[i];
             va[0] = zeroC;
@@ -1128,14 +1145,14 @@ int daHanachan_c::InitResources()
             MulVec3Mat4x3(va, data_020a0e68, vb);
             prev = i - 1;
             Vec3_Add(out, &mSegmentPos[prev], vb);
-            *(s32 *)(posRow + 0x3cc) = out[0];
-            *(s32 *)(posRow + 0x3d0) = out[1];
-            *(s32 *)(posRow + 0x3d4) = out[2];
-            *(s16 *)(rotRow + 0x446) = *(s16 *)(c + prev * 6 + 0x446);
+            ((daHanachan_c *)posRow)->mSegmentPos[0].x = out[0];
+            ((daHanachan_c *)posRow)->mSegmentPos[0].y = out[1];
+            ((daHanachan_c *)posRow)->mSegmentPos[0].z = out[2];
+            ((daHanachan_c *)rotRow)->mSegmentRot[0].y = ((daHanachan_c *)(c + prev * 6))->mSegmentRot[0].y;
         }
-        *(s32 *)(posRow + 0x408) = 0x1000;
-        *(s32 *)(posRow + 0x40c) = 0x1000;
-        *(s32 *)(posRow + 0x410) = 0x1000;
+        ((daHanachan_c *)posRow)->mSegmentScale[0].x = 0x1000;
+        ((daHanachan_c *)posRow)->mSegmentScale[0].y = 0x1000;
+        ((daHanachan_c *)posRow)->mSegmentScale[0].z = 0x1000;
         radius = data_ov034_021138d8[i];
         _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(cyl1, this, segPos, radius + 0xA000, cyl1Height, cyl1Flags, 0x26FE0);
         _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(cyl2, this, segPos, radius, cyl2Height, 0x200004, 0x26FE0);
@@ -1204,26 +1221,26 @@ extern int _ZTV12daHanachan_c[];
  * per-element __cxa_vec_ctor(..., func_0203d384 / func_0203d73c, ...) calls
  * over the two Vector3 arrays and the Vector3s array (measured: 999 words
  * differ, first wrong relocation _ZN15TextureSequenceC1Ev). Kept as the loose
- * file's explicit hand-built sequence; the one change the fold required is the
- * vtable store: this TU owns the key function and so defines
- * _ZTV12daHanachan_c at the start of the vtable object, two words ahead of the
- * address point. */
+ * file's explicit hand-built sequence, now addressed by the members. The one
+ * change the fold required is the vtable store: this TU owns the key function
+ * and so defines _ZTV12daHanachan_c at the start of the vtable object, two
+ * words ahead of the address point. */
 // @symbol daHanachan_c_classInit
 extern "C" daHanachan_c *daHanachan_c_classInit()
 {
-    char *c = (char *)_ZN7fBase_cnwEj(sizeof(daHanachan_c));
+    daHanachan_c *c = (daHanachan_c *)_ZN7fBase_cnwEj(sizeof(daHanachan_c));
     if (c) {
         _ZN12dEnemyBase_cC2Ev(c);
         *(int **)c = &_ZTV12daHanachan_c[2];
-        __cxa_vec_ctor(c + 0x110, 5, 0x64, (void (*)(void *))_ZN9ModelAnimC1Ev, (void (*)(void *))_ZN9ModelAnimD1Ev);
-        __cxa_vec_ctor(c + 0x304, 5, 0x14, (void (*)(void *))_ZN15MaterialChangerC1Ev, (void (*)(void *))_ZN15MaterialChangerD1Ev);
-        __cxa_vec_ctor(c + 0x368, 5, 0x14, (void (*)(void *))_ZN15TextureSequenceC1Ev, (void (*)(void *))_ZN15TextureSequenceD1Ev);
-        __cxa_vec_ctor(c + 0x3cc, 5, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
-        __cxa_vec_ctor(c + 0x408, 5, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
-        __cxa_vec_ctor(c + 0x444, 5, 6, (void (*)(void *))func_0203d73c, (void (*)(void *))_ZN8Vector3sD1Ev);
-        __cxa_vec_ctor(c + 0x478, 5, 0x40, (void (*)(void *))_ZN10dCcAcPos_cC1Ev, (void (*)(void *))_ZN10dCcAcPos_cD1Ev);
-        __cxa_vec_ctor(c + 0x5b8, 5, 0x40, (void (*)(void *))_ZN10dCcAcPos_cC1Ev, (void (*)(void *))_ZN10dCcAcPos_cD1Ev);
-        _ZN10dBgCh_ActrC1Ev(c + 0x708);
+        __cxa_vec_ctor(c->mModelAnims, 5, sizeof(ModelAnim), (void (*)(void *))_ZN9ModelAnimC1Ev, (void (*)(void *))_ZN9ModelAnimD1Ev);
+        __cxa_vec_ctor(c->mMaterialChangers, 5, sizeof(MaterialChanger), (void (*)(void *))_ZN15MaterialChangerC1Ev, (void (*)(void *))_ZN15MaterialChangerD1Ev);
+        __cxa_vec_ctor(c->mTextureSequences, 5, sizeof(TextureSequence), (void (*)(void *))_ZN15TextureSequenceC1Ev, (void (*)(void *))_ZN15TextureSequenceD1Ev);
+        __cxa_vec_ctor(c->mSegmentPos, 5, sizeof(Vector3), (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+        __cxa_vec_ctor(c->mSegmentScale, 5, sizeof(Vector3), (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+        __cxa_vec_ctor(c->mSegmentRot, 5, sizeof(Vector3s), (void (*)(void *))func_0203d73c, (void (*)(void *))_ZN8Vector3sD1Ev);
+        __cxa_vec_ctor(c->mdCc_cs1, 5, sizeof(dCcAcPos_c), (void (*)(void *))_ZN10dCcAcPos_cC1Ev, (void (*)(void *))_ZN10dCcAcPos_cD1Ev);
+        __cxa_vec_ctor(c->mdCc_cs2, 5, sizeof(dCcAcPos_c), (void (*)(void *))_ZN10dCcAcPos_cC1Ev, (void (*)(void *))_ZN10dCcAcPos_cD1Ev);
+        _ZN10dBgCh_ActrC1Ev(&c->mWithMeshClsn);
     }
-    return (daHanachan_c *)c;
+    return c;
 }

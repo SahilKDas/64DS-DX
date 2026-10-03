@@ -28,9 +28,10 @@
  * vtable slots 16/17 hold D1 and D0 only). D0's deallocation is an inline
  * operator delete, which is why nothing below mentions a heap.
  *
- * THE STATE MACHINE. The eleven func_ov080_* functions of this run keep
- * their address names: the cartridge preserves no spelling for them. The
- * ROM ties each one to this class instead of a name --
+ * THE STATE MACHINE. The eleven func_ov080_* functions of this run are
+ * non-static methods. The cartridge preserves no spelling for them, so the
+ * method name is the ROM address. The first parameter was the actor, so it
+ * is this. The ROM ties each one to this class --
  *   - the six state bodies are the pointer-to-member constants at ov080
  *     0x0212812c..0x02128158, the .data words directly before
  *     _ZTS9daBttBk_c. __sinit_ov080_02127a60 constructs this class's model
@@ -49,18 +50,29 @@
  * (0x02125158) with no gap, and nothing outside this run and its PMF
  * constants references any of them.
  *
- * Known limits:
+ * Known limits, and what this pass measured and left:
  * - func_ov080_02124eb0's old one-function source called it "MontyMole_Kill"
  *   (daChoropu_c::Kill); the state table makes it this class's state-2 enter
  *   function, not a daChoropu_c method.
- * - Particle::System::NewSimple, dActor_c::SpawnCoins and
- *   dActor_c::DropShadowScaleXYZ stay mangled extern "C" calls -- each takes
- *   Fix12<int> by value, and a member call homes the argument and changes
- *   the ROM ABI.
- * - func_ov080_02124acc, 02124edc, 021250c8 and 0212513c are declared with
- *   `char *` in decl_common.h, so those keep a `char *` parameter.
- * - The carrier's +0xc8 pointer (a Matrix4x3) is read raw; dActor_c has no
- *   member there yet.
+ * Leftover: dActor_c::SpawnCoins as a member, with a Fix12<int> spread built
+ *   and passed by value, size-DIFFed func_ov080_02124acc (ROM 0x170, object
+ *   0x17c) and func_ov080_02124edc (ROM 0x110, object 0x11c). Reverted to the
+ *   mangled extern "C" call. Particle::System::NewSimple has no header method.
+ *   DropShadowScaleXYZ, dCcAc_c::Init and dBgCh_Actr::Init stay the matching
+ *   mangled calls on the same by-value Fix12 wall; those three were not
+ *   re-spelled.
+ * Leftover: the carrier's +0xc8 Matrix4x3 pointer is read raw. dActor_c's
+ *   pad_0c5 covers 0xc5..0xcb, and this header has no name for it.
+ * Leftover: *(Vector3 *)&mCamSpacePosX. dActor_c stores that triple as three
+ *   s32 fields, not a Vector3.
+ * Leftover: mShadowMtx stays u8[0x30] and is cast to Matrix4x3. The header
+ *   names the array, not a Matrix4x3 member, so it was not retyped.
+ * Leftover: func_ov080_02124e60 stores 0 through *(int *)pad_0d0. The only
+ *   name at 0x0d0 is that 4-byte pad in front of mModel.
+ * Leftover: func_02010304, Matrix4x3_ApplyInPlaceToTranslation,
+ *   Vec3_LslInPlace, Matrix4x3_FromRotationY and
+ *   dBgCh_Actr_UpdateDiscreteNoLava_veneer stay free calls. They are defined
+ *   outside this TU.
  */
 
 #include "decl_common.h"
@@ -73,12 +85,8 @@
 struct Mtx43 { int a[12]; };
 typedef char Mtx43_size_must_be_0x30[sizeof(Mtx43) == 0x30 ? 1 : -1];
 
-/* The state table's rows hold pointers to member functions of this
-   pretend class; only the row pointer at 0x36c is ever read through it. */
-struct C;
-typedef void (C::*PMF)();
-struct C { char pad[0x36c]; PMF *pp; };
-typedef char C_size_must_be_0x370[sizeof(C) == 0x370 ? 1 : -1];
+/* State-table rows are 8-byte mwcc pointer-to-member pairs. */
+typedef void (daBttBk_c::*PMF)();
 
 extern "C" {
 void *func_02010304(void *a, void *b);
@@ -92,16 +100,11 @@ void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
 void dBgCh_Actr_UpdateDiscreteNoLava_veneer(dBgCh_Actr *w);
 void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void *self, void *actor, int a, int b, unsigned int c, unsigned int d);
 void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void *self, void *actor, int a, int b, void *v, int c);
-extern void func_ov080_02124c3c(daBttBk_c *self);
 }
 
 extern Mtx43 data_020a0e68;
 extern s16 data_02082214[];
 extern char data_ov080_0212847c[];
-
-/* InitResources and func_ov080_02124e60 leave r1 holding the 0 they just
- * stored. A two-arg call would write r1 again. */
-typedef void (*Fn2513c1)(char *);
 
 #pragma defer_codegen off
 
@@ -123,54 +126,53 @@ s32 daBttBk_c::OnYoshiTryEat()
  * func_02010304 is stored in mCarrier and enters state 1; otherwise, against
  * actor id 0xbf, mFlags bit 17 enters state 2 and a hitFlags bit 4 contact
  * breaks the crate (Player::IncMegaKillCount, dust, five coins). */
-// @symbol func_ov080_02124acc
-extern "C" void func_ov080_02124acc(char *c)
+// @symbol _ZN9daBttBk_c19func_ov080_02124accEv
+void daBttBk_c::func_ov080_02124acc()
 {
-    daBttBk_c *self = (daBttBk_c *)c;
-    if (self->mdCcAc_c.otherOwner == 0) return;
-    void *p = func_02010304(self, &self->mdCcAc_c);
-    if (p != 0) { self->mCarrier = (dActor_c *)p; func_ov080_0212513c((char *)self, 1); return; }
-    dActor_c *other = dActor_c::FindWithID(self->mdCcAc_c.otherOwner);
+    if (mdCcAc_c.otherOwner == 0) return;
+    void *p = func_02010304(this, &mdCcAc_c);
+    if (p != 0) { mCarrier = (dActor_c *)p; func_ov080_0212513c(1); return; }
+    dActor_c *other = dActor_c::FindWithID(mdCcAc_c.otherOwner);
     if (other == 0) return;
     int isId0xbf = (int)(other->actorID == 0xbf);
     if (isId0xbf == 0) return;
-    int inYoshiMouthA = (int)((self->mFlags & 0x20000) != 0);
-    if (inYoshiMouthA) { func_ov080_0212513c((char *)self, 2); return; }
-    if ((self->mdCcAc_c.hitFlags & 0x10) == 0) return;
+    int inYoshiMouthA = (int)((mFlags & 0x20000) != 0);
+    if (inYoshiMouthA) { func_ov080_0212513c(2); return; }
+    if ((mdCcAc_c.hitFlags & 0x10) == 0) return;
     ((Player *)other)->IncMegaKillCount();
     Vector3 v; Vector3 v2; Vector3 v3;
-    int y0 = self->mPosY;
-    int z = self->mPosZ;
-    int x = self->mPosX;
+    int y0 = mPosY;
+    int z = mPosZ;
+    int x = mPosX;
     int y = y0 + 0x32000;
     v.x = x; v.y = y; v.z = z;
     _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(6, v.x, v.y, v.z);
     v2.x = v.x;
     v2.y = v.y;
     v2.z = v.z;
-    self->PoofDustAt(v2);
-    int t = self->mPosY + 0x64000;
+    PoofDustAt(v2);
+    int t = mPosY + 0x64000;
     v3.x = v.x;
     v.y = t;
     v3.y = t;
     v3.z = v.z;
-    _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(self, v3, 5, 0xf000, 0);
-    Sound::PlayBank3(0x41, *(Vector3 *)&self->mCamSpacePosX);
-    self->MarkForDestruction();
+    _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(this, v3, 5, 0xf000, 0);
+    Sound::PlayBank3(0x41, *(Vector3 *)&mCamSpacePosX);
+    MarkForDestruction();
 }
 
 /* Model and shadow matrices: follows the carrier's matrix while carried,
  * then rebuilds the model matrix (mModel.mat4x3) and the drop shadow
  * matrix (mShadowMtx). */
-// @symbol func_ov080_02124c3c
-extern "C" void func_ov080_02124c3c(daBttBk_c *self)
+// @symbol _ZN9daBttBk_c19func_ov080_02124c3cEv
+void daBttBk_c::func_ov080_02124c3c()
 {
     Vector3 t;
     Vector3 pos;
-    int flags = self->mFlags;
+    int flags = mFlags;
     int inYoshiMouthB = (flags & 0x40000) != 0;
     if (inYoshiMouthB != false) return;
-    dActor_c *carrier = self->mCarrier;
+    dActor_c *carrier = mCarrier;
     if (carrier != 0) {
         int hasBit14 = (flags & 0x4000) != 0;
         if (hasBit14 != false) {
@@ -179,24 +181,24 @@ extern "C" void func_ov080_02124c3c(daBttBk_c *self)
 
                 int tx = 0xc000, ty = 0x2000, tz = 0;
                 t.x = tx; t.y = ty; t.z = tz;
-                carrier = self->mCarrier;
+                carrier = mCarrier;
                 data_020a0e68 = *(Mtx43 *)(*(void **)((char *)carrier + 0xc8));
                 Matrix4x3_ApplyInPlaceToTranslation(&data_020a0e68, t.x, t.y, t.z);
 
-                self->mPosX = data_020a0e68.a[9];
-                self->mPosY = data_020a0e68.a[10];
-                self->mPosZ = data_020a0e68.a[11];
-                Vec3_LslInPlace((Vector3 *)&self->mPosX, 3);
+                mPosX = data_020a0e68.a[9];
+                mPosY = data_020a0e68.a[10];
+                mPosZ = data_020a0e68.a[11];
+                Vec3_LslInPlace((Vector3 *)&mPosX, 3);
             }
         }
     }
-    Matrix4x3_FromRotationXYZExt(&self->mModel.mat4x3, self->mAngleX, self->mAngleY, self->mAngleZ);
-    self->mModel.mat4x3.m[9] = self->mPosX >> 3;
-    self->mModel.mat4x3.m[10] = self->mPosY >> 3;
-    self->mModel.mat4x3.m[11] = self->mPosZ >> 3;
-    pos.x = self->mPosX;
-    pos.y = self->mPosY;
-    pos.z = self->mPosZ;
+    Matrix4x3_FromRotationXYZExt(&mModel.mat4x3, mAngleX, mAngleY, mAngleZ);
+    mModel.mat4x3.m[9] = mPosX >> 3;
+    mModel.mat4x3.m[10] = mPosY >> 3;
+    mModel.mat4x3.m[11] = mPosZ >> 3;
+    pos.x = mPosX;
+    pos.y = mPosY;
+    pos.z = mPosZ;
     pos.y = pos.y + 0x14000;
     dBgCh_Gnd rg;
     rg.SetObjAndPos(pos, 0);
@@ -204,58 +206,57 @@ extern "C" void func_ov080_02124c3c(daBttBk_c *self)
     if (rg.DetectClsn()) {
         groundY = rg.clsnY;
     }
-    Matrix4x3_FromRotationY(self->mShadowMtx, self->mAngleY);
-    ((Matrix4x3 *)self->mShadowMtx)->m[9] = self->mPosX >> 3;
-    ((Matrix4x3 *)self->mShadowMtx)->m[10] = groundY >> 3;
-    ((Matrix4x3 *)self->mShadowMtx)->m[11] = self->mPosZ >> 3;
+    Matrix4x3_FromRotationY(mShadowMtx, mAngleY);
+    ((Matrix4x3 *)mShadowMtx)->m[9] = mPosX >> 3;
+    ((Matrix4x3 *)mShadowMtx)->m[10] = groundY >> 3;
+    ((Matrix4x3 *)mShadowMtx)->m[11] = mPosZ >> 3;
     {
-        s16 a = self->mAngleX;
+        s16 a = mAngleX;
         int sv = data_02082214[((unsigned short)(short)(a << 1) >> 4) * 2];
         if (sv < 0) sv = -sv;
         int result = (int)(((s64)sv * 0x28000 + 0x800) >> 12);
         _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
-            self, &self->mShadowModel, self->mShadowMtx, 0x96000, 0x32000, result + 0x96000, 0xf);
+            this, &mShadowModel, mShadowMtx, 0x96000, 0x32000, result + 0x96000, 0xf);
     }
 }
 
 /* State 2 update: back to state 0 once neither flag bit 17 nor 18 is set.
- * The one-argument call selects state 0 through the r1 left at 0. */
-// @symbol func_ov080_02124e60
-extern "C" int func_ov080_02124e60(daBttBk_c *self)
+ * The 0 stored through pad_0d0 is the state passed to func_ov080_0212513c. */
+// @symbol _ZN9daBttBk_c19func_ov080_02124e60Ev
+int daBttBk_c::func_ov080_02124e60()
 {
-    int flags = self->mFlags;
+    int flags = mFlags;
     int inYoshiMouthA = (flags & 0x20000) ? 1 : 0;
     if (inYoshiMouthA != 0) goto done;
     int inYoshiMouthB = (flags & 0x40000) ? 1 : 0;
     if (inYoshiMouthB != 0) goto done;
-    *(int *)self->pad_0d0 = 0;
-    ((Fn2513c1)func_ov080_0212513c)((char *)self);
+    *(int *)pad_0d0 = 0;
+    func_ov080_0212513c(0);
 done:
     return 1;
 }
 
 /* State 2 enter. */
-// @symbol func_ov080_02124eb0
-extern "C" int func_ov080_02124eb0(daBttBk_c *self)
+// @symbol _ZN9daBttBk_c19func_ov080_02124eb0Ev
+int daBttBk_c::func_ov080_02124eb0()
 {
-    self->mHorzSpeed = 0;
-    ((dCc_c *)&self->mdCcAc_c)->Clear();
-    self->mState = 2;
+    mHorzSpeed = 0;
+    mdCcAc_c.Clear();
+    mState = 2;
     return 1;
 }
 
 /* State 1 update: copies the carrier's angles; breaks the crate unless
  * mFlags bit 8 is set and bit 13 clear. */
-// @symbol func_ov080_02124edc
-extern "C" int func_ov080_02124edc(char *c)
+// @symbol _ZN9daBttBk_c19func_ov080_02124edcEv
+int daBttBk_c::func_ov080_02124edc()
 {
-    daBttBk_c *self = (daBttBk_c *)c;
-    self->mAngleX = self->mCarrier->mAngleX;
-    self->mAngleY = self->mCarrier->mAngleY;
-    self->mPrevAngleX = self->mAngleX;
-    self->mPrevAngleY = self->mAngleY;
+    mAngleX = mCarrier->mAngleX;
+    mAngleY = mCarrier->mAngleY;
+    mPrevAngleX = mAngleX;
+    mPrevAngleY = mAngleY;
     {
-        int flags = self->mFlags;
+        int flags = mFlags;
         int hasBit8 = (int)((flags & 0x100) != 0);
         if (hasBit8 != 0) {
             int hasBit13 = (int)((flags & 0x2000) != 0);
@@ -264,20 +265,20 @@ extern "C" int func_ov080_02124edc(char *c)
         {
             Vector3 vec;
             Vector3 vec2;
-            int x = self->mPosX;
-            int z = self->mPosZ;
-            int y = self->mPosY + 0xb4000;
+            int x = mPosX;
+            int z = mPosZ;
+            int y = mPosY + 0xb4000;
             vec.x = x;
             vec.y = y;
             vec.z = z;
             vec2.x = vec.x;
             vec2.y = vec.y;
             vec2.z = vec.z;
-            self->PoofDustAt(vec2);
+            PoofDustAt(vec2);
             _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(6, vec.x, vec.y, vec.z);
 
             {
-                int ybase = self->mPosY;
+                int ybase = mPosY;
                 int xx = vec.x;
                 int y2 = ybase + 0x64000;
                 int zz = vec.z;
@@ -286,80 +287,79 @@ extern "C" int func_ov080_02124edc(char *c)
                 v3.z = zz;
                 vec.y = y2;
                 v3.y = y2;
-                _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(self, v3, 5, 0xf000, 0);
+                _ZN8dActor_c10SpawnCoinsERK7Vector3j5Fix12IiEs(this, v3, 5, 0xf000, 0);
             }
 
-            Sound::PlayBank3(0x41, *(Vector3 *)&self->mCamSpacePosX);
-            self->MarkForDestruction();
+            Sound::PlayBank3(0x41, *(Vector3 *)&mCamSpacePosX);
+            MarkForDestruction();
         }
     }
 clear:
-    ((dCc_c *)&self->mdCcAc_c)->Clear();
+    mdCcAc_c.Clear();
     return 1;
 }
 
 /* State 1 enter. */
-// @symbol func_ov080_02124fec
-extern "C" int func_ov080_02124fec(daBttBk_c *self)
+// @symbol _ZN9daBttBk_c19func_ov080_02124fecEv
+int daBttBk_c::func_ov080_02124fec()
 {
-    u32 *flagsPtr = &self->mFlags;
+    u32 *flagsPtr = &mFlags;
     int one = 1;
-    self->mState = one;
+    mState = one;
     *flagsPtr &= ~3;
     return one;
 }
 
 /* State 0 update: fall, bounce at 60% on landing, collide. */
-// @symbol func_ov080_0212500c
-extern "C" int func_ov080_0212500c(daBttBk_c *self)
+// @symbol _ZN9daBttBk_c19func_ov080_0212500cEv
+int daBttBk_c::func_ov080_0212500c()
 {
-    dBgCh_Actr_UpdateDiscreteNoLava_veneer(&self->mWithMeshClsn);
-    if (self->mWithMeshClsn.JustHitGround()) {
-        int v = self->mVertSpeed * -0x3c;
-        self->mVertSpeed = v / 100;
-    } else if (self->mWithMeshClsn.IsOnGround()) {
-        self->mVertSpeed = 0xc000;
+    dBgCh_Actr_UpdateDiscreteNoLava_veneer(&mWithMeshClsn);
+    if (mWithMeshClsn.JustHitGround()) {
+        int v = mVertSpeed * -0x3c;
+        mVertSpeed = v / 100;
+    } else if (mWithMeshClsn.IsOnGround()) {
+        mVertSpeed = 0xc000;
     }
-    self->UpdatePos(&self->mdCcAc_c);
-    func_ov080_02124acc((char *)self);
-    ((dCc_c *)&self->mdCcAc_c)->Clear();
-    ((dCc_c *)&self->mdCcAc_c)->Update();
+    UpdatePos(&mdCcAc_c);
+    func_ov080_02124acc();
+    mdCcAc_c.Clear();
+    mdCcAc_c.Update();
     return 1;
 }
 
 /* State 0 enter. */
-// @symbol func_ov080_0212509c
-extern "C" int func_ov080_0212509c(daBttBk_c *self)
+// @symbol _ZN9daBttBk_c19func_ov080_0212509cEv
+int daBttBk_c::func_ov080_0212509c()
 {
-    self->mVertSpeed = 49152;
-    self->mWithMeshClsn.SetLimMovFlag();
-    self->mState = 0;
+    mVertSpeed = 49152;
+    mWithMeshClsn.SetLimMovFlag();
+    mState = 0;
     return 1;
 }
 
 /* Runs the current state row's update function (second PMF). */
-// @symbol func_ov080_021250c8
-extern "C" void func_ov080_021250c8(char *raw)
+// @symbol _ZN9daBttBk_c19func_ov080_021250c8Ev
+void daBttBk_c::func_ov080_021250c8()
 {
-    C *c = (C *)raw;
-    PMF *p = c->pp + 1;
-    (c->**p)();
+    PMF *p = (PMF *)mStateRow + 1;
+    (this->**p)();
 }
 
 /* Runs the current state row's enter function (first PMF). */
-// @symbol func_ov080_02125104
-extern "C" void func_ov080_02125104(C *c)
+// @symbol _ZN9daBttBk_c19func_ov080_02125104Ev
+void daBttBk_c::func_ov080_02125104()
 {
-    PMF *p = c->pp;
-    (c->**p)();
+    PMF *p = (PMF *)mStateRow;
+    (this->**p)();
 }
 
 /* Changes state: points mStateRow at row i of the state table, then enters it. */
-// @symbol func_ov080_0212513c
-extern "C" void func_ov080_0212513c(char *c, int i)
+// @symbol _ZN9daBttBk_c19func_ov080_0212513cEi
+void daBttBk_c::func_ov080_0212513c(int i)
 {
-    ((daBttBk_c *)c)->mStateRow = data_ov080_0212847c + (i << 4);
-    func_ov080_02125104((C *)c);
+    mStateRow = data_ov080_0212847c + (i << 4);
+    func_ov080_02125104();
 }
 
 /* Slot 3: one shared model file handle to give back. */
@@ -390,8 +390,8 @@ int daBttBk_c::Render()
 // @symbol _ZN9daBttBk_c8BehaviorEv
 int daBttBk_c::Behavior()
 {
-    func_ov080_021250c8((char *)this);
-    func_ov080_02124c3c(this);
+    func_ov080_021250c8();
+    func_ov080_02124c3c();
     return 1;
 }
 
@@ -424,8 +424,8 @@ int daBttBk_c::InitResources()
     mScaleZ = 0x1000;
     _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, this, 0x32000, 0x32000, 0, 0);
     mCarrier = 0;
-    ((Fn2513c1)func_ov080_0212513c)((char *)this);
-    func_ov080_02124c3c(this);
+    func_ov080_0212513c(0);
+    func_ov080_02124c3c();
     return 1;
 }
 

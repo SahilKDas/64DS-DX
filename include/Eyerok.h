@@ -69,14 +69,18 @@ struct Eyerok : dBgActor_c {
        so it is a pointer to the current state descriptor, not a byte.
        func_ov066_02119454 is what installs one. */
     void *mState;                                           /* 0x48c */
-    /* Player locked for the defeat dialogue. */
+    /* The player locked for the talk state's dialogue (func_ov066_0211903c):
+       the message before the fight and the one after it. */
     Player *mTalkPlayer;                                    /* 0x490 */
-    /* Per-state scratch, cleared by every state entry. 02118cdc toggles
-       which hand attacks; 0211903c latches ShowMessage acceptance. */
+    /* Per-state scratch; most enter handlers clear both (the dormant enter
+       handler does nothing). mStateWork0: attacking-hand toggle (02118cdc),
+       stomp count (pattern 8), 20-frame stand-down counter (pattern 5),
+       rise-started flag. mStateWork1: ShowMessage latch (0211903c),
+       hit-volume-armed flag (func_ov066_021164ec). */
     s32 mStateWork0;                                        /* 0x494 */
     s32 mStateWork1;                                        /* 0x498 */
     s32 mPartIdx;                                           /* 0x49c */
-    /* Step within the current state. The entries reset it to 0. */
+    /* Step within the current state. Most enter handlers reset it to 0. */
     s32 mSubState;                                          /* 0x4a0 */
     /* The part's rest position: InitResources seeds it from the actor position
        and then offsets it (a hand goes -+0x31f000 in X, -0x32000 in Z), and
@@ -88,15 +92,38 @@ struct Eyerok : dBgActor_c {
     s32 mSpawnPosX;                                         /* 0x4b0 */
     s32 mSpawnPosY;                                         /* 0x4b4 */
     s32 mSpawnPosZ;                                         /* 0x4b8 */
-    u8  pad_4bc[0x14];
+    /* The point a hand is currently moving to. The state handlers fill it
+       (from the closest player's position, or a fixed spot) and then walk
+       mPosX/Z toward it with Vec3_ApproachHorz / ApproachLinear. */
+    s32 mTargetPosX;                                        /* 0x4bc */
+    s32 mTargetPosY;                                        /* 0x4c0 */
+    s32 mTargetPosZ;                                        /* 0x4c4 */
+    /* Per-frame step handed to ApproachLinear(&mHorzSpeed, 0x258000, step):
+       the sideways-run states bump it by 0x1a or 0x130 each frame while it is
+       below 0x2710. */
+    s32 mHorzAccelStep;                                     /* 0x4c8 */
+    u8  pad_4cc[0x4];
     /* Both are counted down once a frame by DecIfAbove0_Short, which takes a
-       u16 * -- 0x4d0 was declared u8 + 1 byte of padding until that was read. */
+       u16 * -- 0x4d0 was declared u8 + 1 byte of padding until that was read.
+       mTimer1 is the per-state countdown the handlers arm and test for zero;
+       mTimer2 is armed (0x64 or 0x1e frames) by InitResources and before the
+       body enters its talk or decision state; both of those wait for it to
+       reach 0. */
     u16 mTimer1;                                            /* 0x4d0 */
     u16 mTimer2;                                            /* 0x4d2 */
+    /* Dust-burst frame counter: 0 = idle. A fire hit (0x40000 in the hit mask)
+       sets it to 1; Behavior then bumps it every frame, emits dust every other
+       frame, and clears the 0x14 dust slots once it passes 0x26. */
     u16 mDustCounter;                                       /* 0x4d4 */
     u8  pad_4d6[0x2];
-    s8  unk_4d8;                                            /* 0x4d8 */
-    /* How many hands have been picked this pattern. */
+    /* A hand's remaining hits: InitResources sets 3 on the two hands, the hit
+       check (func_ov066_0211603c) subtracts per hit and a hand with 0 or fewer
+       left is defeated. Nothing in Eyerok.cpp writes it for the main
+       instance. */
+    s8  mHitPoints;                                         /* 0x4d8 */
+    /* Picks made by patterns 5..7 since the last pattern 8 or 9 (it starts
+       at 0); the decision state compares it with
+       data_ov066_0211abe4 + 3. */
     u8  mPickCount;                                         /* 0x4d9 */
     u8  pad_4da[0x2];
     /* The ROM destroys this with __cxa_vec_cleanup(this + 0x4dc, 0x14, 0xc,
@@ -107,10 +134,18 @@ struct Eyerok : dBgActor_c {
        from any indexed access. */
     Vector3 mDustPos[0x14];                                 /* 0x4dc */
     /* One recycled Particle::System handle per mDustPos slot, per effect id.
-       Behavior walks all 0x14 slots and reissues both. Was pad_5cc. */
+       Behavior reissues both for each slot with a nonzero position
+       while mDustCounter is nonzero. Was pad_5cc. */
     u32 mDustParticle1[0x14];                               /* 0x5cc */
     u32 mDustParticle2[0x14];                               /* 0x61c */
-    u8  pad_66c[0x6];
+    /* Texture-pattern swap timer and phase (func_ov066_02116390). When the
+       timer reaches 0: phase 0 -> switch to the ae2c / ae9c pattern for
+       0x32..0x50 frames (random); phase 1 -> back to ae3c / aebc for 8
+       frames; the phase flips each time. Which pattern is which is not
+       identified. */
+    u16 mTexTimer;                                          /* 0x66c */
+    u8  mTexPhase;                                          /* 0x66e */
+    u8  pad_66f[0x3];
     u8  mStarId;                                            /* 0x672 */
     u8  mStarTracked;                                       /* 0x673 */
     dBgW_KcMbg mMeshCollider2;                              /* 0x674 -- this class's own, not dBgActor_c's */
@@ -202,18 +237,24 @@ struct Eyerok {
     s32 mSpawnPosX;            /* 0x4b0 */
     s32 mSpawnPosY;            /* 0x4b4 */
     s32 mSpawnPosZ;            /* 0x4b8 */
-    u8  pad_4bc[0x14];
+    s32 mTargetPosX;        /* 0x4bc */
+    s32 mTargetPosY;        /* 0x4c0 */
+    s32 mTargetPosZ;        /* 0x4c4 */
+    s32 mHorzAccelStep;     /* 0x4c8 */
+    u8  pad_4cc[0x4];
     u16 mTimer1;            /* 0x4d0 */
     u16 mTimer2;            /* 0x4d2 */
     u16 mDustCounter;            /* 0x4d4 */
     u8  pad_4d6[0x2];
-    s8  unk_4d8;            /* 0x4d8 */
+    s8  mHitPoints;            /* 0x4d8 */
     u8  mPickCount;         /* 0x4d9 */
     u8  pad_4da[0x2];
     struct Vector3 mDustPos[0x14];    /* 0x4dc */
     u32 mDustParticle1[0x14];        /* 0x5cc */
     u32 mDustParticle2[0x14];        /* 0x61c */
-    u8  pad_66c[0x6];
+    u16 mTexTimer;          /* 0x66c */
+    u8  mTexPhase;          /* 0x66e */
+    u8  pad_66f[0x3];
     u8  mStarId;            /* 0x672 */
     u8  mStarTracked;            /* 0x673 */
     /* dBgW_KcMbg member. The cartridge's own ~Eyerok calls _ZN10dBgW_KcMbgD1Ev at

@@ -13,7 +13,7 @@
  *   _ZN11daChoropu_cD0Ev  the same two members destroyed in reverse, then
  *       ~dActor_c.
  *
- * SIZE 0x18c is the factory's own literal; unk_188 (4 bytes, 0x188) closes
+ * SIZE 0x18c is the factory's own literal; mEmergeSystemID (4 bytes, 0x188) closes
  * exactly on it.
  *
  * Everything below 0x0d0 duplicated dActor_c's own fields under placeholder
@@ -33,22 +33,84 @@
  * MontyMole_Spawn) constructs it for the CHOROPU
  * registry profile.
  */
+/* Actor IDs this class names (symbols/actor_debug_names.tsv). */
+enum {
+    daChoropu_ACTOR_ID           = 0x136,   /* 310 CHOROPU -- this class; used to find the others of its group */
+    daChoropu_ACTOR_ONEUPKINOKO  = 0x114    /* 276 ONEUPKINOKO -- spawned on the knock-back that finds the tally (this mole's
+                                           mTimesHit plus up to four partners') already at 7 */
+};
+
+/* mState indexes the six-row table data_ov080_02128438, which __sinit_ov080_021278c0
+ * fills from six pointer-to-member records in .data (rows in this order:
+ * data_ov080_02127fa0, 02127f88, 02127fa8, 02127f80, 02127f98, 02127f90). Each record
+ * holds the update handler's address and a zero word. The names say what the
+ * handler does; they are not labels recovered from the cartridge.
+ *
+ *   state  handler                 what it does
+ *   0 SETUP       func_ov080_02123fcc  collision off, collect the group's partners, go to 1
+ *   1 HIDDEN      func_ov080_02123ecc  underground; starts emerging when it has the turn and
+ *                                      the Player is 250..1500 units away
+ *   2 EMERGE      func_ov080_02123c24  animation 0x2d4, cylinder grows; then picks 3, 4 or 5
+ *   3 THROW_ROCK  func_ov080_02123a34  animation 0x2d5; spawns a daChoro_Rock_c on frame 10
+ *   4 WAIT        func_ov080_02123924  animation 0x2d3; to 5 when it ends or the Player is close
+ *   5 LEAP        func_ov080_02123860  animation 0x2d2; cylinder height curve peaks at 288
+ *                                      units, collision off from frame 15; back to 1
+ */
+enum {
+    daChoropu_ST_SETUP      = 0,
+    daChoropu_ST_HIDDEN     = 1,
+    daChoropu_ST_EMERGE     = 2,
+    daChoropu_ST_THROW_ROCK = 3,
+    daChoropu_ST_WAIT       = 4,
+    daChoropu_ST_LEAP       = 5
+};
+
+/* mGroupMode (param1 & 0xf): 0 = works alone, anything else gathers partners; 2 picks
+ * its next state at random after emerging (see func_ov080_02123c24). Only 0 and 2 are
+ * distinguished by the code in this TU. */
+enum {
+    daChoropu_GROUP_SOLO   = 0,
+    daChoropu_GROUP_RANDOM = 2
+};
+
+/* dCcAc_c::flags bit 0 SET = collision disabled (dCc_c::Update bails on it). */
+enum {
+    daChoropu_CC_DISABLED = 0x1
+};
+
+/* hitFlags bits tested here (bit table in include/dCc_c.h). */
+enum {
+    daChoropu_HIT_MEGA   = 0x10,        /* mega character */
+    daChoropu_HIT_PLAYER = 0x400000     /* player */
+};
+
+/* dActor_c::mFlags bit 0x10000000. Set when the mole starts to emerge (Hidden) and again on
+ * frame 6 of Emerge, cleared whenever it hides (Setup, Leap from frame 15, knocked
+ * back). dActor_c.h lists the bit as profile-authored with its consumer not recovered;
+ * the name is a guess at its meaning and only the set/clear points are evidence. */
+enum {
+    daChoropu_FLAG_EMERGED = 0x10000000
+};
+
 struct daChoropu_c : dActor_c {
-    u8  pad_0d0[0x4];
+    u8  pad_0d0[0x4];                 /* untouched by any function in daChoropu_c.cpp */
     /* ModelAnim member, named by _ZN9ModelAnimD1Ev at +0xd4 -- a relocation the ROM build checks. */
     ModelAnim mModelAnim;            /* 0x0d4 */
     /* dCcAc_c member, named by the class's own destructor calling
        dCcAc_c's D1 at +0x138. [_ZN11daChoropu_cD0Ev.c] */
-    dCcAc_c mdCcAc_c;            /* 0x138 */
-    u32 mPartnerIDs[4];     /* 0x16c -- other daChoropu_c of the same group, by unique ID */
-    s32 mState;             /* 0x17c -- row of the state table, see daChoropu_c.cpp */
-    u8  unk_180;            /* 0x180 */
-    u8  unk_181;            /* 0x181 */
-    u8  unk_182;            /* 0x182 */
+    dCcAc_c mdCcAc_c;            /* 0x138 -- its height (+0x8) is rewritten every frame by Emerge and Leap */
+    u32 mPartnerIDs[4];     /* 0x16c -- unique IDs of the other daChoropu_c with the same mGroupId (filled by Setup) */
+    s32 mState;             /* 0x17c -- row of the state table, daChoropu_ST_* */
+    u8  mGroupMode;         /* 0x180 -- param1 & 0xf, see daChoropu_GROUP_* */
+    u8  mHasTurn;           /* 0x181 -- 1 while this mole is the one allowed to emerge; passed on by func_ov080_02124360.
+                                        A solo mole (mGroupMode 0) starts with 1; otherwise it starts as param1 bit 8 */
+    u8  mGroupId;           /* 0x182 -- (param1 >> 4) & 0xf; moles with equal values are partners */
     u8  mNumPartners;       /* 0x183 -- entries used in mPartnerIDs */
-    u8  unk_184;            /* 0x184 */
+    u8  mTimesHit;          /* 0x184 -- bumped each time this mole is knocked underground while the group's total is below 7 */
     u8  pad_185[0x3];
-    s32 unk_188;            /* 0x188 */
+    /* 0x188 -- Particle::System unique ID of effect 0x29, re-passed to System::New on
+       each Emerge frame 6..25 and zeroed when Emerge ends */
+    u32 mEmergeSystemID;
 
     virtual ~daChoropu_c();            /* slots 16 (D1), 17 (D0) */
 

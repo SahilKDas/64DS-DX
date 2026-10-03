@@ -103,7 +103,7 @@ the two extern declarations was byte-neutral. `build_pin.verify` → `(True, '20
 
 Do that, per class, byte-verifying each. Then re-run the census and the clean swaps land.
 
-The 29: `BobOmb BooCage daKpa_c daKpaFire_c BowserPuzzlePiece daPropeller_Heyho_Fire_c Coffin FlyGuy Goomba
+The 29: `BobOmb BooCage daKpa_c daKpaFire_c daObjFl_Puzzle_c daPropeller_Heyho_Fire_c Coffin FlyGuy Goomba
 Koopa daJgm_c daC_Jugem_c daPiano_c MrI MrI_Projectile OneUpMushroom daPeach_c
 RotatingClockHand Scuttlebug daObjTatefuda_c daBgSnmBdy_c daBgSnmHed_c Snufit Spindrift Stage
 daBasabasa_c TtcConveyorBeltLarge WaterBomb daYegg_c`

@@ -17,6 +17,15 @@
  * decl_common.h is left out because four of the data symbols here collide
  * with its spellings.
  *
+ * ov006 0x020c6f8c..0x020c8a30 (.text), 40 functions. The first twelve are
+ * the helpers the owning scenes call: a tuning-word rescale
+ * (func_ov006_020c6f8c), the draw/update/reset/init loops over the
+ * three-Mario array and its small state accessors (0x020c70d0..0x020c7574).
+ * They share the .data tuning words at 0213b008..0213b01c and the bss
+ * window at 02140400.. with the members below, which is what puts them in
+ * this TU. They were one-function shards, one per function; func_ov006_020c7490 keeps its
+ * `opt_common_subs off` as a push/pop bracket.
+ *
  * Still raw:
  * - ModelAnim::SetAnim takes Fix12<int> by value; its real spelling makes
  *   the compiler home the argument and the size changes. NewSimple takes
@@ -63,6 +72,10 @@ void func_ov006_020e6e3c(int a, int b);
 void func_ov006_020c8c78(int a, int b);
 void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
 void Matrix4x3_ApplyInPlaceToRotationY(void *m, short angY);
+int  func_020531a4(int a);
+void func_ov006_020c8a30(void);
+void func_ov006_020c8a64(void);
+void func_ov006_020c8a9c(int a, int b);
 
 /* The mState records this file installs or compares. */
 extern Jump3DState data_ov006_0213b020;
@@ -86,6 +99,7 @@ extern BCA_File **data_ov006_0213b098[];
 /* Tuning words, read as plain ints. */
 extern int data_ov006_0213b008;
 extern int data_ov006_0213b00c;
+extern int data_ov006_0213b014;
 extern int data_ov006_0213b010;
 extern int data_ov006_0213b018;
 extern int data_ov006_0213b01c;
@@ -110,12 +124,22 @@ extern SharedFilePtr data_ov006_02140458;
 extern SharedFilePtr data_ov006_02140460;
 extern SharedFilePtr data_ov006_02140468;
 
+/* The pool the minigame scenes hand in: count, base pointer, level, round
+ * and the three player slots. */
+extern int data_ov006_02140410;
+extern int data_ov006_02140414;
+extern int data_ov006_02140418;
+extern char *data_ov006_02140420;
+extern char *data_ov006_021403f4[];
+extern int data_ov006_0213b040[2];
+
 extern u8  data_ov006_02140400;
 extern u16 data_ov006_02140404;
 extern void *data_ov006_02141a40;
 extern void *data_ov006_02141a44;
 extern OamAttr *data_ov006_02134d1c;
 extern Vector3 data_ov006_0212ddd0;
+extern char data_ov006_0212dddc[];
 
 extern u8 data_020a0e40;
 extern u8 data_020a0de8[][4];
@@ -133,6 +157,200 @@ void  UpdateAngle(short &angle, short target, int speed, short maxStep);
 short ApproachLinear2(short &value, short target, short step);
 void  ApproachLinear(int &value, int target, int step);
 
+
+// @symbol func_ov006_020c6f8c
+/* Rescales the six tuning words at 0213b008..0213b01c from one input,
+ * clamped to 0x3000. */
+extern "C" void func_ov006_020c6f8c(int a)
+{
+    int b;
+    if (a > 0x3000) a = 0x3000;
+    b = func_020531a4(a);
+    data_ov006_0213b010 = (int)(((long long)b * -0x2400 + 0x800) >> 12);
+    data_ov006_0213b018 = (int)(((long long)a * 0xe0 + 0x800) >> 12);
+    data_ov006_0213b00c = (int)(((long long)b * 0x4c00 + 0x800) >> 12);
+    data_ov006_0213b01c = (int)(((long long)b * 0x200 + 0x800) >> 12);
+    data_ov006_0213b014 = (int)(((long long)b * 0x180 + 0x800) >> 12);
+    data_ov006_0213b008 = (int)(((long long)b * 0x5000 + 0x800) >> 12);
+}
+
+// @symbol func_ov006_020c70d0
+extern "C" void func_ov006_020c70d0(void)
+{
+    int i;
+    for (i = 0; i < data_ov006_02140418; i++) {
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + i * 0xb8))->func_ov006_020c7734();
+    }
+    func_ov006_020c8a30();
+}
+
+// @symbol func_ov006_020c712c
+extern "C" void func_ov006_020c712c(void)
+{
+    int i;
+    data_ov006_02140404 = data_ov006_02140404 + 0x800;
+    for (i = 0; i < data_ov006_02140418; i++) {
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + i * 0xb8))->func_ov006_020c7860();
+    }
+    func_ov006_020c8a64();
+}
+
+// @symbol func_ov006_020c719c
+extern "C" void func_ov006_020c719c(u32 a0, u32 a1)
+{
+    int i;
+    int x;
+    data_ov006_02140410 = a0;
+    data_ov006_02140414 = a1;
+    if (a0 < 5) {
+        x = a0 * 0x140 + 0x1000;
+    } else {
+        x = (a0 % 5 + a0 / 5) * 0x280 + 0x1000;
+    }
+    func_ov006_020c6f8c(x);
+    if ((u32)data_ov006_02140410 % 5 == 0) {
+        data_ov006_02140428 = data_ov006_02140418;
+    }
+    for (i = 0; i < data_ov006_02140418; i++) {
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + i * 0xb8))->func_ov006_020c8658();
+    }
+    func_ov006_020c8a9c(data_ov006_02140418 - data_ov006_02140428, 0);
+    data_ov006_02140434 = 0;
+}
+
+// @symbol func_ov006_020c72b4
+extern "C" void func_ov006_020c72b4(void) { data_ov006_02140400 = 0; }
+
+// @symbol func_ov006_020c72c8
+extern "C" void func_ov006_020c72c8(void) { data_ov006_02140400 = 1; }
+
+// @symbol func_ov006_020c72dc
+extern "C" void func_ov006_020c72dc(void)
+{
+    ApproachLinear(data_ov006_02140428, data_ov006_02140418, 1);
+}
+
+// @symbol func_ov006_020c7300
+/* Returns 0 if any entry's pair at +0x3c disagrees with the record at
+ * 0213b040 (a y mismatch is tolerated when x is 0), else 1. */
+struct Jump3DEnt {
+    char _pad0[0x3c];
+    int x;
+    int y;
+    char _pad44[0x74];
+};
+extern "C" int func_ov006_020c7300(void)
+{
+    int i;
+    for (i = 0; i < data_ov006_02140418; i++) {
+        int *v = (int *)(&((Jump3DEnt *)data_ov006_02140420)[i].x);
+        volatile int *q = (volatile int *)data_ov006_0213b040;
+        if (v[0] != data_ov006_0213b040[0]
+            || (v[1] != q[1] && ((Jump3DEnt *)data_ov006_02140420)[i].x != 0))
+            return 0;
+    }
+    return 1;
+}
+
+// @symbol func_ov006_020c7388
+extern "C" void func_ov006_020c7388(void)
+{
+    int i;
+    int off;
+    i = 0;
+    data_ov006_0213b018 = 0x100;
+    data_ov006_0213b010 = -0x4800;
+    if (data_ov006_02140418 <= 0)
+        return;
+    off = 0;
+    do {
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c8084();
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c76e0();
+        i++;
+        off += 0xb8;
+    } while (i < data_ov006_02140418);
+}
+
+// @symbol func_ov006_020c7418
+extern "C" void func_ov006_020c7418(void)
+{
+    int n = data_ov006_02140418;
+    int i = 0;
+    int off;
+    data_ov006_0213b018 = 0;
+    if (n <= 0)
+    {
+        return;
+    }
+    off = 0;
+    do
+    {
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c81e0();
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c76e0();
+        i++;
+        off += 0xb8;
+    }
+    while (i < data_ov006_02140418);
+}
+
+// @symbol func_ov006_020c7490
+#pragma push
+#pragma opt_common_subs off
+extern "C" void func_ov006_020c7490(void)
+{
+    int i;
+    int eoff;
+    int ooff;
+
+    i = 0;
+    if (data_ov006_02140418 <= 0)
+        return;
+    eoff = 0;
+    ooff = 0;
+    do {
+        char *e = data_ov006_0212dddc + data_ov006_02140414 * 0x24 + eoff;
+        int word = *(int *)e;
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + ooff))->func_ov006_020c862c((short)word);
+        *(int *)(data_ov006_02140420 + ooff + 0x14) = *(int *)(e + 4);
+        {
+            int s = data_ov006_0213b014;
+            int c = *(int *)(e + 8);
+            *(int *)(data_ov006_02140420 + ooff + 0x20) =
+                (int)(((long long)s * c + 0x800) >> 12);
+        }
+        ((dMgJump3DMario_c *)(data_ov006_02140420 + ooff))->func_ov006_020c76e0();
+        i++;
+        eoff += 0xc;
+        ooff += 0xb8;
+    } while (i < data_ov006_02140418);
+}
+#pragma pop
+
+// @symbol func_ov006_020c7574
+extern "C" int func_ov006_020c7574(char *base, int count)
+{
+    int i;
+    int off;
+    data_ov006_02140420 = base;
+    data_ov006_02140418 = count;
+    data_ov006_02140428 = count;
+    i = 0;
+    if (count > 0) {
+        off = i;
+        do {
+            char *q;
+            if (!((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c87d0()) return 0;
+            ((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c8658();
+            ((dMgJump3DMario_c *)(data_ov006_02140420 + off))->func_ov006_020c76e0();
+            q = data_ov006_02140420 + off;
+            if (i < 3) data_ov006_021403f4[i] = q;
+            i++;
+            off += 0xb8;
+        } while (i < data_ov006_02140418);
+    }
+    data_ov006_0213b010 = -0x1e00;
+    return 1;
+}
 
 // @symbol _ZN16dMgJump3DMario_c12Unk_020c762cEv
 /* Vtable slot 2. */

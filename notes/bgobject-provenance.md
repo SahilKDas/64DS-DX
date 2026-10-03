@@ -34,13 +34,13 @@ StarSwitch source and intermediate rename history remain recorded in the
 | 0x33c | `mSwitchType` | `InitResources` selects two for actor ID `0xc` and `param1 & 3` otherwise. The timed executor and music-fade path test this value. |
 | 0x340 | `mState` | `func_ov002_020ba4d8` stores the next index and invokes the corresponding init member pointer. `func_ov002_020ba520` dispatches the exec member pointer from the same real-class `StateEntry` table. `OnGroundPounded` requires state zero. |
 | 0x344 | `mTargetActorID` | The star-search helper stores a matched actor's `uniqueID`; `Behavior` resolves it through `dActor_c::FindWithID` and clears it when the target disappears. |
-| 0x348 | `mTargetActor` (`dActor_c *`) | Zeroed in `InitResources`; `Behavior` directly stores the pointer returned by `FindWithID`. State executors pass it to the star helpers and inspect the existing PowerStar state view. There is no integer store or receiver cast at this assignment. |
+| 0x348 | `mTargetActor` (`dActor_c *`) | Zeroed in `InitResources`; `Behavior` directly stores the pointer returned by `FindWithID`. State executors pass it to the star helpers and inspect the existing daStar_c state view. There is no integer store or receiver cast at this assignment. |
 | 0x34c | `mResourceIdx` | Selects entry zero or one in the class-owned `Resources` table. `InitResources` loads its model and collision files and supplies its CLPS pointer; `CleanupResources` releases those same model/collision resources. |
 | 0x34d | `mMusicFadeDone` | Initialized to one and cleared by the relevant state initializers; `Behavior` calls the volume-change helper only while it is zero and saves the helper's result. |
 | 0x34e | `mEventBit` | Set from `(param1 >> 3) & 0xf`; switch states set and clear that event bit through the existing Event interface. |
 | 0x34f | `mPressTimer` | Initialized/reset to five. `func_ov002_020ba3a8` decrements it while `mPlayerNearby` is set and enters the pressed state when the countdown reaches zero; otherwise it resets the timer. |
 | 0x350 | `mPlayerNearby` | The unpressed-state executor reads this byte to choose the press countdown; `Behavior` clears it at the end of the update. |
-| 0x351 | `mStarID` | The star-switch variant stores the low parameter byte, mapping `0xff` to zero. Its search helper compares the byte with `PowerStar::unk_49d` on actors of ID `0xb2`. |
+| 0x351 | `mStarID` | The star-switch variant stores the low parameter byte, mapping `0xff` to zero. Its search helper compares the byte with `daStar_c::unk_49d` on actors of ID `0xb2`. |
 | 0x353 | `mHomeAreaId` | Copied from `mAreaId` during initialization, used for the area-visibility query and restored after temporary area changes. |
 
 The current model/collision code uses genuine `mModel.Render`, `SetFile`,
@@ -50,7 +50,7 @@ scalar collider SetFile bridge and widened integer conditions have exact
 compiler experiments; these are bounded constraints, not a claim that all
 interfaces are complete.
 
-The foreign PowerStar field at `+0x438` still has an explicit unnamed view.
+The foreign daStar_c field at `+0x438` still has an explicit unnamed view.
 Padding at `0x31e` and `0x352` has no field claim. The flat C compatibility view
 also restates inherited actor/model/collider storage; it does not make those
 members newly owned by this class. Full source, consumer and metadata proof is

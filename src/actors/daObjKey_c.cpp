@@ -5,7 +5,7 @@
  * uses StateFlyToCenter; the other six kinds are StateDrop.
  *
  * The TU is the whole of ov089's .text, 0x02130f00..0x02132880: the destructor
- * (key function) first, the free helpers, the three states, the virtuals, then
+ * (key function) first, the helpers, the three states, the virtuals, then
  * both factories. __sinit_ov089_021328d4, which fills the state table, stays
  * its own .init file.
  *
@@ -27,10 +27,6 @@
  *   called by name.
  * - func_ov089_02131df4: one control arm (mState != 7) size 0x110 -> 0xe8
  *   (-0x28). The ROM has both copies.
- * - func_ov089_02130fb4, func_ov089_0213115c, func_ov089_02131dcc and
- *   func_ov089_02131df4 stay C names on (char *): every caller is now in this
- *   file, so they are members in waiting (decl_common.h still declares the
- *   first two by these names).
  * - LoadKeyModels / UnloadKeyModels are C by necessity: daDoor_c, Player and the
  *   bosses call them by name.
  * - StateFlyToCenter / StateStarJump: the Fix12<int> calls (Particle::System::New,
@@ -43,6 +39,17 @@
  * - g_profile_OBJ_KEY / LAST_STAR stay outside this TU.
  * - data_0209f318 as Camera * matches, but the plurality is void * so the
  *   cast stays.
+ *
+ * Leftover: 20/20 MATCH. func_ov089_02130fb4, func_ov089_0213115c,
+ * func_ov089_02131dcc and func_ov089_02131df4 are members under those
+ * addresses. Direct member reads matched, so nothing was reverted.
+ *   - LoadKeyModels and UnloadKeyModels stay C. The first parameter is the
+ *     kind, and daDoor_c, Player and the bosses call them by name.
+ *   - func_ov002_020c3dbc stays a call into ov002.
+ *   - The Fix12<int>-by-value calls, the UpdateContinuous veneer, both
+ *     control arms in func_ov089_02131df4, the u16* state timer, the s32*
+ *     position walks, v.y = v.y + Y_LOOK, and IsOnGround() == 0 stay as
+ *     written. Each spelling was already measured; the other form moves bytes.
  */
 
 #include "types.h"
@@ -63,7 +70,7 @@ namespace Sound {
 void LoadAndSetMusic_Layer3(unsigned int musicId);
 }
 
-/* {file id, loaded file}. Same two words PowerStar reads as id/ptr, and the
+/* {file id, loaded file}. Same two words daStar_c reads as id/ptr, and the
  * words this TU passes to SetAnim / SetFile / compares with mModelAnim.file.
  * SharedFilePtr itself has no fields; Release and LoadFile go through it. */
 struct ObjKeyFile {
@@ -170,8 +177,6 @@ extern void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void *th
    keep that spelling so the declarations of this symbol stay in agreement. */
 extern char data_ov002_0211094c;
 extern int data_0209cef0;
-void func_ov089_02131df4(char *c, char *p);
-void func_ov089_02131dcc(char *c, char *p);
 extern int Vec3_HorzDist(const Vector3 *a, const Vector3 *b);
 extern short Vec3_HorzAngle(const Vector3 *a, const Vector3 *b);
 /* The collect animations, by mAnimID. */
@@ -196,15 +201,14 @@ daObjKey_c::~daObjKey_c()
 {
 }
 
-// @symbol func_ov089_02130fb4
+// @symbol _ZN10daObjKey_c19func_ov089_02130fb4EPii
 /* Aim a jump at target so it lands in 30 frames with its peak `height` above
  * the higher end. Sets gravity, the launch speed and the heading. */
-extern "C" void func_ov089_02130fb4(char *c, int *p, int height)
+void daObjKey_c::func_ov089_02130fb4(int *p, int height)
 {
-    daObjKey_c *key = (daObjKey_c *)c;
     Vector3 *target = (Vector3 *)p;
     /* One register each: dy becomes the frames to the peak, height the frames after it. */
-    int dy = target->y - key->mPosY;
+    int dy = target->y - mPosY;
     if (dy < 0)
         dy = -dy;
     {
@@ -217,22 +221,22 @@ extern "C" void func_ov089_02130fb4(char *c, int *p, int height)
         int left = -(height << 1);
         int den = dy * dy;
         height = JUMP_FRAMES - dy;
-        key->mVertAccel = left / den;
+        mVertAccel = left / den;
     }
-    if (target->y >= key->mPosY) {
-        int a = key->mVertAccel;
+    if (target->y >= mPosY) {
+        int a = mVertAccel;
         if (a < 0)
             a = -a;
-        key->mVertSpeed = height * a;
+        mVertSpeed = height * a;
     } else {
-        int a = key->mVertAccel;
+        int a = mVertAccel;
         if (a < 0)
             a = -a;
-        key->mVertSpeed = (dy + 1) * a;
+        mVertSpeed = (dy + 1) * a;
     }
-    key->mTerminalVelocity = TERMINAL_VY;
-    key->mHorzSpeed = Vec3_HorzDist((Vector3 *)&key->mPosX, target) / JUMP_FRAMES;
-    key->mPrevAngleY = Vec3_HorzAngle((Vector3 *)&key->mPosX, target);
+    mTerminalVelocity = TERMINAL_VY;
+    mHorzSpeed = Vec3_HorzDist((Vector3 *)&mPosX, target) / JUMP_FRAMES;
+    mPrevAngleY = Vec3_HorzAngle((Vector3 *)&mPosX, target);
 }
 
 /* UnloadKeyModels, 0x021310cc */
@@ -262,17 +266,16 @@ extern "C" void LoadKeyModels(int kind)
     Model::LoadFile(*extra);
 }
 
-// @symbol func_ov089_0213115c
+// @symbol _ZN10daObjKey_c19func_ov089_0213115cEi
 /* Start collect animation `anim` (1..4); 0 or anything past 4 clears it. */
-extern "C" void func_ov089_0213115c(char *c, int anim)
+void daObjKey_c::func_ov089_0213115c(int anim)
 {
-    daObjKey_c *key = (daObjKey_c *)c;
     if (anim == 0 || anim >= 5) {
-        key->mAnimID = 0;
+        mAnimID = 0;
         return;
     }
-    key->mAnimID = anim;
-    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&key->mModelAnim, data_ov089_02132880[anim]->ptr,
+    mAnimID = anim;
+    _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov089_02132880[anim]->ptr,
                                                  ANIM_FLAGS, ANIM_SPEED, 0);
 }
 
@@ -385,7 +388,7 @@ void daObjKey_c::StateFlyToCenter()
                 break;
             if ((mdCcAcPos_c.hitFlags & HIT_PLAYER) == 0)
                 break;
-            func_ov089_02131dcc((char *)this, (char *)found);
+            func_ov089_02131dcc((char *)found);
             return;
         }
     }
@@ -481,7 +484,7 @@ void daObjKey_c::StateStarJump()
             target.x = mJumpTarget.x;
             target.y = mJumpTarget.y;
             target.z = mJumpTarget.z;
-            func_ov089_02130fb4((char *)this, (int *)&target, JUMP_HEIGHT);
+            func_ov089_02130fb4((int *)&target, JUMP_HEIGHT);
             mStep++;
             return;
         }
@@ -542,7 +545,7 @@ void daObjKey_c::StateStarJump()
                 return;
             if ((mdCcAcPos_c.hitFlags & HIT_PLAYER) == 0)
                 return;
-            func_ov089_02131df4((char *)this, (char *)found);
+            func_ov089_02131df4((char *)found);
             mStep++;
             return;
         }
@@ -635,57 +638,54 @@ void daObjKey_c::StateDrop()
                 return;
             if ((mdCcAcPos_c.hitFlags & HIT_PLAYER) == 0)
                 return;
-            func_ov089_02131df4((char *)this, (char *)found);
+            func_ov089_02131df4((char *)found);
             mStep++;
             return;
         }
     }
 }
 
-// @symbol func_ov089_02131dcc
-/* Last-star path. (char *, char *) is the spelling the shards declare. */
-extern "C" void func_ov089_02131dcc(char *c, char *p)
+// @symbol _ZN10daObjKey_c19func_ov089_02131dccEPc
+/* Last-star path. Hands the collector to ov002 and removes the star. */
+void daObjKey_c::func_ov089_02131dcc(char *player)
 {
-    daObjKey_c *key = (daObjKey_c *)c;
-
-    func_ov002_020c3dbc(p);
+    func_ov002_020c3dbc(player);
     Event::SetBit(EVENT_KEY);
-    key->MarkForDestruction();
+    MarkForDestruction();
 }
 
-// @symbol func_ov089_02131df4
-extern "C" void func_ov089_02131df4(char *c, char *p)
+// @symbol _ZN10daObjKey_c19func_ov089_02131df4EPc
+void daObjKey_c::func_ov089_02131df4(char *p)
 {
-    daObjKey_c *key = (daObjKey_c *)c;
     Player *player = (Player *)p;
 
     /* Word 1, bit (2 << kind): already collected. 1 asks Stage/dMeter/Player
      * for the new-star fanfare; 0 suppresses it. Kind 7 takes neither arm.
      * One arm is shorter (0x110 -> 0xe8); the ROM has both. */
-    if (data_0209caa0[1] & (2 << key->mState))
+    if (data_0209caa0[1] & (2 << mState))
         data_0209f2ac = 0;
     else
         data_0209f2ac = 1;
-    data_0209caa0[1] |= (2 << key->mState);
+    data_0209caa0[1] |= (2 << mState);
 
-    if (key->mState <= 1) {
+    if (mState <= 1) {
         player->SetNoControlState(3, -1, 0);
         Sound::LoadAndSetMusic_Layer3(MUSIC_KEY);
-    } else if (key->mState != KEY_KIND_STAR) {
+    } else if (mState != KEY_KIND_STAR) {
         player->SetNoControlState(3, -1, 0);
         Sound::LoadAndSetMusic_Layer3(MUSIC_KEY);
     }
 
-    func_ov089_0213115c((char *)key, ANIM_CARRY);
-    key->mPlayer = player;
+    func_ov089_0213115c(ANIM_CARRY);
+    mPlayer = player;
     {
-        /* Through a pointer: key->mPlayer->mPosX folds the offset into each load. */
-        s32 *pos = &key->mPlayer->mPosX;
-        key->mPosX = pos[0];
-        key->mPosY = pos[1];
-        key->mPosZ = pos[2];
-        key->mAngleY = key->mPlayer->mAngleY;
-        key->mFlags &= ~FLAG_HIDE;
+        /* Through a pointer: mPlayer->mPosX folds the offset into each load. */
+        s32 *pos = &mPlayer->mPosX;
+        mPosX = pos[0];
+        mPosY = pos[1];
+        mPosZ = pos[2];
+        mAngleY = mPlayer->mAngleY;
+        mFlags &= ~FLAG_HIDE;
         Event::SetBit(EVENT_KEY);
     }
 }
@@ -696,8 +696,8 @@ void daObjKey_c::OnTurnIntoEgg(Player &player)
     /* The flag keeps the ROM's moveq and movne pair. */
     unsigned isKey = (actorID == ACTOR_OBJ_KEY);
     if (isKey)
-        return func_ov089_02131df4((char *)this, (char *)&player);
-    return func_ov089_02131dcc((char *)this, (char *)&player);
+        return func_ov089_02131df4((char *)&player);
+    return func_ov089_02131dcc((char *)&player);
 }
 
 // @symbol _ZN10daObjKey_c13OnYoshiTryEatEv

@@ -42,9 +42,9 @@ extern "C" daWanwan2_c *daWanwan2_c_classInit()
         __cxa_vec_ctor(actor->mShadowModels, 6, sizeof(ShadowModel),
             (void (*)(void *))_ZN11ShadowModelC1Ev, (void (*)(void *))_ZN11ShadowModelD1Ev);
         _ZN11ShadowModelC1Ev(&actor->mShadowModel);
-        __cxa_vec_ctor(actor->mUnk_6d8, 6, sizeof(Vector3),
+        __cxa_vec_ctor(actor->mLinkPos, 6, sizeof(Vector3),
             (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
-        __cxa_vec_ctor(actor->mUnk_720, 6, sizeof(Vector3),
+        __cxa_vec_ctor(actor->mLinkVel, 6, sizeof(Vector3),
             (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
         __cxa_vec_ctor(actor->mUnk_768, 6, sizeof(Vector3s),
             (void (*)(void *))func_0203d73c, (void (*)(void *))_ZN8Vector3sD1Ev);

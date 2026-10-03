@@ -7,7 +7,7 @@
  * that class's own static assertion, so the offsets below are checked twice --
  * once by the assert, once by closing exactly on the next named field:
  *
- *     dBgCh_Actr        0x110 + 0x1bc = 0x2cc   -> mUniqueID_2cc
+ *     dBgCh_Actr        0x110 + 0x1bc = 0x2cc   -> mKpaUniqueID
  *     dCcAc_c  0x2d0 + 0x034 = 0x304   -> mShadowModel
  *     ShadowModel         0x304 + 0x028 = 0x32c   -> padding
  *
@@ -19,7 +19,39 @@
  * own field all along, the same mistake as Player's `mBodyClsnFlags`.
  *
  * Offsets/widths are observed, not guessed. Gaps are explicit padding.
- * Field NAMES for the unk_ entries are placeholders. */
+ *
+ * What the daKpaFire_c-specific fields do (read off src/actors/daKpaFire_c.cpp):
+ *   mVariant        param1 & 7: which of eight behaviours this fire runs. The
+ *                   per-variant handler/init pairs are the pointer-to-member
+ *                   tables data_ov060_0211afb4 / data_ov060_0211af74, filled by
+ *                   __sinit_ov060_02119df0 (the .cpp banner lists them).
+ *   mSubVariant     (param1 >> 4) & 3, a sub-selector several variants read: it
+ *                   indexes the terminal-velocity and particle-id tables and
+ *                   switches speeds and spawn choices.
+ *   mFireScale      Fix12 size of the fire (0x1000 = 1.0). It is the particle
+ *                   scale and, times mShadowRadiusMul, the shadow radius.
+ *   mKpaUniqueID    uniqueID of a daKpa_c (actor id 0x117), zero from
+ *                   InitResources. daKpa_c's own spawn code writes its uniqueID
+ *                   here right after spawning a variant 0; variant 4 instead
+ *                   looks the daKpa_c up by actor id on its first frame and
+ *                   stores that daKpa_c's uniqueID. Variant 0 looks the actor up by it.
+ *   mLanded         zero until a variant 6/7 fire first touches the ground,
+ *                   one from then on.
+ *   mTickCount      Behavior calls so far, bumped BEFORE the variant handler
+ *                   runs (InitResources never writes it, so it starts from the
+ *                   zero-filled allocation).
+ *   mFrameCount     Behavior calls so far, bumped AFTER the handler runs, so a
+ *                   handler sees it one behind mTickCount.
+ *   mPhaseOffset    start phase of the sideways wobble: the wobble helper
+ *                   (func_ov060_0211712c) adds it to mTickCount. The variant 1,
+ *                   2 and 4 inits set it randomly, but only variant 2's
+ *                   Behavior reaches the wobble with it; variants 6/7 wobble
+ *                   with it still 0.
+ *   mGroundY        floor height found under the spawn position (the shadow is
+ *                   drawn there), or the spawn y when no floor was found.
+ * The 0x32c..0x35c block is a Matrix4x3 scratch that func_ov060_02117624 fills
+ * each frame for the shadow; it stays padding here because that helper is
+ * parsed as C. */
 #ifndef DAKPAFIRE_C_H
 #define DAKPAFIRE_C_H
 #include "types.h"
@@ -38,20 +70,20 @@
  * stores this vtable; the D1/D0 below fill its slots 16/17. */
 struct daKpaFire_c : dEnemyBase_c {
     dBgCh_Actr mWithMeshClsn;                 /* 0x110 */
-    s32 mUniqueID_2cc;                                /* 0x2cc */
+    s32 mKpaUniqueID;                                /* 0x2cc */
     dCcAc_c mdCcAc_c;     /* 0x2d0 */
     ShadowModel mShadowModel;                   /* 0x304 */
     u8  pad_32c[0x30];
     s32 mVariant;            /* 0x35c */
-    s32 mShadowRadiusScale; /* 0x360 */
+    s32 mFireScale;         /* 0x360 -- Fix12 */
     s32 mGroundY;            /* 0x364 */
-    u8  pad_368[0x4];
-    s32 mTimer;            /* 0x36c */
-    u8  pad_370[0x4];
+    s32 mShadowRadiusMul;   /* 0x368 -- integer multiplier; handlers store 0x10 */
+    s32 mLanded;            /* 0x36c */
+    s32 mTickCount;         /* 0x370 */
     u16 mFrameCount;            /* 0x374 */
-    u8  pad_376[0x2];
-    u8  mVariant_378;            /* 0x378 */
-    u8  mDropsShadow;       /* 0x379 */
+    u16 mPhaseOffset;       /* 0x376 */
+    u8  mSubVariant;        /* 0x378 */
+    u8  mDropsShadow;       /* 0x379 -- zero only for variant 0 */
     u8  pad_37a[0x2];
     s32 mParticleHandle_37c;            /* 0x37c */
     s32 mParticleHandle_380;            /* 0x380 */
@@ -90,21 +122,21 @@ struct daKpaFire_c {
     u8  pad_0ac[0x64];
     u8  mWithMeshClsn;            /* 0x110 */
     u8  pad_111[0x1bb];
-    s32 mUniqueID_2cc;            /* 0x2cc */
+    s32 mKpaUniqueID;            /* 0x2cc */
     u8  mdCcAc_c;            /* 0x2d0 */
     u8  pad_2d1[0x33];
     u8  mShadowModel;            /* 0x304 */
     u8  pad_305[0x57];
     s32 mVariant;            /* 0x35c */
-    s32 mShadowRadiusScale; /* 0x360 */
+    s32 mFireScale;         /* 0x360 -- Fix12 */
     s32 mGroundY;            /* 0x364 */
-    u8  pad_368[0x4];
-    s32 mTimer;            /* 0x36c */
-    u8  pad_370[0x4];
+    s32 mShadowRadiusMul;   /* 0x368 -- integer multiplier; handlers store 0x10 */
+    s32 mLanded;            /* 0x36c */
+    s32 mTickCount;         /* 0x370 */
     u16 mFrameCount;            /* 0x374 */
-    u8  pad_376[0x2];
-    u8  mVariant_378;            /* 0x378 */
-    u8  mDropsShadow;       /* 0x379 */
+    u16 mPhaseOffset;       /* 0x376 */
+    u8  mSubVariant;        /* 0x378 */
+    u8  mDropsShadow;       /* 0x379 -- zero only for variant 0 */
     u8  pad_37a[0x2];
     s32 mParticleHandle_37c;            /* 0x37c */
     s32 mParticleHandle_380;            /* 0x380 */

@@ -11,7 +11,7 @@ TU and this handoff differ from the current main base. No source move, manifest 
 ## Source correction
 
 **SOUND2881-01 is fixed.** The old `mTable[0x1a8]` excluded a live four-byte
-word which `src/func_ov006_020c33dc.c` initializes at component offset +0x1a8.
+word which `func_ov006_020c33dc` (in `src/actors/unit020bfec0.cpp`) initializes at component offset +0x1a8.
 The animation functions at ov006 020c2300, 020c2440, 020c24e4, 020c2594 and
 020c271c test that word before requesting sound. `func_02012174` wraps sound
 playback; the word is not a resource-ready result.

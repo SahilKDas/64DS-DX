@@ -234,8 +234,9 @@ Also spelled `u16 *p = (u16*)(((int)c + 0x4c0c) & 0xFFFFFFFFFFFFFFFFULL); *p = *
 
 **Landed examples** (all byte-identical, strict relocs, linkcheck VERIFIED):
 `func_ov006_02114c04` (the clearest -- RMW/single-use split across a whole loop body),
-`src/func_ov006_0211fe78.c` (63 divergences -> 0 in one edit),
-`src/actors/dScMgBomroom_c.cpp` (`func_ov006_020d8d84`, folded from its shard), `src/func_ov006_0211e8a8.c`.
+`func_ov006_0211fe78` (63 divergences -> 0 in one edit),
+`src/actors/dScMgBomroom_c.cpp` (`func_ov006_020d8d84`, folded from its shard), `func_ov006_0211e8a8`
+(both now in `src/actors/dScMgTeresa_c.cpp`).
 
 **Cost of the stale note.** `func_ov006_0211e8a8` was worked to 12 divergences, correctly diagnosed
 as the "first-access-fold wall" per the old text, and abandoned as unmatchable. Pointed at the
@@ -450,7 +451,7 @@ not fold away (~12 cast spellings all did). Spell it as a **pointer difference**
 off = ((char (*)[0x24])0)[idx] - (char*)0;
 ```
 Operand order then matters: the pointer base must be the left operand of the following add, or you
-get the operands swapped. (`src/func_ov006_0211e8a8.c`)
+get the operands swapped. (`func_ov006_0211e8a8`, in `src/actors/dScMgTeresa_c.cpp`)
 
 **`if/else` vs ternary has NON-LOCAL regalloc effects.** The existing "preserve ternaries" guidance
 is not universal. A case written as a ternary poisoned the whole function's r1/r2 assignment for two
@@ -462,13 +463,13 @@ pair is the only construct adjacent to a coloring residual, **try both forms**.
 **Parallel loops want their own locals.** Six structurally identical zero-init loops sharing one
 `i`/`p` pair gave correct instruction shape with permuted registers; giving each loop its own counter
 and pointer fixed the allocation exactly. A declaration-order swap did not.
-(`src/func_ov006_020feba8.c`)
+(`src/actors/dScMgPachinko_c.cpp`, `func_ov006_020feba8`, folded from its shard)
 
 **Assignment order, not declaration order.** Where a 24-permutation *declaration*-order sweep is
 inert, reordering the **assignment / first use** can still flip the entire callee-saved assignment
 (observed: 33 divergences -> 0 from moving one assignment). Source position of the first *use* sets
 web rank. Corollary: an inert decl-order sweep means the lever is **gated**, not dead -- try
-`#pragma opt_lifetimes off` and re-sweep. (`src/func_ov006_020fe750.c`)
+`#pragma opt_lifetimes off` and re-sweep. (`src/actors/dScMgPachinko_c.cpp`, `func_ov006_020fe750`, folded from its shard)
 
 **Prefer a respelling to a pragma.** `#pragma opt_strength_reduction off` and the address-tree
 respelling `((int*)c + k)[0x1510]` both killed a spurious induction variable; the respelling was

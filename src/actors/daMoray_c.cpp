@@ -77,6 +77,19 @@
  *   func_02012694 is Play with bank 3. The other call sites use it too.
  * - The gotos in Behavior and InitResources, and the raw dActor_c+0xc8
  *   carrier cast, are kept from the byte-matching recovery.
+ *
+ * Leftover (not recovered):
+ * - func_ov016_02111284 keeps its `void *` parameter (include/decl_common.h
+ *   pins it) and the byte-stepped mSegmentPos walk, the volatile stores of
+ *   mPos into va and the c1/c2 locals; those are what the bytes need.
+ * - unk_400 is zeroed by the two idle-animation inits and read nowhere in
+ *   this file; what it counts is unknown.
+ * - Sound id 0xfa (bank 3) has no name here; The held spawn passes
+ *   mStarParam | 0x50 and the release spawn mStarParam | 0x40, so 0x10 is the
+ *   only bit that differs; what 0x40 means is not decoded here.
+ * - The MorayRenderStep table (data_ov016_02114908), the dActor_c+0xc8
+ *   carrier word and the BookSwitch_Spawn name have no recovered meaning
+ *   beyond what is said here and at their declarations.
  */
 
 #include "common.h"
@@ -90,6 +103,7 @@
 #pragma defer_codegen off
 
 enum {
+    ACTOR_PLAYER = 191,
     ACTOR_STAR = 178,
 };
 
@@ -213,30 +227,41 @@ daMoray_c::~daMoray_c()
 }
 
 /* Places both hit cylinders. On entrance 1, outside path swim, the second
-   cylinder (0x150) goes to a fixed point moved along the facing. The first
-   (0x110) steps through mSegmentPos, one segment per call, and hurts the
-   actor it last hit when that actor is the PLAYER (0xbf). Called from
-   Behavior. */
+   cylinder (mdCcAcPos_c2) goes to a fixed point moved along the facing (a
+   (0, -0x128000, 0x7c000) offset turned by mAngleY), with radius 0xc8000
+   (200 units) and height 0xf0000 (240 units). The first cylinder
+   (mdCcAcPos_c1) steps through mSegmentPos: the segment index advances by one
+   per call and wraps after 6; that segment's position gets an offset added
+   (0x48000 = 72 units down, plus 0x7c000 = 124 units forward on segment 5,
+   turned by mAngleY) and is copied to the cylinder. Its radius is 0x52000
+   (82 units), or 0xb8000 (184 units) on segment 5, and its height 0x70000
+   (112 units). The segment positions are recomputed on the next Behavior.
+   Hurts the actor recorded in the first cylinder's otherOwner (set by the
+   hit test since the previous Clear) when that actor is the PLAYER (actor
+   191). Called from Behavior.
+
+   decl_common.h pins the parameter as void *, so it is cast to the class
+   here. */
 // @symbol func_ov016_02111284
 extern "C" void func_ov016_02111284(void *actor)
 {
-    char *c = (char *)actor;
+    daMoray_c *self = (daMoray_c *)actor;
     Vector3 va;
     Vector3 vb;
     Vector3 out;
     Vector3 hv;
     int r4;
     int r6;
-    void *p;
+    dActor_c *p;
     int t;
     u32 id;
     int *ctr;
     int idx;
     int *px;
 
-    *(volatile int *)&va.x = *(int *)(c + 0x5c);
-    *(volatile int *)&va.y = *(int *)(c + 0x60);
-    *(volatile int *)&va.z = *(int *)(c + 0x64);
+    *(volatile int *)&va.x = self->mPosX;
+    *(volatile int *)&va.y = self->mPosY;
+    *(volatile int *)&va.z = self->mPosZ;
 
     vb.x = 0;
     vb.y = 0;
@@ -247,7 +272,7 @@ extern "C" void func_ov016_02111284(void *actor)
 
     r4 = 0x52000;
 
-    if (data_0209f220 == 1 && *(int *)(c + 0x34c) != (int)&data_ov016_02114dbc) {
+    if (data_0209f220 == 1 && self->mState != &data_ov016_02114dbc) {
         r6 = 0x128000;
         r6 = -r6;
         vb.y = r6;
@@ -255,28 +280,28 @@ extern "C" void func_ov016_02111284(void *actor)
         va.x = 0x15e0000;
         va.y = 0xfee90000;
         va.z = 0x65e000;
-        Matrix4x3_FromRotationY(&data_020a0e68, *(short *)(c + 0x8e));
+        Matrix4x3_FromRotationY(&data_020a0e68, self->mAngleY);
         MulVec3Mat4x3(&vb, &data_020a0e68, &out);
         va.x = va.x + out.x;
         va.y = va.y + out.y;
         va.z = va.z + out.z;
-        *(int *)(c + 0x184) = va.x;
+        self->mdCcAcPos_c2.pos.x = va.x;
         {
             int c1 = 0xc8000;
-            *(int *)(c + 0x188) = va.y;
+            self->mdCcAcPos_c2.pos.y = va.y;
             int c2 = 0xf0000;
-            *(int *)(c + 0x18c) = va.z;
-            *(int *)(c + 0x154) = c1;
-            *(int *)(c + 0x158) = c2;
+            self->mdCcAcPos_c2.pos.z = va.z;
+            self->mdCcAcPos_c2.radius = c1;
+            self->mdCcAcPos_c2.height = c2;
         }
     }
 
-    ctr = (int *)(c + 0x3fc);
+    ctr = &self->mCylSegment;
     *ctr = *ctr + 1;
-    if (*(int *)(c + 0x3fc) > 6)
-        *(int *)(c + 0x3fc) = 0;
+    if (self->mCylSegment > 6)
+        self->mCylSegment = 0;
 
-    idx = *(int *)(c + 0x3fc);
+    idx = self->mCylSegment;
     if (idx == 5)
         r4 = 0xb8000;
     vb.y = 0;
@@ -286,45 +311,45 @@ extern "C" void func_ov016_02111284(void *actor)
     out.y = 0;
     out.z = 0;
     vb.y = -0x48000;
-    if (*(int *)(c + 0x3fc) == 5)
+    if (self->mCylSegment == 5)
         vb.z = 0x7c000;
 
-    Matrix4x3_FromRotationY(&data_020a0e68, *(short *)(c + 0x8e));
+    Matrix4x3_FromRotationY(&data_020a0e68, self->mAngleY);
     MulVec3Mat4x3(&vb, &data_020a0e68, &out);
 
     {
         /* Three int bases stepped by a byte index keep the * 0xc per axis. */
-        int *p448 = (int *)(c + 0x448);
-        int *p44c = (int *)(c + 0x44c);
-        int *p450 = (int *)(c + 0x450);
-        int idx2 = *(int *)(c + 0x3fc);
+        int *p448 = &self->mSegmentPos[0].x;
+        int *p44c = &self->mSegmentPos[0].y;
+        int *p450 = &self->mSegmentPos[0].z;
+        int idx2 = self->mCylSegment;
         ((int *)((char *)p448 + idx2 * 0xc))[0] = ((int *)((char *)p448 + idx2 * 0xc))[0] + out.x;
-        idx2 = *(int *)(c + 0x3fc);
+        idx2 = self->mCylSegment;
         ((int *)((char *)p44c + idx2 * 0xc))[0] = ((int *)((char *)p44c + idx2 * 0xc))[0] + out.y;
-        idx2 = *(int *)(c + 0x3fc);
+        idx2 = self->mCylSegment;
         ((int *)((char *)p450 + idx2 * 0xc))[0] = ((int *)((char *)p450 + idx2 * 0xc))[0] + out.z;
-        idx2 = *(int *)(c + 0x3fc);
+        idx2 = self->mCylSegment;
         px = (int *)((char *)p448 + idx2 * 0xc);
-        *(int *)(c + 0x144) = px[0];
-        *(int *)(c + 0x148) = px[1];
-        *(int *)(c + 0x14c) = px[2];
+        self->mdCcAcPos_c1.pos.x = px[0];
+        self->mdCcAcPos_c1.pos.y = px[1];
+        self->mdCcAcPos_c1.pos.z = px[2];
     }
 
-    *(int *)(c + 0x114) = r4;
-    *(int *)(c + 0x118) = 0x70000;
+    self->mdCcAcPos_c1.radius = r4;
+    self->mdCcAcPos_c1.height = 0x70000;
 
-    id = *(u32 *)(c + 0x134);
+    id = self->mdCcAcPos_c1.otherOwner;
     if (id == 0)
         return;
 
     p = dActor_c::FindWithID(id);
-    t = (int)(*(u16 *)((char *)p + 0xc) == 0xbf);
+    t = (int)(p->actorID == ACTOR_PLAYER);
     if (t == 0)
         return;
 
-    hv.x = *(int *)(c + 0x5c);
-    hv.y = *(int *)(c + 0x60);
-    hv.z = *(int *)(c + 0x64);
+    hv.x = self->mPosX;
+    hv.y = self->mPosY;
+    hv.z = self->mPosZ;
     _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(p, &hv, 3, 0xc000, 1, 0, 1);
 }
 
@@ -346,7 +371,9 @@ extern "C" int func_ov016_02111534(daMoray_c *self)
     return 1;
 }
 
-/* Retreat init: 100 frames at 0x14000. */
+/* Retreat init: mStateTimer = 100 frames, mHorzSpeed = 0x14000 (20 units).
+   Behavior counts the timer down each frame; func_ov016_02111534 is the only
+   state in this file that tests it for 0. */
 // @symbol BookSwitch_Spawn
 extern "C" int BookSwitch_Spawn(daMoray_c *self)
 {
@@ -355,8 +382,14 @@ extern "C" int BookSwitch_Spawn(daMoray_c *self)
     return 1;
 }
 
-/* Path-swim execute. Turns toward the current node and steps to the next
-   one on arrival. Variant 1, back at node 0, enters the retreat state. */
+/* Path-swim execute. Turns toward the current node (heading and pitch each
+   move at most 0x80 = 128/65536 of a turn per frame; mSegmentAngle[7], the
+   body-bend target, is set to half the absolute heading difference, taken
+   before this frame's step) and
+   moves 0xa000 (10 units) per frame straight at it. Within 10 units of the
+   node it plays sound 0xfa and steps to the next node, wrapping to 0 past
+   mPathNodeCount. Variant 1 arriving at node 0 instead steps to node 1 and
+   enters the retreat state, without the sound. */
 // @symbol func_ov016_021115c0
 extern "C" int func_ov016_021115c0(daMoray_c *self)
 {
@@ -406,8 +439,11 @@ extern "C" int func_ov016_02111718(daMoray_c *self)
     return 1;
 }
 
-/* Lunge execute. On bite frames 0x15..0x3c, slides toward a point along
-   its facing (farther when the entrance filter is 1), then swim-out. */
+/* Lunge execute. On animation frames 0x15..0x3c (inclusive), moves its
+   position toward a point on its facing from the home point, 0x1f4000 (500
+   units) out, or 0x2bc000 (700 units) when the entrance filter is 1,
+   at up to 0x14000 (20 units) per frame. When the animation finishes it
+   stops and enters swim-out. */
 // @symbol func_ov016_02111758
 extern "C" int func_ov016_02111758(daMoray_c *self)
 {
@@ -446,8 +482,9 @@ extern "C" int func_ov016_02111860(daMoray_c *self)
     return 1;
 }
 
-/* Swim-out execute. Approaches a point 0x76c000 along its facing, then
-   starts path-swim. */
+/* Swim-out execute. Moves toward a point 0x76c000 (1900 units) from the home
+   point along its facing at up to 0x14000 (20 units) per frame, and enters
+   path-swim, with the sound, once within 20 units of it. */
 // @symbol func_ov016_021118b4
 extern "C" int func_ov016_021118b4(daMoray_c *self)
 {
@@ -480,9 +517,16 @@ extern "C" int func_ov016_02111994(daMoray_c *self)
     return 1;
 }
 
-/* Den-wait execute. Returns to the home point, then lunges when a player
-   is inside the cone in front. Entrance 1 uses a wider cone and an extra
-   point along the facing. */
+/* Den-wait execute. While farther than 0xa000 (10 units) from the home
+   point it moves back at up to 0x5000 (5 units) per frame and does nothing
+   else. At home it snaps onto it and, with a player present, lunges when
+   AngleDiff(angle from the eel to that player, mAngleY) is below 0x3300
+   (about 72 degrees either side of mAngleY, AngleDiff being an absolute
+   value), the horizontal distance is below 0x3e8000 (1000 units) and the
+   height difference is below 0x800000 (2048 units). Entrance 1 widens the
+   horizontal limit to 0x495000 (1173 units), tightens the height limit to
+   0x6ee000 (1774 units), and also lunges when the player is within
+   0x224000 (548 units) of a point 0x64000 (100 units) ahead of home. */
 #pragma push
 #pragma opt_propagation off
 // @symbol func_ov016_021119ec

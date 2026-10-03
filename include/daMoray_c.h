@@ -52,7 +52,9 @@ struct daMoray_c : dEnemyBase_c {
     s32 mHomePosX;                                          /* 0x3f0 */
     s32 mHomePosY;                                          /* 0x3f4 */
     s32 mHomePosZ;                                          /* 0x3f8 */
-    u8  pad_3fc[0x4];
+    /* Which mSegmentPos entry the first hit cylinder sits on: +1 per call of
+       func_ov016_02111284, wrapping to 0 after 6. */
+    s32 mCylSegment;                                        /* 0x3fc */
     s32 unk_400;                                            /* 0x400 -- zeroed by two state inits */
     s32 mPathID;                                            /* 0x404 */
     s32 mVariant;                                           /* 0x408 */
@@ -61,7 +63,7 @@ struct daMoray_c : dEnemyBase_c {
     u8  mStarParam;                                         /* 0x414 */
     u8  pad_415[0x1];
     s16 mStarSpinAngle;                                     /* 0x416 */
-    /* [1..6] bend the body bones; [7] is the target the neck turns toward. */
+    /* [1..6] bend the body bones; [7] is the target [6] eases toward. */
     s16 mSegmentAngle[8];                                   /* 0x418 */
     s16 mInitAngleX;                                        /* 0x428 */
     s16 mInitAngleY;                                        /* 0x42a */
