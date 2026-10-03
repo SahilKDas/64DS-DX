@@ -57,7 +57,7 @@
 # byte-locked in src/ as the matched proof; neither is referenced from
 # CMakeLists' gate-191 source list.
 src/d_a_obj_sm_lift.c
-src/_ZN7SkiLift15OnHitByMegaCharER6Player.cpp
+src/actors/daObjSm_Lift_c.cpp
 src/func_ov018_02111278.cpp
 src/game/actors/d_a_pg_mthr.cpp
 src/func_ov018_021117e8.cpp

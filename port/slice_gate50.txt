@@ -62,7 +62,7 @@ src/func_ov080_02126120.c
 src/func_ov080_02126124.c
 src/func_ov080_021264ec.c
 src/func_ov080_021265ec.c
-src/func_ov080_0212677c.c
+src/actors/daPicGate_c.cpp
 src/func_ov080_021269b8.c
 src/func_ov080_02126a54.c
 src/_ZN8Painting16CleanupResourcesEv.cpp

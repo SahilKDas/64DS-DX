@@ -119,8 +119,8 @@ void _ZN11MirrorLuigi16OnPendingDestroyEv(void);     /* slot 12, a plain .c body
 int _ZN11MirrorLuigi8BehaviorEv(void *self);         /* slot 6,  HOST COPY */
 
 /* the two state halves the seat rewrites into the cell */
-int func_ov055_021112bc(void);                       /* ENTER */
-int func_ov055_02111288(void *dst, void *src);       /* TICK  */
+int _ZN9daLuigi_c11EnterMirrorEP6Player(void);                       /* ENTER */
+int _ZN9daLuigi_c13ExecuteMirrorEP6Player(void *dst, void *src);     /* TICK  */
 
 /* the host vtable, excluded from the mount */
 DSSTATE_BEGIN
@@ -272,7 +272,7 @@ static int __fastcall ml_enter_face_021112bc(void *self, void *dead_edx, int a2)
     (void)self;
     (void)dead_edx;
     (void)a2;
-    return func_ov055_021112bc();
+    return _ZN9daLuigi_c11EnterMirrorEP6Player();
 }
 
 extern "C" void port_mirrorluigi_state_seat(void)
@@ -292,7 +292,7 @@ extern "C" void port_mirrorluigi_state_seat(void)
         std::abort();
     }
     cell.enter_fn = (unsigned)(size_t)&ml_enter_face_021112bc;
-    cell.tick_fn = (unsigned)(size_t)&func_ov055_02111288;
+    cell.tick_fn = (unsigned)(size_t)&_ZN9daLuigi_c13ExecuteMirrorEP6Player;
 }
 
 // ---- the mount bring-up ----------------------------------------------------

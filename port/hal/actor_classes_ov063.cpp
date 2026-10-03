@@ -1041,10 +1041,10 @@ int *_ZN6CoffinD1Ev(void *t);                   /* slot 16, matched .c */
 int *_ZN6CoffinD0Ev(void *t);                   /* slot 17, matched .c */
 void *daObjCasket_c_classInit(void);
 /* the four state bodies the re-seat installs (matched, on the slice) */
-void func_ov071_021223b0(char *c);   /* entry 0 pmf@0 <- src pair 0x02122e74 */
-void func_ov071_021221bc(char *c);   /* entry 0 pmf@8 <- 0x02122e8c */
-void func_ov071_02122194(char *c);   /* entry 1 pmf@0 <- 0x02122e84 */
-void func_ov071_021220c8(char *c);   /* entry 1 pmf@8 <- 0x02122e7c */
+void _ZN13daObjCasket_c12St_Wait_InitEv(char *c);   /* entry 0 pmf@0 <- src pair 0x02122e74 */
+void _ZN13daObjCasket_c12St_Wait_MainEv(char *c);   /* entry 0 pmf@8 <- 0x02122e8c */
+void _ZN13daObjCasket_c15St_StandUp_InitEv(char *c); /* entry 1 pmf@0 <- 0x02122e84 */
+void _ZN13daObjCasket_c15St_StandUp_MainEv(char *c); /* entry 1 pmf@8 <- 0x02122e7c */
 extern unsigned char data_ov071_02122ecc[];
 DSSTATE_BEGIN
 void *_ZTV6Coffin[32];
@@ -1076,12 +1076,12 @@ extern "C" void hal_fill_coffin_vtable(void)
     vt[17] = (void *)cf_d0;
     vt[31] = (void *)ov63_kill;
     /* the 20-byte-entry state-table re-seat (Bbh_PmfDispatch.c addendum 2) */
-    *(void *volatile *)(data_ov071_02122ecc + 0)  = (void *)func_ov071_021223b0;
+    *(void *volatile *)(data_ov071_02122ecc + 0)  = (void *)_ZN13daObjCasket_c12St_Wait_InitEv;
     *(int volatile *)(data_ov071_02122ecc + 4)   = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 8)  = (void *)func_ov071_021221bc;
+    *(void *volatile *)(data_ov071_02122ecc + 8)  = (void *)_ZN13daObjCasket_c12St_Wait_MainEv;
     *(int volatile *)(data_ov071_02122ecc + 12)  = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 20) = (void *)func_ov071_02122194;
+    *(void *volatile *)(data_ov071_02122ecc + 20) = (void *)_ZN13daObjCasket_c15St_StandUp_InitEv;
     *(int volatile *)(data_ov071_02122ecc + 24)  = 0;
-    *(void *volatile *)(data_ov071_02122ecc + 28) = (void *)func_ov071_021220c8;
+    *(void *volatile *)(data_ov071_02122ecc + 28) = (void *)_ZN13daObjCasket_c15St_StandUp_MainEv;
     *(int volatile *)(data_ov071_02122ecc + 32)  = 0;
 }

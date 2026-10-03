@@ -427,8 +427,7 @@ src/_ZN22ExpandingHeapAllocator16InvokeDeallocateEPvPS_j.cpp
 # (the per-instance heap hooks) into slots 13/14 of _ZTV5Actor at boot,
 # after the registry install's STAR_CAMERA fill trapped them. walk_window
 # family only.
-src/_ZN7fBase_c9Virtual34Ejj.cpp
-src/_ZN7fBase_c9Virtual38Ejj.cpp
+src/actors/ActorBase.cpp
 src/_ZN4Heap28InitializeSolidHeapAsDefaultEjPS_i.cpp
 src/_ZN4Heap23SetupSolidHeapAsDefaultEjPS_i.cpp
 src/_ZN4Heap15CreateSolidHeapEjPS_i.cpp

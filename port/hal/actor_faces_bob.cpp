@@ -106,7 +106,6 @@ int ShadowModelFace::InitCylinder()
 // ---- 1. the data aliases ---------------------------------------------------
 #pragma comment(linker, "/alternatename:?data_02092138@@3HA=_data_02092138")
 #pragma comment(linker, "/alternatename:?data_ov002_021098e8@@3DA=_data_ov002_021098e8")
-#pragma comment(linker, "/alternatename:?data_ov002_021098ec@@3DA=_data_ov002_021098ec")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d7f4@@3UCLPS_Block@@A=_data_ov002_0210d7f4")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9a8@@3USharedFilePtr@@A=_data_ov002_0210d9a8")
 #pragma comment(linker, "/alternatename:?data_ov002_0210d9e8@@3USharedFilePtr@@A=_data_ov002_0210d9e8")

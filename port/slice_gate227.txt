@@ -59,7 +59,7 @@
 #                              DisappearPoofDustAt, bank-3 sound 0x41, then the
 #                              class's own 0x020bae9c. ONE ROM argument.
 src/_ZN8SignPost15OnGroundPoundedER8dActor_c.cpp
-src/_ZN8SignPost11OnAttacked1ER8dActor_c.cpp
+src/actors/daObjTatefuda_c.cpp
 src/_ZN8SignPost15OnHitByMegaCharER6Player.cpp
 # RETIRED at SLICE1: body now in src/_ZN8SignPostD0Ev.cpp. main consolidation put this body in the class TU, which the build already compiles, so the per-function leftover is a second definition.
 #src/_ZN8SignPost4KillEv.cpp

@@ -175,7 +175,7 @@
 #src/_ZN8dM3dGSphD0Ev.cpp
 
 # 2 unresolved: __ZN15TextureSequenceD1Ev, __ZN9ModelAnimD1Ev
-src/d_a_hanachan.c
+src/actors/daHanachan_c.cpp
 
 # 2 unresolved: __ZN13daObjKi_Ita_c13InitResourcesEv, _daObjKi_Ita_c_classInit
 # RETIRED at SYNC6: this TU is already named by an older slice list, and

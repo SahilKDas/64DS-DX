@@ -84,7 +84,7 @@ src/func_ov015_021128f8.c
 src/func_ov015_021128e8.c
 src/func_ov015_021114f0.c
 src/func_ov015_0211166c.c
-src/_ZN7fBase_c8BehaviorEv.cpp
+src/actors/ActorBase.cpp
 src/_ZN4dBgW16UpdatePosAndAngsERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
 src/_ZN4dBgW21UpdatePosWithVelocityERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
 src/_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_.cpp
