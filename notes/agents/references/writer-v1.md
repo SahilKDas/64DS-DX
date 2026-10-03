@@ -519,7 +519,7 @@ in this very file: `actor-class-names-off-by-one` in `include/daObjHmBskt_c.h`,
 `src/game/actors/d_a_obj_km3_dorifu.cpp` and twice in
 `src_tu/actors/TTC_MovingBar.cpp`, `phantom-references` in
 `include/nitro/hw/registers.h`, and `stale-tu-map-overcut-ov006` in two
-`config/tu_manifest.d/ov006/*.json` `boundary_evidence` strings ([MgBingoBallSlotsShot.json](../../../config/tu_manifest.d/ov006/MgBingoBallSlotsShot.json) & [MgWhichWiggler.json](../../../config/tu_manifest.d/ov006/MgWhichWiggler.json)) — each written there with a `notes/` prefix and a `.md` suffix. Those files live in one machine's private memory directory; nobody else can follow the reference,
+`config/tu_manifest.d/ov006/*.json` `boundary_evidence` strings (`MgBingoBallSlotsShot.json`, since folded into [dScMgSmartball_c.json](../../../config/tu_manifest.d/ov006/dScMgSmartball_c.json), & [MgWhichWiggler.json](../../../config/tu_manifest.d/ov006/MgWhichWiggler.json)) — each written there with a `notes/` prefix and a `.md` suffix. Those files live in one machine's private memory directory; nobody else can follow the reference,
 and the dead-reference gate never saw them because it walked only `.md`.
 
 State the test as the fresh-clone property, not as "don't cite memory". An agent

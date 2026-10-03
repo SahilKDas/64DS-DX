@@ -12,17 +12,17 @@ Convention: instance members `mFoo`.
 
 ---
 
-## `Unagi` (`include/Unagi.h`, [ov016](../config/arm9/overlays/ov016/symbols.txt))
+## `daMoray_c` (`include/daMoray_c.h`, [ov016](../config/arm9/overlays/ov016/symbols.txt))
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x34c | `mState` | `src/_ZN5Unagi8BehaviorEv.cpp` loads it as a pointer to a descriptor and calls the pointer-to-member-function at `+8` through `this`; the same file compares it against &[data_ov016_02114dbc](../config/arm9/overlays/ov016/symbols.txt), and [func_ov016_02111bf0](../src/func_ov016_02111bf0.cpp)(this, &[data_ov016_02114d8c](../config/arm9/overlays/ov016/symbols.txt)) in `src/_ZN5Unagi13InitResourcesEv.cpp` is the setter. |
+| 0x34c | `mState` | `Behavior` in `src/actors/daMoray_c.cpp` loads it as a pointer to a descriptor and calls the pointer-to-member-function at `+8` through `this`; the same file compares it against &[data_ov016_02114dbc](../config/arm9/overlays/ov016/symbols.txt), and [func_ov016_02111bf0](../src/actors/daMoray_c.cpp)(this, &[data_ov016_02114d8c](../config/arm9/overlays/ov016/symbols.txt)) in `InitResources` is the setter. |
 | 0x3f0/0x3f4/0x3f8 | `mHomePosX/Y/Z` | `InitResources` writes them from `mPosX/mPosY/mPosZ` at spawn, then the `mVariant == 2` branch subtracts `0x80000` from `mHomePosY` and writes it back into `mPosY`. Written from the position and read back into the position: a home/spawn point. |
 | 0x40c | `mPathNodeCount` | `InitResources`: `mPathNodeCount = PathPtr::NumNodes(&path1)`. |
 | 0x410 | `mPathNodeIndex` | `InitResources` sets it to 1, then to 8, and clamps it to 4 when `mPathNodeIndex >= mPathNodeCount`. Only meaning consistent with being bounded by the node count. |
 | 0x414 | `mStarParam` | `InitResources`: `mStarParam = (param1 >> 0xc) & 0xf`. Its only two reads are `mStarParam \| 0x50` (`InitResources`) and `mStarParam \| 0x40` (`Behavior`), each the spawn parameter of actor `0xb2`, the star. |
-| 0x418..0x426 | `s16 mSegmentAngle[8]` | `InitResources` zeroes indices 0..6 through the base of 0x418 and then element 7 at 0x426 explicitly; `src/_ZN5Unagi6RenderEv.cpp` reads elements 1..6, multiplies each by [data_ov016_02114908](../config/arm9/overlays/ov016/symbols.txt)`[i].angleScale` and adds the result into the bone's rotation word at `bone + 0x1e`. Eight `s16`s, driving one bone angle each. |
-| 0x428/0x42a/0x42c | `mInitAngleX/Y/Z` | last three statements of `InitResources`: copied verbatim from `mAngleX/Y/Z`. Named for the capture, and [func_ov016_02111534](../src/func_ov016_02111534.c) does read all three back, restoring them into `mPrevAngleX/Y/Z`. |
+| 0x418..0x426 | `s16 mSegmentAngle[8]` | `InitResources` zeroes indices 0..6 through the base of 0x418 and then element 7 at 0x426 explicitly; `Render` in `src/actors/daMoray_c.cpp` reads elements 1..6, multiplies each by [data_ov016_02114908](../config/arm9/overlays/ov016/symbols.txt)`[i].angleScale` and adds the result into the bone's rotation word at `bone + 0x1e`. Eight `s16`s, driving one bone angle each. |
+| 0x428/0x42a/0x42c | `mInitAngleX/Y/Z` | last three statements of `InitResources`: copied verbatim from `mAngleX/Y/Z`. Named for the capture, and [func_ov016_02111534](../src/actors/daMoray_c.cpp) does read all three back, restoring them into `mPrevAngleX/Y/Z`. |
 | 0x43c | `Vector3 mStarPos` | `Behavior` passes `&mStarPos` to `Vec3_Dist` against the closest player's `+0x5c` (a position), passes `mStarPos` by reference as the spawn position of actor `0xb2`, and every frame copies its three words into the tracked star's `+0x5c/+0x60/+0x64`. Three consecutive words used only as a world position, and only ever the star's. |
 | 0x448 | `Vector3 mSegmentPos[7]` | already typed `Vector3[7]` — the ROM destroys it with `__destroy_arr(ptr, 7, 0xc, Vector3::~Vector3)`. `InitResources`' tail loop writes the actor's position into all seven. Renamed from `unk_448` to match `mSegmentAngle`; the loop's `char*` walker was replaced with `mSegmentPos[i].x/y/z`, byte-neutral. |
 
@@ -76,11 +76,11 @@ Additional observed fields:
 
 ---
 
-## `BowserFire` (`include/BowserFire.h`, [ov060](../config/arm9/overlays/ov060/symbols.txt))
+## `daKpaFire_c` (`include/daKpaFire_c.h`, [ov060](../config/arm9/overlays/ov060/symbols.txt))
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x35c | `mVariant` | `src/_ZN10BowserFire13InitResourcesEv.cpp`: `mVariant = param1 & 7`. It is then the index into both behaviour tables — [data_ov060_0211af74](../config/arm9/overlays/ov060/symbols.txt)`[mVariant]` (called once at init) and [data_ov060_0211afb4](../config/arm9/overlays/ov060/symbols.txt)`[mVariant].pmf` (called every frame in `Behavior`) — and `mVariant == 0` is what disables the collider by setting `mdCcAc_c.flags \|= 1`. |
+| 0x35c | `mVariant` | `src/actors/daKpaFire_c.cpp`: `mVariant = param1 & 7`. It is then the index into both behaviour tables — [data_ov060_0211af74](../config/arm9/overlays/ov060/symbols.txt)`[mVariant]` (called once at init) and [data_ov060_0211afb4](../config/arm9/overlays/ov060/symbols.txt)`[mVariant].pmf` (called every frame in `Behavior`) — and `mVariant == 0` is what disables the collider by setting `mdCcAc_c.flags \|= 1`. |
 | 0x364 | `mGroundY` | `InitResources` casts a `dBgCh_Gnd` ray down from the actor's position and stores `rc.clsnY` on a hit, `mPosY` on a miss. |
 | 0x374 | `mFrameCount` (`u16`) | zeroed in `InitResources`, incremented by 1 at the top of every `Behavior`. Widened from `s16` to `u16` to match the `unsigned short` the ROM's read-modify-write used, which is now spelled `mFrameCount += 1;`. |
 
@@ -88,25 +88,25 @@ Left `unk_`:
 
 - **0x2cc, 0x37c, 0x380, 0x384, 0x388** — written to 0 (or copied from each other) in
   `InitResources` and never read in a matched body.
-- **0x360** — `mShadowRadiusScale`. [func_ov060_02117624](../src/func_ov060_02117624.cpp) passes `*(0x368) * this`
+- **0x360** — `mShadowRadiusScale`. [func_ov060_02117624](../src/actors/daKpaFire_c.cpp) passes `*(0x368) * this`
   as the radius argument of `dActor_c::DropShadowRadHeight`, so the 0x2000 is a
   Fix12 2.0 multiplier on the shadow's base radius.
 - **0x370** — an `s32` incremented once per `Behavior`, alongside `mFrameCount`. Two
   free-running counters in one class, and nothing reads either, so there is no evidence
   for which is which; the raw poke stays rather than pick a name at random.
 - **0x378** — `(param1 >> 4) & 3`. Provenance without meaning: no matched body reads it.
-- **0x379** — `mDropsShadow`. [func_ov060_02117624](../src/func_ov060_02117624.cpp) returns immediately when it is 0,
+- **0x379** — `mDropsShadow`. [func_ov060_02117624](../src/actors/daKpaFire_c.cpp) returns immediately when it is 0,
   before it drops the shadow at all, so `mVariant != 0` is deciding which variants
   cast one.
 
 ---
 
-## `MrBlizzard` (`include/MrBlizzard.h`, [ov081](../config/arm9/overlays/ov081/symbols.txt))
+## `daSnowman_c` (`include/daSnowman_c.h`, [ov081](../config/arm9/overlays/ov081/symbols.txt))
 
 | offset | new name | evidence |
 | --- | --- | --- |
-| 0x3f8 | `void *mState` | `src/_ZN10MrBlizzard8BehaviorEv.cpp`'s local shadow places `PMF *pp` at 0x3f8, calls the pointer-to-member-function at `pp[1]` through `this`, and compares the word against four [ov081](../config/arm9/overlays/ov081/symbols.txt) state tables ([data_ov081_02128e24](../config/arm9/overlays/ov081/symbols.txt) / [_02128e64](../config/arm9/overlays/ov081/symbols.txt) / [_02128e84](../config/arm9/overlays/ov081/symbols.txt) / [_02128e94](../config/arm9/overlays/ov081/symbols.txt)). [func_ov081_02125488](../src/func_ov081_02125488.cpp)`(this, ...)` in `InitResources` is the setter. Previously unnamed inside `pad_398`. |
-| 0x400 | `mCapUniqueID` | `Behavior` spawns actor `0x10d` only when `SaveData::HasPlayerLostCap()` and this word is 0, then stores the spawned actor's unique id (`*(int*)(spawned + 4)`, the same `+4` `Unagi` uses for `mStarUniqueID`) into it. `src/_ZN10MrBlizzard6RenderEv.cpp` hides material 2 when it is non-zero — the head is bare once the cap actor exists. |
+| 0x3f8 | `void *mState` | `daSnowman_c::Behavior` in `src/actors/daSnowman_c.cpp` reads it through a local shadow that places `PMF *pp` at 0x3f8, calls the pointer-to-member-function at `pp[1]` through `this`, and compares the word against four [ov081](../config/arm9/overlays/ov081/symbols.txt) state tables ([data_ov081_02128e24](../config/arm9/overlays/ov081/symbols.txt) / [_02128e64](../config/arm9/overlays/ov081/symbols.txt) / [_02128e84](../config/arm9/overlays/ov081/symbols.txt) / [_02128e94](../config/arm9/overlays/ov081/symbols.txt)). [func_ov081_02125488](../src/actors/daSnowman_c.cpp)`(this, ...)` in `InitResources` is the setter. Previously unnamed inside `pad_398`. |
+| 0x400 | `mCapUniqueID` | `Behavior` spawns actor `0x10d` only when `SaveData::HasPlayerLostCap()` and this word is 0, then stores the spawned actor's unique id (`*(int*)(spawned + 4)`, the same `+4` `daMoray_c` uses for `mStarUniqueID`) into it. `daSnowman_c::Render` (in `src/actors/daSnowman_c.cpp`) hides material 2 when it is non-zero — the head is bare once the cap actor exists. |
 | 0x414 | `mInitAngleY` | `InitResources`, immediately after `mAngleY = mPrevAngleY`: `mInitAngleY = mAngleY`. |
 | 0x420 | `mPathNodeCount` | `InitResources` (`mType == 0` branch): `= PathPtr::NumNodes()`. |
 | 0x424 | `mPathNodeIndex` | passed to `PathPtr::GetNode(pos, index)` and then set to 1 in the same branch. |
@@ -114,7 +114,7 @@ Left `unk_`:
 
 Left `unk_`:
 
-- **0x3fc** — `mUniqueID_3fc`. Not a plain scalar: [func_ov081_02124134](../src/func_ov081_02124134.c) hands it to
+- **0x3fc** — `mUniqueID_3fc`. Not a plain scalar: [func_ov081_02124134](../src/actors/daSnowman_c.cpp) hands it to
   `dActor_c::FindWithID`, shoves the actor it finds (`+0x9c = -0x2000`,
   `+0xa0 = -0x28000`) and then clears it -- exactly what it does one field later with
   `mCapUniqueID`. Which actor it tracks is not evidenced, so the offset stands in for
@@ -237,7 +237,7 @@ remaining `unk_` fields resolve; the header's own prose already described two of
 | 0x428 | `Vector3 mStuckCheckPos` | written from `mPosX/Y/Z` in `InitResources`; `Behavior` compares `Vec3_Dist(&mPosX, &mStuckCheckPos) < 0xa000` and, while the enemy stays inside that radius, ticks the already-named `mStuckTimer`; the moment it leaves, the timer is zeroed and this field is re-recorded from the current position. |
 | 0x44c | `mSavedParam` | last statement of `InitResources`: a copy of `param1`, taken *after* the earlier `param1 &= 0xf0ff` masking. Named for what it holds; no matched body reads it back. |
 | 0x458 | `mTimer458` | `InitResources` zeroes it; `Behavior` sets it to `0x5a` when `mStuckTimer` hits 0x1e on a capped goomba, and both the release path (`mStuckTimer >= 0x12c && mTimer458 == 0`) and the fall-through (`if (mTimer458 == 0) mStuckTimer = 0`) gate on it reaching 0. Nothing in a matched body decrements it, so "a timer" is the whole of the evidence and the offset stays in the name. |
-| 0x45a | `mInitAngleY` | `InitResources`: `= mPrevAngleY`. Same shape as `Unagi`, `MrBlizzard`, `daBombking_c` and `PiranhaPlant`. |
+| 0x45a | `mInitAngleY` | `InitResources`: `= mPrevAngleY`. Same shape as `daMoray_c`, `daSnowman_c`, `daBombking_c` and `PiranhaPlant`. |
 | 0x464 | `mRewardType` | `InitResources`: `= (param1 >> 4) & 0xf`. Value 1 calls `dActor_c::TrackStar` and loads the silver-star assets; value 2 loads the silver-star assets only; anything else does neither. It selects what this goomba is worth. |
 | 0x465 | `mStarTracked` | `InitResources` presets it to -1 and, when `mRewardType == 1`, assigns `dActor_c::TrackStar(mStarID, 1)` into it. Same call and same role as `daBombking_c`'s 0x507. |
 | 0x466 | `mStarID` | `InitResources`: `= (param1 >> 0xc) & 0xf`, and it is the star-id argument of `TrackStar`. Same as `daBombking_c`'s 0x509. |

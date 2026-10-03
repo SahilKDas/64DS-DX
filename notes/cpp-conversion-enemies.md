@@ -37,11 +37,11 @@ written the way the original was.
 | `_ZN11dCapEnemy_cD2Ev` | [ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020aedbc 0x38 | the same body, bound to the other variant |
 | `_ZN7daTrs_cD1Ev` / `D0Ev` | [ov063](../config/arm9/overlays/ov063/symbols.txt) 0x02115ee0 / 0x02115f48 | 6 members, base D2 chain |
 | `_ZN7daKrb_cD1Ev` / `D0Ev` | [ov084](../config/arm9/overlays/ov084/symbols.txt) 0x02129020 / 0x02129070 | 5 members, base D2 chain |
-| `_ZN14UnchainedChompD0Ev` | [ov100](../config/arm9/overlays/ov100/symbols.txt) 0x02143290 0xe0 | 3 `__destroy_arr` + 4 sub-object dtors + chain |
+| `_ZN11daWanwan2_cD0Ev` | [ov100](../config/arm9/overlays/ov100/symbols.txt) 0x02143290 0xe0 | 3 `__destroy_arr` + 4 sub-object dtors + chain |
 | `_ZN11dCapEnemy_cD0Ev` | [ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020aedf4 0x4c | 2 sub-object dtors, base chain |
 | `_ZN15daObjMarioCap_cD0Ev` | [ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020b6f68 0x64 | 5 sub-object dtors, base chain |
-| `_ZN8Goomboss13InitResourcesEv` | [ov074](../config/arm9/overlays/ov074/symbols.txt) 0x02121e98 0x404 | name mangling; header decl added |
-| `_ZN8Fireball8BehaviorEv` | [ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020f8c94 0x570 | name mangling |
+| `_ZN12daKuriKing_c13InitResourcesEv` | [ov074](../config/arm9/overlays/ov074/symbols.txt) 0x02121e98 0x404 | name mangling; header decl added |
+| `_ZN12daFPknBall_c8BehaviorEv` | [ov002](../config/arm9/overlays/ov002/symbols.txt) 0x020f8c94 0x570 | name mangling |
 
 Every one passed `tools/match.py` (byte comparison *and* relocation destination)
 under 2004/b56 and then `rombuild.py -j16`: **106/106 exact** after each commit. The
@@ -226,7 +226,7 @@ and **never** consult the extension. Ten `.cpp` files tree-wide carry the marker
 an `#include`, so the build compiles them as **c99**.
 
 The standing advice has been to leave them alone because they match as c99. Twice now
-that has been wrong. `Goomboss` moved to byte 0, still matched, and became a real
+that has been wrong. `daKuriKing_c` moved to byte 0, still matched, and became a real
 method. `daKrb_c::InitResources` was worse: the inert marker was not what stood between
 it and a match -- 916 came out the same either way -- but it stopped `fdiff` and the
 permuter from compiling the file at all, which is presumably why a four-byte near-miss
@@ -239,6 +239,6 @@ Eight are left untested:
 |---|---|
 | `_ZN16daObjBC_Switch_c13InitResourcesEv`|  `_ZN6Number13InitResourcesEv`|
 |[func_ov002_020f6618](../src/func_ov002_020f6618.cpp) |                   `func_ov006_020e6e78`|
-|`func_ov006_020e7fe8` |                   [func_ov060_02111cc0](../src/func_ov060_02111cc0.cpp)|
-|[func_ov075_021143e4](../src/func_ov075_021143e4.cpp) |                    [func_ov075_02114ddc](../src/func_ov075_02114ddc.cpp)|
+|`func_ov006_020e7fe8` |                   [func_ov060_02111cc0](../src/actors/daKpa_c.cpp)|
+|`func_ov075_021143e4` |                    `func_ov075_02114ddc`|
 

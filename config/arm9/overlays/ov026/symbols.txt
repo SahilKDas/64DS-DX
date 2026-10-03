@@ -20,19 +20,19 @@ _ZN18daObjWlSubmarine_c16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x
 _ZN18daObjWlSubmarine_c6RenderEv kind:function(arm,size=0x28) addr:0x02111998
 _ZN18daObjWlSubmarine_c13InitResourcesEv kind:function(arm,size=0xb0) addr:0x021119c0
 daObjWlSubmarine_c_classInit kind:function(arm,size=0x30) addr:0x02111a70
-_ZN9WhirlpoolD1Ev kind:function(arm,size=0x38) addr:0x02111aa0
-_ZN9WhirlpoolD0Ev kind:function(arm,size=0x4c) addr:0x02111ad8
+_ZN18daWater_Tatumaki_cD1Ev kind:function(arm,size=0x38) addr:0x02111aa0
+_ZN18daWater_Tatumaki_cD0Ev kind:function(arm,size=0x4c) addr:0x02111ad8
 func_ov026_02111b24 kind:function(arm,size=0x190) addr:0x02111b24
 func_ov026_02111cb4 kind:function(arm,size=0x98) addr:0x02111cb4
 func_ov026_02111d4c kind:function(arm,size=0x18c) addr:0x02111d4c
 func_ov026_02111ed8 kind:function(arm,size=0x8) addr:0x02111ed8
 func_ov026_02111ee0 kind:function(arm,size=0x50) addr:0x02111ee0
 func_ov026_02111f30 kind:function(arm,size=0x74) addr:0x02111f30
-_ZN9Whirlpool16CleanupResourcesEv kind:function(arm,size=0x30) addr:0x02111fa4
-_ZN9Whirlpool16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02111fd4
-_ZN9Whirlpool6RenderEv kind:function(arm,size=0x34) addr:0x02111fd8
-_ZN9Whirlpool8BehaviorEv kind:function(arm,size=0xe0) addr:0x0211200c
-_ZN9Whirlpool13InitResourcesEv kind:function(arm,size=0xd0) addr:0x021120ec
+_ZN18daWater_Tatumaki_c16CleanupResourcesEv kind:function(arm,size=0x30) addr:0x02111fa4
+_ZN18daWater_Tatumaki_c16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02111fd4
+_ZN18daWater_Tatumaki_c6RenderEv kind:function(arm,size=0x34) addr:0x02111fd8
+_ZN18daWater_Tatumaki_c8BehaviorEv kind:function(arm,size=0xe0) addr:0x0211200c
+_ZN18daWater_Tatumaki_c13InitResourcesEv kind:function(arm,size=0xd0) addr:0x021120ec
 daWater_Tatumaki_c_classInit kind:function(arm,size=0x40) addr:0x021121bc
 _ZN17daWater_Suikomi_cD1Ev kind:function(arm,size=0x38) addr:0x021121fc
 _ZN17daWater_Suikomi_cD0Ev kind:function(arm,size=0x4c) addr:0x02112234
@@ -199,7 +199,6 @@ data_ov026_02113d04 kind:data(any) addr:0x02113d04
 _ZTI18daWater_Tatumaki_c kind:data(any) addr:0x02113d0c
 _ZTS18daWater_Tatumaki_c kind:data(any) addr:0x02113d18
 g_profile_WATER_TATUMAKI kind:data(any) addr:0x02113d30 ambiguous
-_ZTV9Whirlpool kind:data(any) addr:0x02113d54
 _ZTV18daWater_Tatumaki_c kind:data(any) addr:0x02113d54
 data_ov026_02113d90 kind:data(any) addr:0x02113d90 ambiguous
 data_ov026_02113da8 kind:data(any) addr:0x02113da8 ambiguous

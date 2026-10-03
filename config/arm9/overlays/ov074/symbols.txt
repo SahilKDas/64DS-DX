@@ -1,5 +1,5 @@
-_ZN8GoombossD1Ev kind:function(arm,size=0xa0) addr:0x0211f000
-_ZN8GoombossD0Ev kind:function(arm,size=0xb4) addr:0x0211f0a0
+_ZN12daKuriKing_cD1Ev kind:function(arm,size=0xa0) addr:0x0211f000
+_ZN12daKuriKing_cD0Ev kind:function(arm,size=0xb4) addr:0x0211f0a0
 func_ov074_0211f154 kind:function(arm,size=0xf0) addr:0x0211f154
 func_ov074_0211f244 kind:function(arm,size=0x100) addr:0x0211f244
 func_ov074_0211f344 kind:function(arm,size=0x48) addr:0x0211f344
@@ -43,10 +43,10 @@ func_ov074_0212195c kind:function(arm,size=0x40) addr:0x0212195c
 func_ov074_0212199c kind:function(arm,size=0x84) addr:0x0212199c
 func_ov074_02121a20 kind:function(arm,size=0x2c) addr:0x02121a20
 func_ov074_02121a4c kind:function(arm,size=0x70) addr:0x02121a4c
-_ZN8Goomboss16CleanupResourcesEv kind:function(arm,size=0xb4) addr:0x02121abc
-_ZN8Goomboss6RenderEv kind:function(arm,size=0x80) addr:0x02121b70
-_ZN8Goomboss8BehaviorEv kind:function(arm,size=0x2a8) addr:0x02121bf0
-_ZN8Goomboss13InitResourcesEv kind:function(arm,size=0x404) addr:0x02121e98
+_ZN12daKuriKing_c16CleanupResourcesEv kind:function(arm,size=0xb4) addr:0x02121abc
+_ZN12daKuriKing_c6RenderEv kind:function(arm,size=0x80) addr:0x02121b70
+_ZN12daKuriKing_c8BehaviorEv kind:function(arm,size=0x2a8) addr:0x02121bf0
+_ZN12daKuriKing_c13InitResourcesEv kind:function(arm,size=0x404) addr:0x02121e98
 func_ov074_0212229c kind:function(arm,size=0x44) addr:0x0212229c
 func_ov074_021222e0 kind:function(arm,size=0xdc) addr:0x021222e0
 func_ov074_021223bc kind:function(arm,size=0x278) addr:0x021223bc
@@ -89,7 +89,7 @@ data_ov074_02122e5c kind:data(any) addr:0x02122e5c
 g_profile_KURIKING kind:data(any) addr:0x02122e78 ambiguous
 g_profile_KURIKING_VANISH kind:data(any) addr:0x02122e94 ambiguous
 data_ov074_02122eb0 kind:data(any) addr:0x02122eb0 ambiguous
-_ZTV8Goomboss kind:data(any) addr:0x02122eb8
+_ZTV12daKuriKing_c kind:data(any) addr:0x02122eb8
 data_ov074_02122f34 kind:data(any) addr:0x02122f34
 data_ov074_02122f38 kind:data(any) addr:0x02122f38
 data_ov074_02122f3c kind:data(any) addr:0x02122f3c

@@ -91,3 +91,28 @@ int daChRoom_c::CleanupResources()
 {
     return 1;
 }
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN10daChRoom_cD0Ev, 0x020b081c, size 0x38 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN10daChRoom_cD0Ev
+/* _ZN10daChRoom_cD0Ev (vtable slot 17, the deleting destructor) is NOT
+ * hand-written here. A hand-written mangled D0 next to a real out-of-line D1
+ * ICEs mwccarm 2004/b56 (ELFgen.c:483); the compiler synthesizes D0 itself from
+ * D1. The two legacy files src/_ZN10daChRoom_cD0Ev.cpp and
+ * src/_ZN10daChRoom_cD1Ev.cpp had each independently reconstructed the SAME
+ * `daChRoom_c::~daChRoom_c(){}` -- the standard D0/D1 collapse artifact of one
+ * destructor split across two one-function files. */
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 0 -- _ZN10daChRoom_cD1Ev, 0x020b07f8, size 0x24 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN10daChRoom_cD1Ev
+/* recovered: real C++ destructor -- the compiler emits the whole body.
+ * Vtable slot 16: one vptr store, then the call into ~dActor_c.
+ *
+ * (no definition here: `virtual ~daChRoom_c() {}` is in include/daChRoom_c.h,
+ * and that placement is load-bearing rather than stylistic -- out of line,
+ * mwccarm emits D0 before D1 and adds a homeless D2, and objisolate then
+ * refuses this whole TU. The header carries the reasoning and the leaf
+ * measurement that makes it safe.) */

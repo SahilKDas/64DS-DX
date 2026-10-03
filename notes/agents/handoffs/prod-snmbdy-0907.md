@@ -278,7 +278,7 @@ these exact trees; neither is a cached report from an earlier base.
   changed headers fan out to 917 files, all checked. `src/actors/daBgSnmBdy_c.cpp`
   is VERIFIED on all 29 slots. Five files are not plain VERIFIED — one DRAFT
   (`_ZN12dScStarSel_c8BehaviorEv`) and four BLIND (`RollingIronBall`,
-  `daObjMarioCap_c`, `dScDSMT_c`, [func_ov089_0213162c](../../../src/func_ov089_0213162c.c)) — and every one of them is
+  `daObjMarioCap_c`, `dScDSMT_c`, `func_ov089_0213162c`, since folded into [daObjKey_c.cpp](../../../src/actors/daObjKey_c.cpp)) — and every one of them is
   in a file and module this candidate does not touch.
   `python tools/prepush_linkcheck.py --range 516a883c4..HEAD` — exit 0, 914
   checked, 620 verified, 294 warnings, 0 blocking. Coverage limit: this class is

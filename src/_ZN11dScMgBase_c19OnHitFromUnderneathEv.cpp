@@ -20,7 +20,7 @@
    re-enables the 3D engines only if the class's own OnHitByCannonBlastedChar
    says so.
 
-   Still on the Door route -- an `extern "C"` definition of the mangled name
+   Still on the daDoor_c route -- an `extern "C"` definition of the mangled name
    rather than a `dScMgBase_c::` member -- for the reason the rest of this
    family is: a real out-of-line member definition here risks moving the key
    function and emitting _ZTV11dScMgBase_c from this TU.  Including the header

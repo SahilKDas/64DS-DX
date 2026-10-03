@@ -1,6 +1,6 @@
 //cpp
 /* Production translation unit for ov035/daObjCtMecha11_c.
- * 8 function(s), .text 0x021116ec..0x02111b98. Tick Tock Clock's spinning
+ * 9 function(s), .text 0x021116ec..0x02111bd0. Tick Tock Clock's spinning
  * platform (profile CT_MECHA11).
  *
  * Behavior adds a clock-setting step to mAngleX. Setting 2 rolls a sign
@@ -18,6 +18,8 @@
  * _ZTS. Under `#pragma defer_codegen off` it comes out D1 (0x021116ec), D0
  * (0x02111738), then a D2 the cartridge has no home for (manifest: deadstrip);
  * the same pragma lays .text down in source order, so this file is ROM-ascending.
+ * The registry factory daObjCtMecha11_c_classInit (0x02111b98) closes the
+ * unit and ov035's .text.
  *
  * Leftover: dBgW_KcMbg::SetFile, dActor_c::DropShadowScaleXYZ and
  *   dBgActor_c::IsClsnInRange take Fix12<int> by value, so they stay mangled;
@@ -181,4 +183,14 @@ int daObjCtMecha11_c::InitResources()
     if (rg.DetectClsn() != 0)
         mFloorPosY = rg.clsnY;
     return 1;
+}
+
+/* Reconstructed source-style name: SM64DS proves daObjCtMecha11_c through
+ * RTTI, allocation size, vtable identity, and the CT_MECHA11 registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: SpinningPlatform_Spawn. */
+// @symbol daObjCtMecha11_c_classInit
+extern "C" daObjCtMecha11_c *daObjCtMecha11_c_classInit()
+{
+    return new daObjCtMecha11_c();
 }

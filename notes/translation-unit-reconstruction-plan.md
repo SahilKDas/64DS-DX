@@ -64,7 +64,7 @@ The 501 value is a lower bound rather than a final source-file count. `main`, `o
 
 Classes and TUs are not interchangeable:
 
-- Two interleaved class spans can prove that the classes shared a TU. MontyMole and MontyMoleRock are the canonical example.
+- Two interleaved class spans can prove that the classes shared a TU. daChoropu_c and daChoro_Rock_c are the canonical example.
 - A large class can have methods defined across several TUs.
 - A TU can contain unnamed helpers that carry no class label.
 - Vtables generally anchor the TU containing the relevant key function or destructor, not every TU containing methods of that class.

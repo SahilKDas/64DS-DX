@@ -74,13 +74,16 @@
  * ov002's and Cleanup only Releases it; naming belongs in ov002.
  * g_profile_KING_DONKETU lives outside this TU (S14).
  *
- * SCOPE. 43 of the class's 47 functions. Behavior, InitResources,
- * OnAimedAtWithEgg and classInit stay in their own shards: a file-global
- * `opt_propagation off` on Behavior recompiles eight other members. There is
- * no `return new` here for the same reason -- classInit is still in
- * src/d_a_king_donketu.cpp. daKing_Donketu_c_classInit is a reconstructed
- * name (RTTI daKing_Donketu_c, KING_DONKETU registry); retail does not store
- * that spelling, and the historical alias was ChiefChilly_Spawn.
+ * SCOPE. All 47 of the class's functions, 0x0211f000..0x02121f90: the whole
+ * tu_map unit (0x0211f000..0x02121ec8) plus the abutting registry factory
+ * daKing_Donketu_c_classInit (0x02121ec8..0x02121f90), written last. Behavior
+ * needs `opt_propagation off`, which at file scope recompiles eight other
+ * members; here it is a push/pop bracket around Behavior alone (see the note
+ * above Behavior for why the closing pop sits behind a declaration).
+ * daKing_Donketu_c_classInit is a reconstructed name (RTTI daKing_Donketu_c,
+ * KING_DONKETU registry); retail does not store that spelling, and the
+ * historical alias was ChiefChilly_Spawn. It keeps the hand-built
+ * construction rather than `return new` (see the note above it).
  *
  * Function order is ROM-ascending, not reversed.
  */
@@ -99,6 +102,9 @@
 #include "Message.h"
 #include "Player.h"
 #include "Camera.h"
+#include "dBgCh_Lin.h"
+
+bool ApproachLinear(short &value, short target, short step);
 
 struct C;
 typedef int (C::*PMF)();
@@ -177,7 +183,6 @@ extern void _ZN6Camera9SetFlag_3Ev(void* cam);
 extern void _Z14ApproachLinearRiii(int* p, int t, int s);
 extern void _ZN5Sound17ChangeMusicVolumeEj5Fix12IiE(unsigned int a, int b);
 extern unsigned int _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned int a, unsigned int b, unsigned int c, struct Vector3* v, unsigned int d);
-extern void _Z14ApproachLinearRsss(short* a, short b, short c);
 extern s16 Vec3_VertAngle(const void* a, const void* b);
 extern void func_ov073_0211f2c0(void *self, int strength);
 extern void Matrix4x3_ApplyInPlaceToRotationX(void *m, int angX);
@@ -189,7 +194,30 @@ extern void Matrix4x3_ApplyInPlaceToRotationXYZExt(void* m, int x, int y, int z)
 extern void _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(void* thiz, void* sm, void* m, int rad, int h, unsigned int u);
 extern void UnloadKeyModels(int i);
 extern void func_ov073_021215cc(void *self);
+extern void _ZN8dActor_c9UpdatePosEP5dCc_c(void *self, void *clsn);
+extern void _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(void *self, void *clsn);
+extern int _ZNK9Animation12WillHitFrameEi(void *self, int f);
+extern void _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(void *self, void *wmc, unsigned int flags);
+extern void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(void *self, const Vector3 *v);
+extern void _ZN5dCc_c5ClearEv(void *self);
+extern void _ZN5dCc_c6UpdateEv(void *self);
+extern void _ZN14BlendModelAnim7AdvanceEv(void *self);
+/* daKing_Donketu_c_classInit builds the object by hand; see the note above it. */
+extern void *_ZN7fBase_cnwEj(unsigned int size);
+extern void *_ZN12dEnemyBase_cC2Ev(void *self);
+extern void *_ZN10dCcAcPos_cC1Ev(void *self);
+extern void *_ZN10dBgCh_ActrC1Ev(void *self);
+extern void *_ZN14BlendModelAnimC1Ev(void *self);
+extern void *_ZN11ShadowModelC1Ev(void *self);
+extern void *_ZN7Vector3D1Ev(void *self);
+extern void func_0203d384(void);
+/* The array runtime discards lifecycle receiver results. */
+extern void __cxa_vec_ctor(void *arr, unsigned int count, unsigned int size, void (*ctor)(void *), void (*dtor)(void *));
 }
+
+/* This TU defines the class vtable (the destructor is its key function), so
+   the symbol is the start of the vtable object; slot 0 is two words in. */
+extern int _ZTV16daKing_Donketu_c[];
 
 // @symbol _ZN16daKing_Donketu_cD1Ev
 // @symbol _ZN16daKing_Donketu_cD0Ev
@@ -787,10 +815,10 @@ int func_ov073_021200e0(u8* thiz)
         Vec3 offset;
         Vec3 rotated;
         s16 horz;
-        _Z14ApproachLinearRsss((short*)(thiz + 0x8c), 0, 0x2000);
+        ApproachLinear(*(short *)(thiz + 0x8c), 0, 0x2000);
         horz = Vec3_HorzAngle((const Vector3 *)(thiz + 0x5c), (const Vector3 *)(thiz + 0x3d8));
         Vec3_VertAngle((const void*)(thiz + 0x5c), (const void*)(thiz + 0x3d8));
-        _Z14ApproachLinearRsss((short*)(thiz + 0x94), horz, 0x800);
+        ApproachLinear(*(short *)(thiz + 0x94), horz, 0x800);
         offset.x = 0;
         offset.y = 0;
         offset.z = 0;
@@ -903,7 +931,7 @@ mainblock:
         short vt = Vec3_VertAngle(c + 0x5c, v);
         int in[3];
         int out[3];
-        _Z14ApproachLinearRsss((short *)(c + 0x94), hz, 0x800);
+        ApproachLinear(*(short *)(c + 0x94), hz, 0x800);
         in[0] = 0; in[1] = 0; in[2] = 0;
         out[0] = 0; out[1] = 0; out[2] = 0;
         in[2] = 0x50000;
@@ -966,7 +994,7 @@ extern "C" {
         return 1;
 
     mainblock:
-        _Z14ApproachLinearRsss((short *)(c + 0x8c), 0, 0x2000);
+        ApproachLinear(*(short *)(c + 0x8c), 0, 0x2000);
         if (*(unsigned char *)(c + 0x4cb) == 2) {
             src = (int *)(c + 0x448 + *(unsigned char *)(c + 0x4c4) * 0xc);
             v[0] = src[0];
@@ -1028,7 +1056,7 @@ int func_ov073_0212081c(char* self)
 extern "C" {
 int func_ov073_02120844(int *t)
 {
-    _Z14ApproachLinearRsss((short *)((char*)t + 0x8c), -0x4000, 0x400);
+    ApproachLinear(*(short *)((char*)t + 0x8c), -0x4000, 0x400);
     t[0x140] = _ZN5Sound8PlayLongEjjjRK7Vector3s(t[0x140], 3, 0x170, (struct Vector3 *)((char*)t + 0x74), 0);
     if (t[0xf7] > t[0x18] && ((dBgCh_Actr *)((char*)t + 0x150))->IsOnGround()) {
         func_ov073_0211f2c0(t, 0x7d0000);
@@ -1090,7 +1118,7 @@ int func_ov073_02120910(char *c)
     *(short *)(c + 0x8e) = Vec3_HorzAngle((const Vector3 *)(c + 0x5c), (const Vector3 *)(c + 0x3d8));
     *(short *)(c + 0x94) = *(short *)(c + 0x8e) + 0x8000;
     *(int *)(((int)c + 0x4b4)) += 0x500;
-    _Z14ApproachLinearRsss((short *)(c + 0x8c),
+    ApproachLinear(*(short *)(c + 0x8c),
         ((s64)*(int *)(c + 0x4d0) * data_02082214[((unsigned short)(short)*(int *)(c + 0x4b4) >> 4) * 2] + 0x800) >> 12,
         0x400);
     if (func_ov073_0211f61c(c)) {
@@ -1126,7 +1154,7 @@ int func_ov073_02120ad8(int *t)
 // @symbol func_ov073_02120b78
 extern "C" {
 int func_ov073_02120b78(char* c){
-    _Z14ApproachLinearRsss((short*)(c+0x8c), -0x4000, 0x400);
+    ApproachLinear(*(short *)(c+0x8c), -0x4000, 0x400);
     if(*(int*)(c+0x3dc) > *(int*)(c+0x60)){
         if(((dBgCh_Actr *)(c+0x150))->IsOnGround()){
             func_ov073_0211f2c0(c, 0xfa0000);
@@ -1213,7 +1241,7 @@ int func_ov073_02120d80(char *c)
 // @symbol func_ov073_02120dec
 extern "C" {
 int func_ov073_02120dec(char *c) {
-    _Z14ApproachLinearRsss((short *)(c + 0x94), *(short *)(c + 0x4c6), 0x500);
+    ApproachLinear(*(short *)(c + 0x94), *(short *)(c + 0x4c6), 0x500);
     if (AngleDiff(*(short *)(c + 0x4c6), *(short *)(c + 0x8e)) < 0x100) {
         ChiefChilly_ChangeState((C *)(c), (PMF *)(data_ov073_02123360));
         *(short *)(c + 0x100) = 0x1e;
@@ -1275,7 +1303,7 @@ int func_ov073_02120ed0(void *self)
                     }
                 }
             }
-            _Z14ApproachLinearRsss((s16 *)(c + 0x94), *(s16 *)(c + 0x4c6), 0x1d0);
+            ApproachLinear(*(short *)(c + 0x94), *(s16 *)(c + 0x4c6), 0x1d0);
             *(s16 *)(c + 0x8c) = *(s16 *)(c + 0x92);
             *(s16 *)(c + 0x8e) = *(s16 *)(c + 0x94);
             *(s16 *)(c + 0x90) = *(s16 *)(c + 0x96);
@@ -1311,7 +1339,7 @@ int func_ov073_02120ed0(void *self)
         _Z14ApproachLinearRiii((int *)(c + 0x98), 0, *(int *)(c + 0x4d0));
         if (c[0x4c8] == 1) {
             *(s16 *)(c + 0x4c6) = ((dActor_c *)c)->HorzAngleToCPlayer();
-            _Z14ApproachLinearRsss((s16 *)(c + 0x8e), *(s16 *)(c + 0x4c6), 0x500);
+            ApproachLinear(*(short *)(c + 0x8e), *(s16 *)(c + 0x4c6), 0x500);
         }
         d = *(int *)(c + 0x98);
         if (d < 0) d = -d;
@@ -1458,7 +1486,7 @@ int func_ov073_02121388(char* c) {
     ((Camera *)cam)->SetPos(ps);
 
     vmsg.y = vmsg.y + 0x64000;
-    _Z14ApproachLinearRsss((short*)(c + 0x94), Vec3_HorzAngle((struct Vector3*)(c + 0x5c), &vplayer), 0x800);
+    ApproachLinear(*(short *)(c + 0x94), Vec3_HorzAngle((struct Vector3*)(c + 0x5c), &vplayer), 0x800);
 
     *(void**)(c + 0x3e4) = player;
     p = *(char**)(c + 0x3e4);
@@ -1567,4 +1595,266 @@ int daKing_Donketu_c::Render()
 {
   ((Base *)&mBlendModelAnim)->M((char*)&mScaleX);
   return 1;
+}
+
+/*
+ * One frame of the boss. Almost everything here is gated on WHICH state is
+ * current, compared by ADDRESS against the file-scope state records, and it
+ * gates five separate things rather than one:
+ *
+ *   three states       use UpdatePosWithOnlySpeed instead of UpdatePos, and
+ *                      apply gravity by hand first: mVertSpeed becomes
+ *                      max(mTerminalVelocity, mVertSpeed + mVertAccel)
+ *   two states         at animation frame 7, build a world matrix from the
+ *                      model's own bone and spawn the landing dust there --
+ *                      the impact is tied to the ANIMATION, not to contact
+ *   seven states       skip the ground ray entirely
+ *   one more           is exempt from the rewind below
+ *   two states         get an extra per-frame call
+ *
+ * THE GROUND RAY IS A FALL-THROUGH GUARD. It casts from 0x78000 above the boss
+ * along its heading (reach doubles once mHitsRemaining > 1) and, when it finds
+ * NOTHING, saves the current position into unk_4ec and rewinds mPos to the
+ * previous position -- so the boss cannot leave the arena by falling off it. A
+ * hit clears mNoGroundAhead; a miss while moving faster than 0xa000 sets it.
+ *
+ * The first thing it does is publish itself into the camera at +0x114, so the
+ * camera follows the boss without the boss being asked.
+ *
+ * `opt_propagation off` is what stops the many position temporaries being
+ * folded. It is bracketed to this one member: under `defer_codegen off` above,
+ * the bracket binds positionally, so the members before and after it keep
+ * the file's default propagation. The closing `#pragma pop` must NOT follow
+ * Behavior's closing brace directly: the parser reads one token past the `}`
+ * before generating the body, so a pop there is already in force when
+ * Behavior is compiled and Behavior no longer matches. The extern block below
+ * Behavior (the declarations InitResources needs) is what keeps it clear.
+ */
+struct RayParams { Vector3 start, end, in, out; };
+
+#pragma push
+#pragma opt_propagation off
+
+// @symbol _ZN16daKing_Donketu_c8BehaviorEv
+int daKing_Donketu_c::Behavior()
+{
+    char *self = (char *)this;
+    C *c = (C *)this;
+    int angx;
+    Vector3 v0;
+    RayParams rp;
+    Vector3 v3C;
+    Vector3 v48;
+    Vector3 v54;
+
+    *(C **)((char *)data_0209f318 + 0x114) = c;
+    DecIfAbove0_Short(&mStateTimer);
+
+    if (*(void **)((char *)c->pp + 8) != 0) {
+        PMF *p = c->pp + 1;
+        (c->**p)();
+    }
+
+    if ((char *)c->pp != data_ov073_02123400
+        && (char *)c->pp != data_ov073_02123320
+        && (char *)c->pp != data_ov073_02123340) {
+        _ZN8dActor_c9UpdatePosEP5dCc_c(self, &mdCcAcPos_c);
+    } else {
+        int sum = mVertSpeed + mVertAccel;
+        int m = mTerminalVelocity;
+        int ac = unk_0ac;
+        if (sum >= m) m = sum;
+        mVertSpeed = m;
+        unk_0ac = ac;
+        _ZN8dActor_c22UpdatePosWithOnlySpeedEP5dCc_c(self, &mdCcAcPos_c);
+    }
+
+    if (((char *)c->pp == data_ov073_02123330 || (char *)c->pp == data_ov073_02123350)
+        && _ZNK9Animation12WillHitFrameEi(self + 0x35c, 7) != 0) {
+        data_020a0e68 = *(struct Matrix4x3 *)(self + 0x328);
+        MulMat4x3Mat4x3(*(char **)(self + 0x320) + 0x60, &data_020a0e68, &data_020a0e68);
+        v0.x = data_020a0e68.m[9];
+        v0.y = data_020a0e68.m[10];
+        v0.z = data_020a0e68.m[11];
+        Vec3_Lsl(&v3C, &v0, 3);
+        v0 = v3C;
+        func_02012694(0x167, &mCamSpacePosX);
+        v48 = v0;
+        HugeLandingDustAt(v48, 1);
+    }
+
+    if ((char *)c->pp != data_ov073_021233c0
+        && (char *)c->pp != data_ov073_021233d0
+        && (char *)c->pp != data_ov073_021233f0
+        && (char *)c->pp != data_ov073_02123400
+        && (char *)c->pp != data_ov073_02123320
+        && (char *)c->pp != data_ov073_02123340
+        && (char *)c->pp != data_ov073_02123380) {
+        dBgCh_Lin line;
+        rp.start.x = 0; rp.start.y = 0; rp.start.z = 0;
+        rp.end.x = 0; rp.end.y = 0; rp.end.z = 0;
+        rp.in.x = 0; rp.in.y = 0; rp.in.z = 0;
+        rp.out.x = 0; rp.out.y = 0; rp.out.z = 0;
+        {
+            int y;
+            rp.start.x = mPosX;
+            angx = 0x2000;
+            y = mPosY;
+            rp.start.y = y;
+            rp.start.z = mPosZ;
+            rp.start.y = y + 0x78000;
+            if (mHitsRemaining > 1)
+                rp.in.z = 0x258000;
+            else
+                rp.in.z = 0x12c000;
+            Matrix4x3_FromRotationY(&data_020a0e68, mPrevAngleY);
+            Matrix4x3_ApplyInPlaceToRotationX(&data_020a0e68, angx);
+        }
+        MulVec3Mat4x3(&rp.in, &data_020a0e68, &rp.out);
+        {
+            int sx = rp.start.x;
+            int ox = rp.out.x;
+            int sy = rp.start.y;
+            int sz = rp.start.z;
+            int oy, oz;
+            rp.end.x = sx;
+            rp.end.x = sx + ox;
+            oy = rp.out.y;
+            oz = rp.out.z;
+            rp.end.y = sy;
+            rp.end.y = sy + oy;
+            rp.end.z = sz;
+            rp.end.z = sz + oz;
+        }
+        line.SetObjAndLine(rp.start, rp.end, this);
+        if (!line.DetectClsn()) {
+            if (mHorzSpeed > 0xa000) {
+                mNoGroundAhead = 1;
+            }
+            unk_4ec = mPosX;
+            unk_4f0 = mPosY;
+            unk_4f4 = mPosZ;
+            if ((char *)c->pp != data_ov073_021233a0) {
+                mPosX = mPrevPosX;
+                mPosY = mPrevPosY;
+                mPosZ = mPrevPosZ;
+                mHorzSpeed = 0;
+            }
+        } else {
+            mNoGroundAhead = 0;
+        }
+    }
+
+    _ZN12dEnemyBase_c12UpdateWMClsnER10dBgCh_Actrj(self, &mWithMeshClsn, 0);
+
+    v54 = data_ov073_02123040;
+    _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(&mdCcAcPos_c, &v54);
+
+    if ((char *)c->pp == data_ov073_02123360
+        || (char *)c->pp == data_ov073_02123390) {
+        func_ov073_0211f61c(self);
+    }
+    _ZN5dCc_c5ClearEv(&mdCcAcPos_c);
+    _ZN5dCc_c6UpdateEv(&mdCcAcPos_c);
+    func_ov073_021215cc(self);
+    _ZN14BlendModelAnim7AdvanceEv(&mBlendModelAnim);
+    return 1;
+}
+
+extern "C" {
+extern void LoadKeyModels(int idx);
+extern struct BMD_File* _ZN5Model8LoadFileER13SharedFilePtr(SharedFilePtr* f);
+extern void _ZN9ModelBase7SetFileEP8BMD_Fileii(void* self, struct BMD_File* f, int a, int b);
+extern void _ZN11ShadowModel12InitCylinderEv(void* self);
+extern void* _ZN9Animation8LoadFileER13SharedFilePtr(SharedFilePtr* f);
+extern void _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(void* self, dActor_c* a, Vector3* v, Fix12i r, Fix12i h, unsigned int e, unsigned int g);
+extern void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void* self, dActor_c* a, Fix12i r, Fix12i h, Vector3_16* p, Vector3_16* q);
+}
+
+#pragma pop
+
+// @symbol _ZN16daKing_Donketu_c13InitResourcesEv
+int daKing_Donketu_c::InitResources()
+{
+    struct BMD_File* f;
+    Vector3 v;
+    int i;
+    LoadKeyModels(4);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_02123280);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_021232a0);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_02123288);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_021232a8);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_02123290);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_021232b0);
+    _ZN9Animation8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_021232b8);
+    _ZN5Model8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov002_0210da30);
+    f = _ZN5Model8LoadFileER13SharedFilePtr((SharedFilePtr *)data_ov073_02123298);
+    _ZN9ModelBase7SetFileEP8BMD_Fileii(&mBlendModelAnim, f, 1, -1);
+    _ZN11ShadowModel12InitCylinderEv(&mShadowModel);
+    mVertAccel = -0x3000;
+    mTerminalVelocity = -0x3c000;
+    v.x = data_ov073_02123040.x;
+    v.y = data_ov073_02123040.y;
+    v.z = data_ov073_02123040.z;
+    _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(&mdCcAcPos_c, this, &v, 0xa4000, 0x1e4000, 0x200000, 0x567f0);
+    mBlendModelAnim.speed = 0x2000;
+    _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, this, 0x96000, 0x94000, 0, 0);
+    mSpawnPosX = mPosX;
+    mSpawnPosY = mPosY;
+    mSpawnPosZ = mPosZ;
+    {
+        char* p;
+        for (i = 0, p = (char*)this; i < 8; i++) {
+            *(int*)(p + 0x3e8) = mPosX;
+            *(int*)(p + 0x3ec) = mPosY;
+            *(int*)(p + 0x3f0) = mPosZ;
+            *(int*)(p + 0x448) = mPosX;
+            *(int*)(p + 0x44c) = mPosY;
+            *(int*)(p + 0x450) = mPosZ;
+            p += 0xc;
+        }
+    }
+    unk_4c5 = 0xff;
+    mPrevAngleY = HorzAngleToCPlayer();
+    mAngleY = mPrevAngleY;
+    *(short*)((char*)this + 0x400 + 0xc6) = mAngleY;
+    unk_4bc = 2;
+    mHitsRemaining = 3;
+    mScaleX = 0x1000;
+    mScaleY = 0x1000;
+    mScaleZ = 0x1000;
+    ChiefChilly_ChangeState((C *)this, (PMF *)data_ov073_02123330);
+    return 1;
+}
+
+// @symbol _ZN16daKing_Donketu_c16OnAimedAtWithEggEv
+s32 daKing_Donketu_c::OnAimedAtWithEgg()
+{
+    return 0x64000;
+}
+
+/* daKing_Donketu_c_classInit is not `new daKing_Donketu_c()`: types.h's
+ * Vector3 has no user-declared constructor, so the synthesized constructor
+ * skips the per-element __cxa_vec_ctor(..., func_0203d384, ...) calls the
+ * cartridge makes over mWaypointsA, mWaypointsB and unk_4d4 (measured: the
+ * new-expression DIFFs). The registry factory therefore keeps its hand-built
+ * sequence: operator new(0x504), the dEnemyBase_c constructor, the vtable
+ * store, the four member constructors and the three Vector3 array
+ * constructions. */
+// @symbol daKing_Donketu_c_classInit
+extern "C" daKing_Donketu_c *daKing_Donketu_c_classInit()
+{
+    char *p = (char *)_ZN7fBase_cnwEj(sizeof(daKing_Donketu_c));
+    if (p) {
+        _ZN12dEnemyBase_cC2Ev(p);
+        *(void **)p = &_ZTV16daKing_Donketu_c[2];
+        _ZN10dCcAcPos_cC1Ev(p + 0x110);
+        _ZN10dBgCh_ActrC1Ev(p + 0x150);
+        _ZN14BlendModelAnimC1Ev(p + 0x30c);
+        _ZN11ShadowModelC1Ev(p + 0x380);
+        __cxa_vec_ctor(p + 0x3e8, 8, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+        __cxa_vec_ctor(p + 0x448, 8, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+        __cxa_vec_ctor(p + 0x4d4, 2, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+    }
+    return (daKing_Donketu_c *)p;
 }

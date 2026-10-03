@@ -1,9 +1,21 @@
 //cpp
-/* Production translation unit for ov065/daObjCtMecha04_c.
+/* daObjCtMecha04_c (ov065): the Tick Tock Clock conveyor belt. CT_MECHA04L is
+ * actor 0x6f (111) and CT_MECHA04S is 0x70 (112); both factories construct this
+ * class, and InitResources picks its model, collision and CLPS row from actorID
+ * (0x6f -> row 0, 0x70 -> row 1). Behavior scrolls the belt texture and, through
+ * AfterClsnCallback, moves whatever stands on it.
  *
- * deslop
+ * The two factories (CT_MECHA04L / CT_MECHA04S) are `return new` in this file.
+ * UpdateShadow, MoveActorOnBelt, and AfterClsnCallback are descriptive
+ * reconstructions. The member/static forms and parameter spellings of the
+ * latter two are also inferred; the manifest records the evidence boundary.
  *
- * Leftover:
+ * mwccarm emits ordinary functions in reverse source order, so the nine
+ * definitions below (the compiler-emitted D1/D0 pair makes eleven functions)
+ * intentionally run from the highest retail address back toward the
+ * compiler-owned destructor group. Keep the factories first.
+ *
+ * Known limits:
  * - TextureTransformer::SetFile / dBgW_KcMbg::SetFile / DropShadowScaleXYZ /
  *   dBgActor_c::IsClsnInRange stay mangled (Fix12-by-value, 6az)
  * - func_020393c4 / func_020393bc store/load dBgW+0x1c (no setter)
@@ -12,16 +24,6 @@
  * - SharedFilePtr +4 BMD (Prepare; header has no fields)
  * - common.h first (UpdateShadow mShadowMat.m[9..11] needs the flat 12-word spelling)
  * - return new emits homeless _ZN10dBgActor_cD2Ev; compiler-only policy deadstrips it
- *
- * mwccarm emits ordinary functions in reverse source order, so the eleven
- * definitions below intentionally run from the highest retail address back
- * toward the compiler-owned destructor group. Keep the factories first.
- *
- * UpdateShadow, MoveActorOnBelt, and AfterClsnCallback are descriptive
- * reconstructions. The member/static forms and parameter spellings of the
- * latter two are also inferred; the manifest records the evidence boundary.
- *
- * The two factories (CT_MECHA04L / CT_MECHA04S) are `return new` in this file.
  */
 
 #include "common.h"
@@ -40,6 +42,13 @@ struct Entry3 {
 };
 
 int ApproachLinear(int &r, int t, int step);
+
+enum {
+    ACTOR_CT_MECHA04L = 0x6f,
+    ACTOR_CT_MECHA04S = 0x70,
+    CLOCK_SETTING_RANDOM = 2,   /* Behavior picks a random belt direction */
+    CLOCK_SETTING_STOPPED = 3   /* Behavior skips the belt texture, sound and callback */
+};
 
 /* Fix12-by-value calls retain their measured raw ABI declarations. Natural
  * class-typed declarations make mwccarm home arguments absent from retail. */
@@ -71,24 +80,18 @@ extern void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Bloc
 extern s16 data_02082214[];
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol daObjCtMecha04_c_classInit_CT_MECHA04S
 extern "C" daObjCtMecha04_c *daObjCtMecha04_c_classInit_CT_MECHA04S()
 {
     return new daObjCtMecha04_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol daObjCtMecha04_c_classInit_CT_MECHA04L
 extern "C" daObjCtMecha04_c *daObjCtMecha04_c_classInit_CT_MECHA04L()
 {
     return new daObjCtMecha04_c();
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c17AfterClsnCallbackEP4dBgWP8dActor_cS3_
 /* Inferred descriptive name and observed three-register callback ABI. The
  * wrapper deliberately ignores the collider and tail-calls the owner method. */
@@ -98,18 +101,18 @@ void daObjCtMecha04_c::AfterClsnCallback(dBgW *collider, dActor_c *owner,
     ((daObjCtMecha04_c *)owner)->MoveActorOnBelt(*other);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c15MoveActorOnBeltER8dActor_c
 /* Inferred descriptive name. The collision callback supplies this conveyor as
- * owner and the actor whose X/Z position should advance with the belt. */
+ * owner and the actor whose X/Z position should advance with the belt. Each
+ * axis moves by mBeltSpeed * 4 scaled by one entry of data_02082214, indexed
+ * by (u16)mAngleY >> 4: entry [2i] for X, entry [2i + 1] for Z. */
 void daObjCtMecha04_c::MoveActorOnBelt(dActor_c &actor)
 {
     u16 angleForX = (u16)mAngleY;
     int angleIndexForX = angleForX >> 4;
     int beltStepForX = mBeltSpeed << 2;
-    int cosine = data_02082214[angleIndexForX * 2];
-    int deltaX = (int)((((s64)beltStepForX * cosine) + 0x800) >> 12);
+    int sinY = data_02082214[angleIndexForX * 2];
+    int deltaX = (int)((((s64)beltStepForX * sinY) + 0x800) >> 12);
     s32 *actorPosX = &actor.mPosX;
     int oldX = *actorPosX;
     *actorPosX = oldX + deltaX;
@@ -118,14 +121,12 @@ void daObjCtMecha04_c::MoveActorOnBelt(dActor_c &actor)
     int angleIndexForZ = angleForZ >> 4;
     int beltStepForZ = mBeltSpeed << 2;
     s32 *actorPosZ = actorPosX + 2;
-    int sine = data_02082214[(angleIndexForZ * 2) + 1];
+    int cosY = data_02082214[(angleIndexForZ * 2) + 1];
     int oldZ = *actorPosZ;
-    int deltaZ = (int)((((s64)beltStepForZ * sine) + 0x800) >> 12);
+    int deltaZ = (int)((((s64)beltStepForZ * cosY) + 0x800) >> 12);
     *actorPosZ = oldZ + deltaZ;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c13InitResourcesEv
 int daObjCtMecha04_c::InitResources()
 {
@@ -138,8 +139,8 @@ int daObjCtMecha04_c::InitResources()
     animationFiles[0] = *(void **)&data_ov065_0211d16c[0];
     animationFiles[1] = *(void **)&data_ov065_0211d16c[4];
 
-    if (actorID != 0x6f) {
-        if (actorID == 0x70)
+    if (actorID != ACTOR_CT_MECHA04L) {
+        if (actorID == ACTOR_CT_MECHA04S)
             mVariant = 1;
     } else {
         mVariant = 0;
@@ -199,12 +200,10 @@ int daObjCtMecha04_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c8BehaviorEv
 int daObjCtMecha04_c::Behavior()
 {
-    if (data_0209f2c0 == 3) {
+    if (data_0209f2c0 == CLOCK_SETTING_STOPPED) {
         func_020393c4(&mMeshCollider, 0);
         _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0, 0);
     } else {
@@ -214,11 +213,12 @@ int daObjCtMecha04_c::Behavior()
                               (void *)&daObjCtMecha04_c::AfterClsnCallback);
             }
 
-            if (data_0209f2c0 == 2) {
+            if (data_0209f2c0 == CLOCK_SETTING_RANDOM) {
                 if (ApproachLinear(mBeltSpeed, mTargetBeltSpeed, 0xcc) != 0
                     && DecIfAbove0_Short((u16 *)&mDirectionTimer) == 0) {
                     unsigned int randomValue = (u16)(
                         (unsigned int)RandomIntInternal(&data_0209e650) >> 0x10);
+                    /* New direction, held for 0xa + 0x14 * (0..6) ticks. */
                     mDirectionTimer = (s16)(((int)randomValue % 7) * 0x14 + 0xa);
                     if (randomValue >= 0x7fff) {
                         mTargetBeltSpeed = 0x1000;
@@ -245,8 +245,6 @@ int daObjCtMecha04_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c6RenderEv
 int daObjCtMecha04_c::Render()
 {
@@ -255,8 +253,6 @@ int daObjCtMecha04_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c16CleanupResourcesEv
 int daObjCtMecha04_c::CleanupResources()
 {
@@ -267,8 +263,6 @@ int daObjCtMecha04_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha04_c12UpdateShadowEv
 /* Inferred descriptive name. The owned ShadowModel and its matrix are fixed by
  * the destructor, field accesses, and dActor_c::DropShadowScaleXYZ call. */
@@ -287,7 +281,7 @@ void daObjCtMecha04_c::UpdateShadow()
     mShadowMat.m[10] = (mGroundY + 0x1000) >> 3;
     mShadowMat.m[11] = mPosZ >> 3;
 
-    int isLarge = (int)(actorID == 0x6f);
+    int isLarge = (int)(actorID == ACTOR_CT_MECHA04L);
     if (isLarge != 0) {
         _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(
             this, &mShadowModel, &mShadowMat,
@@ -302,6 +296,8 @@ void daObjCtMecha04_c::UpdateShadow()
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
+// @symbol _ZN16daObjCtMecha04_cD1Ev
+// @symbol _ZN16daObjCtMecha04_cD0Ev
 /* No separate body lives here. The inline virtual destructor in the directly
  * included class header makes mwccarm emit retail's D1 then D0 order without
  * the otherwise homeless D2 variant. */

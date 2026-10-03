@@ -69,6 +69,7 @@ extern "C" daObjWc_Obj05_c *daObjWc_Obj05_c_classInit()
 namespace tail_e40 { extern "C" int func_ov029_02111e40(void *b, void *c); }
 #pragma long_calls on
 namespace fndef_e60 {
+// @symbol func_ov029_02111e60
 extern "C" int func_ov029_02111e60(void *a, void *b, void *c)
 {
     return tail_e40::func_ov029_02111e40(b, c);
@@ -80,6 +81,7 @@ extern "C" int func_ov029_02111e60(void *a, void *b, void *c)
 /* -------------------------------------------------------------------------- */
 /* BeforeClsn helper: if the other actor's actorID (dActor_c+0x0c) is PLAYER
  * (0xbf), arm unk_32a. The unsigned char temporary is load-bearing. */
+// @symbol func_ov029_02111e40
 extern "C" void func_ov029_02111e40(char *a, char *b)
 {
     unsigned char ok = *(unsigned short *)(b + 0xc) == 0xbf;
@@ -201,6 +203,7 @@ s32 daObjWc_Obj05_c::CleanupResources()
     ((SharedFilePtr *)data_ov029_02114284)->Release();
     return 1;
 }
-
+// @symbol _ZN15daObjWc_Obj05_cD1Ev
+// @symbol _ZN15daObjWc_Obj05_cD0Ev
 /* daObjWc_Obj05_c's inline class-body destructor is instantiated by the
  * definitions above. mwccarm emits D1 and D0 into this object. */

@@ -6,7 +6,7 @@
  * dBgActor_c that drifts forward along its own yaw and turns a quarter
  * turn every 60 frames. ROM RTTI spells the class daObjKm1_Ukishima_c
  * (_ZTS at ov043 0x0211227c); _ZTI+8 at 0x02112270 points at
- * _ZTI10dBgActor_c. ov043 is Bowser in the Dark World.
+ * _ZTI10dBgActor_c. ov043 is daKpa_c in the Dark World.
  *
  * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S. mwccarm 2004/b56
  * emits one .text section per function in the REVERSE of source order, so the

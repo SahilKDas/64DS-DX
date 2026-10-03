@@ -1,5 +1,5 @@
 //cpp
-/* Rickshaw axle shared by the Bowser in the Dark World and Bowser in the Sky
+/* Rickshaw axle shared by the daKpa_c in the Dark World and daKpa_c in the Sky
  * actors. It turns the model and carries up to four mounted carts.
  *
  * This partial TU owns the four functions below. The two destructors retain

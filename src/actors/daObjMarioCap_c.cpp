@@ -7,10 +7,13 @@
  * A dropped cap slides down slopes, blinks through the last half of its
  * timer and is destroyed when the timer ends (unless flag 0x60000 is set).
  *
- * Twenty-nine of the run's thirty functions. OnYoshiTryEat is the key
- * function -- the first out-of-line virtual daObjMarioCap_c declares after
- * the inline destructor in daObjMarioCap_c.h -- so the compiler owns retail's
- * D1/D0 pair and the complete RTTI/vtable group, and no D2 is retained.
+ * The whole cap unit of ov002 .text, 0x020b6f18..0x020b8bf0, 31 functions:
+ * the D1/D0 pair, the state helpers and methods, InitResources and the
+ * registry factory daObjMarioCap_c_classInit (`return new`, through the
+ * class's leaf operator new). OnYoshiTryEat is the key function -- the first
+ * out-of-line virtual daObjMarioCap_c declares after the inline destructor in
+ * daObjMarioCap_c.h -- so the compiler owns retail's D1/D0 pair and the
+ * complete RTTI/vtable group, and no D2 is retained.
  *
  * DO NOT "TIDY" THESE -- each one is load-bearing:
  *
@@ -42,13 +45,11 @@
  *   6az). dBgCh_Actr::GetFloorResult / GetWallResult are not declared.
  *
  * Known limits:
- *   classInit stays in src/d_a_obj_mario_cap.c. InitResources (0x020b86d0..
- *   0x020b8b98) sits between the licensed range and the factory and does not
- *   reproduce, so folding `return new daObjMarioCap_c()` would punch a hole
- *   in .text. Leaf operator new is on the class for when that join is legal.
- *   _ZN15daObjMarioCap_c13InitResourcesEv is held out: the cartridge body is
- *   0x4c8 bytes at 0x020b86d0..0x020b8b98, the pinned 2004/b56 emits 0x4d0,
- *   8 bytes over, and there is no `complete` marker.
+ *   InitResources keeps two `(u32)param1` read-side casts; spelled plainly,
+ *   2004/b56 materialises the param1 address once for each read-modify-write
+ *   and the body grows from 0x4c8 to 0x4d0 (see the comments at both sites).
+ *   It also keeps the dCcAc_c::Init / dBgCh_Actr::Init calls mangled: both
+ *   take Fix12<int> by value.
  *   The data_ov002_0210de* / 0210df* handles have no recovered names in
  *   symbols.txt, so none are coined.
  *   The SharedFilePtr header has no fields; CleanupResources still casts the
@@ -113,24 +114,15 @@ extern "C" {
 void  func_ov002_020b6fcc(void *self);
 int   func_ov002_020b71e8(void);
 int   func_ov002_020b71f0(int *p);
-int   func_ov002_020b7200(char *c);
 int   func_ov002_020b7330(char *self);
-int   func_ov002_020b74d0(char *c);
-int   func_ov002_020b76ec(char *self);
 int   func_ov002_020b781c(char *c);
 int   func_ov002_020b7b70(char *c);
-int   func_ov002_020b7c30(void *c);
 int   func_ov002_020b7cdc(int *p);
-int   func_ov002_020b7cec(char *c);
-int   func_ov002_020b7d58(char *p);
 int   func_ov002_020b7d6c(char *c);
 int   func_ov002_020b7d94(void);
-int   func_ov002_020b7d9c(char *c);
-int   func_ov002_020b7e08(char *p);
 /* func_ov002_020b7e1c is declared by decl_common.h; do not restate it. */
 int   func_ov002_020b7f24(void);
 int   func_ov002_020b7f2c(C *c, PMF *p);
-void  func_ov002_020b7f7c(char *c);
 
 /* -- other modules -- */
 void  func_02013a88(void);
@@ -160,8 +152,12 @@ int   _ZN4cstd4fdivEii(int a, int b);
 void *_ZNK10dBgCh_Actr13GetWallResultEv(void *self);
 char *_ZNK10dBgCh_Actr14GetFloorResultEv(void *self);
 
+/* dCcAc_c::Init and dBgCh_Actr::Init take Fix12<int> by value, which has no
+   implicit int conversion (notes/mwccarm-codegen.md 6az). */
+extern void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void *thiz, void *actor, s32 f1, s32 f2, u32 a, u32 b);
+extern void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(void *thiz, void *actor, s32 f1, s32 f2, void *v, void *w);
 
-void  _ZN9dBgCh_GndC1Ev(char *ray);
+void *_ZN9dBgCh_GndC1Ev(char *ray);
 void  _ZN9dBgCh_GndD1Ev(char *ray);
 
 /* SetRanges carries Fix12<int> by value; dActor_c.h deliberately omits it
@@ -196,6 +192,198 @@ extern struct AnimRec *data_ov002_020ff0a0[];
 extern struct AnimRec *data_ov002_020ff0b8[];
 extern int            *data_ov002_020ff0c4[];
 
+}
+
+// @symbol daObjMarioCap_c_classInit
+extern "C" daObjMarioCap_c *daObjMarioCap_c_classInit(void)
+{
+    return new daObjMarioCap_c();
+}
+
+// @symbol _ZN15daObjMarioCap_c13InitResourcesEv
+int daObjMarioCap_c::InitResources()
+{
+    int flag;
+    unsigned char v;
+
+    mType = param1 & 0xff;
+    mModelIndex = (param1 >> 8) & 0xf;
+    unk_400 = (param1 >> 0xc) & 0xf;
+
+    if (mType == 0xff)
+        mType = 0;
+
+    if (mModelIndex >= 3)
+        return 0;
+
+    if (mType == 0x11 || mType == 4) {
+        if (unk_400 > 2)
+            unk_400 = 0;
+    } else {
+        if (unk_400 > 1)
+            unk_400 = 0;
+    }
+
+    switch (mType) {
+    case 0xf:
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de50);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de60);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de48);
+        break;
+    case 0x14:
+    case 0x15:
+    case 0x16:
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de28);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de08);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de20);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de40);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de10);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de00);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de58);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de18);
+        break;
+    case 0x10:
+    case 0x11:
+    case 0x12:
+    case 0x13:
+    default:
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de30);
+        Animation::LoadFile(*(SharedFilePtr *)&data_ov002_0210de38);
+        break;
+    }
+
+    if (mModelAnim.SetFile(
+            (BMD_File *)Model::LoadFile(*(SharedFilePtr *)data_ov002_020ff0ac[mModelIndex]),
+            1, -1) == 0)
+        return 0;
+
+    mShadowModel.InitCylinder();
+
+    mScaleX = 0x1000;
+    mScaleY = 0x1000;
+    mScaleZ = 0x1000;
+
+    flag = 0;
+
+    _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(&mdCcAc_c, this, 0x1e000, 0x1e000, 0x800002, 0);
+    _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(&mWithMeshClsn, this, 0x1e000, 0x16000, 0, 0);
+
+    unk_3c4 = mPosX;
+    unk_3c8 = mPosY;
+    unk_3cc = mPosZ;
+
+    mVertAccel = -0x1000;
+    mTerminalVelocity = -0x1e000;
+
+    switch (mType) {
+    default:
+        break;
+    case 0:
+        *(s32 *)(((long long)((char *)&mdCcAc_c.vulnFlags))) |= 0x8000;
+        unk_400 = 4;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df64);
+        break;
+    case 1:
+        unk_400 = 0xff;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df84);
+        break;
+    case 2:
+        *(s32 *)(((long long)((char *)&mdCcAc_c.vulnFlags))) |= 0x8000;
+        unk_400 = 4;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df04);
+        break;
+    case 3:
+        unk_400 = 0xff;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df24);
+        break;
+    case 19:
+        unk_400 = 0xff;
+        *(void **)&unk_3c0 = ClosestPlayer();
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df54);
+        unk_401 = 1;
+        break;
+    case 20:
+    case 21:
+    case 22:
+        func_ov002_020b7f7c();
+        /* fallthrough */
+    case 10:
+    case 15:
+        unk_400 = 0xff;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df74);
+        break;
+    case 12:
+        unk_400 = 4;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df14);
+        break;
+    case 13:
+        unk_400 = 4;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df44);
+        break;
+    case 14:
+        unk_400 = 2;
+        mdCcAc_c.radius = 0x32000;
+        mdCcAc_c.height = 0x32000;
+        /* Spelt plainly (`param1 = param1 - 0xa;`), both sides of this
+           assignment are the same expression, and 2004/b56 value-numbers
+           them together and materialises the address once (`add r3, r5, #8`
+           at +0x37c, then `ldr r0, [r3]` and `str r2, [r3]`), where the ROM
+           folds the offset into both accesses. A redundant cast on the read
+           side is enough to make the two sides textually different and
+           reach the folded form -- no `volatile` needed, so tools/tiers.py
+           never reads this as a codegen trick. Same residue and same lever
+           as daDoor_c::InitResources (src/actors/daDoor_c.cpp) and the second
+           site below. */
+        param1 = (u32)param1 - 0xa;
+        mType = 4;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df34);
+        break;
+    case 17:
+        mdCcAc_c.radius = 0x32000;
+        mdCcAc_c.height = 0x32000;
+        flag = 1;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df34);
+        break;
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+        unk_400 = 0xff;
+        mdCcAc_c.radius = 0x32000;
+        mdCcAc_c.height = 0x32000;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df34);
+        break;
+    case 5:
+    case 11:
+    case 18:
+        mAreaId = -1;
+        /* fallthrough */
+    case 16:
+        unk_400 = 3;
+        /* fallthrough */
+    case 4:
+        mdCcAc_c.radius = 0x32000;
+        mdCcAc_c.height = 0x32000;
+        func_ov002_020b7f2c((C *)this, (PMF *)&data_ov002_0210df34);
+        break;
+    }
+
+    mModelAnim.speed = 0x1000;
+
+    if (unk_400 != 0xff) {
+        if (flag != 0)
+            v = 1;
+        else
+            v = 0;
+        mCapIcon.func_ov001_020ab228((char *)this, mModelIndex & 0xff, unk_400, v);
+    }
+
+    /* The second materialised param1 read-modify-write, at +0x448; see the
+       first one in case 14 for the mechanism. Measured: with both casts the
+       candidate is 0x4c8 and 0 of 306 words differ; with neither it is 0x4d0,
+       and over the shared prefix 98 of 308 differ. */
+    param1 = (u32)param1 & 0xfff;
+    return 1;
 }
 
 // @symbol _ZN15daObjMarioCap_c8BehaviorEv
@@ -241,7 +429,7 @@ int daObjMarioCap_c::Behavior()
         }
     }
 
-    func_ov002_020b7f7c((char *)this);
+    func_ov002_020b7f7c();
     mModelAnim.Advance();
 
     if (mModelAnim.file != 0) {
@@ -356,38 +544,37 @@ void daObjMarioCap_c::OnTurnIntoEgg(Player &player)
 /* into the shared matrix and copies it in; then for grounded states computes  */
 /* the drop shadow (raycast below when airborne).                              */
 /* -------------------------------------------------------------------------- */
-// @symbol func_ov002_020b7f7c
-extern "C" void func_ov002_020b7f7c(char *c)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7f7cEv
+void daObjMarioCap_c::func_ov002_020b7f7c()
 {
-    daObjMarioCap_c *self = (daObjMarioCap_c *)c;
     int probe[3];
     int v[3];
     char ray[0x50];
-    int m = self->mType;
+    int m = mType;
     if (m != 5 && m != 0x12 && m != 0x10 && m != 0xb && m != 7 && m != 9 &&
         m != 0x14 && m != 0x15 && m != 0x16) {
-        self->mAngleX = self->mPrevAngleX;
-        self->mAngleY = self->mPrevAngleY;
-        self->mAngleZ = self->mPrevAngleZ;
+        mAngleX = mPrevAngleX;
+        mAngleY = mPrevAngleY;
+        mAngleZ = mPrevAngleZ;
     }
 
     /* +0xc8 is inside dActor_c pad_0c5; this class does not own that header. */
-    if (*(Matrix4x3 **)(c + 0xc8) != 0) {
-        self->mModelAnim.mat4x3 = **(Matrix4x3 **)(c + 0xc8);
+    if (*(Matrix4x3 **)((char *)this + 0xc8) != 0) {
+        mModelAnim.mat4x3 = **(Matrix4x3 **)((char *)this + 0xc8);
         return;
     }
 
-    if ((unsigned int)(self->mType - 6) <= 1)
-        self->mModelAnim.ApplyOpacity(0, 0);
+    if ((unsigned int)(mType - 6) <= 1)
+        mModelAnim.ApplyOpacity(0, 0);
 
-    Vec3_Asr(v, &self->mPosX, 3);
+    Vec3_Asr(v, &mPosX, 3);
     Matrix4x3_FromTranslation(&data_020a0e68, v[0], v[1], v[2]);
-    Matrix4x3_ApplyInPlaceToRotationXYZExt(&data_020a0e68, self->mAngleX,
-                                           self->mAngleY, self->mAngleZ);
-    self->mModelAnim.mat4x3 = data_020a0e68;
+    Matrix4x3_ApplyInPlaceToRotationXYZExt(&data_020a0e68, mAngleX,
+                                           mAngleY, mAngleZ);
+    mModelAnim.mat4x3 = data_020a0e68;
 
     {
-        char *s = *(char **)&self->unk_3bc;
+        char *s = *(char **)&unk_3bc;
         if (s == &data_ov002_0210df54)
             return;
         if (s == &data_ov002_0210df74)
@@ -396,16 +583,16 @@ extern "C" void func_ov002_020b7f7c(char *c)
             return;
     }
 
-    if (self->mScaleX < 0x500)
+    if (mScaleX < 0x500)
         return;
 
     {
-        int y = self->mPosY;
+        int y = mPosY;
         int off;
-        if (self->mWithMeshClsn.IsOnGround() == 0) {
-            probe[0] = self->mPosX;
-            probe[1] = self->mPosY;
-            probe[2] = self->mPosZ;
+        if (mWithMeshClsn.IsOnGround() == 0) {
+            probe[0] = mPosX;
+            probe[1] = mPosY;
+            probe[2] = mPosZ;
             probe[1] = probe[1] + 0x28000;
             _ZN9dBgCh_GndC1Ev(ray);
             ((dBgCh_Gnd *)ray)->SetObjAndPos(*(Vector3 *)probe, 0);
@@ -417,7 +604,7 @@ extern "C" void func_ov002_020b7f7c(char *c)
 
         off = 0;
         {
-            int t = self->mModelIndex;
+            int t = mModelIndex;
             if (t == 0)
                 goto neg;
             if (t == 1) {
@@ -425,12 +612,12 @@ extern "C" void func_ov002_020b7f7c(char *c)
                 off = -10;
             }
         }
-        Matrix4x3_FromRotationY(&self->unk_38c, self->mAngleY);
-        self->unk_38c.m[9] = self->mPosX >> 3;
-        self->unk_38c.m[10] = (y + (off << 12)) >> 3;
-        self->unk_38c.m[11] = self->mPosZ >> 3;
+        Matrix4x3_FromRotationY(&unk_38c, mAngleY);
+        unk_38c.m[9] = mPosX >> 3;
+        unk_38c.m[10] = (y + (off << 12)) >> 3;
+        unk_38c.m[11] = mPosZ >> 3;
         _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(
-            self, &self->mShadowModel, &self->unk_38c, 0x50000, 0x32000, 0xf);
+            this, &mShadowModel, &unk_38c, 0x50000, 0x32000, 0xf);
     }
 }
 
@@ -468,23 +655,22 @@ extern "C" int func_ov002_020b7e1c(char* self) {
     return 1;
 }
 
-// @symbol func_ov002_020b7e08
-extern "C" int func_ov002_020b7e08(char *p)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7e08Ev
+int daObjMarioCap_c::func_ov002_020b7e08()
 {
-    ((daObjMarioCap_c *)p)->mStateTimer = 200;
+    mStateTimer = 200;
     return 1;
 }
 
-// @symbol func_ov002_020b7d9c
-extern "C" int func_ov002_020b7d9c(char* c)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7d9cEv
+int daObjMarioCap_c::func_ov002_020b7d9c()
 {
-    daObjMarioCap_c *self = (daObjMarioCap_c *)c;
-    if (data_02092138 > self->mPosY
-        || self->mWithMeshClsn.IsOnGround()
-        || !DecIfAbove0_Short((unsigned short*)&self->mStateTimer)
-        || (self->mFlags & 8))
+    if (data_02092138 > mPosY
+        || mWithMeshClsn.IsOnGround()
+        || !DecIfAbove0_Short((unsigned short*)&mStateTimer)
+        || (mFlags & 8))
     {
-        self->MarkForDestruction();
+        MarkForDestruction();
         return 1;
     }
     return 1;
@@ -503,23 +689,22 @@ extern "C" int func_ov002_020b7d6c(char* c) {
     return 1;
 }
 
-// @symbol func_ov002_020b7d58
-extern "C" int func_ov002_020b7d58(char *p)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7d58Ev
+int daObjMarioCap_c::func_ov002_020b7d58()
 {
-    ((daObjMarioCap_c *)p)->mStateTimer = 200;
+    mStateTimer = 200;
     return 1;
 }
 
-// @symbol func_ov002_020b7cec
-extern "C" int func_ov002_020b7cec(char* c)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7cecEv
+int daObjMarioCap_c::func_ov002_020b7cec()
 {
-    daObjMarioCap_c *self = (daObjMarioCap_c *)c;
-    if (data_02092138 > self->mPosY
-        || self->mWithMeshClsn.IsOnGround()
-        || !DecIfAbove0_Short((unsigned short*)&self->mStateTimer)
-        || (self->mFlags & 8))
+    if (data_02092138 > mPosY
+        || mWithMeshClsn.IsOnGround()
+        || !DecIfAbove0_Short((unsigned short*)&mStateTimer)
+        || (mFlags & 8))
     {
-        self->MarkForDestruction();
+        MarkForDestruction();
         return 1;
     }
     return 1;
@@ -532,22 +717,21 @@ extern "C" int func_ov002_020b7cdc(int *p)
     p[39] = 0; return 1;
 }
 
-// @symbol func_ov002_020b7c30
-extern "C" int func_ov002_020b7c30(void* c) {
-  daObjMarioCap_c *self = (daObjMarioCap_c *)c;
-  if (self->mVertAccel != 0) {
-    self->UpdatePos(&self->mdCcAc_c);
-    self->UpdateWMClsn(self->mWithMeshClsn, 0);
-    self->mdCcAc_c.vulnFlags |= 0x8000;
-    if (self->mWithMeshClsn.IsOnGround()) {
-      self->mHorzSpeed = 0;
-      func_ov002_020b6fcc(c);
-      _ZN8dActor_c9SetRangesE5Fix12IiES1_S1_S1_(c, 0x32000, 0x32000, 0x1000000, 0x1000000);
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7c30Ev
+int daObjMarioCap_c::func_ov002_020b7c30() {
+  if (mVertAccel != 0) {
+    UpdatePos(&mdCcAc_c);
+    UpdateWMClsn(mWithMeshClsn, 0);
+    mdCcAc_c.vulnFlags |= 0x8000;
+    if (mWithMeshClsn.IsOnGround()) {
+      mHorzSpeed = 0;
+      func_ov002_020b6fcc(this);
+      _ZN8dActor_c9SetRangesE5Fix12IiES1_S1_S1_(this, 0x32000, 0x32000, 0x1000000, 0x1000000);
     }
   }
-  if (data_02092138 > self->mPosY) {
+  if (data_02092138 > mPosY) {
     SaveData::PlayerLoseCap();
-    self->MarkForDestruction();
+    MarkForDestruction();
   }
   return 1;
 }
@@ -675,120 +859,118 @@ extern "C" int func_ov002_020b781c(char *c)
     return 1;
 }
 
-// @symbol func_ov002_020b76ec
-extern "C" int func_ov002_020b76ec(char *selfv)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b76ecEv
+int daObjMarioCap_c::func_ov002_020b76ec()
 {
-    daObjMarioCap_c *self = (daObjMarioCap_c *)selfv;
-    self->unk_0a4 = 0;
-    self->mVertSpeed = 0;
-    self->unk_0ac = 0;
-    self->mVertAccel = 0;
-    self->unk_401 = 0;
-    self->unk_3ec = 0;
-    *(int *)(selfv + 0xc8) = 0;
-    self->unk_403 = 1;
+    unk_0a4 = 0;
+    mVertSpeed = 0;
+    unk_0ac = 0;
+    mVertAccel = 0;
+    unk_401 = 0;
+    unk_3ec = 0;
+    *(int *)((char *)this + 0xc8) = 0;
+    unk_403 = 1;
 
     /* (int)self + off is the MATCH form; mFlags &= / vulnFlags &= CSE. */
-    *(u32 *)(((int)selfv + 0xb0)) &= ~0x40000u;
-    *(u32 *)(((int)selfv + 0x12c)) &= ~0x8000u;
+    *(u32 *)(((int)(char *)this + 0xb0)) &= ~0x40000u;
+    *(u32 *)(((int)(char *)this + 0x12c)) &= ~0x8000u;
 
-    if (self->unk_3c0 == 0) {
-        *(void **)&self->unk_3c0 = self->ClosestPlayer();
+    if (unk_3c0 == 0) {
+        *(void **)&unk_3c0 = ClosestPlayer();
     }
 
     {
         unsigned b = (data_0209f2d8[0] == 1);
         if (b == 0) {
-            Player *p = *(Player **)&self->unk_3c0;
+            Player *p = *(Player **)&unk_3c0;
             if (p->mCharacter == 3) {
-                if (self->mModelIndex == (int)p->param1) {
+                if (mModelIndex == (int)p->param1) {
                     struct Vector3 v;
-                    Sound::PlayBank3(0x6e, *(Vector3 *)&self->mCamSpacePosX);
+                    Sound::PlayBank3(0x6e, *(Vector3 *)&mCamSpacePosX);
                     GiveLives(1);
-                    v.x = self->mPosX;
-                    v.y = self->mPosY;
-                    v.z = self->mPosZ;
+                    v.x = mPosX;
+                    v.y = mPosY;
+                    v.z = mPosZ;
                     v.y += 0x64000;
-                    dActor_c::Spawn(0x14b, 8, v, (Vector3_16 *)0, self->mAreaId, -1);
+                    dActor_c::Spawn(0x14b, 8, v, (Vector3_16 *)0, mAreaId, -1);
                 }
             }
         }
     }
 
-    self->mStateTimer = 0x96;
-    self->mScaleX = 0x1000;
-    self->mScaleY = 0x1000;
-    self->mScaleZ = 0x1000;
+    mStateTimer = 0x96;
+    mScaleX = 0x1000;
+    mScaleY = 0x1000;
+    mScaleZ = 0x1000;
     return 1;
 }
 
-// @symbol func_ov002_020b74d0
-extern "C" int func_ov002_020b74d0(char *c) {
-    daObjMarioCap_c *self = (daObjMarioCap_c *)c;
-    if (DecIfAbove0_Short((unsigned short *)&self->mStateTimer) == 0) {
-        self->MarkForDestruction();
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b74d0Ev
+int daObjMarioCap_c::func_ov002_020b74d0() {
+    if (DecIfAbove0_Short((unsigned short *)&mStateTimer) == 0) {
+        MarkForDestruction();
         return 1;
     }
 
-    if (*(void **)&self->unk_3c0 == 0) {
-        *(void **)&self->unk_3c0 = self->ClosestPlayer();
+    if (*(void **)&unk_3c0 == 0) {
+        *(void **)&unk_3c0 = ClosestPlayer();
         return 1;
     }
 
-    *(int *)(c + 0xc8) = 0;
+    *(int *)((char *)this + 0xc8) = 0;
 
     {
-        char *p = *(char **)&self->unk_3c0;
+        char *p = *(char **)&unk_3c0;
         char *q = (char *)(((int)(p + 0x8c)));
-        self->mPrevAngleX = *(s16 *)(q + 0);
-        self->mPrevAngleY = *(s16 *)(q + 2);
-        self->mPrevAngleZ = *(s16 *)(q + 4);
+        mPrevAngleX = *(s16 *)(q + 0);
+        mPrevAngleY = *(s16 *)(q + 2);
+        mPrevAngleZ = *(s16 *)(q + 4);
     }
-    self->mAngleX = self->mPrevAngleX;
-    self->mAngleY = self->mPrevAngleY;
-    self->mAngleZ = self->mPrevAngleZ;
+    mAngleX = mPrevAngleX;
+    mAngleY = mPrevAngleY;
+    mAngleZ = mPrevAngleZ;
 
     {
-        char *p = *(char **)&self->unk_3c0;
+        char *p = *(char **)&unk_3c0;
         char *q = (char *)(((int)(p + 0x5c)));
-        self->mPosX = *(int *)(q + 0);
-        self->mPosY = *(int *)(q + 4);
-        self->mPosZ = *(int *)(q + 8);
+        mPosX = *(int *)(q + 0);
+        mPosY = *(int *)(q + 4);
+        mPosZ = *(int *)(q + 8);
     }
 
-    switch (self->unk_401) {
+    switch (unk_401) {
     case 1:
-        if ((*(Player **)&self->unk_3c0)->SetNoControlState(0xf, -1, 0) == 1) {
-            (*(Player **)&self->unk_3c0)->SetNewHatCharacter(self->mModelIndex & 0xff, 0, 0);
+        if ((*(Player **)&unk_3c0)->SetNoControlState(0xf, -1, 0) == 1) {
+            (*(Player **)&unk_3c0)->SetNewHatCharacter(mModelIndex & 0xff, 0, 0);
             func_02013a88();
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim, data_ov002_0210de38.file, 0x40000000, 0x1000, 0);
-            self->unk_401 = 2;
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov002_0210de38.file, 0x40000000, 0x1000, 0);
+            unk_401 = 2;
         }
         break;
     case 2:
-        if (self->mModelAnim.Finished() != 0) {
-            self->MarkForDestruction();
+        if (mModelAnim.Finished() != 0) {
+            MarkForDestruction();
         }
         break;
     }
 
-    if (self->unk_401 != 0) {
+    if (unk_401 != 0) {
         return 1;
     }
 
-    if (self->unk_3fe == 0) {
-        if ((*(Player **)&self->unk_3c0)->Unk_020c9e5c(8) == 1) {
-            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&self->mModelAnim, data_ov002_0210de30.file, 0x40000000, 0x1000, 0);
-            self->unk_3fe = 1;
+    if (unk_3fe == 0) {
+        if ((*(Player **)&unk_3c0)->Unk_020c9e5c(8) == 1) {
+            _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(&mModelAnim, data_ov002_0210de30.file, 0x40000000, 0x1000, 0);
+            unk_3fe = 1;
         }
     }
 
-    if (self->unk_3fe == 1) {
-        if (self->mModelAnim.Finished() != 0) {
-            if (self->mType == 4) {
-                dActor_c::Spawn(0x10d, self->param1, *(const Vector3 *)&self->unk_3c4, (const Vector3_16 *)0, self->mAreaId, -1);
+    if (unk_3fe == 1) {
+        if (mModelAnim.Finished() != 0) {
+            if (mType == 4) {
+                dActor_c::Spawn(0x10d, param1, *(const Vector3 *)&unk_3c4, (const Vector3_16 *)0, mAreaId, -1);
             }
-            self->MarkForDestruction();
+            MarkForDestruction();
         }
     }
 
@@ -845,50 +1027,49 @@ extern "C" int func_ov002_020b7330(char* self)
     return 1;
 }
 
-// @symbol func_ov002_020b7200
-extern "C" int func_ov002_020b7200(char* c)
+// @symbol _ZN15daObjMarioCap_c19func_ov002_020b7200Ev
+int daObjMarioCap_c::func_ov002_020b7200()
 {
-    daObjMarioCap_c *self = (daObjMarioCap_c *)c;
     short* sp;
     int* ip;
 
-    if (self->mType == 0xa || self->mType == 0xf) {
-        if (self->unk_3c0 != 0) {
+    if (mType == 0xa || mType == 0xf) {
+        if (unk_3c0 != 0) {
             sp = (short*)(
-                (char*)self->unk_3c0 + 0x8c);
-            self->mPrevAngleX = sp[0];
-            self->mPrevAngleY = sp[1];
-            self->mPrevAngleZ = sp[2];
-            self->mAngleX = self->mPrevAngleX;
-            self->mAngleY = self->mPrevAngleY;
-            self->mAngleZ = self->mPrevAngleZ;
+                (char*)unk_3c0 + 0x8c);
+            mPrevAngleX = sp[0];
+            mPrevAngleY = sp[1];
+            mPrevAngleZ = sp[2];
+            mAngleX = mPrevAngleX;
+            mAngleY = mPrevAngleY;
+            mAngleZ = mPrevAngleZ;
 
             ip = (int*)(
-                (char*)self->unk_3c0 + 0x5c);
-            self->mPosX = ip[0];
-            self->mPosY = ip[1];
-            self->mPosZ = ip[2];
+                (char*)unk_3c0 + 0x5c);
+            mPosX = ip[0];
+            mPosY = ip[1];
+            mPosZ = ip[2];
         }
     }
 
-    if (self->mModelAnim.Finished() != 0) {
-        switch (self->mType) {
+    if (mModelAnim.Finished() != 0) {
+        switch (mType) {
         case 0xa:
         case 0xf:
         case 0x16:
-            self->MarkForDestruction();
+            MarkForDestruction();
             break;
 
         case 0x15:
             break;
 
         case 0x14:
-            if (self->unk_3fe == 0) {
+            if (unk_3fe == 0) {
                 _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(
-                    &self->mModelAnim,
-                    (void*)data_ov002_020ff0c4[self->mModelIndex][1],
+                    &mModelAnim,
+                    (void*)data_ov002_020ff0c4[mModelIndex][1],
                     0, 0x1000, 0);
-                self->unk_3fe = 1;
+                unk_3fe = 1;
             }
             break;
         }

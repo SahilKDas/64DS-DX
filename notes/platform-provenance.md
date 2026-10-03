@@ -15,7 +15,7 @@ classes) is in the project memory note `platform-family-census`.
 ## `include/dBgActor_c.h`
 
 `dBgActor_c` is the base of the level-object family — daObjRc_Guruguru_c,
-PyramidTop, daObjKm3_Kaitendai_c, daObjBSwdoor_c, daObjCvShutter_c, daObjSlIceBlock_c and ~130
+daObjDlPyramid_c, daObjKm3_Kaitendai_c, daObjBSwdoor_c, daObjCvShutter_c, daObjSlIceBlock_c and ~130
 others. Seeded by `tools/gen_header.py` from matched-function evidence, then
 given its real base and real member types by hand.
 
@@ -58,10 +58,10 @@ non-`dBgActor_c` vtable store each, so no intermediate — and each places a
 
 | header name | RTTI name | member at 0x320 |
 |---|---|---|
-| `PyramidTop`    | `daObjDlPyramid_c` | `Model` |
-| `BasementWater` | `daObjC0Water_c`   | `TextureTransformer` |
-| `TowerStep`     | `daObjBk_Lift_c`   | `ShadowModel` |
-| `WallSign`      | `daObjKanban_c`    | `dCcAcPos_c` |
+| `daObjDlPyramid_c`    | `daObjDlPyramid_c` | `Model` |
+| `daObjC0Water_c` | `daObjC0Water_c`   | `TextureTransformer` |
+| `daObjBk_Lift_c`     | `daObjBk_Lift_c`   | `ShadowModel` |
+| `daObjKanban_c`      | `daObjKanban_c`    | `dCcAcPos_c` |
 
 Each is read straight off that class's destructor, which destroys its own member
 at 0x320 before storing `_ZTV10dBgActor_c` and running the base.
@@ -100,7 +100,7 @@ key function, so no translation unit that merely includes this header emits
 vtable this header emitted and the one in the cartridge.
 
 `_ZTV10dBgActor_c` is 0x84 at [ov002](../config/arm9/overlays/ov002/symbols.txt):0x0210ae38 — 33 words, one more than the 32 a
-`dActor_c`-shaped table needs — and `_ZTV8PoleLift`, one of the 70 subclasses, is
+`dActor_c`-shaped table needs — and `_ZTV18daObjKm2_Ami_Bou_c`, one of the 70 subclasses, is
 0x84 as well. `rtti_vtables` agrees from the other side: `dActor_c` has 31 slots
 and `dBgActor_c`'s own overrides are 16 (D1), 17 (D0) and 31, and 97 of its 101
 RTTI children have exactly 32 slots. Without this declaration every one of those
@@ -128,7 +128,7 @@ single-int-by-value fourth parameter, which is exactly what `math/Fix12.h`'s
 Contrast the two `IsClsnInRange*` symbols, whose names make the same `Fix12<int>`
 claim and whose bytes **refuse** it — see the note in `include/dActor_c.h` about
 CW homing class-typed by-value parameters to the stack, and the header comment in
-`src_tu/actors/Platform.cpp`. `UpdateKillByMegaChar` is non-virtual, so the
+`src/actors/dBgActor_c.cpp`. `UpdateKillByMegaChar` is non-virtual, so the
 declaration adds no slot and no field; the 0x320 assertion is unaffected.
 
 ---
@@ -147,7 +147,7 @@ For a class whose destructor stores its own vptr and then `dBgActor_c`'s
 chaining to `dActor_c`: all three of those are `dBgActor_c`'s own. Everything such
 a header used to restate below 0x31e was `dActor_c`'s and `dBgActor_c`'s, and is
 inherited. This applies to `daObjSimpleLift_c`, `daObjFl_Block_c`,
-`daObjRc_Guruguru_c`, `RotatingUpDownPlatformUtm` and their siblings.
+`daObjRc_Guruguru_c`, `daObjRotateUpdownLift_c` and their siblings.
 
 Where a size assertion is only the observed field span rounded up, it guards the
 declaration and is **not** independent evidence about the ROM. Where a factory's
@@ -209,11 +209,11 @@ two `Fix12<int>`, and that type is an aggregate with no converting constructor
 from `int`, so materialising a zero one costs stack traffic the ROM does not have.
 The pair goes in registers exactly as two ints either way.
 
-## `include/RotatingUpDownPlatformUtm.h`
+## `include/daObjRotateUpdownLift_c.h`
 
 Base and size from the factory (`src/d_a_obj_rotate_updown_lift_hs_updown_lift.c`):
 `fBase_c::operator new(936)` — 0x3a8 — then `dBgActor_c::dBgActor_c()`, then stores
-`_ZTV25RotatingUpDownPlatformUtm`. No intermediate base: one non-base vtable
+`_ZTV23daObjRotateUpdownLift_c`. No intermediate base: one non-base vtable
 store, matching the D1 destructor.
 
 `dBgActor_c` ends at 0x320. Members below that used to be restated here under
@@ -252,7 +252,7 @@ a layout claim this pass did not need to make.
 
 `Kill` is slot 31, `dBgActor_c`'s own new virtual, attributed by the vtable:
 [arm9/overlays/ov091/relocs.txt](../config/arm9/overlays/ov091/relocs.txt) has 0x02134cd8 → 0x02131070, and
-`_ZTV25RotatingUpDownPlatformUtm + 4*31 = 0x02134cd8`. It is **not** the key
+`_ZTV23daObjRotateUpdownLift_c + 4*31 = 0x02134cd8`. It is **not** the key
 function: the destructor is declared out of line and defined identically in both
 `D1Ev.cpp` and `D0Ev.cpp`, so those two TUs keep emitting the vtable — checked
 with `objisolate`, not assumed.
@@ -352,8 +352,8 @@ the base leaves null.
 **The header was once built from the wrong factory.** It said `sizeof 0x368`,
 "`daObjFl_Amilift_c_classInit` asks `fBase_c::operator new` for 872 bytes", and a
 `PathPtr mPath` at 0x360 "named by `daObjFl_Amilift_c_classInit` calling `_ZN7PathPtrC1Ev`
-at +0x360". `MetalNetLift` is a different class: its factory stores
-`_ZTV12MetalNetLift`, ov064 0x0211bc68, and never mentions this one. This class's
+at +0x360". `daObjFl_Amilift_c` is a different class: its factory stores
+`_ZTV17daObjFl_Amilift_c`, ov064 0x0211bc68, and never mentions this one. This class's
 factory is `daObjFl_Gura_c_classInit`, which allocates 848 = 0x350, stores
 `_ZTV15daObjGuragura_c` and then `_ZTV14daObjFl_Gura_c`, ov064 0x0211bd2c, and
 constructs no `PathPtr`. The two vtables are 0xc4 apart in the same overlay, which
@@ -366,7 +366,7 @@ filename.**
 
 ## `include/daObjKm3_Dorifu_c.h` — the crossed names
 
-The Bowser-in-the-Sky drifting platform. ROM name `daObjKm3_Dorifu_c`. It does
+The daKpa_c-in-the-Sky drifting platform. ROM name `daObjKm3_Dorifu_c`. It does
 not derive from `dBgActor_c`; it derives from `daObjDorifu_c`, which does. The
 destructor stores three vptrs and destroys `daObjDorifu_c`'s `Model[5]` and
 `dBgW_KcMbg[5]` in between, all of it from the base declaration.
@@ -396,7 +396,7 @@ It overrides slots 0 and 3, which the base leaves null.
 as its `const Matrix4x3 &`. Was a `u8` marker plus its pad.
 
 `mShadowMat` at 0x350: `ShadowModel` + `Matrix4x3` is the same pair
-`HauntedChair` evidences by byte (a 48-byte identity block-copied over +0x14c,
+`daChair_c` evidences by byte (a 48-byte identity block-copied over +0x14c,
 which lands exactly on the next member), and 0x350 + 0x30 closes on the 0x380
 `SpinningPlatform_Spawn` allocates.
 

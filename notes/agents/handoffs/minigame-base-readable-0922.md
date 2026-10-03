@@ -10,7 +10,7 @@ This handoff describes this commit; the queue records the immutable output SHA.
 - Original source base and workflow: `0a609664d09c0377f8680d464a84fd0e6e75e0f4`.
 - Composed main: `b93e467b9b7b6a75a32a547fcd1158399a3525dd`.
 - Scope: production `src/minigames/d_s_mg_base.cpp`, eight functions in
-  ov004 `[0x020b04e8,0x020b0a38)` (1,360 bytes), plus this handoff.
+  [ov004](../../../config/arm9/overlays/ov004/symbols.txt) `[0x020b04e8,0x020b0a38)` (1,360 bytes), plus this handoff.
 - Status: local candidate; independent exact-commit verification remains required.
 
 ## Changes and evidence

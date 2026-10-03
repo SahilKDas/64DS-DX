@@ -2,33 +2,34 @@
 /* Production translation unit for ov025/daObjDpBrock_c.
  * 9 function(s), .text 0x02111d40..0x021120e4, the factory included.
  *
- * DP_BROCK, a pyramid step block. It sinks for 100 frames, rises for 100,
- * and repeats; param1 & 3 picks the phase it starts in. The block carries a
- * model and a collider matrix of its own besides dBgActor_c's, and
- * UpdateStepModelPosAndRotY and UpdateStepClsnPosAndRot keep them on the
- * actor's position and heading.
+ * DP_BROCK, a pyramid step block (ov025). It sinks 5 units a frame for 100
+ * frames, rises for 100, and repeats; param1 & 3 picks the phase it starts in.
+ * The block carries a model and a collider matrix of its own besides
+ * dBgActor_c's, and UpdateStepModelPosAndRotY and UpdateStepClsnPosAndRot
+ * keep them on the actor's position and heading.
  *
  * NAME: daObjDpBrock_c is the cartridge's RTTI spelling. _ZTS at ov025
  * 0x021138dc is the string "14daObjDpBrock_c", and the _ZTI at 0x021138d0
  * names the vtable at 0x02113914 as this class's. The tree called the class
  * PyramidStep until then.
  *
- * THE DESTRUCTOR IS INLINE AND EMPTY in the class header, so Behavior is the
+ * The destructor is inline and empty in the class header, so Behavior is the
  * key function and this TU emits _ZTV14daObjDpBrock_c and the RTTI chain.
  * D1 and D0 come from the header, below every function written here.
  *
- * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S. mwccarm 2004/b56
- * emits one .text section per function in the REVERSE of source order, so the
- * highest-address ROM function is written FIRST here. Do not reorder.
+ * Function order is the reverse of the ROM's: mwccarm 2004/b56 emits one .text
+ * section per function in the reverse of source order, so the highest-address
+ * ROM function is written first. Do not reorder.
  *
- * Leftover: dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay mangled.
- *   Each takes Fix12<int> by value (wall 6az). Spelled as a member call
- *   with a Fix12<int> local, SetFile grows InitResources from 0x10c to
- *   0x118 bytes. include/dBgActor_c.h declares no IsClsnInRange.
- * Leftover: func_020393d4 is a 4-byte store into a dBgW callback slot;
- *   naming it belongs with dBgW in arm9.
- * Leftover: the model and collision files and the CLPS block are unnamed
- *   ov025 rows. src/__sinit_ov025_02112a44.c also names the two files.
+ * Known limits:
+ * - dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay mangled. Each takes
+ *   Fix12<int> by value (wall 6az). Spelled as a member call with a Fix12<int>
+ *   local, SetFile grows InitResources from 0x10c to 0x118 bytes.
+ *   include/dBgActor_c.h declares no IsClsnInRange.
+ * - func_020393d4 is a 4-byte store into a dBgW callback slot; naming it
+ *   belongs with dBgW in arm9.
+ * - The model and collision files and the CLPS block are unnamed ov025 rows.
+ *   __sinit_ov025_02112a44 also names the two files.
  */
 
 #include "daObjDpBrock_c.h"
@@ -49,7 +50,13 @@ int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
 void func_020393d4(int *p, int v);
 }
 
-/* -------------------------------------------------------------------------- */
+/* mState values, and how long each lasts. */
+enum {
+    kSinking = 0,
+    kRising = 1,
+    kFramesPerState = 100
+};
+
 // @symbol daObjDpBrock_c_classInit
 /* Reconstructed source-style name: SM64DS proves daObjDpBrock_c through RTTI,
  * allocation size, vtable identity and the DP_BROCK registry profile; later
@@ -65,7 +72,6 @@ extern "C" daObjDpBrock_c *daObjDpBrock_c_classInit()
     return new daObjDpBrock_c();
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjDpBrock_c13InitResourcesEv
 int daObjDpBrock_c::InitResources()
 {
@@ -79,7 +85,7 @@ int daObjDpBrock_c::InitResources()
 
     int phase = param1 & 3;
     mVertSpeed = -0x5000;
-    mState = 0;
+    mState = kSinking;
     mStateTimer = 0;
     switch (phase) {
     case 0:
@@ -92,28 +98,27 @@ int daObjDpBrock_c::InitResources()
     case 2:
         /* At the bottom, about to rise. */
         mPosY -= 0x1f4000;
-        mState = 1;
+        mState = kRising;
         mVertSpeed = 0x5000;
         break;
     }
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjDpBrock_c8BehaviorEv
 int daObjDpBrock_c::Behavior()
 {
     switch (mState) {
-    case 0:
-        if (mStateTimer == 100) {
-            mState = 1;
+    case kSinking:
+        if (mStateTimer == kFramesPerState) {
+            mState = kRising;
             mVertSpeed = 0x5000;
             mStateTimer = 0;
         }
         break;
-    case 1:
-        if (mStateTimer == 100) {
-            mState = 0;
+    case kRising:
+        if (mStateTimer == kFramesPerState) {
+            mState = kSinking;
             mVertSpeed = -0x5000;
             mStateTimer = 0;
         }
@@ -127,7 +132,6 @@ int daObjDpBrock_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjDpBrock_c6RenderEv
 int daObjDpBrock_c::Render()
 {
@@ -135,7 +139,6 @@ int daObjDpBrock_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjDpBrock_c16CleanupResourcesEv
 int daObjDpBrock_c::CleanupResources()
 {
@@ -145,7 +148,6 @@ int daObjDpBrock_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjDpBrock_c25UpdateStepModelPosAndRotYEv
 /* Puts the block's own model on the actor: heading from mAngleY, and the
  * position scaled down by 8 into model space. dBgActor_c's
@@ -158,7 +160,6 @@ void daObjDpBrock_c::UpdateStepModelPosAndRotY()
     mStepModel.mat4x3.m[11] = mPosZ >> 3;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjDpBrock_c23UpdateStepClsnPosAndRotEv
 /* Moves the collider with the block: rotation from mAngleY, translation
  * from the actor position, then dBgW_KcMbg::Transform. dBgActor_c's
@@ -172,7 +173,6 @@ void daObjDpBrock_c::UpdateStepClsnPosAndRot()
     mMeshCollider.Transform(mClsnMat2, mAngleY);
 }
 
-/* -------------------------------------------------------------------------- */
 /* D1 (0x02111d40) and D0 (0x02111d8c) have no text here. include/
  * daObjDpBrock_c.h defines ~daObjDpBrock_c() in the class body, and that
  * alone makes mwccarm emit the pair last, in the cartridge's D1-then-D0

@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x21120c4..0x2112ab4, 16 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): SnowmanBreathParticle, daSnmBth_c",
-    "module sinit corroboration: 4 sinit(s) / 4 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 4 sinit(s) / 4 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold: the daSnmBth_c_classInit registry factory (profile SNOWMAN_BREATH, historical alias SnowmanBreath_Spawn), 0x02112ab4..0x02112b14, abuts this TU's InitResources with no gap; tu_map leaves it unlabelled because it cuts on symbol name. Folded as `return new daSnmBth_c();` at the end of the file (defer_codegen off, source order); the synthesized constructor's __cxa_vec_ctor over the fifty SnowmanBreathParticle members reproduces the loose file's hand-built sequence. The unit is now 0x021120c4..0x02112b14, 17 functions, bounded above by the end of ov027 .text at 0x02112b14."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x021120c4",
-      "end": "0x02112ab4"
+      "end": "0x02112b14"
     }
   ],
   "functions": [
@@ -129,6 +130,13 @@
       "size": "0x000000d8",
       "legacy_source": "src/_ZN10daSnmBth_c13InitResourcesEv.cpp",
       "ordinal": 15
+    },
+    {
+      "symbol": "daSnmBth_c_classInit",
+      "address": "0x02112ab4",
+      "size": "0x00000060",
+      "legacy_source": "src/d_a_snm_bth.c",
+      "ordinal": 16
     }
   ],
   "data": [],
@@ -143,8 +151,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov027-SnowmanBreathParticle+daSnmBth_c/daSnmBth_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 16,
-    "functions_declared": 16,
+    "functions_matched": 17,
+    "functions_declared": 17,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN10daSnmBth_cD2Ev",
@@ -166,8 +174,6 @@
         17,
         28,
         29,
-        43,
-        44,
         45,
         46,
         47,
@@ -179,7 +185,9 @@
         53,
         54,
         55,
-        56
+        56,
+        57,
+        58
       ],
       "data": [
         "_ZTI10daSnmBth_c",

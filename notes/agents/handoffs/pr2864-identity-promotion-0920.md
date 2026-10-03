@@ -9,7 +9,7 @@ evidence; independent source acceptance and terminal private CI are separate.
 The real retail `daNknk_c` class and compatible `Koopa` typedef now supply all
 39 functions through `src/game/actors/d_a_nknk.cpp`. Both factories use ordinary
 `new`; the inline destructor emits the correct D1/D0 order without D 2. The
-promotion retires 39 shards and enrolls ov062 text `[0x021174cc,0x0211975c)`.
+promotion retires 39 shards and enrolls [ov062](../../../config/arm9/overlays/ov062/symbols.txt) text `[0x021174cc,0x0211975c)`.
 Canonical profile, RTTI, vtable and BSS storage ownership is unchanged. All 11
 emitted metadata objects and the canonical weak Vector3 destructor are accounted
 for by exact policies and direct comparison, including the full 132-byte vtable.
@@ -34,7 +34,7 @@ An additional fourteen source dependencies reconcile the actual translation
 matrix helper and thirteen callers with the shared Matrix4x3 layout. Ninety-eight
 matched functions verify, plus the canonical weak destructor. Thirteen complete
 objects are identical; the remaining object adds only that existing weak body.
-The pre-existing ov006 draft remains NONMATCHING with an identical entire object,
+The pre-existing [ov006](../../../config/arm9/overlays/ov006/symbols.txt) draft remains NONMATCHING with an identical entire object,
 the same 164 strict differences and actual PR-layer DRAFT classification. No match
 or new ROM enrollment is claimed for it. No shared matrix header is edited.
 
@@ -50,7 +50,7 @@ Declaration reconciliation removes 172 retired or proven healed fingerprints,
 including 57 matrix diagnostics, and carries seven exact existing shard findings
 to the promoted path. Five independently reproduced unchanged-main fingerprints
 are separately grandfathered: three Player SetNoControlState return views and
-two ov090 resource views. They remain unresolved, plurality-based debt. All 3744
+two [ov090](../../../config/arm9/overlays/ov090/symbols.txt) resource views. They remain unresolved, plurality-based debt. All 3744
 unaffected symbol records preserve their original order and text; no whole-tree
 re-bank or scanner change is used. Four old matrix pointer views also remain.
 
@@ -78,7 +78,7 @@ changed to bypass the refusal.
 
 CI and independent review caught seven stale current-name lookups in the rename
 ledger after the native identity change (KP2864-10). Those seven fourth-column
-values now agree with the canonical ov062 symbols; historical inputs and all
+values now agree with the canonical [ov062](../../../config/arm9/overlays/ov062/symbols.txt) symbols; historical inputs and all
 unrelated rows are unchanged. The rename-ledger gate passes. Compiler inputs and
 all previously verified output remain unchanged. The rejected candidate and review
 remain in queue history; this successor requires fresh exact-head acceptance.

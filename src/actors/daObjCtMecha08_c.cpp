@@ -18,34 +18,45 @@
  * cartridge's own copies at ov065 0x0211d494 / 0x0211d434 / 0x0211d440.
  *
  * SOURCE ORDER IS REVERSE ROM ORDER. mwccarm 2004/b56 emits .text back to
- * front under this tree's flags, so InitResources is written first and
+ * front under this tree's flags, so the two classInit factories are written
+ * first (CT_MECHA08A, then CT_MECHA08B), then InitResources, and
  * CleanupResources last; the destructor pair comes off the in-class
  * `~daObjCtMecha08_c() {}` in include/daObjCtMecha08_c.h and lands ahead of
  * everything, D1 then D0, which is the order the cartridge has (0x0211b7f0,
  * then 0x0211b834).
  *
- * deslop
- * Leftover: dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay spelled as
+ * Known limits:
+ * - dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay spelled as
  *   mangled extern-C free functions. Each takes Fix12<int> by value, and a
  *   real method call homes the argument and size-DIFFs the caller
  *   (notes/mwccarm-codegen.md 6az); include/dBgW_KcMbg.h records the same.
- * Leftover: DecIfAbove0_Short and RandomIntInternal keep linker names -- no
+ * - DecIfAbove0_Short and RandomIntInternal keep linker names -- no
  *   header home, the daObjCtMecha10_c precedent.
- * Leftover: Behavior's clamp keeps the ROM's goto shape, and its mMoveDir
+ * - Behavior's clamp keeps the ROM's goto shape, and its mMoveDir
  *   toggle goes through a laundered address; both are measured below.
- * Leftover: TtcRotatingGear_ModelFile / TtcRotatingGear_ClsnFile are this
+ * - TtcRotatingGear_ModelFile / TtcRotatingGear_ClsnFile are this
  *   class's two shared-file handles in ov065 .bss (0x0211d98c / 0x0211d97c),
  *   still under the coined spelling symbols.txt gives them.
  *   data_ov065_0211c0d0 / 0211c0d4 are the per-setting speed and timer
  *   tables. None of them is owned by this TU.
- * Leftover: data_ov035_021121b8 is the CLPS block, in the Tick Tock Clock
+ * - data_ov035_021121b8 is the CLPS block, in the Tick Tock Clock
  *   level overlay. ov065's own relocation lists ten overlays that hold
  *   0x021121b8; tools/overlay_residency.py settles them to ov035, the level
  *   overlay this object overlay is loaded beside.
- * Leftover: data_0209f2c0 is arm9's clock-setting byte and data_0209e650 the
+ * - data_0209f2c0 is arm9's clock-setting byte and data_0209e650 the
  *   shared RNG state.
- * Leftover: g_profile_CT_MECHA08A / CT_MECHA08B and their two classInit
- *   factories live outside this TU, at 0x0211bb7c and above.
+ * - g_profile_CT_MECHA08A / CT_MECHA08B live outside this TU.
+ *
+ * 8 functions, ov065 .text 0x0211b7f0..0x0211bbdc. The two registry
+ * factories close the run: daObjCtMecha08_c_classInit_CT_MECHA08B
+ * (0x0211bb7c, historical alias TtcMovingCubeB_Spawn) and
+ * daObjCtMecha08_c_classInit_CT_MECHA08A (0x0211bbac, historical alias
+ * TtcMovingCubeA_Spawn). Each is operator new(0x330), the dBgActor_c
+ * constructor and the vtable store, which is exactly
+ * `new daObjCtMecha08_c()`; their names are reconstructed from the profiles
+ * and retail does not store them. The new-expression also emits
+ * dBgActor_c's base-object destructor, which has no ROM home (manifest:
+ * deadstrip).
  */
 
 #include "daObjCtMecha08_c.h"
@@ -53,6 +64,12 @@
 #include "dBgW.h"
 
 struct CLPS_Block;
+
+enum {
+    CLOCK_SETTING_RANDOM = 2,     /* Behavior re-rolls the timer at random */
+    CLOCK_SETTING_STOPPED = 3,    /* Behavior parks the lift at the top */
+    LIFT_TRAVEL = 0x14a000        /* height above mHomePosY */
+};
 
 extern "C" {
 extern SharedFilePtr TtcRotatingGear_ModelFile;
@@ -72,8 +89,18 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     Fix12i scale, s16 angle, CLPS_Block *clps);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
+// @symbol daObjCtMecha08_c_classInit_CT_MECHA08A
+extern "C" daObjCtMecha08_c *daObjCtMecha08_c_classInit_CT_MECHA08A()
+{
+    return new daObjCtMecha08_c();
+}
+
+// @symbol daObjCtMecha08_c_classInit_CT_MECHA08B
+extern "C" daObjCtMecha08_c *daObjCtMecha08_c_classInit_CT_MECHA08B()
+{
+    return new daObjCtMecha08_c();
+}
+
 // @symbol _ZN16daObjCtMecha08_c13InitResourcesEv
 /* Load both files, remember the placed position as home, and start moving in
    direction 0 with that direction's speed and timer for the current clock
@@ -100,21 +127,19 @@ int daObjCtMecha08_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha08_c8BehaviorEv
 /* Setting 3 parks the lift at the top of its travel. Otherwise it moves under
    its own speed, and each time the timer runs out it clamps back inside
    [mHomePosY, mHomePosY + 0x14a000], turns round, and reloads speed and timer.
-   Setting 2 overrides the timer with a random multiple of 0x14 in [0xa, 0x6e].
+   Setting 2 overrides the timer with 0xa plus a random multiple of 0x14, at most 0x6e.
 
    MEASURED: the control flow is the ROM's, gotos and all -- the in-range test
    reads as an if/else but compiles to the cartridge's interleaved form only in
    this shape. */
 int daObjCtMecha08_c::Behavior()
 {
-    if (data_0209f2c0 == 3) {
-        mPosY = mHomePosY + 0x14a000;
+    if (data_0209f2c0 == CLOCK_SETTING_STOPPED) {
+        mPosY = mHomePosY + LIFT_TRAVEL;
         UpdateModelPosAndRotY();
         if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0, 0) != 0)
             UpdateClsnPosAndRot();
@@ -127,7 +152,7 @@ int daObjCtMecha08_c::Behavior()
         UpdatePos(0);
         lower = mHomePosY;
         y = mPosY;
-        upper = lower + 0x14a000;
+        upper = lower + LIFT_TRAVEL;
         if (y < lower)
             goto outside;
         if (y <= upper) {
@@ -155,7 +180,8 @@ test:
                as `mMoveDir ^= 1` or as a load/store pair through the member
                changes the function's size, not just its allocation -- the
                RMW-address CSE described in notes/mwccarm-codegen.md. Taking
-               the address through an integer first defeats it. */
+               the address through an integer first defeats it. 0x32e is the
+               offset of mMoveDir. */
             u8 *dirp = (u8 *)((int)this + 0x32e);
             u8 dir = *dirp;
             *dirp = dir ^ 1;
@@ -165,7 +191,7 @@ test:
                 mMoveTimer = data_ov065_0211c0d4[setting][d][0];
                 d = mMoveDir;
                 mVertSpeed = data_ov065_0211c0d0[setting][d][0];
-                if (data_0209f2c0 != 2)
+                if (data_0209f2c0 != CLOCK_SETTING_RANDOM)
                     goto update;
                 {
                     u32 rnd = (u32)RandomIntInternal(&data_0209e650);
@@ -183,8 +209,6 @@ done:
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha08_c6RenderEv
 int daObjCtMecha08_c::Render()
 {
@@ -192,8 +216,6 @@ int daObjCtMecha08_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha08_c16CleanupResourcesEv
 /* Give back exactly what InitResources took: the collider, then both files. */
 int daObjCtMecha08_c::CleanupResources()

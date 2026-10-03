@@ -1,6 +1,6 @@
 //cpp
 /**
- * Bowser in the Fire Sea rising platform.
+ * daKpa_c in the Fire Sea rising platform.
  *
  * Waits at its spawn height until the player stands on it, pauses 20
  * frames, rises 10.0 a frame to 1500.0 above that height, pauses 20

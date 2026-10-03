@@ -1,5 +1,6 @@
-/* The up/down lift in BBH, HMC and RR. All three factories allocate 0x34c
- * bytes, call dBgActor_c::dBgActor_c() and install _ZTV10daUdlift_c.
+/* The up/down lift (profiles UDLIFT_TERESA, UDLIFT and RC_RIFT02). All three
+ * factories allocate 0x34c bytes, call dBgActor_c::dBgActor_c() and install
+ * _ZTV10daUdlift_c.
  *
  * The destructor proves the hierarchy: it swaps the vptr from daUdlift_c to
  * dBgActor_c, destroys dBgActor_c's dBgW_KcMbg and Model members and chains
@@ -12,9 +13,9 @@
  *     mTopY    = mPosY + (mPrevAngleZ << 12)   (mMode 2 only)
  *
  * mMode picks what the lift does at either end:
- *     0  follow the player (BBH, HMC)
+ *     0  follow the player (UDLIFT_TERESA, UDLIFT)
  *     1  stop at the top; at the bottom stop in state 4 and climb back once
- *        re-armed (RR)
+ *        re-armed (RC_RIFT02)
  *     2  raise mTopY by mPrevAngleZ and stop at the bottom in state 3
  * InitResources only ever stores 0 or 1, so mode 2 is dead code in the
  * shipped game; it is reproduced because the cartridge has it.

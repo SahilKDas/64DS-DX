@@ -1,14 +1,20 @@
 //cpp
-/* Eyerok, the two-handed pyramid boss (.text 0x021184c0..0x02119ce8).
- * ROM RTTI daIwante_c (_ZTS10daIwante_c ov066:0x0211ad30); this tree keeps
- * the coined name. Partial: shards 8,16,20,22,24,59 reference 0x02112c08..
- * (co-resident overlay, unresolved), so they can't link.
+/* Eyerok, the two-handed pyramid boss (.text 0x0211603c..0x0211a2e4,
+ * 59 functions). ROM RTTI daIwante_c (_ZTS10daIwante_c ov066:0x0211ad30);
+ * this tree keeps the coined name.
+ *
+ * The unit's two destructors (D1 0x02115ee0, D0 0x02115f84) stay in their
+ * own files: ~Eyerok is the key function, and defining it here would emit
+ * the vtable and RTTI as _ZTS6Eyerok, a name the ROM does not have. The
+ * registry factory daIwante_c_classInit (0x0211a370, src/d_a_iwante.cpp)
+ * is not folded: two free functions sit between it and this unit.
  *
  * Source is ROM-ascending under defer_codegen off. Do not reorder.
  *
- * Leftover: the func_ov066 helpers keep linker names. State dispatch stays
- * an incomplete-class pointer-to-member. EVec3 and M48 stay plain words so
- * ~Vector3 is not emitted. Vec4 is an unused stack object with a destructor.
+ * Leftover: the func_ov066 helpers keep linker names, and most of them still
+ * address the object by raw offset. State dispatch stays an incomplete-class
+ * pointer-to-member. EVec3 and M48 are plain word structs standing in for
+ * Vector3 and Matrix4x3. Vec4 is an unused stack object with a destructor.
  */
 
 /* Turns off deferred codegen, which does two things at once here: it makes
@@ -33,11 +39,12 @@
 #include "Player.h"
 #include "Message.h"
 
-/* EVec3 is three plain words. Vector3's destructor must not land in this TU. */
+/* EVec3 is three plain words: unlike a Vector3, a local of it has no destructor. */
 struct EVec3 { int x, y, z; };
 struct C;
 typedef int (C::*PMF)();
 struct State { char pad[8]; PMF fn; };
+struct CLPS_Block;
 
 extern "C" {
 /* ---- ov066 .bss: 8-byte SharedFilePtr slots (0x0211ae14..0x0211aebc) ---- */
@@ -65,6 +72,7 @@ extern int data_ov066_0211aeb4[];
 extern int data_ov066_0211aebc[];
 
 /* ---- ov066 .bss / .data byte flags and counters ---- */
+extern unsigned char data_ov066_0211ae00;
 extern unsigned char data_ov066_0211ae04;
 extern unsigned char data_ov066_0211ae08;
 extern unsigned char data_ov066_0211ae0c;
@@ -76,15 +84,32 @@ extern int data_ov066_0211ad18[];
 /* ---- ov066 .bss state descriptors, 0x10 bytes each ---- */
 extern char data_ov066_0211afcc;
 extern char data_ov066_0211afdc;
+extern char data_ov066_0211afec;
 extern char data_ov066_0211affc;
 extern char data_ov066_0211b00c;
+extern char data_ov066_0211b01c;
 extern char data_ov066_0211b02c;
 extern char data_ov066_0211b03c;
+extern char data_ov066_0211b04c;
+extern int data_ov066_0211b05c[];
 extern char data_ov066_0211b06c;
 extern char data_ov066_0211b07c;
+extern char data_ov066_0211b08c;
+extern int data_ov066_0211b09c[];
 extern char data_ov066_0211b0ac;
+extern char data_ov066_0211b0bc;
 extern char data_ov066_0211b0cc;
 extern char data_ov066_0211b0dc;
+extern char data_ov066_0211b0ec;
+
+/* ---- ov025 .data: CLPS blocks. ov025 is the overlay resident below ov066
+ *      at these addresses (tools/overlay_residency.py rules out every other
+ *      candidate) ---- */
+extern CLPS_Block data_ov025_02112c08;
+extern CLPS_Block data_ov025_02112c88;
+extern CLPS_Block data_ov025_02112ca8;
+extern CLPS_Block data_ov025_02112cc8;
+extern CLPS_Block data_ov025_02112d48;
 
 /* ---- arm9 data ---- */
 extern int data_0209e650;
@@ -92,6 +117,8 @@ extern void *data_0209f318;
 extern int data_020a0e68[];
 
 /* ---- arm9 helpers (unmangled ROM names) ---- */
+extern int AngleDiff(int a, int b);
+extern int ApproachAngle(s16 *angle, int target, int a, int b, int max);
 extern unsigned short DecIfAbove0_Short(unsigned short *p);
 extern void Matrix4x3_ApplyInPlaceToRotationXYZExt(void *m, int x, int y, int z);
 extern void Matrix4x3_FromRotationY(void *m, short ang);
@@ -99,30 +126,54 @@ extern void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
 extern void MulVec3Mat4x3(void *a, void *m, void *b);
 extern int RandomIntInternal(int *seed);
 extern int Vec3_ApproachHorz(void *out, void *a, int maxStep);
+extern int Vec3_Dist(const void *a, const void *b);
 extern void Vec3_Asr(void *d, void *s, int sh);
 extern int Vec3_HorzDist(const void *a, const void *b);
+extern s16 Vec3_HorzAngle(const void *a, const void *b);
+extern void func_0200d8c8(void *cam, void *v, int strength);
 extern void func_020092c4(void *cam, void *out, void *target);
 extern void func_02011cfc(void);
 extern void func_02011d2c(void);
 extern void func_02012694(int a, void *p);
+extern void func_020393c4(void *p, void *v);
+extern void func_020393d4(void *p, void *v);
+extern void func_020398fc(void *p);
 
 /* ---- arm9 / ov002 methods, mangled ROM spelling ---- */
+extern void _Z14ApproachLinearR7Vector3RKS_5Fix12IiE(void *out, void *tgt, int step);
+extern void _Z14ApproachLinearRiii(int *r, int target, int step);
+extern void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(void *self, void *kcl, void *mtx, int fix, short s, void *clps);
+extern void _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(void *self, void *actor, Vector3 *v, s32 f1, s32 f2, u32 a, u32 b);
+extern void _ZN11ShadowModel12InitCylinderEv(void *self);
 extern void _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(void *self, void *bca, int a, int b, int fix, unsigned short t);
 extern void _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(void *self, void *btp, int a, int fix, unsigned int b);
+extern void _ZN15TextureSequence8LoadFileER13SharedFilePtr(void *sfp);
+extern void *_ZN5Model8LoadFileER13SharedFilePtr(void *sfp);
 extern void _ZN5Sound17ChangeMusicVolumeEj5Fix12IiE(unsigned int a, int b);
 extern void _ZN5Sound22LoadAndSetMusic_Layer3Ej(unsigned int a);
 extern void _ZN5Sound22StopLoadedMusic_Layer3Ev(void);
 extern void _ZN6Camera9SetFlag_3Ev(void *cam);
+extern void _ZN6Player16IncMegaKillCountEv(void *p);
+extern void _ZN7dBgW_Kc8LoadFileER13SharedFilePtr(void *sfp);
+extern void _ZN7fBase_c18MarkForDestructionEv(void *self);
+extern void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned int a, int x, int y, int z);
 extern u32 _ZN8Particle6System3NewEjj5Fix12IiES2_S2_PK11Vector3_16fPNS_8CallbackE(u32 a, u32 b, int x, int y, int z, const void *v, void *cb);
+extern void *_ZN8dActor_c10FindWithIDEj(unsigned int id);
+extern void *_ZN8dActor_c13ClosestPlayerEv(void *self);
+extern void _ZN8dActor_c15HugeLandingDustEb(void *self, int b);
+extern void _ZN8dActor_c16TriplePoofDustAtERK7Vector3(void *self, const void *v);
+extern int _ZN8dActor_c18HorzAngleToCPlayerEv(void *self);
+extern void *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(u32 id, u32 b, Vector3 *pos, void *p, int e, int f);
+extern u8 _ZN8dActor_c9TrackStarEjj(void *actor, u32 a, u32 b);
 extern void _ZN8dActor_c19DropShadowRadHeightER11ShadowModelR9Matrix4x35Fix12IiES5_j(void *self, void *sm, void *m, int rad, int h, unsigned int u);
+extern int _ZN9Animation8FinishedEv(void *self);
+extern void _ZN9Animation8LoadFileER13SharedFilePtr(void *sfp);
+extern int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *bmd, int a, int b);
+extern int _ZNK9Animation13GetFrameCountEv(void *self);
 
-/* ---- siblings of this TU that stayed in their own src/ files ---- */
-extern void func_ov066_021162e8(void *c);
-extern void func_ov066_0211632c(void *c);
-extern int func_ov066_021168b0(void *c);
-extern int func_ov066_021168ec(void *c);
-extern int func_ov066_02116a68(void *c);
-extern void func_ov066_02116ac4(void *c, int v);
+/* ---- the dBgW callback veneer just past this unit (0x0211a35c, its own
+ *      src/ file) ---- */
+extern int func_ov066_0211a35c(void *a, void *b, void *c);
 
 /* ---- this TU's own members, forward-declared: the file is written
  *      ROM-ascending, so a member that calls one defined further down
@@ -133,6 +184,1128 @@ extern int func_ov066_02119454(void *c, void *p);
 }
 
 typedef struct { int w[12]; } M48;
+
+// @symbol func_ov066_0211603c
+extern "C" {
+int func_ov066_0211603c(char *self)
+{
+    enum Bool { FALSE, TRUE };
+    char *actor;
+    int flags;
+    int hit;
+    unsigned int id;
+    u16 type;
+    enum Bool is_player;
+
+    id = *(unsigned int *)(self + 0x344);
+    if (id == 0)
+        goto fail;
+
+    actor = (char *)_ZN8dActor_c10FindWithIDEj(id);
+    if (actor == 0)
+        return 0;
+
+    if (AngleDiff(*(s16 *)(self + 0x8e), _ZN8dActor_c18HorzAngleToCPlayerEv(self)) >= 0x4000)
+        return 0;
+
+    type = *(u16 *)(actor + 0xc);
+    hit = 0;
+    flags = *(int *)(self + 0x340);
+    is_player = (enum Bool)(type == 0xbf);
+    if (is_player == FALSE)
+        goto other;
+
+    if (*(u8 *)(actor + 0x6f9) == 1) {
+        (*(s8 *)(((int)self + 0x4d8)))--;
+        hit = 1;
+    }
+    if (flags & 0x10) {
+        (*(s8 *)(((int)self + 0x4d8)))--;
+        if (*(s8 *)(self + 0x4d8) <= 0)
+            _ZN6Player16IncMegaKillCountEv(actor);
+        hit = 1;
+    }
+
+other:
+    if (hit == 0) {
+        if (flags & 0x427e0) {
+            if (flags & 0x40) {
+                if (*(int *)(actor + 8) == 2)
+                    (*(s8 *)(((int)self + 0x4d8)))--;
+            }
+            if (flags & 0x40000)
+                *(s16 *)(self + 0x4d4) = 1;
+            (*(s8 *)(((int)self + 0x4d8)))--;
+            hit = 1;
+        }
+    }
+
+    if (hit == 0)
+        goto fail;
+
+    if (*(s8 *)(self + 0x4d8) > 0) {
+        if (*(int *)(self + 0x49c) == 2) {
+            _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(
+                self + 0x360, (void *)data_ov066_0211ae5c[1], 4, 0x40000000, 0x1000, 0);
+            _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(
+                self + 0x448, (void *)data_ov066_0211ae3c[1], 0x40000000, 0x1000, 0);
+        } else {
+            _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(
+                self + 0x360, (void *)data_ov066_0211ae84[1], 4, 0x40000000, 0x1000, 0);
+            _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(
+                self + 0x448, (void *)data_ov066_0211aebc[1], 0x40000000, 0x1000, 0);
+        }
+        func_02012694(0x141, self + 0x74);
+        return 1;
+    }
+
+    {
+        u8 x = data_ov066_0211ae08;
+        u8 y = data_ov066_0211abe0;
+        int side = *(int *)(self + 0x49c);
+        data_ov066_0211abe0 = (u8)(y ^ side);
+        data_ov066_0211ae08 = (u8)(x + 1);
+        data_ov066_0211abe4 = -3;
+    }
+    func_02012694(0x142, self + 0x74);
+    func_ov066_02119454(self, &data_ov066_0211b07c);
+    return 2;
+
+fail:
+    return 0;
+}
+}
+
+// @symbol func_ov066_021162e8
+extern "C" {
+void func_ov066_021162e8(void *c)
+{
+    int *p = (int *)((char *)c + 0x338);
+    *p |= 2;
+    *(int *)((char *)c + 0x324) = 0x64000;
+    *(int *)((char *)c + 0x328) = 0x64000;
+    data_ov066_0211ad18[0] = 0;
+    data_ov066_0211ad18[1] = 0x20000;
+    data_ov066_0211ad18[2] = -0x10000;
+}
+}
+
+// @symbol func_ov066_0211632c
+extern "C" {
+void func_ov066_0211632c(void *thiz)
+{
+    char *self = (char *)thiz;
+    int *p338 = (int *)(self + 0x338);
+    *p338 &= ~2;
+    *(int *)(self + 0x324) = 0x9c000;
+    *(int *)(self + 0x328) = 0x164000;
+    if (*(int *)(self + 0x49c) == 2)
+        data_ov066_0211ad18[0] = 0x55000;
+    else
+        data_ov066_0211ad18[0] = -0x55000;
+    data_ov066_0211ad18[1] = -0xc0000;
+    data_ov066_0211ad18[2] = 0x80000;
+}
+}
+
+// @symbol func_ov066_02116390
+extern "C" {
+void func_ov066_02116390(void *thiz)
+{
+    char *c = (char *)thiz;
+    DecIfAbove0_Short((unsigned short *)(c + 0x66c));
+    if (*(unsigned short *)(c + 0x66c) != 0)
+        return;
+    if (*(unsigned char *)(c + 0x66e) == 0) {
+        if (*(int *)(c + 0x49c) == 2)
+            _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(c + 0x448, (void *)data_ov066_0211ae2c[1], 0x40000000, 0x1000, 0);
+        else
+            _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(c + 0x448, (void *)data_ov066_0211ae9c[1], 0x40000000, 0x1000, 0);
+        *(unsigned short *)(c + 0x66c) = (((unsigned int)RandomIntInternal(&data_0209e650) >> 8) & 0xf) * 2 + 0x32;
+    } else {
+        if (*(int *)(c + 0x49c) == 2)
+            _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(c + 0x448, (void *)data_ov066_0211ae3c[1], 0x40000000, 0x1000, 0);
+        else
+            _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(c + 0x448, (void *)data_ov066_0211aebc[1], 0x40000000, 0x1000, 0);
+        *(unsigned short *)(c + 0x66c) = 8;
+    }
+    *(unsigned char *)(((int)c + 0x66e)) ^= 1;
+}
+}
+
+// @symbol func_ov066_021164ec
+extern "C" {
+void func_ov066_021164ec(void *thiz)
+{
+    char *c = (char *)thiz;
+    if (*(int *)(c + 0x498) != 0) return;
+    if ((unsigned short)(*(int *)(c + 0x3b8) >> 0xc) != 0) return;
+    *(int *)(((int)c + 0x33c)) |= 0x427f0;
+    *(int *)(c + 0xb0) = 0x10000000;
+    *(int *)(((int)c + 0x338)) |= 2;
+    if (*(int *)(c + 0x49c) == 2) {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(c + 0x360, (void *)data_ov066_0211ae64[1], 4, 0, 0x1000, 0);
+    } else {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(c + 0x360, (void *)data_ov066_0211ae44[1], 4, 0, 0x1000, 0);
+    }
+    *(int *)(c + 0x498) = 1;
+}
+}
+
+// @symbol func_ov066_021165cc
+extern "C" {
+void func_ov066_021165cc(void *thiz)
+{
+    char *c = (char *)thiz;
+    if (*(int *)(c + 0x49c) == 2) {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(
+            c + 0x360, (void *)data_ov066_0211ae54[1], 4, 0x40000000, 0x1000, 0);
+        _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(
+            c + 0x448, (void *)data_ov066_0211ae3c[1], 0x40000000, 0x1000, 0);
+    } else {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(
+            c + 0x360, (void *)data_ov066_0211ae94[1], 4, 0x40000000, 0x1000, 0);
+        _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(
+            c + 0x448, (void *)data_ov066_0211aebc[1], 0x40000000, 0x1000, 0);
+    }
+    *(int *)(c + 0x3bc) = 0x1000;
+    {
+        int *p = (int *)(((int)c + 0x33c));
+        *p = *p & 0xfffbd82f;
+        *(int *)(c + 0xb0) = 0;
+    }
+}
+}
+
+// @symbol func_ov066_021166c8
+extern "C" {
+void func_ov066_021166c8(void *thiz)
+{
+    unsigned char *c = (unsigned char *)thiz;
+
+    if (*(int *)(c + 0x49c) == 2) {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(c + 0x360, (void *)data_ov066_0211ae54[1], 4, 0x40000000, 0x1000, 0);
+        _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(c + 0x448, (void *)data_ov066_0211ae2c[1], 0x40000000, 0x1000, 0);
+    } else {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(c + 0x360, (void *)data_ov066_0211ae94[1], 4, 0x40000000, 0x1000, 0);
+        _ZN15TextureSequence7SetFileER8BTP_Filei5Fix12IiEj(c + 0x448, (void *)data_ov066_0211ae9c[1], 0x40000000, 0x1000, 0);
+    }
+
+    if (((dBgW *)(c + 0x674))->IsEnabled() != 0)
+        ((dBgW *)(c + 0x674))->Disable();
+
+    if (*(int *)(c + 0x49c) == 1) {
+        _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(c + 0x674, (void *)data_ov066_0211ae34[1], c + 0x83c, 0x199,
+                                   *(short *)(c + 0x8e), &data_ov025_02112cc8);
+    } else {
+        _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(c + 0x674, (void *)data_ov066_0211ae1c[1], c + 0x83c, 0x199,
+                                   *(short *)(c + 0x8e), &data_ov025_02112c88);
+    }
+
+    func_020393d4(c + 0x674, (void *)&dBgW::UpdatePosWithTransform);
+    func_020393c4(c + 0x674, (void *)func_ov066_0211a35c);
+    func_020398fc(c + 0x674);
+    ((dBgW *)(c + 0x674))->Enable((dActor_c *)(c));
+
+    {
+        int n = _ZNK9Animation13GetFrameCountEv(c + 0x3b0);
+        *(int *)(c + 0x3b8) = (int)(((unsigned int)((n - 1) << 0x10)) >> 4);
+        *(int *)(c + 0x3bc) = -0x1000;
+    }
+}
+}
+
+// @symbol func_ov066_021168b0
+extern "C" {
+int func_ov066_021168b0(void *thiz)
+{
+    char *c = (char *)thiz;
+    if (*(int *)(c + 0x4a0) == 0) {
+        if (data_ov066_0211ae0c != 3) return 0;
+        *(int *)(c + 0x4a0) = 1;
+        data_ov066_0211ae0c = 0;
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_021168ec
+extern "C" {
+int func_ov066_021168ec(void *c)
+{
+    unsigned char m;
+    if (*(int *)((char *)c + 0x9c) != 0) return 0;
+    m = data_ov066_0211ae04;
+    if (m == 3) {
+        if (*(void **)((char *)c + 0x48c) != (void *)&data_ov066_0211b06c) {
+            func_ov066_02119454(c, (void *)&data_ov066_0211b06c);
+            return 3;
+        }
+    }
+    if ((unsigned char)(m + 0xfc) <= 5
+        && *(void **)((char *)c + 0x48c) == (void *)&data_ov066_0211b06c) {
+        if (m == 4) { func_ov066_02119454(c, (void *)&data_ov066_0211b08c); return data_ov066_0211ae04; }
+        if (m == 5) { func_ov066_02119454(c, (void *)&data_ov066_0211b0bc); return data_ov066_0211ae04; }
+        if (m == 6) { func_ov066_02119454(c, (void *)&data_ov066_0211b0ec); return data_ov066_0211ae04; }
+        if (m == 7) { func_ov066_02119454(c, (void *)&data_ov066_0211afec); return data_ov066_0211ae04; }
+        if (m == 8) { func_ov066_02119454(c, (void *)&data_ov066_0211b01c); return data_ov066_0211ae04; }
+        if (m == 9) { func_ov066_02119454(c, (void *)&data_ov066_0211b04c); return data_ov066_0211ae04; }
+    }
+    return 0;
+}
+}
+
+// @symbol func_ov066_02116a68
+extern "C" {
+int func_ov066_02116a68(void *self)
+{
+    volatile int dummy[3];
+    (void)dummy;
+    char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(self);
+    int dist = *(int *)(p + 0x64);
+    int lo = (int)0xff3ae000;
+    if (dist < lo) return lo;
+    int lo2 = -(int)0xb50000;
+    if (dist < lo2) return lo2;
+    int hi = (int)0xff598000;
+    if (dist >= hi) return 0;
+    return hi;
+}
+}
+
+// @symbol func_ov066_02116ac4
+extern "C" {
+void func_ov066_02116ac4(void *thiz, int strength)
+{
+    char *c = (char *)thiz;
+    volatile int s0, s1, s2;
+    func_0200d8c8(data_0209f318, c + 0x5c, strength);
+    s0 = *(int *)(c + 0x5c);
+    s1 = *(int *)(c + 0x60);
+    s2 = *(int *)(c + 0x64);
+    if (*(int *)(c + 0x49c) == 1)
+        *(int *)(((long)c + 0x5c)) -= 0x80000;
+    else
+        *(int *)(((long)c + 0x5c)) += 0x80000;
+    *(int *)(((long)c + 0x64)) += 0x80000;
+    _ZN8dActor_c15HugeLandingDustEb(c, 1);
+    func_02012694(0x143, c + 0x74);
+    *(int *)(c + 0x5c) = s0;
+    *(int *)(c + 0x60) = s1;
+    *(int *)(c + 0x64) = s2;
+}
+}
+
+// @symbol func_ov066_02116b78
+extern "C" {
+int func_ov066_02116b78(void *thiz)
+{
+    char *c = (char *)thiz;
+    int b1 = 0x320;
+    int lo = -0x320;
+    int ip = *(int *)(c + 0x49c);
+    if (ip == 2) { b1 = 0x384; lo = -0x384; }
+    unsigned char flag = data_ov066_0211abe0;
+    int v = *(int *)(c + 0x5c);
+    if (flag != 3) lo -= 0x50;
+    lo = lo << 0xc;
+    if (v < lo) {
+        *(int *)(c + 0x5c) = lo;
+        *(int *)(c + 0x98) = 0;
+        return 1;
+    }
+    b1 = 0x320;
+    if (ip == 1) b1 = 0x384;
+    if (flag != 3) b1 += 0x50;
+    b1 = b1 << 0xc;
+    if (v > b1) {
+        *(int *)(c + 0x5c) = b1;
+        *(int *)(c + 0x98) = 0;
+        return 1;
+    }
+    int z = *(int *)(c + 0x64);
+    int n = 0xff0ff000;
+    if (z < n) {
+        *(int *)(c + 0x64) = n;
+        *(int *)(c + 0x98) = 0;
+        return 1;
+    }
+    n = 0xff8c6000;
+    if (flag != 3) n += 0x8c000;
+    if (z > n) {
+        *(int *)(c + 0x64) = n;
+        *(int *)(c + 0x98) = 0;
+        return 1;
+    }
+    return 0;
+}
+}
+
+// @symbol func_ov066_02116c6c
+extern "C" {
+int func_ov066_02116c6c(char *c)
+{
+    if ((unsigned int)((unsigned int)(*(unsigned int *)(c + 0x3b8) << 4) >> 0x10) > 0xc) {
+        *(int *)(c + 0x98) = 0;
+    }
+    if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+        _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x7c, *(int *)(c + 0x5c), *(int *)(c + 0x60), *(int *)(c + 0x64));
+        _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(0x7d, *(int *)(c + 0x5c), *(int *)(c + 0x60), *(int *)(c + 0x64));
+        {
+            EVec3 v;
+            v.x = *(int *)(c + 0x5c);
+            v.y = *(int *)(c + 0x60);
+            v.z = *(int *)(c + 0x64);
+            _ZN8dActor_c16TriplePoofDustAtERK7Vector3(c, &v);
+        }
+        func_02012694(0x146, c + 0x74);
+        _ZN7fBase_c18MarkForDestructionEv(c);
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_02116d14
+extern "C" {
+int func_ov066_02116d14(char *c)
+{
+    *(int *)(c + 0x494) = 0;
+    *(int *)(c + 0x498) = 0;
+    *(short *)(c + 0x4d0) = 0;
+    *(int *)(c + 0x4a0) = 0;
+    *(int *)(c + 0x98) = -0xa000;
+    if (*(int *)(c + 0x49c) == 2) {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(c + 0x360, (void *)data_ov066_0211aea4[1], 4, 0x40000000, 0x1000, 0);
+    } else {
+        _ZN14BlendModelAnim7SetAnimER8BCA_Fileii5Fix12IiEt(c + 0x360, (void *)data_ov066_0211ae8c[1], 4, 0x40000000, 0x1000, 0);
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_02116db0
+extern "C" {
+int func_ov066_02116db0(void *thiz)
+{
+    char *c = (char *)thiz;
+    EVec3 in, out;
+    s16 ang;
+    int r;
+
+    switch (*(int *)(c + 0x4a0)) {
+    case 0:
+        func_ov066_021166c8(c);
+        *(int *)(c + 0x4a0) = 1;
+        break;
+
+    case 1:
+        if (*(int *)(c + 0x498) == 0) {
+            char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);
+            if (p != 0) {
+                EVec3 *pp = (EVec3 *)(((int)p + 0x5c));
+                *(int *)(c + 0x4bc) = pp->x;
+                *(int *)(c + 0x4c0) = pp->y;
+                *(int *)(c + 0x4c4) = pp->z;
+
+                in.x = 0;
+                in.y = 0;
+                in.z = 0;
+                out.x = 0;
+                out.y = 0;
+                out.z = 0;
+                in.z = 0x3e8000;
+
+                ang = Vec3_HorzAngle(c + 0x5c, c + 0x4bc);
+                Matrix4x3_FromRotationY(data_020a0e68, ang);
+                MulVec3Mat4x3(&in, data_020a0e68, &out);
+
+                *(int *)(((int)c + 0x4bc)) += out.x;
+                *(int *)(((int)c + 0x4c4)) += out.z;
+            }
+
+            if ((unsigned short)(*(int *)(c + 0x3b8) >> 0xc) == 0)
+                func_02012694(0x140, c + 0x74);
+
+            if ((unsigned short)(*(int *)(c + 0x3b8) >> 0xc) == 0) {
+                func_ov066_021164ec(c);
+                func_02012694(0x144, c + 0x74);
+            }
+
+            ang = Vec3_HorzAngle(c + 0x5c, c + 0x4bc);
+            ApproachAngle((s16 *)(c + 0x8e), ang, 2, 0x400, 0x200);
+        }
+
+        if (*(int *)(c + 0x498) == 1) {
+            r = func_ov066_0211603c(c);
+            if (r != 0) {
+                if (r == 1)
+                    *(int *)(c + 0x4a0) = 2;
+                break;
+            }
+            Vec3_ApproachHorz(c + 0x5c, c + 0x4bc, 0x37000);
+            if (func_ov066_02116b78(c) == 1 || Vec3_HorzDist(c + 0x5c, c + 0x4bc) <= 0x37000) {
+                func_ov066_021165cc(c);
+                *(int *)(c + 0x4a0) = 3;
+            }
+        }
+        break;
+
+    /* case 3 body before case 2 to match ROM placement */
+    case 3:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+            if (((dBgW *)(c + 0x674))->IsEnabled() != 0)
+                ((dBgW *)(c + 0x674))->Disable();
+            if (*(int *)(c + 0x49c) == 1)
+                _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                    c + 0x674, (void *)data_ov066_0211ae14[1], c + 0x83c, 0x199,
+                    *(s16 *)(c + 0x8e), &data_ov025_02112c08);
+            else
+                _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                    c + 0x674, (void *)data_ov066_0211aeac[1], c + 0x83c, 0x199,
+                    *(s16 *)(c + 0x8e), &data_ov025_02112d48);
+            func_020393d4(c + 0x674, (void *)&dBgW::UpdatePosWithTransform);
+            func_020393c4(c + 0x674, (void *)func_ov066_0211a35c);
+            func_020398fc(c + 0x674);
+            ((dBgW *)(c + 0x674))->Enable((dActor_c *)c);
+            *(int *)(c + 0x4a0) = 4;
+        }
+        break;
+
+    case 2:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+            func_ov066_021165cc(c);
+            *(int *)(c + 0x4a0) = 3;
+        }
+        break;
+
+    case 4:
+        func_ov066_021162e8(c);
+        ApproachAngle((s16 *)(c + 0x8e), 0, 2, 0x400, 0x200);
+        Vec3_ApproachHorz(c + 0x5c, c + 0x4a4, 0x37000);
+        if (Vec3_HorzDist(c + 0x5c, c + 0x4a4) <= 0x37000) {
+            *(int *)(c + 0x5c) = *(int *)(c + 0x4a4);
+            *(int *)(c + 0x60) = *(int *)(c + 0x4a8);
+            *(int *)(c + 0x64) = *(int *)(c + 0x4ac);
+            data_ov066_0211ae08 = 2;
+            *(s16 *)(c + 0x8e) = 0;
+            *(int *)(c + 0x4a0) = 5;
+        }
+        break;
+
+    case 5:
+        if (data_ov066_0211ae04 != 9)
+            func_ov066_02119454(c, &data_ov066_0211b06c);
+        break;
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_02117190
+extern "C" {
+int func_ov066_02117190(char *p)
+{
+    *(int *)(p + 0x494) = 0;
+    *(int *)(p + 0x498) = 0;
+    *(short *)(p + 0x4d0) = 0;
+    *(int *)(p + 0x4a0) = 0;
+    return 1;
+}
+}
+
+// @symbol func_ov066_021171b0
+extern "C" {
+int func_ov066_021171b0(void *thiz)
+{
+    char *c = (char *)thiz;
+
+    switch (*(int *)(c + 0x4a0)) {
+    case 0: {
+        char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);
+        if (p == 0)
+            break;
+        {
+            EVec3 *pp = (EVec3 *)(((int)p + 0x5c));
+            *(int *)(c + 0x4bc) = pp->x;
+            *(int *)(c + 0x4c0) = pp->y;
+            *(int *)(c + 0x4c4) = pp->z;
+        }
+        *(int *)(((int)c + 0x4c4)) -= 0xc8000;
+        if (*(int *)(c + 0x4c4) < (int)0xff3ae000) {
+            *(int *)(c + 0x4c4) = (int)0xff3ae000;
+        } else if (*(int *)(c + 0x4c4) > (int)0xff8c6000) {
+            *(int *)(c + 0x4c4) = (int)0xff8c6000;
+        }
+        if (data_ov066_0211ae0c == 1) {
+            *(short *)(c + 0x94) = -0x4000;
+            *(int *)(c + 0x4bc) = 0x334000;
+            if (*(int *)(c + 0x49c) == 1) {
+                *(int *)(((int)c + 0x4bc)) -= 0xf2000;
+            }
+        } else {
+            *(short *)(c + 0x94) = 0x4000;
+            *(int *)(c + 0x4bc) = (int)0xffe8e000;
+            if (*(int *)(c + 0x49c) == 1) {
+                *(int *)(((int)c + 0x4bc)) -= 0xf2000;
+            }
+        }
+        func_02012694(0x144, c + 0x74);
+        *(int *)(c + 0x4c0) = *(int *)(c + 0x4a8) + 0x1c2000;
+        *(int *)(c + 0x4a0) = 1;
+        break;
+    }
+    case 1:
+        _Z14ApproachLinearR7Vector3RKS_5Fix12IiE(c + 0x5c, c + 0x4bc, 0x28000);
+        if (Vec3_Dist(c + 0x5c, c + 0x4bc) > 0x28000)
+            break;
+        *(int *)(c + 0x5c) = *(int *)(c + 0x4bc);
+        *(int *)(c + 0x60) = *(int *)(c + 0x4c0);
+        *(int *)(c + 0x64) = *(int *)(c + 0x4c4);
+        data_ov066_0211ae00 |= *(int *)(c + 0x49c);
+        if (data_ov066_0211ae00 != 3)
+            break;
+        *(unsigned short *)(c + 0x4d0) = 0xa;
+        if (data_ov066_0211ae0c == 1) {
+            if (*(int *)(c + 0x49c) == 2)
+                *(unsigned short *)(c + 0x4d0) = 0x12;
+        } else {
+            if (*(int *)(c + 0x49c) == 1)
+                *(unsigned short *)(c + 0x4d0) = 0x12;
+        }
+        *(int *)(c + 0x4c0) = *(int *)(c + 0x4a8) + 0x1a000;
+        *(int *)(c + 0x4a0) = 2;
+        break;
+    case 2:
+        if (*(unsigned short *)(c + 0x4d0) != 0)
+            break;
+        _Z14ApproachLinearR7Vector3RKS_5Fix12IiE(c + 0x5c, c + 0x4bc, 0x32000);
+        if (Vec3_Dist(c + 0x5c, c + 0x4bc) > 0x32000)
+            break;
+        *(int *)(c + 0x5c) = *(int *)(c + 0x4bc);
+        *(int *)(c + 0x60) = *(int *)(c + 0x4c0);
+        *(int *)(c + 0x64) = *(int *)(c + 0x4c4);
+        func_ov066_02116ac4(c, 0x7d0000);
+        *(unsigned short *)(c + 0x4d0) = 0xf;
+        *(int *)(c + 0x4a0) = 3;
+        break;
+    case 3: {
+        unsigned short st = *(unsigned short *)(c + 0x4d0);
+        if (st != 0) {
+            if (st != 1)
+                break;
+            *(int *)(c + 0xa8) = 0x7c000;
+            *(int *)(c + 0x9c) = -0x14000;
+            *(int *)(c + 0x98) = 0x1e000;
+            *(int *)(c + 0xb0) = 0x2000000;
+            break;
+        }
+        if (*(int *)(c + 0x9c) == 0)
+            break;
+        if (*(int *)(c + 0x4a8) < *(int *)(c + 0x60))
+            break;
+        *(int *)(c + 0x60) = *(int *)(c + 0x4a8);
+        *(int *)(c + 0xa8) = 0;
+        *(int *)(c + 0x9c) = 0;
+        *(int *)(c + 0x98) = 0;
+        func_ov066_02116ac4(c, 0x7d0000);
+        *(unsigned short *)(c + 0x4d0) = 0xf;
+        *(int *)(((int)c + 0x494)) += 1;
+        if (*(int *)(c + 0x494) < 3)
+            *(int *)(c + 0x4a0) = 3;
+        else
+            *(int *)(c + 0x4a0) = 4;
+        break;
+    }
+    case 4:
+        if (*(unsigned short *)(c + 0x4d0) == 1) {
+            data_ov066_0211ae00 ^= *(int *)(c + 0x49c);
+        }
+        if (data_ov066_0211ae00 != 0)
+            break;
+        Vec3_ApproachHorz(c + 0x5c, c + 0x4a4, 0x28000);
+        if (Vec3_HorzDist(c + 0x5c, c + 0x4a4) > 0x28000)
+            break;
+        data_ov066_0211ae0c = 0;
+        *(int *)(c + 0x5c) = *(int *)(c + 0x4a4);
+        *(int *)(c + 0x60) = *(int *)(c + 0x4a8);
+        *(int *)(c + 0x64) = *(int *)(c + 0x4ac);
+        data_ov066_0211ae08 += 1;
+        *(int *)(c + 0x4a0) = 5;
+        break;
+    case 5:
+        if (data_ov066_0211ae04 == 8)
+            break;
+        *(int *)(c + 0xb0) = 0;
+        func_ov066_02119454(c, &data_ov066_0211b06c);
+        break;
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_021175bc
+extern "C" {
+int func_ov066_021175bc(char *r0)
+{
+    int r3 = 0;
+    *(int *)(r0 + 0x494) = r3;
+    *(int *)(r0 + 0x498) = r3;
+    char *r1 = r0 + 0x400;
+    char *r2 = (char *)&data_ov066_0211ae00;
+    *(short *)(r1 + 0xd0) = r3;
+    *r2 = r3;
+    *(int *)(r0 + 0x4a0) = r3;
+    return 1;
+}
+}
+
+// @symbol func_ov066_021175e8
+extern "C" {
+int func_ov066_021175e8(void *thiz)
+{
+    char *c = (char *)thiz;
+    EVec3 v;
+
+    switch (*(int *)(c + 0x4a0)) {
+    case 0:
+        if (data_ov066_0211ae0c == *(int *)(c + 0x49c)) {
+            char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);
+            if (p != 0) {
+                EVec3 *pp = (EVec3 *)(((int)p + 0x5c));
+                *(int *)(c + 0x4bc) = pp->x;
+                *(int *)(c + 0x4c0) = pp->y;
+                *(int *)(c + 0x4c4) = pp->z;
+                *(int *)(((int)c + 0x4c4)) -= 0xc8000;
+                if (*(int *)(c + 0x49c) == 1)
+                    *(int *)(((int)c + 0x4bc)) += 0x58000;
+                else
+                    *(int *)(((int)c + 0x4bc)) -= 0x58000;
+                if (*(int *)(c + 0x4c4) < -0xc52000)
+                    *(int *)(c + 0x4c4) = -0xc52000;
+                else if (*(int *)(c + 0x4c4) > -0x73a000)
+                    *(int *)(c + 0x4c4) = -0x73a000;
+            }
+            func_02012694(0x144, c + 0x74);
+            *(int *)(c + 0x4c0) = *(int *)(c + 0x4a8) + 0x1c2000;
+            *(int *)(c + 0x4a0) = 1;
+        } else if (*(unsigned short *)(c + 0x4d0) == 0) {
+            func_ov066_021166c8(c);
+            *(int *)(c + 0x4a0) = 4;
+        }
+        break;
+    case 1:
+        _Z14ApproachLinearR7Vector3RKS_5Fix12IiE(c + 0x5c, c + 0x4bc, 0x28000);
+        if (Vec3_Dist(c + 0x5c, c + 0x4bc) <= 0x28000) {
+            *(unsigned short *)(c + 0x4d0) = 0xa;
+            *(int *)(c + 0xb0) = 0x2000000;
+            *(int *)(c + 0x5c) = *(int *)(c + 0x4bc);
+            *(int *)(c + 0x60) = *(int *)(c + 0x4c0);
+            *(int *)(c + 0x64) = *(int *)(c + 0x4c4);
+            *(int *)(c + 0x4c0) = *(int *)(c + 0x4a8);
+            *(int *)(c + 0x4a0) = 2;
+        }
+        break;
+    case 2:
+        if (*(unsigned short *)(c + 0x4d0) == 0)
+            _Z14ApproachLinearR7Vector3RKS_5Fix12IiE(c + 0x5c, c + 0x4bc, 0x32000);
+        if (Vec3_Dist(c + 0x5c, c + 0x4bc) <= 0x32000) {
+            func_ov066_02116ac4(c, 0x7d0000);
+            *(int *)(c + 0x5c) = *(int *)(c + 0x4bc);
+            *(int *)(c + 0x60) = *(int *)(c + 0x4c0);
+            *(int *)(c + 0x64) = *(int *)(c + 0x4c4);
+            *(unsigned short *)(c + 0x4d0) = 0xa;
+            *(int *)(c + 0x4a0) = 7;
+            if (func_ov066_02116a68(c) == 0) {
+                char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);
+                if (p != 0) {
+                    EVec3 *pp = (EVec3 *)(((int)p + 0x5c));
+                    v.x = pp->x;
+                    v.y = pp->y;
+                    v.z = pp->z;
+                    *(unsigned short *)(c + 0x4d0) = 0x24;
+                    if (Vec3_HorzDist(c + 0x5c, &v) < 0x400000) {
+                        if (v.x < *(int *)(c + 0x5c))
+                            *(short *)(c + 0x94) = -0x4000;
+                        else
+                            *(short *)(c + 0x94) = 0x4000;
+                        *(int *)(c + 0x4c8) = 0;
+                        *(int *)(c + 0x98) = 0;
+                        *(int *)(c + 0x4a0) = 3;
+                    }
+                }
+            }
+        }
+        break;
+    case 3:
+        if (*(int *)(c + 0x4c8) < 0x2710) {
+            if (*(unsigned short *)(c + 0x4d0) != 0)
+                *(int *)(((int)c + 0x4c8)) += 0x1a;
+            else
+                *(int *)(((int)c + 0x4c8)) += 0x130;
+        }
+        _Z14ApproachLinearRiii((int *)(c + 0x98), 0x258000, *(int *)(c + 0x4c8));
+        if (func_ov066_02116b78(c) == 1) {
+            *(int *)(c + 0x98) = 0;
+            *(short *)(c + 0x94) = 0;
+            *(int *)(c + 0x4a0) = 7;
+        }
+        break;
+    case 4:
+        func_ov066_021164ec(c);
+        if ((unsigned short)(*(int *)(c + 0x3b8) >> 0xc) == 0)
+            func_02012694(0x140, c + 0x74);
+        if (*(int *)(c + 0x498) == 1) {
+            int r = func_ov066_0211603c(c);
+            func_ov066_02116390(c);
+            if (r != 0) {
+                if (r == 1)
+                    *(int *)(c + 0x4a0) = 5;
+                break;
+            }
+        }
+        if (data_ov066_0211ae08 != 0) {
+            func_ov066_021165cc(c);
+            *(int *)(c + 0x4a0) = 6;
+        }
+        break;
+    case 5:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+            func_ov066_021165cc(c);
+            *(int *)(c + 0x4a0) = 6;
+        }
+        break;
+    case 6:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+            func_ov066_021162e8(c);
+            if (((dBgW *)(c + 0x674))->IsEnabled() != 0)
+                ((dBgW *)(c + 0x674))->Disable();
+            if (*(int *)(c + 0x49c) == 1)
+                _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                    c + 0x674, (void *)data_ov066_0211ae14[1], c + 0x83c, 0x199,
+                    *(short *)(c + 0x8e), &data_ov025_02112c08);
+            else
+                _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                    c + 0x674, (void *)data_ov066_0211aeac[1], c + 0x83c, 0x199,
+                    *(short *)(c + 0x8e), &data_ov025_02112d48);
+            func_020393d4(c + 0x674, (void *)&dBgW::UpdatePosWithTransform);
+            func_020393c4(c + 0x674, (void *)func_ov066_0211a35c);
+            func_020398fc(c + 0x674);
+            ((dBgW *)(c + 0x674))->Enable((dActor_c *)c);
+            data_ov066_0211ae08 += 1;
+            *(int *)(c + 0x4a0) = 8;
+        }
+        break;
+    case 7:
+        if (*(unsigned short *)(c + 0x4d0) == 0) {
+            Vec3_ApproachHorz(c + 0x5c, c + 0x4a4, 0x28000);
+            if (Vec3_HorzDist(c + 0x5c, c + 0x4a4) <= 0x28000) {
+                data_ov066_0211ae0c ^= *(int *)(c + 0x49c);
+                *(int *)(c + 0x5c) = *(int *)(c + 0x4a4);
+                *(int *)(c + 0x60) = *(int *)(c + 0x4a8);
+                *(int *)(c + 0x64) = *(int *)(c + 0x4ac);
+                data_ov066_0211ae08 += 1;
+                if (data_ov066_0211abe0 != 3)
+                    data_ov066_0211ae08 += 1;
+                *(int *)(c + 0x4a0) = 8;
+            }
+        }
+        break;
+    case 8:
+        if (data_ov066_0211ae04 != 7) {
+            *(int *)(c + 0xb0) = 0;
+            func_ov066_02119454(c, &data_ov066_0211b06c);
+        }
+        break;
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_02117bd0
+extern "C" {
+int func_ov066_02117bd0(char *p)
+{
+    *(int *)(p + 0x494) = 0;
+    *(int *)(p + 0x498) = 0;
+    *(short *)(p + 0x4d0) = 0;
+    *(int *)(p + 0x4a0) = 0;
+    return 1;
+}
+}
+
+// @symbol func_ov066_02117bf0
+extern "C" {
+int func_ov066_02117bf0(void *thiz)
+{
+    char *c = (char *)thiz;
+    EVec3 v;
+
+    switch (*(int *)(c + 0x4a0)) {
+    case 0:
+        if (data_ov066_0211ae0c == *(int *)(c + 0x49c)) {
+            char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);
+            if (p != 0) {
+                EVec3 *pp = (EVec3 *)(((int)p + 0x5c));
+                *(int *)(c + 0x4bc) = pp->x;
+                *(int *)(c + 0x4c0) = pp->y;
+                *(int *)(c + 0x4c4) = pp->z;
+                *(int *)(((int)c + 0x4c4)) -= 0xc8000;
+                if (*(int *)(c + 0x4c4) < -0xc52000)
+                    *(int *)(c + 0x4c4) = -0xc52000;
+                else if (*(int *)(c + 0x4c4) > -0x73a000)
+                    *(int *)(c + 0x4c4) = -0x73a000;
+            }
+            if (*(int *)(c + 0x4c4) > -0xa68000) {
+                if (*(int *)(c + 0x4bc) < 0) {
+                    if (*(int *)(c + 0x49c) == 1)
+                        *(int *)(((int)c + 0x4bc)) += 0x1c2000;
+                    else
+                        *(int *)(((int)c + 0x4bc)) += 0x12c000;
+                } else {
+                    if (*(int *)(c + 0x49c) == 1)
+                        *(int *)(((int)c + 0x4bc)) -= 0x12c000;
+                    else
+                        *(int *)(((int)c + 0x4bc)) -= 0x1c2000;
+                }
+            }
+            func_02012694(0x144, c + 0x74);
+            *(int *)(c + 0x4a0) = 1;
+        } else if (*(unsigned short *)(c + 0x4d0) == 0) {
+            func_ov066_021166c8(c);
+            *(int *)(c + 0x4a0) = 3;
+        }
+        break;
+    case 1:
+        Vec3_ApproachHorz(c + 0x5c, c + 0x4bc, 0x28000);
+        if (Vec3_HorzDist(c + 0x5c, c + 0x4bc) <= 0x28000) {
+            *(int *)(c + 0x4a0) = 6;
+            if (func_ov066_02116a68(c) == 0) {
+                char *p = (char *)_ZN8dActor_c13ClosestPlayerEv(c);
+                if (p != 0) {
+                    EVec3 *pp = (EVec3 *)(((int)p + 0x5c));
+                    v.x = pp->x;
+                    v.y = pp->y;
+                    v.z = pp->z;
+                    *(unsigned short *)(c + 0x4d0) = 0x24;
+                    if (Vec3_HorzDist(c + 0x5c, &v) < 0x400000) {
+                        if (v.x < *(int *)(c + 0x5c))
+                            *(short *)(c + 0x94) = -0x4000;
+                        else
+                            *(short *)(c + 0x94) = 0x4000;
+                        *(int *)(c + 0x4c8) = 0;
+                        *(int *)(c + 0x98) = 0;
+                        *(int *)(c + 0x4a0) = 2;
+                    }
+                }
+            }
+        }
+        break;
+    case 2:
+        if (*(int *)(c + 0x4c8) < 0x2710) {
+            if (*(unsigned short *)(c + 0x4d0) != 0)
+                *(int *)(((int)c + 0x4c8)) += 0x1a;
+            else
+                *(int *)(((int)c + 0x4c8)) += 0x130;
+        }
+        _Z14ApproachLinearRiii((int *)(c + 0x98), 0x258000, *(int *)(c + 0x4c8));
+        if (func_ov066_02116b78(c) == 1) {
+            *(int *)(c + 0x98) = 0;
+            *(short *)(c + 0x94) = 0;
+            *(int *)(c + 0x4a0) = 6;
+        }
+        break;
+    case 3:
+        func_ov066_021164ec(c);
+        if ((unsigned short)(*(int *)(c + 0x3b8) >> 0xc) == 0)
+            func_02012694(0x140, c + 0x74);
+        if (*(int *)(c + 0x498) == 1) {
+            int r = func_ov066_0211603c(c);
+            func_ov066_02116390(c);
+            if (r != 0) {
+                if (r == 1)
+                    *(int *)(c + 0x4a0) = 4;
+                break;
+            }
+        }
+        if (data_ov066_0211ae08 != 0) {
+            func_ov066_021165cc(c);
+            *(int *)(c + 0x4a0) = 5;
+        }
+        break;
+    case 4:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+            func_ov066_021165cc(c);
+            *(int *)(c + 0x4a0) = 5;
+        }
+        break;
+    case 5:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) != 0) {
+            func_ov066_021162e8(c);
+            if (((dBgW *)(c + 0x674))->IsEnabled() != 0)
+                ((dBgW *)(c + 0x674))->Disable();
+            if (*(int *)(c + 0x49c) == 1)
+                _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                    c + 0x674, (void *)data_ov066_0211ae14[1], c + 0x83c, 0x199,
+                    *(short *)(c + 0x8e), &data_ov025_02112c08);
+            else
+                _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                    c + 0x674, (void *)data_ov066_0211aeac[1], c + 0x83c, 0x199,
+                    *(short *)(c + 0x8e), &data_ov025_02112d48);
+            func_020393d4(c + 0x674, (void *)&dBgW::UpdatePosWithTransform);
+            func_020393c4(c + 0x674, (void *)func_ov066_0211a35c);
+            func_020398fc(c + 0x674);
+            ((dBgW *)(c + 0x674))->Enable((dActor_c *)c);
+            data_ov066_0211ae08 += 1;
+            *(int *)(c + 0x4a0) = 7;
+        }
+        break;
+    case 6:
+        Vec3_ApproachHorz(c + 0x5c, c + 0x4a4, 0x28000);
+        if (Vec3_HorzDist(c + 0x5c, c + 0x4a4) <= 0x28000) {
+            data_ov066_0211ae0c ^= *(int *)(c + 0x49c);
+            *(int *)(c + 0x5c) = *(int *)(c + 0x4a4);
+            *(int *)(c + 0x60) = *(int *)(c + 0x4a8);
+            *(int *)(c + 0x64) = *(int *)(c + 0x4ac);
+            data_ov066_0211ae08 += 1;
+            if (data_ov066_0211abe0 != 3)
+                data_ov066_0211ae08 += 1;
+            *(int *)(c + 0x4a0) = 7;
+        }
+        break;
+    case 7:
+        if (data_ov066_0211ae04 != 6)
+            func_ov066_02119454(c, &data_ov066_0211b06c);
+        break;
+    }
+    return 1;
+}
+}
+
+// @symbol func_ov066_02118168
+extern "C" {
+int func_ov066_02118168(char *p)
+{
+    *(int *)(p + 0x494) = 0;
+    *(int *)(p + 0x498) = 0;
+    *(short *)(p + 0x4d0) = 0;
+    *(int *)(p + 0x4a0) = 0;
+    return 1;
+}
+}
+
+// @symbol func_ov066_02118188
+extern "C" {
+int func_ov066_02118188(void *thiz)
+{
+    char *c = (char *)thiz;
+
+    switch (*(int *)(c + 0x4a0)) {
+    case 0:
+        if (*(unsigned short *)(c + 0x4d0) != 0)
+            break;
+        if (data_ov066_0211ae0c == *(int *)(c + 0x49c)) {
+            *(int *)(c + 0x9c) = -0xa000;
+            *(int *)(c + 0xa8) = 0x64000;
+            *(int *)(c + 0xb0) = 0x2000000;
+            *(int *)(c + 0x4a0) = 1;
+        } else {
+            func_ov066_021166c8(c);
+            *(int *)(c + 0x4a0) = 2;
+        }
+        break;
+
+    case 1:
+        if (*(int *)(c + 0x9c) == 0)
+            break;
+        if (*(int *)(c + 0x4a8) < *(int *)(c + 0x60))
+            break;
+        *(int *)(c + 0x60) = *(int *)(c + 0x4a8);
+        *(int *)(c + 0xa8) = 0;
+        *(int *)(c + 0x9c) = 0;
+        func_ov066_02116ac4(thiz, 0x7d0000);
+        data_ov066_0211ae08 += 1;
+        if (data_ov066_0211abe0 != 3)
+            data_ov066_0211ae08 += 1;
+        *(int *)(c + 0x4a0) = 5;
+        break;
+
+    case 2:
+        if (*(int *)(c + 0x498) == 1) {
+            if (data_ov066_0211ae08 != 0) {
+                if (*(int *)(c + 0x494) > 0x14) {
+                    *(int *)(c + 0x494) = 0;
+                    func_ov066_021165cc(c);
+                    *(int *)(c + 0x4a0) = 4;
+                    break;
+                }
+                *(int *)(((int)c + 0x494)) += 1;
+            }
+        }
+
+        if ((unsigned short)(*(int *)(c + 0x3b8) >> 0xc) == 0) {
+            func_02012694(0x140, c + 0x74);
+        }
+
+        func_ov066_021164ec(c);
+
+        if (*(int *)(c + 0x498) != 1)
+            break;
+
+        func_ov066_02116390(c);
+        {
+            int r = func_ov066_0211603c(c);
+            if (r == 0)
+                break;
+            if (r == 1) {
+                *(int *)(c + 0x4a0) = 3;
+            }
+        }
+        break;
+
+    case 3:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) == 0)
+            break;
+        func_ov066_021165cc(c);
+        *(int *)(c + 0x4a0) = 4;
+        break;
+
+    case 4:
+        if (_ZN9Animation8FinishedEv(c + 0x3b0) == 0)
+            break;
+        func_ov066_021162e8(c);
+        if (((dBgW *)(c + 0x674))->IsEnabled() != 0)
+            ((dBgW *)(c + 0x674))->Disable();
+
+        if (*(int *)(c + 0x49c) == 1) {
+            _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                c + 0x674, (void *)data_ov066_0211ae14[1], c + 0x83c, 0x199,
+                *(short *)(c + 0x8e), &data_ov025_02112c08);
+        } else {
+            _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
+                c + 0x674, (void *)data_ov066_0211aeac[1], c + 0x83c, 0x199,
+                *(short *)(c + 0x8e), &data_ov025_02112d48);
+        }
+
+        func_020393d4(c + 0x674, (void *)&dBgW::UpdatePosWithTransform);
+        func_020393c4(c + 0x674, (void *)func_ov066_0211a35c);
+        func_020398fc(c + 0x674);
+        ((dBgW *)(c + 0x674))->Enable((dActor_c *)c);
+
+        data_ov066_0211ae08 += 1;
+        *(int *)(c + 0x4a0) = 5;
+        break;
+
+    case 5:
+        if (data_ov066_0211ae04 == 5)
+            break;
+        *(int *)(c + 0xb0) = 0;
+        func_ov066_02119454(c, &data_ov066_0211b06c);
+        break;
+    }
+
+    return 1;
+}
+}
 
 // @symbol func_ov066_021184c0
 extern "C" {
@@ -1014,3 +2187,148 @@ int Eyerok::Behavior()
 
 #pragma opt_strength_reduction on
 #pragma opt_common_subs on
+
+// @symbol _ZN6Eyerok13InitResourcesEv
+int Eyerok::InitResources()
+{
+    char *c = (char *)((void *)this);
+    Vector3 v;
+    Vector3 w;
+
+    mPartIdx = (s32)param1 & 0xFF;
+    if (mPartIdx == 0xFF)
+        mPartIdx = 0;
+    mStarId = (param1 >> 0xC) & 0xF;
+    mStarTracked = _ZN8dActor_c9TrackStarEjj(c, mStarId, 2);
+    if (mPartIdx > 2)
+        mPartIdx = 0;
+
+    switch (mPartIdx) {
+    case 0:
+        _ZN9ModelBase7SetFileEP8BMD_Fileii(&mModel2, _ZN5Model8LoadFileER13SharedFilePtr(data_ov066_0211ae6c), 1, -1);
+        _ZN5Model8LoadFileER13SharedFilePtr(data_ov066_0211ae4c);
+        _ZN5Model8LoadFileER13SharedFilePtr(data_ov066_0211aeb4);
+        _ZN15TextureSequence8LoadFileER13SharedFilePtr(data_ov066_0211aebc);
+        _ZN15TextureSequence8LoadFileER13SharedFilePtr(data_ov066_0211ae9c);
+        _ZN15TextureSequence8LoadFileER13SharedFilePtr(data_ov066_0211ae3c);
+        _ZN15TextureSequence8LoadFileER13SharedFilePtr(data_ov066_0211ae2c);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae5c);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae84);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211aea4);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae8c);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae54);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae94);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae64);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae44);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae74);
+        _ZN9Animation8LoadFileER13SharedFilePtr(data_ov066_0211ae7c);
+        _ZN7dBgW_Kc8LoadFileER13SharedFilePtr(data_ov066_0211ae24);
+        _ZN7dBgW_Kc8LoadFileER13SharedFilePtr(data_ov066_0211aeac);
+        _ZN7dBgW_Kc8LoadFileER13SharedFilePtr(data_ov066_0211ae14);
+        _ZN7dBgW_Kc8LoadFileER13SharedFilePtr(data_ov066_0211ae1c);
+        _ZN7dBgW_Kc8LoadFileER13SharedFilePtr(data_ov066_0211ae34);
+        break;
+    case 1:
+        if (_ZN9ModelBase7SetFileEP8BMD_Fileii(&mBlendModelAnim, (void *)data_ov066_0211ae4c[1], 1, -1) == 0)
+            return 0;
+        TextureSequence::Prepare(*(BMD_File *)data_ov066_0211ae4c[1], *(BTP_File *)data_ov066_0211aebc[1]);
+        TextureSequence::Prepare(*(BMD_File *)data_ov066_0211ae4c[1], *(BTP_File *)data_ov066_0211ae9c[1]);
+        break;
+    case 2:
+        if (_ZN9ModelBase7SetFileEP8BMD_Fileii(&mBlendModelAnim, (void *)data_ov066_0211aeb4[1], 1, -1) == 0)
+            return 0;
+        TextureSequence::Prepare(*(BMD_File *)data_ov066_0211aeb4[1], *(BTP_File *)data_ov066_0211ae3c[1]);
+        TextureSequence::Prepare(*(BMD_File *)data_ov066_0211aeb4[1], *(BTP_File *)data_ov066_0211ae2c[1]);
+        break;
+    }
+
+    if (mPartIdx != 0) {
+        _ZN11ShadowModel12InitCylinderEv(&mShadowModel);
+        w.x = data_ov066_0211ad18[0];
+        w.y = data_ov066_0211ad18[1];
+        w.z = data_ov066_0211ad18[2];
+        _ZN10dCcAcPos_c4InitEP8dActor_cRK7Vector35Fix12IiES6_jj(&mdCcAcPos_c, c, &w, 0x64000, 0x64000, 0x200002, 0);
+    }
+
+    {
+        /* NOT mDustPos[i]: the ROM walks a running char* and re-derives the
+           three stores from it. Spelling this as `Vector3 *p = mDustPos; p->x
+           = 0; ... p += 1;` costs the function its size -- measured. */
+        int i = 0;
+        char *p = c;
+        do {
+            *(s32 *)(p + 0x4DC) = 0;
+            *(s32 *)(p + 0x4E0) = 0;
+            i += 1;
+            *(s32 *)(p + 0x4E4) = 0;
+            p += 0xC;
+        } while (i < 0x14);
+    }
+
+    mTerminalVelocity = -0x64000;
+    mHandUniqueID1 = 0;
+    mHandUniqueID2 = 0;
+
+    if (mPartIdx == 0) {
+        void *r;
+        mPosZ -= 0x7C000;
+        mRestPosX = mPosX;
+        mRestPosY = mPosY;
+        mRestPosZ = mPosZ;
+        v.x = mPosX;
+        v.y = mPosY;
+        v.z = mPosZ;
+        v.x += 0x193000;
+        r = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0xB0, 1, &v, 0, mAreaId, -1);
+        if (r != 0)
+            mHandUniqueID1 = *(s32 *)((char *)r + 4);
+        v.x = mPosX;
+        v.x -= 0x18C000;
+        r = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(0xB0, 2, &v, 0, mAreaId, -1);
+        if (r != 0)
+            mHandUniqueID2 = *(s32 *)((char *)r + 4);
+        data_ov066_0211ae10 = 0;
+        data_ov066_0211ae08 = 0;
+        data_ov066_0211ae0c = 0;
+        data_ov066_0211abe4 = 1;
+        data_ov066_0211ae04 = 1;
+        data_ov066_0211abe0 = 3;
+        _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(&mMeshCollider2, (void *)data_ov066_0211ae24[1], &mClsnMat2, 0x199, mAngleY, &data_ov025_02112ca8);
+        func_020393d4(&mMeshCollider2, (void *)&dBgW::UpdatePosWithTransform);
+        func_020393c4(&mMeshCollider2, (void *)func_ov066_0211a35c);
+        ((dBgW *)&mMeshCollider2)->Enable(this);
+        mTimer2 = 0x64;
+        func_ov066_02119454(c, data_ov066_0211b09c);
+    } else {
+        mRestPosX = mPosX;
+        mRestPosY = mPosY;
+        mRestPosZ = mPosZ;
+        mSpawnPosX = mPosX;
+        mSpawnPosY = mPosY;
+        mSpawnPosZ = mPosZ;
+        if (mPartIdx == 1) {
+            _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(&mMeshCollider2, (void *)data_ov066_0211ae14[1], &mClsnMat2, 0x199, mAngleY, &data_ov025_02112c08);
+            mRestPosX -= 0x31F000;
+        } else {
+            _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(&mMeshCollider2, (void *)data_ov066_0211aeac[1], &mClsnMat2, 0x199, mAngleY, &data_ov025_02112d48);
+            mRestPosX += 0x31F000;
+        }
+        func_020393d4(&mMeshCollider2, (void *)&dBgW::UpdatePosWithTransform);
+        func_020393c4(&mMeshCollider2, (void *)func_ov066_0211a35c);
+        func_020398fc(&mMeshCollider2);
+        mRestPosZ -= 0x32000;
+        unk_4d8 = 3;
+        data_ov066_0211ae00 = 0;
+        func_ov066_02119454(c, data_ov066_0211b05c);
+    }
+    return 1;
+}
+
+// @symbol _ZN6Eyerok16OnAimedAtWithEggEv
+/* Slot 29, attributed by the vtable: _ZTV6Eyerok + 4*29 = 0x0211ad64 + 0x74
+   = 0x0211ade8, and config/arm9/overlays/ov066/relocs.txt relocates
+   0x0211ade8 -> 0x0211a2dc. */
+int Eyerok::OnAimedAtWithEgg()
+{
+    return 163840;
+}

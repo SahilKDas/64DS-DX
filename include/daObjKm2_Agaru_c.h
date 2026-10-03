@@ -4,7 +4,7 @@
 #include "types.h"
 #include "dBgActor_c.h"
 
-/* Bowser in the Fire Sea rising platform (profile KM2_AGARU; agaru is
+/* daKpa_c in the Fire Sea rising platform (profile KM2_AGARU; agaru is
  * "to go up"). ROM RTTI daObjKm2_Agaru_c; direct base dBgActor_c.
  * Factory allocates 0x328, and mState closes exactly on it.
  *

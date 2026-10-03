@@ -21,7 +21,7 @@
  * 0x45c..0x4d6 is a run of individually evidenced scalars. At 0x4dc,
  * Vector3[0x14] (0xc == sizeof(Vector3)) -- destroyed with
  * __cxa_vec_cleanup(ptr, 0x14, 0xc, _ZN7Vector3D1Ev), same evidence shape as
- * include/Unagi.h's mStarUniqueID -- ends at 0x5cc.
+ * include/daMoray_c.h's mStarUniqueID -- ends at 0x5cc.
  *
  * THE CLASS NOW CLOSES ON ITS OWN SIZE. Reading Behavior and InitResources as
  * named members (see notes/bgobject-provenance.md) turned every remaining pad
@@ -101,7 +101,7 @@ struct Eyerok : dBgActor_c {
     u8  pad_4da[0x2];
     /* The ROM destroys this with __cxa_vec_cleanup(this + 0x4dc, 0x14, 0xc,
        _ZN7Vector3D1Ev) -- 0x14 elements, 0xc == sizeof(Vector3), same
-       evidence shape as include/Unagi.h's mStarUniqueID. Only raw
+       evidence shape as include/daMoray_c.h's mStarUniqueID. Only raw
        `this + 0x4dc` / `+ 0x4e0` / `+ 0x4e4` offsets are read elsewhere
        (one Vector3), so the count is trusted from the destructor call, not
        from any indexed access. */

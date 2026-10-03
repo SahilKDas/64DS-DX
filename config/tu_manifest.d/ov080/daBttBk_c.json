@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x2124a20..0x21253b4, 20 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daBttBk_c",
-    "module sinit corroboration: 3 sinit(s) / 3 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 3 sinit(s) / 3 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold (0930c): the BATTA_BLOCK registry factory daBttBk_c_classInit (0x021253b4, 0x50) abuts the run's end 0x021253b4 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range 0x02124a20..0x02125404 (21 functions) ends where the next delinks entry, src/_ZN11daPicGate_cD1Ev.cpp, begins."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x02124a20",
-      "end": "0x021253b4"
+      "end": "0x02125404"
     }
   ],
   "functions": [
@@ -157,14 +158,22 @@
       "size": "0x0000009c",
       "legacy_source": "src/_ZN9daBttBk_c13OnTurnIntoEggER6Player.cpp",
       "ordinal": 19
+    },
+    {
+      "symbol": "daBttBk_c_classInit",
+      "address": "0x021253b4",
+      "size": "0x00000050",
+      "legacy_source": "src/d_a_btt_bk.c",
+      "ordinal": 20
     }
   ],
   "data": [],
   "bss": [],
   "notes": [
-    "Promoted from the gap-free ov080 run 0x02124a20..0x021253b4 (20 complete delinks). daBttBk_c_classInit at 0x021253b4 is the next function and stays its own TU. RTTI: _ZTS9daBttBk_c at 0x0212815c, _ZTI at 0x02128168 points at _ZTI8dActor_c, vtable preamble word at 0x02128194 is that _ZTI.",
+    "Promoted from the gap-free ov080 run 0x02124a20..0x021253b4 (20 complete delinks). The abutting factory daBttBk_c_classInit was folded in afterwards by the 0930c classInit fold (below). RTTI: _ZTS9daBttBk_c at 0x0212815c, _ZTI at 0x02128168 points at _ZTI8dActor_c, vtable preamble word at 0x02128194 is that _ZTI.",
     "The destructor is one out-of-line definition under #pragma defer_codegen off. mwccarm emits D1 then D0 in ROM order and also a D2 with no cartridge home. Vector3's inline destructor is the vague arm9 copy.",
-    "func_ov080_0212513c takes (actor, state). InitResources and func_ov080_02124e60 call it through a one-argument cast: each has just stored 0, and r1 still holds that 0. A written second argument re-emits the mov and DIFFs."
+    "func_ov080_0212513c takes (actor, state). InitResources and func_ov080_02124e60 call it through a one-argument cast: each has just stored 0, and r1 still holds that 0. A written second argument re-emits the mov and DIFFs.",
+    "classInit fold (0930c): daBttBk_c_classInit is folded in last, in ROM order, under the file's `#pragma defer_codegen off`, as `return new daBttBk_c();`. The retired one-function source hand-called fBase_c::operator new(888 = 0x378), dActor_c's C2 constructor, this class's vtable store and the four member C1 constructors (Model 0xd4, ShadowModel 0x124, dCcAc_c 0x14c, dBgCh_Actr 0x180); daBttBk_c has no user-declared constructor, so the synthesized one emits the identical sequence and no new compiler-only output. tubuild verify: 21/21 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_btt_bk.c; its credit carries in attribution.json as a path#symbol override."
   ],
   "compiler_only_output": [
     {
@@ -249,8 +258,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov080-daBttBk_c/daBttBk_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 20,
-    "functions_declared": 20,
+    "functions_matched": 21,
+    "functions_declared": 21,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN9daBttBk_cD2Ev",
@@ -264,8 +273,6 @@
         9,
         10,
         14,
-        42,
-        43,
         44,
         45,
         46,
@@ -277,7 +284,9 @@
         52,
         53,
         54,
-        55
+        55,
+        56,
+        57
       ],
       "data": [
         "_ZTV9daBttBk_c",

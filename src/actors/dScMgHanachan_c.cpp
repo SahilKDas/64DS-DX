@@ -2,12 +2,28 @@
 /* Which Wiggler? Up to fifteen wigglers, one of them with the star.
  * Touch it before mTimeLeft runs out.
  *
- * This TU covers 49 functions, 0x020eac38..0x020ede18. The rest of the run
- * from 0x020ea280, including the destructor pair, stays in separate files:
- * func_ov006_020ea914 between them has no source, and a TU cannot claim
- * .text across a hole. So neither the destructors nor the vtable are
- * emitted here.
+ * This file is the whole ov006 unit 0x020ea280..0x020ede18: 61
+ * functions in ROM order, from the destructor to func_ov006_020edcb0.
+ * The destructor is the key function, so the vtable and RTTI are emitted
+ * here too. dScMgHanachan_c_classInit, just above at 0x020ede18, is still
+ * its own file (src/minigames/d_s_mg_hanachan.cpp).
  *
+ * The destructor pair and the ten functions from func_ov006_020ea324 to
+ * func_ov006_020ea914 came from one-function files. Their bodies are kept
+ * as they matched there. The two popup arrays are declared once; where a
+ * function spelled a record differently, its tag is renamed per function
+ * and the access casts. func_ov006_020ea324 is the wiggler array's element
+ * destructor and takes the element, so its declaration now says so.
+ *
+ * Leftover: the sixteen popups at data_ov006_02142044 are read through
+ *   four record spellings (func_ov006_020ea670, func_ov006_020ea71c,
+ *   func_ov006_020ea81c, func_ov006_020ea8e0).
+ * Leftover: the popup at data_ov006_02141fe4 is read through raw byte
+ *   offsets, and func_ov006_020ea3d0 reaches its +0xc byte through a
+ *   separate symbol, data_ov006_02141ff0.
+ * Leftover: func_ov006_020ea914 repeats func_ov006_020eac38's segment
+ *   walk with its own point type, Vec2_ea914, whose trivial destructor
+ *   is part of the match.
  * Leftover: dScMgHanachan_c::Render, `Thing *base; &base[i]` and `slot++`
  *   on the 0x98 array, DIFF, 6 words. `char *arr += 0x98` stays.
  *   Behavior's `&base[i]` matches.
@@ -27,8 +43,9 @@
  */
 
 /* .text in source order (ROM-ascending; do not reorder) and per-function
-   opt pragmas bind: 4x opt_strength_reduction off, Render opt_common_subs
-   off. Without it 44/49 and the order check fails. */
+   opt pragmas bind: 5x opt_strength_reduction off, one O3, Render
+   opt_common_subs off. Without it the 49-function version matched 44/49
+   and failed the order check. */
 #pragma defer_codegen off
 
 #include "types.h"
@@ -160,7 +177,7 @@ struct SelfV {
 extern int ApproachLinear(int &, int, int);
 extern void UpdateAngle(short &, short, int, short);
 extern int ApproachLinear2(short &, short, short);
-extern int ApproachLinear(short &, short, short);
+bool ApproachLinear(short &value, short target, short step);
 namespace Sound { u32 PlayBank2_2D(u32 id); }
 namespace G2S { char *GetBG3CharPtr(); }
 namespace GX {
@@ -308,6 +325,389 @@ extern void *LoadFile(int handle);
 extern void DecompressLZ16(void *src, void *dst);
 extern void FreeGfxSlotsById(int x);
 }
+
+struct S_ea81c {
+    int x;       /* +0x0 */
+    int y;       /* +0x4 */
+    int z;       /* +0x8 */
+    short w;     /* +0xc */
+    unsigned char inuse;  /* +0xe */
+    unsigned char f;      /* +0xf */
+    unsigned char g;      /* +0x10 */
+    unsigned char pad;    /* +0x11 */
+    unsigned char pad2[2];/* +0x12 -> stride 0x14 */
+};
+
+/* The popup records: one at data_ov006_02141fe4 and sixteen at
+   data_ov006_02142044, 0x14 bytes each. The sixteen are declared with
+   func_ov006_020ea81c's layout, which it needs to match; the other
+   functions keep the spelling their own match used, through a cast. */
+extern "C" {
+extern void NullDestructor_0203d47c(void);
+extern char data_ov006_02141fe4[];
+extern struct S_ea81c data_ov006_02142044[];
+extern char data_ov006_02137cd8[];
+}
+
+// @symbol _ZN15dScMgHanachan_cD1Ev
+// @symbol _ZN15dScMgHanachan_cD0Ev
+/* Destroys the fifteen 0x98-byte wigglers at 0x4678 through
+   __cxa_vec_cleanup, as dScMgBase_c's own destructor does for its array.
+   The vptr store, the base destructor call and D0's delete are the
+   compiler's. */
+dScMgHanachan_c::~dScMgHanachan_c()
+{
+    __cxa_vec_cleanup((char *)this + 0x4678, 0xf, 0x98, (void *)func_ov006_020ea324);
+}
+
+#ifdef _MSC_VER
+/* THE HOST NEEDS THE ROM'S FLAT D0 NAME, AND MSVC NEVER EMITS IT. MSVC
+ * folds the Itanium destructor variants into the one ~dScMgHanachan_c()
+ * above, so this spells out what the deleting destructor does in terms of
+ * it: the D1 body, called qualified so it is a direct call, then the
+ * class-specific operator delete. mwccarm never defines _MSC_VER, so
+ * nothing here reaches the cartridge object. */
+extern "C" dScMgHanachan_c *_ZN15dScMgHanachan_cD0Ev(dScMgHanachan_c *thiz)
+{
+    thiz->dScMgHanachan_c::~dScMgHanachan_c();
+    dScMgHanachan_c::operator delete(thiz);
+    return thiz;
+}
+#endif
+
+// @symbol func_ov006_020ea324
+/* The element destructor for one wiggler: its five segment points at
+   +0x18 go through __cxa_vec_cleanup. */
+extern "C" void *func_ov006_020ea324(void *self)
+{
+    __cxa_vec_cleanup((char *)self + 0x18, 5, 8, (void *)NullDestructor_0203d47c);
+    return self;
+}
+
+// @symbol func_ov006_020ea350
+/* Draws the single popup while its +0x10 flag is 1: a sprite from the
+   language's table 8 pixels left of it and one from data_ov006_02137cd8
+   8 pixels right. */
+extern "C" void func_ov006_020ea350(void)
+{
+    int x;
+    int y;
+    s32 r;
+    int *new_var;
+    new_var = (int *)data_ov006_02141fe4;
+    if ((*(((unsigned char *)data_ov006_02141fe4) + 0x10)) != 1)
+    {
+        return;
+    }
+    x = ((int *)data_ov006_02141fe4)[0] >> 12;
+    y = new_var[1] >> 12;
+    r = GetGameLanguage();
+    func_ov004_020af948(*((void **)(((char *)data_ov006_0213ca9c[r]) + 0x34)), x - 8, y, 0);
+    func_ov004_020af948(*((void **)(data_ov006_02137cd8 + 0x64)), x + 8, y, 0);
+}
+
+// @symbol func_ov006_020ea3d0
+/* Steps the single popup through three phases. Phase 0 moves it by its
+   velocity until its timer runs out, phase 1 holds for 0x40 frames and then
+   adds one to the counter at +0xb4 of data_ov004_020beb68 (capped at 9999,
+   raising +0xb8 to match), and phase 2 counts the +0xf field down every
+   eighth frame, stepping the int behind arg toward 0x32 each time. */
+typedef struct {
+    u8 t;
+    u8 pad[0x13];
+} Timer20;
+extern "C" Timer20 data_ov006_02141ff0[];
+
+extern "C" void func_ov006_020ea3d0(char *arg)
+{
+    int i;
+    char *f = data_ov006_02141fe4;
+    for (i = 0; i < 1; i++, f += 0x14) {
+        u8 ph;
+        if (*(u8 *)(f + 0xd) != 1)
+            continue;
+        if (*(int *)(f + 4) < 0x8000)
+            *(int *)(f + 4) = 0x8000;
+        ph = *(u8 *)(f + 0xe);
+        if (ph == 0) {
+            *(int *)(((int)f + 4)) += *(int *)(f + 8);
+            *(int *)(((int)f + 8)) -= 0x100;
+            if (*(u8 *)(f + 0xc) != 0) {
+                int v;
+                data_ov006_02141ff0[i].t--;
+                v = data_ov006_02141ff0[i].t;
+                if (v < 0)
+                    data_ov006_02141ff0[i].t = 0;
+                return;
+            }
+            *(u8 *)(f + 0xc) = 0x40;
+            *(u8 *)(((int)f + 0xe)) += 1;
+        } else if (ph == 1) {
+            if (*(u8 *)(f + 0xc) != 0) {
+                int v;
+                data_ov006_02141ff0[i].t--;
+                v = data_ov006_02141ff0[i].t;
+                if (v < 0)
+                    data_ov006_02141ff0[i].t = 0;
+                return;
+            }
+            *(u8 *)(f + 0x10) = 0;
+            *(u8 *)(((int)f + 0xe)) += 1;
+            {
+                char *g = (char *)data_ov004_020beb68;
+                if (g != 0) {
+                    if (*(int *)(g + 0xb4) < 0x270f)
+                        *(int *)(((int)g + 0xb4)) += 1;
+                    if (*(int *)(g + 0xb4) > *(int *)(g + 0xb8))
+                        *(int *)(g + 0xb8) = *(int *)(g + 0xb4);
+                }
+            }
+            func_ov004_020adb1c(data_ov004_020beb68 != 0 ? *(int *)((char *)data_ov004_020beb68 + 0xb4) : 0);
+        } else {
+            if (*(u8 *)(f + 0xf) != 0) {
+                *(u8 *)(((int)f + 0xc)) += 1;
+                if (*(u8 *)(f + 0xc) >= 8) {
+                    *(u8 *)(f + 0xc) = 0;
+                    *(u8 *)(((int)f + 0xf)) -= 1;
+                    if (arg != 0)
+                        ApproachLinear(*(int *)arg, 0x32, 1);
+                }
+            } else {
+                *(u8 *)(f + 0xd) = 0;
+            }
+        }
+    }
+}
+
+// @symbol func_ov006_020ea5f0
+/* Starts the single popup at (x, y), x kept between 0x10000 and 0xf4000,
+   unless it is already active. */
+extern "C" void func_ov006_020ea5f0(int x, int y)
+{
+    char *g = data_ov006_02141fe4;
+    if (*(unsigned char *)(g + 0xd) != 0) return;
+    *(unsigned char *)(g + 0xd) = 1;
+    if (x < 0x10000) x = 0x10000;
+    else if (x > 0xf4000) x = 0xf4000;
+    *(int *)(g) = x;
+    *(int *)(g + 4) = y;
+    *(unsigned char *)(g + 0xc) = 0x18;
+    *(unsigned char *)(g + 0xe) = 0;
+    *(unsigned char *)(g + 0x10) = 1;
+    *(unsigned char *)(g + 0xf) = 5;
+    *(int *)(g + 8) = -0x800;
+}
+
+// @symbol func_ov006_020ea658
+/* Clears the single popup's active and draw flags. */
+extern "C" unsigned char func_ov006_020ea658(void)
+{
+    ((unsigned char *)data_ov006_02141fe4)[0xd] = 0;
+    ((unsigned char *)data_ov006_02141fe4)[0x10] = 0;
+    return 0;
+}
+
+// @symbol func_ov006_020ea670
+/* Draws each of the sixteen popups whose +0xb flag is set, as three
+   sprites 0x10 pixels apart. */
+typedef struct {
+    int x;
+    int y;
+    unsigned char pad0[7];
+    unsigned char flag;
+    int pad1;
+} Ent_ea670;
+
+extern "C" void func_ov006_020ea670(void)
+{
+    void *a = 0, *b = 0, *c = 0;
+    int i;
+    for (i = 0; i < 16; i++) {
+        Ent_ea670 *e = &((Ent_ea670 *)data_ov006_02142044)[i];
+        if (e->flag != 0) {
+            int sb = e->x >> 12;
+            int r8 = e->y >> 12;
+            int idx = GetGameLanguage();
+            void *obj = data_ov006_0213ca9c[idx];
+            func_ov004_020af948(*(void **)((char *)obj + 0x38), sb - 0x10, r8, a);
+            func_ov004_020af948(*(void **)(data_ov006_02137cd8 + 0xa4), sb, r8, b);
+            func_ov004_020af948(*(void **)(data_ov006_02137cd8 + 0xa0), sb + 0x10, r8, c);
+        }
+    }
+}
+
+// @symbol func_ov006_020ea71c
+/* Steps the sixteen popups: y is kept at or below 0xb8000, phase 0 moves
+   each by its velocity until its timer runs out, and phase 1 holds for 0x40
+   frames and then clears it. */
+typedef struct Ent71c {
+    int _0;      /* 0x00 */
+    int pos;     /* 0x04 */
+    int vel;     /* 0x08 */
+    u16 timer;   /* 0x0c */
+    u8 active;   /* 0x0e */
+    u8 fE;       /* 0x0f */
+    u8 phase;    /* 0x10 */
+    u8 pad[3];
+} Ent71c;
+
+extern "C" void func_ov006_020ea71c(void)
+{
+    int i;
+    for (i = 0; i < 16; i++) {
+        Ent71c *e = &((Ent71c *)data_ov006_02142044)[i];
+        if (e->active) {
+            if (e->pos > 0xb8000)
+                e->pos = 0xb8000;
+            if (e->phase == 0) {
+                if (e->timer != 0) {
+                    *(u16 *)(((int)e + 0xc)) -= 1;
+                    if ((s16)e->timer < 0)
+                        e->timer = 0;
+                    *(int *)(((int)e + 4)) += e->vel;
+                    *(int *)(((int)e + 8)) += 0x100;
+                } else {
+                    e->timer = 0x40;
+                    *(u8 *)(((int)e + 0x10)) += 1;
+                }
+            } else {
+                if (e->timer != 0) {
+                    *(u16 *)(((int)e + 0xc)) -= 1;
+                    if ((s16)e->timer < 0)
+                        e->timer = 0;
+                } else {
+                    e->timer = 0;
+                    e->active = 0;
+                    e->fE = 0;
+                }
+            }
+        }
+    }
+}
+
+// @symbol func_ov006_020ea81c
+/* Starts a popup in the first free one of the sixteen slots at (r0, r1),
+   r0 kept between 0x14000 and 0xf0000. */
+
+extern "C" void func_ov006_020ea81c(int r0, int r1)
+{
+    int i;
+    for (i = 0; i < 0x10; i++) {
+        if (data_ov006_02142044[i].inuse == 0) {
+            data_ov006_02142044[i].inuse = 1;
+            data_ov006_02142044[i].f = 1;
+            data_ov006_02142044[i].w = 0x18;
+            if (r0 < 0x14000) r0 = 0x14000;
+            else if (r0 > 0xf0000) r0 = 0xf0000;
+            data_ov006_02142044[i].x = r0;
+            data_ov006_02142044[i].y = r1;
+            data_ov006_02142044[i].z = 0x800;
+            data_ov006_02142044[i].g = 0;
+            return;
+        }
+    }
+}
+
+// @symbol func_ov006_020ea8e0
+/* Clears the +0xe and +0xf flags of every one of the sixteen popups whose
+   +0xe flag is already clear. */
+struct E6_ea8e0 { unsigned char pad[0xe]; unsigned char e; unsigned char f; unsigned char pad2[4]; };
+
+extern "C" void func_ov006_020ea8e0(void)
+{
+    int i;
+    for (i = 0; i < 0x10; i++) {
+        if (((struct E6_ea8e0 *)data_ov006_02142044)[i].e == 0) {
+            ((struct E6_ea8e0 *)data_ov006_02142044)[i].e = 0;
+            ((struct E6_ea8e0 *)data_ov006_02142044)[i].f = 0;
+        }
+    }
+}
+
+// @symbol func_ov006_020ea914
+/* Draws a wiggler's five segments from the tail forward, then one more
+   sprite by the head when +0x94 is set and func_ov006_020eb7b0 agrees. The
+   trivial ~Vec2_ea914 and the strength-reduction bracket are both part of
+   the match. */
+struct Vec2_ea914 { s32 x; s32 y; ~Vec2_ea914() {} };
+
+#pragma push
+#pragma opt_strength_reduction off
+extern "C" void func_ov006_020ea914(void *self_)
+{
+    char *self = (char *)self_;
+    s32 i;
+    s16 rot;
+    s16 ang;
+    s32 A;
+    s32 B;
+    s32 a2i;
+    s32 px;
+    s32 py;
+    s32 res;
+    s32 j;
+
+    Vec2_ea914 pos;
+    Vec2_ea914 va;
+    Vec2_ea914 vb;
+    Vec2_ea914 vout;
+    Vec2_ea914 pts[5];
+
+    pts[4].x = 0xb4000;
+    pts[4].y = 0x80000;
+    for (j = 3; j >= 1; j--) {
+        pts[j].x = pts[j + 1].x;
+        pts[j].y = pts[j + 1].y;
+        pts[j].x = pts[j].x - (((s32 *)(self + j * 4))[0x13] + ((j + 1) << 13));
+    }
+    pts[0].x = pts[1].x;
+    pts[0].y = pts[1].y;
+    pts[0].x = pts[0].x - (*(s32 *)(self + 0x4c) + 0x2000);
+
+    for (i = 0, A = 0, B = 0; i < 5; i++) {
+        rot = -0x4000;
+        va.y = 0x1000;
+        va.x = 0;
+        pos.x = pts[i].x;
+        pos.y = pts[i].y;
+        ang = (s16)(*(s16 *)(self + 0x84) - A);
+        func_0203d388((int *)&va, -0x4000);
+        if (*(u8 *)(self + 0x94) == 0) {
+            if (i == 0) {
+                rot += data_02082214[((u16)ang >> 4) * 2] >> 1;
+            } else {
+                s32 v = data_02082214[((u16)ang >> 4) * 2];
+                rot += (s16)(((s64)v * (0x1800 - B) + 0x800) >> 12);
+            }
+        }
+        func_0203d680((Vec2 *)&vout, (const Vec2 *)&va, data_02082214[((u16)(ang * 2) >> 4) * 2]);
+        pos.x = pos.x + vout.x;
+        pos.y = pos.y + vout.y;
+        res = func_ov006_020ebb40(self, i);
+        px = pos.y >> 12;
+        py = pos.x >> 12;
+        a2i = func_ov006_020ebc08(self, i);
+        _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, data_ov006_02142018[a2i],
+            py, px, res, -1, 0x1000, (u16)rot);
+        if (i == 0) {
+            if (*(u8 *)(self + 0x94) != 0) {
+                if (func_ov006_020eb7b0(self) != 0) {
+                    vb.x = 0x2000;
+                    vb.y = -0x18000;
+                    func_0203d388((int *)&vb, rot);
+                    vb.x = vb.x + pos.x;
+                    vb.y = vb.y + pos.y;
+                    _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiEi(0, data_ov006_021375c0[0],
+                        vb.x >> 12, vb.y >> 12, -1, -1,
+                        func_02053200((data_02082214[((u16)ang >> 4) * 2] >> 2) + 0xc00), (u16)rot);
+                }
+            }
+        }
+        A = A + 0x1800;
+        B = B + 0x200;
+    }
+}
+#pragma pop
 
 // @symbol func_ov006_020eac38
 extern "C" {

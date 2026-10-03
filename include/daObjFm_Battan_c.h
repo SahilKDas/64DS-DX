@@ -8,7 +8,9 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 /* ROM-proven class identity: _ZTI16daObjFm_Battan_c and
  * _ZTS16daObjFm_Battan_c at ov023:0x02111fa0/0x02111fac. ov023 is
- * SQUASHER(84) -- Shifting Sand Land's squasher, not a BoB/WF/BitDW actor. */
+ * SQUASHER(84), not a BoB/WF/BitDW actor. Fm is the fire_mt stage (the ROM
+ * file table's data/stage/fire_mt, beside fire_land = Lethal Lava Land), not
+ * Shifting Sand Land, whose stage dir is desert_land. */
 struct daObjFm_Battan_c : dBgActor_c {
     s16 mAngVelX;                 /* 0x31e */
     u16 mStateTimer;              /* 0x320 */

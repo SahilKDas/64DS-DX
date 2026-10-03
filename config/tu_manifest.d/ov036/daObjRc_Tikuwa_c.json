@@ -6,7 +6,7 @@
   "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "contiguous linker run: 0x211193c..0x2111ca4, 7 function(s), from build/tu_map.json (tools/tu_map.py)",
+    "contiguous linker run: 0x0211193c..0x02111d14, 10 function(s). Extended over three zero-gap neighbours past the old right edge 0x02111ca4 -- the dBgW collision callback func_ov036_02111ca4, the C veneer func_ov036_02111cc4 that InitResources installs, and the factory daObjRc_Tikuwa_c_classInit. tu_map cuts before them because the first two carry no class name; all three name this class, and the next run starts exactly at 0x02111d14.",
     "class label(s): daObjRc_Tikuwa_c",
     "module sinit corroboration: 7 sinit(s) / 7 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
   ],
@@ -14,7 +14,7 @@
     {
       "name": ".text",
       "start": "0x0211193c",
-      "end": "0x02111ca4"
+      "end": "0x02111d14"
     }
   ],
   "functions": [
@@ -66,6 +66,27 @@
       "size": "0x000000ec",
       "legacy_source": "src/_ZN16daObjRc_Tikuwa_c13InitResourcesEv.cpp",
       "ordinal": 6
+    },
+    {
+      "symbol": "func_ov036_02111ca4",
+      "address": "0x02111ca4",
+      "size": "0x00000020",
+      "legacy_source": "src/func_ov036_02111ca4.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov036_02111cc4",
+      "address": "0x02111cc4",
+      "size": "0x00000014",
+      "legacy_source": "src/func_ov036_02111cc4.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "daObjRc_Tikuwa_c_classInit",
+      "address": "0x02111cd8",
+      "size": "0x0000003c",
+      "legacy_source": "src/d_a_obj_rc_tikuwa.c",
+      "ordinal": 9
     }
   ],
   "data": [],
@@ -158,6 +179,11 @@
       "canonical_module": "ov036",
       "canonical_address": "0x02113cf8",
       "reason": "This class's vtable. The cartridge address point is ov036:0x02113cf8, outside this .text run. Slots 0, 3, 6, 9, 12, 16 and 17 are this TU; the rest are dBgActor_c."
+    },
+    {
+      "symbol": "_ZN10dBgActor_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Compiler-emitted helper with no configured ROM symbol and no inbound relocation once the licensed set is retained. The folded `return new daObjRc_Tikuwa_c` is what emits it."
     }
   ],
   "verification": {
@@ -166,23 +192,20 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov036-daObjRc_Tikuwa_c/daObjRc_Tikuwa_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 7,
-    "functions_declared": 7,
+    "functions_matched": 10,
+    "functions_declared": 10,
     "compilerOnlyOutput": {
       "requested": [
-        "_ZN16daObjRc_Tikuwa_cD2Ev"
+        "_ZN16daObjRc_Tikuwa_cD2Ev",
+        "_ZN10dBgActor_cD2Ev"
       ],
       "deadstripped": [
+        "_ZN10dBgActor_cD2Ev",
         "_ZN16daObjRc_Tikuwa_cD2Ev"
       ],
       "droppedSections": [
         9,
         10,
-        19,
-        20,
-        21,
-        22,
-        23,
         24,
         25,
         26,
@@ -194,7 +217,14 @@
         32,
         33,
         34,
-        35
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
       ],
       "data": [
         "_ZTI7fBase_c",

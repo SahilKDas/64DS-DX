@@ -6,15 +6,15 @@ Producer: `codex-minigame-esp-state-readable-0922`.
 
 ## Source change
 
-This commit replaces raw member offsets in `func_ov006_020e7f04` with the
+This commit replaces raw member offsets in [func_ov006_020e7f04](../../../src/actors/dMg3DEspAnimSet_c.cpp) with the
 existing `dMg3DEspModel_c` layout, native `Animation::WillHitFrame` calls and
 `Sound::PlayBank2_2D`. The guard field remains `unk_20c`: its meaning has not
 been recovered. The return contracts now follow the actual bool/unsigned
 callee declarations. The two frame checks remain ordered and conditional.
 
-`func_ov006_020e7f5c` uses the real `mModelAnim` member instead of a fabricated
+[func_ov006_020e7f5c](../../../src/func_ov006_020e7f5c.cpp) uses the real `mModelAnim` member instead of a fabricated
 one-byte model type. Its state update assigns `mState` rather than copying a
-`double`. The stored retail record at ov006 `0x0213c76c` is the direct callback
+`double`. The stored retail record at [ov006](../../../config/arm9/overlays/ov006/symbols.txt) `0x0213c76c` is the direct callback
 `0x020e7f04` with zero this-adjustment. The existing constructor/layout and
 `Behavior()` identify the model member at `+0x0c`, its Animation base at `+0x50`,
 and the invoked state member at `+0x210`. This does not recover original callback
@@ -26,7 +26,7 @@ shared headers, delinks, symbol configuration and attribution are unchanged.
 
 ## Byte proof and measured limit
 
-The scope is two enrolled functions, ov006 `[0x020e7f04, 0x020e7fac)`: 88 and
+The scope is two enrolled functions, [ov006](../../../config/arm9/overlays/ov006/symbols.txt) `[0x020e7f04, 0x020e7fac)`: 88 and
 80 bytes. Under mwccarm `2004/b56` and the production flags, copied controls and
 both adopted variants emit identical complete ELF objects (792 and 808 bytes),
 including symbols and relocations. Private compiler variants and hashes are

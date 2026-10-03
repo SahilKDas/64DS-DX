@@ -81,7 +81,7 @@ class with ~55 consumers: declaring `dBgCh_Gnd();` flipped every TU holding
 a typed local of the REAL class (five of them; the other fifty define their
 own dumb shadow structs and never see it) from hand-managed lifecycle to
 implicit synthesis. Two kept the moved declaration and are byte-exact as
-synthesized (BowserFire, daObjPathLift_c — the latter already shaped right);
+synthesized (daKpaFire_c, daObjPathLift_c — the latter already shaped right);
 one tried the move and gave it back (daKinopio_c: the synthesized pair scheduled one
 instruction differently at the tail); and two are truly interleaved
 from the start. daTrs_c::Behavior has rc2 constructed only on some paths,

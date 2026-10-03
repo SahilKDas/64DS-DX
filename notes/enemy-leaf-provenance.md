@@ -5,8 +5,8 @@ the offset. Where the bodies only *write* a field and nothing in the tree reads 
 back, the field stays `unk_NNN` and the reason is recorded — a name nobody can
 check is a claim the next reader would trust for nothing.
 
-Classes covered here: daWater_Hakidasi_c, Goomboss, daWanwan_c, BobOmb, Whomp,
-RollingIronBall, KoopaShell, Klepto, daMip_c, daKing_Donketu_c.
+Classes covered here: daWater_Hakidasi_c, daKuriKing_c, daWanwan_c, BobOmb, daBtn_c,
+daIbl_c, daShl_c, Klepto, daMip_c, daKing_Donketu_c.
 
 A recurring source of `unk_` in these headers is the `#else` C twin, which
 restates the whole `fBase_c -> dBase_c -> dActor_c -> dEnemyBase_c` chain flat.
@@ -32,7 +32,7 @@ once, here, rather than per class.
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x300 | `mState` (`State *`) | `src/actors/daWater_Hakidasi_c.cpp` loads the pointer word at 0x300 every frame, tests the word at `+0x08` of what it points at, and if non-zero calls it as a pointer-to-member on `this`. That is the same object `Bullet::State` describes (`include/Bullet.h`, handler at +0x08) and the same `mState` spelling `daHolhei_c`, `daKing_Donketu_c` and `daBakubaku_c` already use for it. Only `+0x08` is evidenced; the first two words stay padding. |
+| 0x300 | `mState` (`State *`) | `src/actors/daWater_Hakidasi_c.cpp` loads the pointer word at 0x300 every frame, tests the word at `+0x08` of what it points at, and if non-zero calls it as a pointer-to-member on `this`. That is the same object `daPropeller_Heyho_Fire_c::State` describes (`include/daPropeller_Heyho_Fire_c.h`, handler at +0x08) and the same `mState` spelling `daHolhei_c`, `daKing_Donketu_c` and `daBakubaku_c` already use for it. Only `+0x08` is evidenced; the first two words stay padding. |
 
 Left `unk_`:
 
@@ -55,11 +55,11 @@ Byte-neutral cleanups made in the same pass (each re-verified with
 
 ---
 
-## Goomboss (`include/Goomboss.h`, [ov074](../config/arm9/overlays/ov074/symbols.txt))
+## daKuriKing_c (`include/daKuriKing_c.h`, [ov074](../config/arm9/overlays/ov074/symbols.txt))
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x5d0 | `mSpawnPosX` | `src/_ZN8Goomboss13InitResourcesEv.cpp` copies `self+0x5c` (mPosX) into `self+0x5d0` once, immediately after the collision cylinders are sized, and nothing writes it again. |
+| 0x5d0 | `mSpawnPosX` | `src/_ZN12daKuriKing_c13InitResourcesEv.cpp` copies `self+0x5c` (mPosX) into `self+0x5d0` once, immediately after the collision cylinders are sized, and nothing writes it again. |
 | 0x5d4 | `mSpawnPosY` | same, from `self+0x60` (mPosY). |
 | 0x5d8 | `mSpawnPosZ` | same, from `self+0x64` (mPosZ). |
 
@@ -82,7 +82,7 @@ Byte-neutral cleanups (each re-verified, `2004/b56`):
 * `Behavior` — `((char*)this)+0x40c` became `&mWithMeshClsn`, `+0x110` became
   `(char *)mdCc_cs`, `+0x74` became `&mCamSpacePosX`.
 
-`src/_ZN8Goomboss13InitResourcesEv.cpp` is left alone: it is an `extern "C"`
+`src/_ZN12daKuriKing_c13InitResourcesEv.cpp` is left alone: it is an `extern "C"`
 function over a bare `char *self` that never includes the header at all, so its
 offsets are not member accesses to collapse.
 
@@ -147,7 +147,7 @@ the class and its members were renamed to the cartridge's own spelling.
 | 0x394 | `mMatrix[12]` | `InitResources` does `*(Matrix4x3 *)unk_394 = IDENTITY_MATRIX4X3;` — a 0x30-byte copy of the identity matrix. Kept as twelve words rather than typed `Matrix4x3`: several includers of this header do not pull `common.h`. |
 | 0x3dc | `mState` | `Behavior` branches on it three times and only on equality — `!= 5` guards the whole main body, `== 4` selects the egg/daHolhei_c hand-off, `== 0` allows the wall bounce. |
 | 0x3f0 | `mHomeAngleY` | `InitResources`' last statement, `unk_3f0 = mAngleY`, sitting beside the `mHomePosX/Y/Z = mPos*` snapshot a few lines up. |
-| 0x3f3 | `mShouldRender` | `Render` is `if (unk_3f3 != 0) { ...draw... }` and nothing else; `InitResources` sets it to 1. Same role and same spelling as `Goomboss::mShouldRender`. |
+| 0x3f3 | `mShouldRender` | `Render` is `if (unk_3f3 != 0) { ...draw... }` and nothing else; `InitResources` sets it to 1. Same role and same spelling as `daKuriKing_c::mShouldRender`. |
 | 0x3f5 | `mVariant` | `InitResources` sets it to `param1 & 7` and immediately switches on it: 2 starts inert (sets the collision volume's hit bit, clears `mFlags` bit 0), 4 starts clear, anything else starts live. This header's own prose already called it the variant. |
 
 Left `unk_`:
@@ -184,12 +184,10 @@ with" flag rather than a counter.
 
 ---
 
-## Whomp (`include/Whomp.h`, [ov079](../config/arm9/overlays/ov079/symbols.txt))
+## daBtn_c (`include/daBtn_c.h`, [ov079](../config/arm9/overlays/ov079/symbols.txt))
 
-Bodies read: `src/_ZN5Whomp13InitResourcesEv.cpp`,
-`src/_ZN5Whomp8BehaviorEv.cpp`, `src/_ZN5Whomp6RenderEv.cpp`,
-`src/_ZN5Whomp16OnAimedAtWithEggEv.cpp`,
-`src/_ZN5Whomp15OnHitByMegaCharER6Player.cpp`.
+Bodies read: `InitResources`, `Behavior`, `Render`, `OnAimedAtWithEgg` and
+`OnHitByMegaChar`, all now in `src/game/actors/d_a_btn.cpp`.
 
 | offset | name | evidence |
 | --- | --- | --- |
@@ -231,18 +229,17 @@ Byte-neutral cleanups (each re-verified, `2004/b56`):
 * `OnAimedAtWithEgg` — `*(unsigned char*)(c+0x414)` and `*(unsigned short*)(c+0x8c)`
   became `mIsKing` and `(unsigned short)mAngleX`.
 
-**Landed as `dEnemyBase_c::mStateTimer`.** `Whomp::Behavior` increments it (as `u16`)
+**Landed as `dEnemyBase_c::mStateTimer`.** `daBtn_c::Behavior` increments it (as `u16`)
 once per frame and resets it to 0 the moment the state handler changes `mState`.
 That is a state-elapsed frame counter, which fits the 28 subclasses that declare
 the offset better than `unk_100` does.
 
 ---
 
-## RollingIronBall (`include/RollingIronBall.h`, ov100)
+## daIbl_c (`include/daIbl_c.h`, ov100)
 
-Bodies read: `src/_ZN15RollingIronBall13InitResourcesEv.cpp`,
-`src/_ZN15RollingIronBall8BehaviorEv.cpp`,
-`src/_ZN15RollingIronBall6RenderEv.cpp`.
+Bodies read (all in `src/actors/daIbl_c.cpp`): `daIbl_c::InitResources`,
+`daIbl_c::Behavior`, `daIbl_c::Render`.
 
 | offset | name | evidence |
 | --- | --- | --- |
@@ -275,7 +272,7 @@ Byte-neutral cleanups: six `((char *)this) + 0xNNN` member addresses in
 `*(unsigned char*)((char*)&unk_3d0)` became `mVariant`.
 
 **Tooling note.** `build_pin.verify` reports `999 word(s) differ` for
-`_ZN15RollingIronBall13InitResourcesEv` — *including on the untouched `HEAD`
+`_ZN7daIbl_c13InitResourcesEv` — *including on the untouched `HEAD`
 version of the file*, checked by restoring both the header and the body from
 `HEAD` and re-running. `match.extract_func` returns a 2-byte body for that
 symbol, so the isolated-compile path cannot see this function at all; it is the
@@ -284,7 +281,7 @@ whole-ROM build is the authority here and it is green.
 
 ---
 
-## KoopaShell (`include/KoopaShell.h`, ov102)
+## daShl_c (`include/daShl_c.h`, ov102)
 
 This header was already largely named. One correction and one collapse:
 

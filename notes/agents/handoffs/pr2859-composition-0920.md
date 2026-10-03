@@ -7,7 +7,7 @@ This composition preserves producer repair
 `ee2c88531810a144e3e7af72d1ad508e2b9f269c`, and current main
 `9022c77b3834c5ee77c31b4fb4af587418137d6c` as ancestors.
 The author's removal of the lineage list and six symbol markers are already in
-the repaired TU. Its source, header, manifest, dMeter_c consumer and Timer initializer
+the repaired TU. Its source, header, manifest, `dMeter_c` consumer and `Timer` initializer
 remain equal to the reviewed repair apart from whitespace on one blank TU line.
 The producer explicitly acknowledged that narrow cleanup; source tokens are unchanged. Enrollment, symbol names and
 the inherited shared declaration-header rename remain equal to the author branch.
@@ -18,7 +18,7 @@ The author ledger was checked against an identity-aware three-way reconciliation
 of the original promotion and main. Only the 40 obsolete declaration fingerprints
 identified by the independent reviewer were then removed; none were added by the
 integrator. This includes the four vector disagreements eliminated by the last
-typed-declaration repair and the two corrected Timer initializer contracts.
+typed-declaration repair and the two corrected `Timer` initializer contracts.
 Unrelated main symbol records retain their order, empty maps and verbatim text.
 The author's four sibling-initializer char-array entries are preserved for the
 committed-scope review; preserving them here does not assert independent acceptance.
@@ -30,7 +30,7 @@ ledger edits. Existing owners keep their reservations; no lease was reclaimed.
 
 The producer's narrow final vector repair preserves the complete object signature
 and passes all 18 strict TU function checks. Earlier independent local checks
-covered those functions plus dMeter_c and the Timer initializer, and reproduced all
+covered those functions plus `dMeter_c` and the `Timer` initializer, and reproduced all
 106 ROM modules. Those earlier checks used the old source base and are not a
 current-main acceptance claim. The integrator and independent verifier must run
 the committed candidate's current-base gates, including the complete shared-header
@@ -60,8 +60,8 @@ The frozen b377 integration passed full ROM, all 20 focused strict checks and al
 other required local checks. The complete shared-header range examined 1,968
 functions: 1,966 VERIFIED, two inherited warnings, zero blocking errors, and two
 existing NONMATCHING drafts skipped. Both warning functions are unchanged and not
-production-enrolled: dScDSMT_c::Behavior retains two unresolved overlay identifiers,
-and func_ov089_0213162c retains unresolved data_02111b68. Their entire compiled
+production-enrolled: `dScDSMT_c::Behavior` retains two unresolved overlay identifiers,
+and [func_ov089_0213162c](../../../src/actors/daObjKey_c.cpp) retains unresolved [data_02111b68](../../../config/arm9/symbols.txt). Their entire compiled
 objects are identical to main. Independent comparison also freshly compiled all
 708 unchanged non-draft header consumers on both trees and found identical raw
 objects, allocated sections, definitions and relocations. These controls establish

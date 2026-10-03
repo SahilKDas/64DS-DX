@@ -7,14 +7,94 @@
 
 > **Looking for the PC port?** [Download it here.](https://tangos.dev/downloads)
 
-A work-in-progress decompilation of Super Mario 64 DS
+A decompilation of Super Mario 64 DS: C and C++ source that compiles back into the exact
+bytes on the retail cartridge.
 
 This repo holds source code and tooling. It contains no ROM and no Nintendo assets.
 Everything here runs against a cartridge dump you supply yourself, which stays on your
 machine and is git-ignored.
 
-New here? Start with **[CONTRIBUTING.md](CONTRIBUTING.md)**, and if you review or
-merge PRs read **[MERGE.md](MERGE.md)**.
+## Credits
+
+A lot of people have put real time into this. Thank you to everyone below.
+
+### Symbol names and reverse engineering
+
+Over a thousand of the function and data names in this repo come from the SM64DS modding
+community, along with much of what we know about the game's structs and actor system.
+
+- **[SplattyDS](https://github.com/SplattyDS)**, for the symbol names and struct layouts in
+  [DynamicAllocationDecomp](https://github.com/SplattyDS/DynamicAllocationDecomp) and
+  [SM64DS-ASM-Reference](https://github.com/SplattyDS/SM64DS-ASM-Reference).
+- **[Gota7](https://github.com/Gota7)**, for decompiled objects and game documentation on
+  Splatty's repos, and for MoreObjectsMod.
+- **[pants64DS](https://github.com/pants64DS)**, for the shared object resource system and
+  game documentation.
+- **[hayashi-stl](https://github.com/hayashi-stl)**, for the DL format and game
+  documentation.
+- **[Arisotura](https://github.com/Arisotura)**, for SM64DSe, which a lot of this
+  knowledge traces back to.
+
+We use their names and field offsets as reference facts only. Every line of code in `src/`
+was written from scratch against our own ROM, none of their code is in this repo, and they
+are not involved in this project.
+
+### Decompilation
+
+- **[tangosdev](https://github.com/tangosdev)** (Tango), project lead. Most of the matched
+  functions, the tooling and CI, the PC port, and tangOS Console.
+- **[andrewboudreau](https://github.com/andrewboudreau)**, the second largest share of
+  matches, spread across arm9 and many overlays. Also built the source review gate and the
+  multi-agent work protocol, added the relocation destination audit, wrote codegen notes on
+  boolean materialization and predicated selects, and keeps the PC port's smoke build
+  working.
+- **[lunavyqo](https://github.com/lunavyqo)**, matches across ov001 and a wide spread of the
+  scene overlays, and most of the translation unit promotion work that merges one-function
+  files back into the real C++ files they came from.
+- **[ruspecial](https://github.com/ruspecial)**, large batches across ov002, ov006 and the
+  arm9 BIOS stubs, 174 banked near misses with the triage notes behind them, and the fix
+  for two Bowser holes in the PC port.
+- **[RyanCopley](https://github.com/RyanCopley)**, the first outside contribution (PR #1):
+  functions across ov002, ov006, arm9 and ov034, including the first ones in ov034.
+- **[lplaat](https://github.com/lplaat)**, arm9 flag setters, thunks and helpers, plus a set
+  of ov002 cleanups.
+- **[ai-tdd-labs](https://github.com/ai-tdd-labs)**, a long run of small matched batches
+  across arm9 and the overlays, and a worklist generator fix.
+- **[mitchellcairns](https://github.com/mitchellcairns)**, matches including the cut crash
+  screen, the C++ decompilation index and renaming tools, and the C/C++ language mode
+  ratchet.
+- **[natbree](https://github.com/natbree)**, matches in arm9 and ov075.
+- **[NitroShellMKDS](https://github.com/NitroShellMKDS)**, matches in ov006.
+- **[mitch030504](https://github.com/mitch030504)**, matches across arm9 and the overlays.
+- **[Moundistz](https://github.com/Moundistz)**, matches, floor entries, and a callee rename
+  pass across arm9.
+
+### Tooling and docs
+
+- **[webheadvr](https://github.com/webheadvr)**, made the relocation symbol resolver
+  overlay-aware and added ITCM/DTCM symbol support.
+- **[liveteklol](https://github.com/liveteklol)**, got the compiler recovery script running
+  on Linux and mapped one of the hardest codegen walls in ov080.
+- **[Alberto12345678999](https://github.com/Alberto12345678999)**, cleaned up markdown across
+  the notes tree and ran the passes that link every named symbol in the notes to its record.
+
+### tangOS Console
+
+- **[andrewboudreau](https://github.com/andrewboudreau)**, the guard that stops a raw
+  assembly transcription from ever being counted as a match.
+- **[lunavyqo](https://github.com/lunavyqo)**, match conventions, the prior tries view, and
+  attempt tree logging.
+
+### Inspiration
+
+The `tools/coddog.py` similarity scheduler came out of
+[Chris Lewis's writeup](https://blog.chrislewis.au/the-long-tail-of-llm-assisted-decompilation/)
+on LLM-assisted decompilation and the Coddog tool it describes.
+
+[CREDITS.md](CREDITS.md) has the longer version with PR numbers, and
+[contributions.json](contributions.json) has live per-person match counts. The house rule
+for outside knowledge is import knowledge, write code: known names and field offsets are
+fair to use, but all source is written from scratch against your own ROM.
 
 ## Progress
 
@@ -25,66 +105,56 @@ Code size  ███████████████████████
 ```
 <!-- progress:end -->
 
+<!-- tiers:start -->
+```
+MATCHED    ██████████████████████████████  99.8%   11,368 / 11,389 functions
+           of which 121 are byte-exact assembly (hand-written in the original, not C)
+CONVERTED  █████████░░░░░░░░░░░░░░░░░░░░░  30.3%   3,447 / 11,386 functions
+LINKED     ████████████████████████████░░  93.5%   10,595 / 11,328 matched TUs
+```
+<!-- tiers:end -->
+
 ![Decompilation progress treemap](docs/progress-treemap.svg)
 
 For an interactive version where you can hover any function for its name, address,
 size, and status, see the [progress treemap on GitHub Pages](https://tangosdev.github.io/sm64ds-decomp/).
 
-## The three tiers
+The three bars measure different things:
 
-The bar above measures one thing: whether the C compiles to the ROM's exact bytes.
-That is the hardest guarantee to earn and the one the project is named for, but on
-its own it overstates how finished the game is. "Done" means three separate things
-here, and they move independently.
+- **MATCHED** means the source compiles to the cartridge's exact bytes. This is the
+  classic decomp number.
+- **CONVERTED** means a person can read that source without the ROM open next to them:
+  real C++ classes with their real names, bases and vtables instead of flat C full of
+  offsets.
+- **LINKED** means the matched file is compiled straight into the PC port, replacing the
+  stand-in the port used before.
 
-<!-- tiers:start -->
-```
-MATCHED    ██████████████████████████████  99.8%   11,368 / 11,389 functions
-           of which 121 are byte-exact assembly (hand-written in the original, not C)
-CONVERTED  ████████░░░░░░░░░░░░░░░░░░░░░░  28.2%   3,216 / 11,386 functions
-LINKED     ████████████████████████████░░  93.5%   10,595 / 11,328 matched TUs
-```
-<!-- tiers:end -->
+## Where things stand
 
-- **MATCHED** is source that compiles to the ROM's exact bytes, checked against the
-  cartridge. Nearly all of it is C and C++. The rest is the small set of routines the
-  original game wrote in assembly, which count under the rule in
-  [What counts as matched](#what-counts-as-matched) below. This is the bar above and
-  the treemap.
-- **CONVERTED** is source-owned code a person can read without the ROM open beside
-  them. Matching
-  does not require readable code, so this tier does not move on its own and is by far
-  the furthest behind.
-- **LINKED** is matched code that actually reaches the [PC port](port/)'s binary,
-  replacing the host stand-in that stood there before. On `main` that `port/` tree holds
-  the port's smoke-gate suite: the platform seam, the slice manifests and the native test
-  executables. The playable build is developed on the `port/*` branches, and that is what
-  the download link at the top of this file serves.
+Matching is close to finished. Nearly every function in the game now has source that
+compiles to the cartridge's exact bytes. The few left are the biggest, most call-heavy
+functions in the game, the ones everything else was matched around, plus a handful that
+sit at documented floors where every spelling we have tried lands on the same small
+difference. Those are written down rather than ground on again.
 
-They are not stages of one pipeline. A function can be matched and linked while still
-being unreadable, and converting a file never changes its matched bytes.
+Most of the work now goes into the other two bars. The readable source push turns matched
+files into real C++ class by class. The actor tree (`fBase_c`, `dBase_c`, `dActor_c`,
+`dBgActor_c`, `dEnemyBase_c` and every `daObj*_c` scene actor) is declared in `include/`
+as actual C++, named from the ROM's own RTTI, and finished classes get merged back into
+the translation units the original EAD team most likely wrote. Every one of those steps
+passes the same byte check as a fresh match, so readability never costs a match. See
+[AGENTS.md](AGENTS.md) for what a conversion looks like.
 
-CONVERTED is strict on purpose. A function counts only if its source passes all five of: a real
-function name, no raw offset arithmetic, no `unk_<off>` fields, no codegen tricks, and
-no calls through mangled names. A merged translation unit contributes one unit per
-enrolled function, so restoring original file boundaries cannot change progress by
-itself. Most of the tree is partway there rather than nowhere near it, which the
-headline alone hides: roughly 26% of functions pass three of the five, and 31% pass
-four. Run `python tools/tiers.py` for the full breakdown and two softer readings of
-the same tree.
+The PC port is built from this same source. It runs natively on Windows from your own
+cartridge dump, with higher resolutions, texture filtering, anti-aliasing and smoothed
+models on top of the original game. The more of the game that is LINKED, the less of the
+port depends on stand-ins. Get it at [tangos.dev/downloads](https://tangos.dev/downloads).
 
-The name criterion reads the name a *reader* sees, not the linker symbol. For a C++
-method those differ — the ROM's `KoopaShell::OnYoshiTryEat` can only ever link as
-`_ZN10KoopaShell13OnYoshiTryEatEv` — so judging the symbol asked a question no
-converted method could answer, and the tier paid you to un-convert methods back into
-flat C. It read 3.8% for that reason. See [notes/converted-tier.md](notes/converted-tier.md),
-which also records two evasions in the other criteria that are left open on purpose.
-
-LINKED is a stamped measurement, not a live counter. It needs an MSVC build of the
-port, which CI on this branch cannot produce, so it is measured by hand and recorded
-in [config/port_linkage.json](config/port_linkage.json) with the branch and commit it
-came from. Because the port branches are not merged, it is the best single branch and
-so a floor. Reproduce it with `python port/tools/linkage.py` against a port build.
+There is still an open question about the original toolchain behind some of the residue.
+The linker signature in the ROM points at a CodeWarrior for NITRO revision we do not have
+a copy of, though as
+[notes/mwccarm-version-archive-search.md](notes/mwccarm-version-archive-search.md)
+records, that does not prove the whole game was built with one revision.
 
 ## What "matching" means
 
@@ -136,17 +206,15 @@ Every candidate is verified the same way: compile it with mwccarm, then compare 
 result to the ROM byte-for-byte, relocation-aware (call and data references are slots
 the linker fills in, so they are compared structurally). Nothing counts as matched
 until that check passes, including the hand-written assembly primitives above: the
-banner explains why a file is assembly, it never excuses it from the byte check. The
-work is organized in tiers so the automatic methods clear as much as possible before
-any manual effort:
+banner explains why a file is assembly, it never excuses it from the byte check.
 
 1. **Automatic templates.** A set of rules recognizes common function shapes (constant
    returns, field getters and setters, bitfield reads, struct copies, simple wrappers,
    constructors, and destructors), generates the C, and confirms it against the ROM.
-   This clears the bulk of small, regular functions with no hand work.
-2. **Hand-written.** For functions with real logic, you write the C yourself and verify
-   each attempt until it is byte-identical. A decompiler such as Ghidra is useful for
-   reading the function, though its output never matches on its own.
+   This cleared the bulk of the small, regular functions with no hand work.
+2. **Hand-written.** For functions with real logic, you write the source yourself and
+   verify each attempt until it is byte-identical. A decompiler such as Ghidra is useful
+   for reading the function, though its output never matches on its own.
 
 ### Near misses are banked, not thrown away
 
@@ -157,7 +225,7 @@ the way is written up in [notes/mwccarm-codegen.md](notes/mwccarm-codegen.md), w
 where the register allocation, instruction scheduling, and materialization findings
 live.
 
-### Two checks beyond the byte diff
+### Checks beyond the byte diff
 
 `tools/linkcheck.py` performs the stronger relocation destination check: it
 reconstructs each function's linked bytes and compares them to the ROM, catching wrong
@@ -167,41 +235,9 @@ callees or globals that the normal unlinked byte diff would wildcard. See
 Pull requests are then validated automatically. Each changed source file is compiled
 and compared against ROM bytes on a build box, which catches wrong relocation
 destinations and non-reproducing near misses before anything lands. See
-[notes/pr-validation.md](notes/pr-validation.md).
-
-## Readable source
-
-Matching byte-for-byte and being readable are not in conflict — both are required,
-and byte accuracy wins when they'd otherwise disagree, because it's the only half a
-machine can check. Recovered classes are promoted from flat C into real, idiomatic
-C++ where ROM RTTI and the vtables prove the hierarchy, so the actor tree —
-`fBase_c` → `dBase_c` → `dActor_c`, with `dBgActor_c`, `dEnemyBase_c`, and every
-`daObj*_c`/`daKrb*_c` scene actor as real derived classes — is declared as actual
-C++ in `include/`, named from the ROM's own RTTI rather than placeholders, with
-matched files merged into the translation units the original EAD team most likely
-wrote. Every promotion is gated on the same byte check as everything else, so
-readability never costs a match. See [AGENTS.md](AGENTS.md) for what a conversion
-looks like.
-
-## Where things stand
-
-Function count climbs faster than code size because the small, regular functions were
-matched first. What remains is not a tail of near misses that slipped through, it is
-the large, call-heavy functions that everything else was matched around. In arm9, for
-example, the residue averages around 1.5 KB per function against roughly 148 bytes for
-the module overall.
-
-A handful of the remaining functions are at documented floors: every source spelling
-tried reproduces the same small divergence, and the axes that normally move codegen
-(declaration order, access expressions, laundering, statement scheduling) have all been
-swept without closing it. Those are recorded rather than repeatedly re-attempted.
-
-There is an open question about the original toolchain behind some of that residue. The
-linker signature in the ROM points at a CodeWarrior for NITRO revision we do not have a
-copy of, though as
-[notes/mwccarm-version-archive-search.md](notes/mwccarm-version-archive-search.md)
-records, that does not establish the whole game was built with a single revision, and
-different object groups may correspond to different tool builds.
+[notes/pr-validation.md](notes/pr-validation.md). Class and TU work coordinated through
+[the agent protocol](notes/agents/README.md) also gets an independent source review in
+the work queue before it lands.
 
 ## Setup
 
@@ -222,18 +258,16 @@ python tools/unpack.py "path/to/your-own-sm64ds.nds"
 
 ## How you can help
 
-Every matched function moves the project forward, and the automatic tier means even a
-small amount of time goes a long way. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
-full workflow, including guidance on batch sizes and when to stop grinding a region.
+New here? Start with **[CONTRIBUTING.md](CONTRIBUTING.md)**, and if you review or merge
+PRs read **[MERGE.md](MERGE.md)**.
 
-**The recommended way: tangOS Console.** Most of this project's matches land through
+**The recommended way: tangOS Console.** Most of this project's work lands through
 tangOS Console, the free desktop app built for this repo. It connects an AI assistant
 straight into the project's toolchain and does the coordination for you: hands out work
-batches so nobody grinds a function someone else already has, claims your span
-automatically, verifies every candidate byte-for-byte against the ROM with the real
-compiler, keeps new matches to the repo's source conventions and near misses
-banked in the database, and collects your matches into a
-properly formatted PR.
+so nobody grinds something someone else already has, claims your span automatically,
+verifies every candidate byte-for-byte against the ROM with the real compiler, keeps
+new work to the repo's source conventions with near misses banked in the database, and
+collects it into a properly formatted PR.
 
 Download it at **[tangos.dev/downloads](https://tangos.dev/downloads)**.
 
@@ -244,34 +278,33 @@ Download it at **[tangos.dev/downloads](https://tangos.dev/downloads)**.
 > every match against the ROM before anything is pushed. The manual workflow works,
 > but tangOS is the path with guardrails.
 
-**Contributing code.** Pick a function, write C or C++ for it, verify it compiles to the
-same bytes as the ROM, then open a pull request. One function or a small related group per PR
-is ideal. Use only your own legally dumped ROM, and never commit it.
+**Readable C++ and TU work.** This is where most of the remaining work is. Follow
+[the agent protocol](notes/agents/README.md) for ownership and independent review, and
+[the promotion workflow](notes/tu-promotion-conventions.md) for merging files into a
+production `src/` translation unit.
 
-**Class/TU work.** Follow [the agent protocol](notes/agents/README.md) for v2 ownership
-and independent review, and [the promotion workflow](notes/tu-promotion-conventions.md)
-for consolidation into a production `src/` TU. The one-function convention applies
-to new standalone matches; moving those files into a folder is not TU promotion.
+**The last unmatched functions.** Pick one, write source for it, verify it compiles to
+the same bytes as the ROM, then open a pull request. Check the near-miss database first,
+since most of these have a history. Use only your own legally dumped ROM, and never
+commit it.
 
 **Coordination.** Use the assigned protocol before editing. For standalone matching,
 see [CONTRIBUTING.md](CONTRIBUTING.md#coordinating-your-work-get-a-claims-key).
-The [Discord](https://discord.gg/YpReERF4e3) and GitHub issues are useful for questions;
-they do not replace a coordinated agent task's v2 reservation.
+The [Discord](https://discord.gg/YpReERF4e3) and GitHub issues are good for questions;
+they do not replace a coordinated agent task's reservation.
 
-**Funding.** Sponsoring helps cover both the development time and the AI compute that the
-matching runs on. Most functions are matched for free by the automatic templates, and the
-harder ones are matched with AI assistance at roughly 5 to 10 cents of usage each. Spread
-across everything matched so far, that works out to about 5 cents per function on average,
-and reaching the current progress has cost on the order of $200 in AI usage. You can
-sponsor at https://github.com/sponsors/tangosdev or back the project on Patreon at
+**Funding.** Sponsoring helps cover development time and the AI compute the work runs
+on. Most functions were matched for free by the automatic templates, and the harder ones
+with AI assistance at a few cents of usage each. You can sponsor at
+https://github.com/sponsors/tangosdev or back the project on Patreon at
 https://www.patreon.com/c/the_tango. This goes toward development and compute only; it
 has nothing to do with Nintendo's ROM or assets.
 
 ## Legal and scope
 
-This repo contains only original work: the tooling, the hand-written C, and the notes.
-It contains no ROM and no extracted Nintendo assets. Those are read locally from a
-cartridge dump you own, and they are git-ignored. Do not commit anything derived from
+This repo contains only original work: the tooling, the hand-written source, and the
+notes. It contains no ROM and no extracted Nintendo assets. Those are read locally from
+a cartridge dump you own, and they are git-ignored. Do not commit anything derived from
 the ROM's data or assets, with one deliberate, documented exception: the coordination
 data on the `chaos-data` branch includes annotated disassembly text of still-unmatched
 functions, so contributors can pick up work without a full local setup. This is the
@@ -279,41 +312,8 @@ same practice as decomp projects committing `.s` files for unmatched code. It is
 not bytes or assets, and each function's disassembly leaves the published data as soon
 as it is matched.
 
-## Credits
-
-Symbol names and struct knowledge build on community reverse-engineering work. See
-[CREDITS.md](CREDITS.md) for the full list, and the contributor chart for per-person
-match counts. The rule is import knowledge, write code: you may use known symbol names
-and field offsets, but all C must be written from scratch against your own ROM.
-
-Function contributions: [RyanCopley](https://github.com/RyanCopley) hand-matched a set of
-functions across ov002, ov006, arm9, and ov034 (PR #1), including the first functions in
-ov034 and several that had resisted the automated passes.
-[andrewboudreau](https://github.com/andrewboudreau) has hand-matched a large and growing set of
-functions across arm9 and many overlays (PRs #2, #45, #48, and the #50 through #60 constructor and
-static-initializer batches), contributed codegen notes on boolean materialization and
-predicated-select shapes (PR #49), and reported the scheduler bug fixed in #61.
-[Moundistz](https://github.com/Moundistz) contributed 3 matched functions and 8 nonmatching
-floor entries, plus a pass of placeholder-to-resolved callee renames across the arm9 corpus.
-[lunavyqo](https://github.com/lunavyqo) has hand-matched across ov001 and a wide spread of
-the scene overlays, and carries the class translation-unit cleanup work, promoting a folded
-actor TU and then clearing the one-function leftovers it strands.
-[ruspecial](https://github.com/ruspecial) has hand-matched large batches across ov002, ov006
-and the arm9 BIOS SVC stubs, banked 174 near-misses with the C++ exception-handling and
-split-symbol triage notes behind them (PR #806), and contributed oracle-verified host copies
-for the two Bowser ov060 holes on the port side (PR #1505).
-
-Tooling contributions: [webheadvr](https://github.com/webheadvr) made the relocation
-symbol resolver module-aware, fixing wrong-overlay symbol picks where overlay address
-ranges overlap. [andrewboudreau](https://github.com/andrewboudreau) added a relocation
-destination audit and an opt-in strict-relocs check to the verify path (PR #47).
-
-The `tools/coddog.py` fuzzy opcode-similarity scheduler was inspired by
-[Chris Lewis's writeup](https://blog.chrislewis.au/the-long-tail-of-llm-assisted-decompilation/)
-on LLM-assisted decompilation and the Coddog similarity tool it describes.
-
 ## License
 
-The original work in this repo (the C, the tooling, the notes) is released under the MIT
-License, see [LICENSE](LICENSE). This applies only to that original work and grants no
-rights to any Nintendo material, which is not present here.
+The original work in this repo (the source, the tooling, the notes) is released under the
+MIT License, see [LICENSE](LICENSE). This applies only to that original work and grants
+no rights to any Nintendo material, which is not present here.

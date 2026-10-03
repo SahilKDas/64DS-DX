@@ -45,21 +45,19 @@ struct Camera : View {
        masked, not normalised); 0x10 vetoes a state change; 0x4000 records
        that the pre-talk save has been taken. */
     u32 mFlags;            /* 0x154 */
-    u8  pad_158[0x4e];
+    u8  pad_158[0x24];
+    /* The camera's horizontal facing angle. Width is observed, not assumed:
+     * every reader in the tree loads it with a 16-bit access --
+     * daMugenBGM_c::Behavior and func_ov002_020b9450 read it plain,
+     * WingFeather::Behavior and func_ov102_021492d4 add 0x4000 to turn it
+     * into a billboard facing, and daTree_c::Render feeds it straight to
+     * Matrix4x3_FromRotationY. Nothing in the tree touches 0x17e, so only
+     * these two bytes come out of the pad. */
+    s16 mAngleY;            /* 0x17c */
+    u8  pad_17e[0x28];
     u8  unk_1a6;            /* 0x1a6 */
     Camera();
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~Camera();   /* no slot */
-#else
-    virtual ~Camera();   /* D1 and D0 */
-#endif
+    virtual ~Camera();
 
     /* fBase_c virtual overrides, in their inherited slots. */
     virtual s32 InitResources();

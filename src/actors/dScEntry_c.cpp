@@ -43,10 +43,23 @@
  * Leftover: g_profile_ENTRY / g_profile_RESULT live outside this TU
  *   (S14). leftover return new belongs with the factories past the
  *   hole.
- * Leftover: dScEntry_c D1/D0 stay in their own shards (out-of-line
- *   emits D0 before D1; inline needs the factories this prefix cannot
- *   reach).
+ *
+ * Source order IS the ROM's: `#pragma defer_codegen off` below makes
+ * mwccarm emit .text in source order instead of reverse. Do not reorder.
+ * Under deferred codegen the out-of-line destructor emitted D0 before D1,
+ * which is why the pair used to stay in its own files. Written first in
+ * this ascending file, it emits D1, D0, D2 -- the cartridge's order --
+ * and the unreferenced D2 is dropped at link. The destructor is the key
+ * function, so this file also emits the vtable and the typeinfo chain;
+ * the cartridge's copies stay canonical.
+ *
+ * .text 0x02115ab8..0x02116128, 13 functions. The linker run goes on to
+ * 0x0211a854 (82 functions, factories included), but the next function,
+ * func_ov075_02116128, is a recorded register-allocation near-miss
+ * (notes/mwccarm-codegen.md 6bo) and a licensed range cannot skip it.
  */
+
+#pragma defer_codegen off
 
 #include "dScEntry_c.h"
 #include "OAM.h"
@@ -87,109 +100,29 @@ struct Base {
     virtual void method1();
 };
 
-// @symbol func_ov075_021160dc
-extern "C" void func_ov075_021160dc(char* c) {
-    int count = *(unsigned char*)(c + 0x280);
-    int i = 0;
-    if (count <= 0) return;
-    Base *elem = (Base*)(c + 0x70);
-    do {
-        elem->method1();
-        count = *(unsigned char*)(c + 0x280);
-        i++;
-        elem = (Base*)((char*)elem + 0x24);
-    } while (i < count);
-}
+extern "C" void func_ov075_021160dc(char* c);
 
-// @symbol _ZN10dScEntry_c15graphCallback_cC1Ev
-dScEntry_c::graphCallback_c::graphCallback_c()
-    : compressedBg2Screen(0), entryScene(0)
+/* Written first so D1 and D0 are emitted first, as in the cartridge. The
+ * body is empty: tearing down the four OamAnimations and the nine icon_c
+ * leaves in reverse declaration order, then chaining to dScene_c, is all
+ * compiler-generated. */
+// @symbol _ZN10dScEntry_cD1Ev
+dScEntry_c::~dScEntry_c()
 {
 }
 
-// @symbol _ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev
-int dScEntry_c::graphCallback_c::GraphCallback2()
+// @symbol _ZN10dScEntry_cD0Ev
+/* The deleting destructor (D0) has no source of its own: the compiler emits
+   it from the definition above. */
+
+// @symbol _ZN10dScEntry_c6icon_cD1Ev
+dScEntry_c::icon_c::~icon_c()
 {
-    volatile unsigned short *reg = (volatile unsigned short *)0x400100c;
-    unsigned short value = (unsigned short)(*reg & ~0x1f00);
-    *reg = value | (bg2Priority << 8);
-
-    if (compressedBg2Screen != 0) {
-        unsigned short *screen = (unsigned short *)_ZN3G2S12GetBG2ScrPtrEv();
-        DecompressLZ16(compressedBg2Screen, screen);
-        Deallocate(compressedBg2Screen);
-        compressedBg2Screen = 0;
-    }
-
-    if (entryScene != 0)
-        func_ov075_021160dc((char *)entryScene);
-
-    return 1;
 }
 
-extern "C" {
-
-// @symbol func_ov075_02116030
-void func_ov075_02116030(void *c, int v)
+// @symbol _ZN12OamAnimationD1Ev
+OamAnimation::~OamAnimation()
 {
-    if (*(int *)((char *)c + 4) == 0) *(int *)((char *)c + 4) = v;
-}
-
-// @symbol func_ov075_02116028
-void func_ov075_02116028(int *p, int v)
-{
-    p[3] = v;
-}
-
-// @symbol func_ov075_0211601c
-void func_ov075_0211601c(char* c, int a, int b) {
-  *(int*)(c+8) = a;
-  *(int*)(c+0xc) = b;
-}
-
-// @symbol func_ov075_02115e8c
-void func_ov075_02115e8c(char* self, int a, int b, short c, short e)
-{
-    int kind;
-    int i, j;
-    *(int*)(self + 0x1c) = a;
-    *(int*)(self + 0x20) = b;
-    kind = (*(int*)(self + 0x1c) < 7) ? 2 : (*(int*)(self + 0x1c) < 0xd) ? 1 : 0;
-    if (a == 5) {
-        i = func_0200f0bc();
-        j = func_0200f0bc();
-        func_ov001_020ab5b0(self, kind, c, e,
-                            SH(data_ov075_0211d72c, i), SH(data_ov075_0211d72e, j));
-    } else if (a == 6) {
-        i = func_0200f0bc();
-        j = func_0200f0bc();
-        func_ov001_020ab5b0(self, kind, c, e,
-                            SH(data_ov075_0211d740, i), SH(data_ov075_0211d742, j));
-    } else if (a == 0xb) {
-        i = func_0200f0bc();
-        j = func_0200f0bc();
-        func_ov001_020ab5b0(self, kind, c, e,
-                            SH(data_ov075_0211d754, i), SH(data_ov075_0211d756, j));
-    } else {
-        func_ov001_020ab5b0(self, kind, c, e,
-                            SH(data_ov075_0211d948, a), SH(data_ov075_0211d94a, a));
-    }
-}
-
-}
-
-// @symbol _ZN10dScEntry_c6icon_c8BehaviorEv
-void dScEntry_c::icon_c::Behavior()
-{
-    if (unk_01c == 0xd) {
-        if (unk_020 == data_0209b2e4) {
-            _Z15ApproachLinear2Rsss(&unk_006, 0x14, 8);
-        } else {
-            if (_Z15ApproachLinear2Rsss(&unk_006, -0x24, 8) != 0)
-                unk_020 = data_0209b2e4;
-        }
-    }
-    dThIcon_c::Behavior();
 }
 
 // @symbol _ZN10dScEntry_c6icon_c6RenderEv
@@ -296,12 +229,107 @@ renderSub:
     OAM::RenderSub((OamAttr *)oam, xy[0], xy[1]);
 }
 
-// @symbol _ZN12OamAnimationD1Ev
-OamAnimation::~OamAnimation()
+// @symbol _ZN10dScEntry_c6icon_c8BehaviorEv
+void dScEntry_c::icon_c::Behavior()
+{
+    if (unk_01c == 0xd) {
+        if (unk_020 == data_0209b2e4) {
+            _Z15ApproachLinear2Rsss(&unk_006, 0x14, 8);
+        } else {
+            if (_Z15ApproachLinear2Rsss(&unk_006, -0x24, 8) != 0)
+                unk_020 = data_0209b2e4;
+        }
+    }
+    dThIcon_c::Behavior();
+}
+
+extern "C" {
+
+// @symbol func_ov075_02115e8c
+void func_ov075_02115e8c(char* self, int a, int b, short c, short e)
+{
+    int kind;
+    int i, j;
+    *(int*)(self + 0x1c) = a;
+    *(int*)(self + 0x20) = b;
+    kind = (*(int*)(self + 0x1c) < 7) ? 2 : (*(int*)(self + 0x1c) < 0xd) ? 1 : 0;
+    if (a == 5) {
+        i = func_0200f0bc();
+        j = func_0200f0bc();
+        func_ov001_020ab5b0(self, kind, c, e,
+                            SH(data_ov075_0211d72c, i), SH(data_ov075_0211d72e, j));
+    } else if (a == 6) {
+        i = func_0200f0bc();
+        j = func_0200f0bc();
+        func_ov001_020ab5b0(self, kind, c, e,
+                            SH(data_ov075_0211d740, i), SH(data_ov075_0211d742, j));
+    } else if (a == 0xb) {
+        i = func_0200f0bc();
+        j = func_0200f0bc();
+        func_ov001_020ab5b0(self, kind, c, e,
+                            SH(data_ov075_0211d754, i), SH(data_ov075_0211d756, j));
+    } else {
+        func_ov001_020ab5b0(self, kind, c, e,
+                            SH(data_ov075_0211d948, a), SH(data_ov075_0211d94a, a));
+    }
+}
+
+// @symbol func_ov075_0211601c
+void func_ov075_0211601c(char* c, int a, int b) {
+  *(int*)(c+8) = a;
+  *(int*)(c+0xc) = b;
+}
+
+// @symbol func_ov075_02116028
+void func_ov075_02116028(int *p, int v)
+{
+    p[3] = v;
+}
+
+// @symbol func_ov075_02116030
+void func_ov075_02116030(void *c, int v)
+{
+    if (*(int *)((char *)c + 4) == 0) *(int *)((char *)c + 4) = v;
+}
+
+}
+
+// @symbol _ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev
+int dScEntry_c::graphCallback_c::GraphCallback2()
+{
+    volatile unsigned short *reg = (volatile unsigned short *)0x400100c;
+    unsigned short value = (unsigned short)(*reg & ~0x1f00);
+    *reg = value | (bg2Priority << 8);
+
+    if (compressedBg2Screen != 0) {
+        unsigned short *screen = (unsigned short *)_ZN3G2S12GetBG2ScrPtrEv();
+        DecompressLZ16(compressedBg2Screen, screen);
+        Deallocate(compressedBg2Screen);
+        compressedBg2Screen = 0;
+    }
+
+    if (entryScene != 0)
+        func_ov075_021160dc((char *)entryScene);
+
+    return 1;
+}
+
+// @symbol _ZN10dScEntry_c15graphCallback_cC1Ev
+dScEntry_c::graphCallback_c::graphCallback_c()
+    : compressedBg2Screen(0), entryScene(0)
 {
 }
 
-// @symbol _ZN10dScEntry_c6icon_cD1Ev
-dScEntry_c::icon_c::~icon_c()
-{
+// @symbol func_ov075_021160dc
+extern "C" void func_ov075_021160dc(char* c) {
+    int count = *(unsigned char*)(c + 0x280);
+    int i = 0;
+    if (count <= 0) return;
+    Base *elem = (Base*)(c + 0x70);
+    do {
+        elem->method1();
+        count = *(unsigned char*)(c + 0x280);
+        i++;
+        elem = (Base*)((char*)elem + 0x24);
+    } while (i < count);
 }

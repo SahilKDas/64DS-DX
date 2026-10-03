@@ -13,7 +13,7 @@ This document describes this commit; the queue records its immutable SHA.
 ## Source changes
 
 The production `src/minigames/d_s_mg_card.cpp` owns 37 functions in
-ov006 `[0x020d95a4,0x020dbe40)` (10,396 bytes). The scene and both card classes
+[ov006](../../../config/arm9/overlays/ov006/symbols.txt) `[0x020d95a4,0x020dbe40)` (10,396 bytes). The scene and both card classes
 were reserved before editing. No header, symbol, manifest or enrollment changed.
 
 - Replace unused `Obj`, `VObj`, `C`, `Src`, `Struct30`, `Slot6` and `Obj6`

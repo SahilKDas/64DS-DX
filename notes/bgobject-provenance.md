@@ -61,9 +61,9 @@ recorded in the [integration evidence](experiments/pr2874-integration-0920.json)
 ## daObjBlockS_c (`include/daObjBlockS_c.h`, [ov098](../config/arm9/overlays/ov098/symbols.txt), size 0x608)
 
 Formerly the coined `Crate`. Bodies read: `InitResources`, `Behavior`, `Render`,
-`CleanupResources`, `OnTurnIntoEgg`, `OnYoshiTryEat` and `OnGroundPounded` (then
-per-function files, now together in `src/actors/daObjBlockS_c.cpp`),
-`src/_ZN13daObjBlockS_c4KillEv.cpp`, `src/Crate_SetState.cpp`.
+`CleanupResources`, `OnTurnIntoEgg`, `OnYoshiTryEat`, `OnGroundPounded`, `Kill` and
+`Crate_SetState` (then per-function files, now together in
+`src/actors/daObjBlockS_c.cpp`).
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ Raw-offset collapses, each re-verified byte-exact:
   and the two `(char *)&mPosX` / `(char *)&mHomePosX` double casts.
 * `Render`: `(Sub *)((char *)&mModel)` → `(Sub *)&mModel`.
 
-`Crate_SetState.cpp` keeps its local `struct C` shadow on purpose: it calls through a
+`Crate_SetState` keeps a local flat shadow (`BlockSStateHost`) on purpose: it calls through a
 pointer-to-member function, and that representation is not the same for a polymorphic
 class as for the flat shadow the ROM's own code is built against.
 
@@ -154,14 +154,14 @@ was measured instead.
 
 ---
 
-## SignPost (`include/SignPost.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x5a4)
+## daObjTatefuda_c (`include/daObjTatefuda_c.h`, [ov002](../config/arm9/overlays/ov002/symbols.txt), size 0x5a4)
 
-Bodies read: `src/_ZN8SignPost13InitResourcesEv.cpp`,
-`src/_ZN8SignPost8BehaviorEv.cpp`, `src/_ZN8SignPost6RenderEv.cpp`,
-`src/_ZN8SignPost16CleanupResourcesEv.cpp`, `src/_ZN8SignPost4KillEv.cpp`,
-`src/_ZN8SignPost15OnGroundPoundedER8dActor_c.cpp`,
-`src/_ZN8SignPost11OnAttacked1ER8dActor_c.cpp`,
-`src/_ZN8SignPost15OnHitByMegaCharER6Player.cpp`.
+Bodies read: `src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`, `src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`, `src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`,
+`src/actors/daObjTatefuda_c.cpp`.
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -171,7 +171,7 @@ Bodies read: `src/_ZN8SignPost13InitResourcesEv.cpp`,
 | 0x3bc/0x3be/0x3c0 | `mHomeAngleX/Y/Z` | `InitResources` copies `mAngleX/mAngleY/mAngleZ` in the same run. |
 | 0x584 | `mParticleHandle1` | `Behavior` passes it as the first argument of `Particle::System::New` and stores the result back — a recycled handle. Effect `0x13a`. Was inside `pad_584`. |
 | 0x588 | `mParticleHandle2` | same shape through `Particle::System::NewUnkCallback818`, effect `0x13b`. Was inside `pad_584`. |
-| 0x58c | `mBreakTimer` | `Behavior` runs the whole break sequence under `if (0x58c != 0)`: disable the mesh collider, `DecIfAbove0_Byte` once a frame traillng the two particles, and on the frame it hits zero poof the dust and hand off to the class's reset routine [func_ov002_020bae9c.c](../src/func_ov002_020bae9c.c). The same shape `daObjBlockS_c` uses at its own 0x606. Was inside `pad_584`. |
+| 0x58c | `mBreakTimer` | `Behavior` runs the whole break sequence under `if (0x58c != 0)`: disable the mesh collider, `DecIfAbove0_Byte` once a frame traillng the two particles, and on the frame it hits zero poof the dust and hand off to the class's reset routine [func_ov002_020bae9c.c](../src/actors/daObjTatefuda_c.cpp). The same shape `daObjBlockS_c` uses at its own 0x606. Was inside `pad_584`. |
 | 0x58e | `mPoundsLeft` | `InitResources` sets `2`. `OnGroundPounded` either sinks the sign by `(mPoundsLeft * 0x2d) << 12` and zeroes it (a hard pound), or by one `0x2d000` step and decrements it. `Behavior` respawns the sign when it is `0`, setting it back to `2`, and only drops the shadow while it is still `2`. A remaining-steps count, not a state. |
 | 0x58f | `mPoundCooldown` | `OnGroundPounded` sets `0xf` on the soft-pound branch and returns early whenever it is nonzero; `Behavior` runs it down with `DecIfAbove0_Byte` once a frame. The gap between two successive pounds. |
 | 0x590 | `mHidden` | `Render` returns without drawing while it is nonzero; `Behavior` skips the collision-range check while it is nonzero and clears it under the same "player is far away" condition that respawns a pounded-in sign. |
@@ -185,13 +185,13 @@ which is what `include/dBgActor_c.h` calls that offset and what `InitResources` 
 to `dBgW_KcMbg::SetFile`. The marker stays `u8`, the idiom the twin already uses for
 `mdCcAc_c` and `mShadowModel`.
 
-`src/_ZN8SignPost8BehaviorEv.cpp` was an `extern "C"` free function over a raw
+`src/actors/daObjTatefuda_c.cpp` was an `extern "C"` free function over a raw
 `char *c` with 30 literal offsets and a local one-word `Vector3`; it is now a real
-`int SignPost::Behavior()`. That conversion is what turned 0x354, 0x380, 0x584, 0x588
+`int daObjTatefuda_c::Behavior()`. That conversion is what turned 0x354, 0x380, 0x584, 0x588
 and 0x58c from padding into evidenced fields. It needed one declaration added to the
 header — `int Behavior();`, placed **after** `virtual void Kill()` so that Kill stays
 this class's key function. `tools/eligible.py` gains exactly one name,
-`_ZN8SignPost8BehaviorEv`, and loses none.
+`_ZN15daObjTatefuda_c8BehaviorEv`, and loses none.
 
 Raw-offset collapses, each re-verified byte-exact: `Render`'s
 `*(void **)((char *)&unk_59c)` and `(Sub041 *)((char *)&mModel)`,
@@ -669,7 +669,7 @@ In the C twin, `0x074` becomes `mCamSpacePosX`, `0x08e` `mAngleY`, `0x094`
 
 ---
 
-## PyramidTop (`include/PyramidTop.h`, [ov024](../config/arm9/overlays/ov024/symbols.txt), size 0x3b8)
+## daObjDlPyramid_c (`include/daObjDlPyramid_c.h`, [ov024](../config/arm9/overlays/ov024/symbols.txt), size 0x3b8)
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
@@ -702,7 +702,7 @@ In the C twin, `0x074` becomes `mCamSpacePosX`.
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x348 | `mShadowMat` | `Behavior` passes `&mShadowMat` as the `Matrix4x3 &` argument of `dActor_c::DropShadowScaleXYZ(ShadowModel &, Matrix4x3 &, ...)`, with `mShadowModel` as the argument before it. `0x348 + 0x30 = 0x378`. The same shape `SignPost` and `daObjHatenaBlock_c` already carry. |
+| 0x348 | `mShadowMat` | `Behavior` passes `&mShadowMat` as the `Matrix4x3 &` argument of `dActor_c::DropShadowScaleXYZ(ShadowModel &, Matrix4x3 &, ...)`, with `mShadowModel` as the argument before it. `0x348 + 0x30 = 0x378`. The same shape `daObjTatefuda_c` and `daObjHatenaBlock_c` already carry. |
 | 0x37c | `mVariant` | `InitResources` sets `0`/`1` from actorID and uses it as the row index into all three ov098 resource columns `data_ov098_0213c380/384/388`. |
 
 The rename carried into `src/actors/daObjYajirusi_c.cpp` (promoted from `src_tu/`) as well as `src/`.
@@ -716,9 +716,9 @@ In the C twin, `0x00c` becomes `actorID` and `0x08e` `mAngleY`.
 | --- | --- | --- | --- |
 | `daObjEmmLog_c` ([ov052](../config/arm9/overlays/ov052/symbols.txt)) | 0x320 | `mBasePosY` | `InitResources` copies `mPosY`; `Behavior` computes `mPosY = mBasePosY + (sine * mBobAmplitude >> 12)` from `data_02082214`. |
 | | 0x324 | `mBobAmplitude` | `InitResources` sets `0x64000`, or the spawn byte times `0xa000`; it is the multiplicand of that sine. |
-| `TTC_MovingBeam` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x330 | `mGroundY` | `InitResources` stores the probe point's Y, then overwrites it with the `dBgCh_Gnd` hit height when `DetectClsn` returns nonzero. |
+| `daObjCtMecha09_c` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x330 | `mGroundY` | `InitResources` stores the probe point's Y, then overwrites it with the `dBgCh_Gnd` hit height when `DetectClsn` returns nonzero. |
 | `daObjCtKaitendai_c` ([ov065](../config/arm9/overlays/ov065/symbols.txt)) | 0x31e | `mVariant` | `InitResources` sets `0`/`1` and uses it as the row index into `data_ov065_0211d35c` / `...d360`; `CleanupResources` indexes both again. |
-| | 0x320 | `mGroundY` | the same raycast shape as `TTC_MovingBeam`'s: the probe Y, replaced by `raycast + 0x44` on a hit. |
+| | 0x320 | `mGroundY` | the same raycast shape as `daObjCtMecha09_c`'s: the probe Y, replaced by `raycast + 0x44` on a hit. |
 | `daObjSlIceBlock_c` ([ov027](../config/arm9/overlays/ov027/symbols.txt)) | 0x31e | `mDelayTimer` | `DecIfAbove0_Short`'d at the top of both variants of `Behavior`, which do nothing at all until it reaches 0; seeded `0x64` or `mNumToBigIce * 0x14` and re-armed to `(mNumToBigIce + 1) * 0x14` after each spawn. |
 | `PyramidStep` ([ov025](../config/arm9/overlays/ov025/symbols.txt)) | 0x374 | `mClsnMat2` | `InitResources` passes `&mClsnMat2` as the `const Matrix4x3 &` of `dBgW_KcMbg::SetFile`, and `0x374 + 0x30 = 0x3a4` — the factory's own `operator new` literal. The header's `pad_378[0x2c]` "tail padding" WAS this matrix; it is gone and the size assert now closes on a field span. |
 | `PathLift` ([ov002](../config/arm9/overlays/ov002/symbols.txt)) | 0x42a | `mAfterClsnRan` | set to `1` by the last statement of `AfterClsn`, cleared by the last statement of `BaseBehavior`. |
@@ -753,7 +753,7 @@ same offsets:
   (0x0b0).
 * `include/daObjFm_Battan_c.h` — `mCamSpacePosX` (0x074), `mClsnMat` (0x2ec).
 * `include/daObjC0Water_c.h` — `mCamSpacePosX`.
-* `include/TTC_MovingBeam.h` — `mTerminalVelocity`, `mVertSpeed`, `mClsnMat`.
+* `include/daObjCtMecha09_c.h` — `mTerminalVelocity`, `mVertSpeed`, `mClsnMat`.
 * `include/daObjSlIceBlock_c.h` — `mHorzSpeed`.
 * `include/daObjDpBrock_c.h` — `param1`, `mAngleY`, `mVertSpeed`.
 * `include/PathLift.h` — `actorID`.
@@ -765,7 +765,7 @@ same offsets:
 * `daObjEwbIce_c` 0x330 / 0x334 / 0x338 — written once each by `InitResources`, never read.
 * `daObjCtMecha10_c` 0x326 — written the same table value as `mAngleYStep`, never read.
 * `daKpa2Bg_c` 0x56c — zeroed, never read.
-* `RotatingUpDownPlatformUtm` 0x300 in the C twin — that offset is *interior* to
+* `daObjRotateUpdownLift_c` 0x300 in the C twin — that offset is *interior* to
   `dBgActor_c::mClsnMat` (0x2ec + 0x14), and naming a matrix element from a single
   `s16` read would be an invention.
 * The classes with no fields of their own — `daObjMc_Metalnet_c`, `daObjIceBoard_c`,

@@ -321,10 +321,10 @@ Examples:
 
 | Symbol | Address | Size | File |
 |--------|---------|------|------|
-| [data_ov002_0211114c](../config/arm9/overlays/ov002/symbols.txt) | 0x0211114c | 0x04 | `src/_ZN6dMap_c8BehaviorEv.cpp` |
-| [data_ov016_02114d4c](../config/arm9/overlays/ov016/symbols.txt) | 0x02114d4c | 0x0c | `src/_ZN5Unagi13InitResourcesEv.cpp` |
+| [data_ov002_0211114c](../config/arm9/overlays/ov002/symbols.txt) | 0x0211114c | 0x04 | `src/actors/dMap_c.cpp` |
+| [data_ov016_02114d4c](../config/arm9/overlays/ov016/symbols.txt) | 0x02114d4c | 0x0c | `src/actors/daMoray_c.cpp` |
 | [data_ov026_02113f4c](../config/arm9/overlays/ov026/symbols.txt) | 0x02113f4c | 0x0c | `src/actors/daWater_Suikomi_c.cpp` |
-| [data_ov006_02140518](../config/arm9/overlays/ov006/symbols.txt) | 0x02140518 | 0x20 | [src/func_ov006_020c8a30.c](../src/func_ov006_020c8a30.c) |
+| [data_ov006_02140518](../config/arm9/overlays/ov006/symbols.txt) | 0x02140518 | 0x20 | `src/actors/unit020c8a30.cpp` (func_ov006_020c8a30) |
 | [data_ov007_02103f98](../config/arm9/overlays/ov007/symbols.txt) | 0x02103f98 | 0x600 | [src/func_ov007_020b8548.c](../src/func_ov007_020b8548.c) |
 
 
@@ -335,7 +335,7 @@ be needed for that to be worth anything to a reader.
 ### The ownership problem the count cannot solve
 
 `src/` is one function per file. The ROM's `.bss` was laid out per **translation
-unit**, and a TU is many functions. Putting [data_ov016_02114d4c](../config/arm9/overlays/ov016/symbols.txt)'s definition in `_ZN5Unagi13InitResourcesEv.cpp` because that is the only file mentioning it is a
+unit**, and a TU is many functions. Putting [data_ov016_02114d4c](../config/arm9/overlays/ov016/symbols.txt)'s definition in the one-function file for `daMoray_c::InitResources` because that is the only file mentioning it is a
 *guess* about ownership dressed up as a fact — and it is a guess the byte gate cannot
 falsify, because any file in the module can host the range and still link identically.
 

@@ -1,6 +1,6 @@
 //cpp
 /* Production translation unit for ov060/daFRing_c.
- * 6 function(s), .text 0x02118cfc..0x021191f4. Bowser's shockwave rings
+ * 6 function(s), .text 0x02118cfc..0x021191f4. daKpa_c's shockwave rings
  * (registry profile FIRERING).
  *
  * NAME: _ZTS9daFRing_c is "9daFRing_c" at ov060 0x0211ab08; _ZTI at 0x0211ab14
@@ -26,7 +26,7 @@ extern "C" {
 /* The ring's material and texture animations live in the level overlay, not
  * in ov060. ov060 relocs.txt lists the two literals at 0x021191ec/0x021191f0
  * as ambiguous between ~20 level overlays; tools/overlay_residency.py narrows
- * them to the three Bowser fights (ov044/ov046/ov048). Only ov048 holds an
+ * them to the three daKpa_c fights (ov044/ov046/ov048). Only ov048 holds an
  * animation record at both addresses: a frame count of 0x64 followed by
  * pointers ov048 relocates into its own data (ov048 relocs.txt, from
  * 0x021115e8..0x02111608). ov044's words there sit inside

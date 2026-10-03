@@ -71,3 +71,26 @@ s32 daObjBSwdoor_c::CleanupResources()
     return func_ov002_020baba8(this, &data_ov014_021145c4);
 }
 #pragma long_calls off
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN14daObjBSwdoor_cD0Ev, 0x021111f0, size 0x64 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN14daObjBSwdoor_cD0Ev
+/* recovered: named members + shared header, vtable identified, declarations from a shared header */
+/* recovered: named members + shared header, vtable identified */
+/* vtable identified: VT0 = _ZTV14daObjBSwdoor_c; VT1 = _ZTV13daObjSwdoor_c */
+/* (no separate definition: the single ~daObjBSwdoor_c() below emits the D0 and D1
+ * variants together -- keeping the hand-mangled body alongside a real destructor
+ * is the known mwccarm ICE, ELFgen.c:483.) */
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 0 -- _ZN14daObjBSwdoor_cD1Ev, 0x021111a0, size 0x50 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN14daObjBSwdoor_cD1Ev
+/* recovered: real C++ destructor -- the compiler emits the whole body
+ *
+ * (no definition here either: `virtual ~daObjBSwdoor_c() {}` is in
+ * include/daObjBSwdoor_c.h, which is where the reasoning lives. Defined out of
+ * line in this file, the pair came out D0-before-D1 -- the reverse of the
+ * cartridge -- with a third, homeless D2, and objisolate refused the TU. The
+ * inline definition emits both variants here, in ROM order, and no D2.)
+ */

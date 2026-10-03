@@ -30,7 +30,8 @@ So a converted method cannot carry any other symbol, and the only way to pass
 `real_name` was to **un-convert** the method back into a flat `extern "C"`
 function. The tier paid you to undo the work it exists to measure.
 
-This is not a hypothetical. `src/_ZN10KoopaShell13OnYoshiTryEatEv.cpp` is:
+This is not a hypothetical. The former KoopaShell OnYoshiTryEat shard
+(now `daShl_c::OnYoshiTryEat` in `src/game/actors/d_a_shl.cpp`) was:
 
 ```cpp
 // @symbol _ZN10KoopaShell13OnYoshiTryEatEv
@@ -87,7 +88,7 @@ An adversarial audit found all four with concrete cases:
   the promoted daObjCasket_c TU) matched a bare `MeshCollider::LoadFile`
   forward declaration that ends in `;` and is defined in another file entirely.
 - **Override of a correct failure.** Four files whose own symbol is a genuinely
-  unidentified `func_ov*` placeholder ([func_ov006_020c8f20](../src/func_ov006_020c8f20.cpp), [func_ov006_020cb030](../src/func_ov006_020cb030.cpp),
+  unidentified `func_ov*` placeholder (`func_ov006_020c8f20` and `func_ov006_020cb030`, now inside `src/actors/dMgTrmpln2Mario_c.cpp`,
   `func_ov064_02117220`, `func_ov079_02126f8c`) had their verdict flipped to pass
   by an unrelated declaration elsewhere in the file.
 - **Dropped qualifiers.** `Sound::Player::SetPlayableSeqCount` came out as

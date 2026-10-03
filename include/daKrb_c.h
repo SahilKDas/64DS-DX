@@ -149,6 +149,9 @@ struct daKrb_c : dCapEnemy_c {
     /* slot 19 (OnTurnIntoEgg) is not declared here -- see the class comment.
        It stays src/func_ov084_0212b344.cpp, an un-migrated free function. */
     int OnAimedAtWithEgg();                     /* slot 29 */
+
+    void func_ov084_0212a580();
+    void func_ov084_0212aab0();
 };
 
 #ifndef SM64DS_PLATFORM_PC

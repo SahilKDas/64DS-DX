@@ -151,3 +151,19 @@ int daObjFire_c::Behavior()
     mdCcAc_c.Update();
     return 1;
 }
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN11daObjFire_cD0Ev, 0x020b5764, size 0x44 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN11daObjFire_cD0Ev
+/* Deleting destructor, vtable slot 17. No body here: the destructor is inline in
+ * include/daObjFire_c.h, which is what makes mwccarm emit exactly the retail
+ * D1/D0 pair in retail order and no D2. dActor_c's inline operator delete
+ * supplies the actor-heap release after complete destruction. */
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 0 -- _ZN11daObjFire_cD1Ev, 0x020b5734, size 0x30 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN11daObjFire_cD1Ev
+/* Complete destructor, vtable slot 16. No body here either -- same inline header
+ * definition. The only member with a destructor is the dCcAc_c collider, and it
+ * is destroyed before the dActor_c base. */

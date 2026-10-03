@@ -18,7 +18,7 @@ run. That structure is still legible in the ROM, and three workstreams want it:
   not retain some multi-function destructor output. Production TU support now
   exists; measure the candidate's emitted code/data and current tool restrictions
   instead of treating the old zero-enrollment census as a current blocker.
-* **A production TU can contain several classes.** MontyMole and MontyMoleRock
+* **A production TU can contain several classes.** daChoropu_c and daChoro_Rock_c
   provide a co-residence example. Preserve the evidenced boundary for promotion;
   an explicitly scoped method conversion or fix can still ship independently.
 * **`static` decisions during langmode conversion** want the file-locality evidence.
@@ -36,16 +36,16 @@ daRNk_c, daRFlag_c and Klepto really do sit in five contiguous runs.
 **interleaved in source order**, not grouped by class:
 
 ```sh
-_ZN9MontyMoleD1Ev                 _ZN9MontyMoleD0Ev
-_ZN13MontyMoleRockD1Ev            _ZN13MontyMoleRockD0Ev
-_ZN9MontyMole16CleanupResourcesEv _ZN13MontyMoleRock16CleanupResourcesEv
-_ZN9MontyMole6RenderEv            _ZN13MontyMoleRock6RenderEv
-_ZN9MontyMole8BehaviorEv          _ZN13MontyMoleRock8BehaviorEv
+_ZN11daChoropu_cD1Ev                 _ZN11daChoropu_cD0Ev
+_ZN14daChoro_Rock_cD1Ev              _ZN14daChoro_Rock_cD0Ev
+_ZN11daChoropu_c16CleanupResourcesEv _ZN14daChoro_Rock_c16CleanupResourcesEv
+_ZN11daChoropu_c6RenderEv            _ZN14daChoro_Rock_c6RenderEv
+_ZN11daChoropu_c8BehaviorEv          _ZN14daChoro_Rock_c8BehaviorEv
 MontyMoleRock_Spawn               MontyMole_Spawn
 ```
 
 A name-change detector turns [ov080](../config/arm9/overlays/ov080/symbols.txt)'s three TUs into thirteen. [ov020](../config/arm9/overlays/ov020/symbols.txt)
-(BookShot/BookShotSpawner) and [ov063](../config/arm9/overlays/ov063/symbols.txt) (Boo/BooCage/BigBooIcon) interleave the same way.
+(daBook_c/daBookGen_c) and [ov063](../config/arm9/overlays/ov063/symbols.txt) (Boo/BooCage/BigBooIcon) interleave the same way.
 
 ## The rule that works
 
@@ -55,7 +55,7 @@ Treat a class as an **interval**, not a block:
 
 Forced by the linker, not a heuristic: a TU is contiguous, so if two classes were
 separate objects one object's run would have to sit inside the other's. Union-find
-over that relation collapses MontyMole+MontyMoleRock automatically and leaves daHolhei_c
+over that relation collapses daChoropu_c+daChoro_Rock_c automatically and leaves daHolhei_c
 and Koopa apart, with no "how interleaved is too interleaved" threshold to tune.
 
 ## Two label sources, and why they are not equal
@@ -71,7 +71,7 @@ and Koopa apart, with no "how interleaved is too interleaved" threshold to tune.
 **RTTI may extend or create a cluster; it may never bridge two symbol clusters.**
 Gate V2b found this rather than foresight. [ov081](../config/arm9/overlays/ov081/symbols.txt):
 ```sh
-MrBlizzard    0x2124090-0x2125f14
+daSnowman_c    0x2124090-0x2125f14
 Snowball      0x2125f14-0x2126504   abuts exactly — two TUs
 daSnowman_c   0x2125eb8-0x21261d4   RTTI span straddles the boundary
 ```
@@ -232,19 +232,22 @@ so `daDossyCap_c_classInit` is inside the unit but so is a second class's.
 The unit is 0x02117f40..0x021196d8 — 29 functions, 3 classes — which is what
 `notes/data/tu-promotion-queue.tsv` already calls `daDossy_c+DorriePlatform+daDossyCap_c`.
 
-Two blockers on that unit, independent of each other:
+The unit is now promoted as one file, `src/actors/daDossy_c.cpp` (29/29; its manifest entry is
+`ov065/DorriePlatform+daDossyCap_c+daDossy_c`). The two blockers
+this section used to list, and how each resolved:
 
-* **`DorriePlatform` is still a coined name.** The ROM's own RTTI spells the main class
+* **`DorriePlatform` is a coined name.** The ROM's own RTTI spells the main class
   `daDossy_c` (`_ZTS9daDossy_c` 0x0211cd34, `_ZTI9daDossy_c` 0x0211cd40, vtable 0x0211ce48),
-  and that rename has since landed: the overlay's symbols and
-  `notes/data/tu-promotion-queue.tsv` both spell it `daDossy_c` now, so it is no longer a
-  prerequisite. `DorriePlatform` has no RTTI at all, so there is no ROM spelling to rename
-  it to, and it still blocks the fold.
-* **The generated shadow does not compile.** `tubuild create` on the real candidate emits 17
-  human-review items — 16 conflicting `extern` declarations plus one body it cannot split at
-  all, because `src/func_ov065_021182e4.cpp` defines it inside an `extern "C"` block — and the
-  result fails under 2004/b56 on a redefined `dBgW` and a redeclared `data_ov065_0211c080`.
-  Five `#pragma` directives survive in the legacy sources on top of that.
+  and that rename landed first. `DorriePlatform` has no RTTI at all (no virtuals), so there is
+  no ROM spelling to rename it to — and for the same reason its name reaches no emitted
+  RTTI or vtable, so it did not block the fold after all.
+* **The generated shadow did not compile.** `tubuild create` on the candidate emitted 17
+  human-review items — 16 conflicting `extern` declarations plus one body it could not split,
+  because the legacy `func_ov065_021182e4` source defined it inside an `extern "C"` block —
+  and failed under 2004/b56 on a redefined `dBgW` and a redeclared `data_ov065_0211c080`. The
+  promoted file was written by hand with one unified declaration set; of the legacy
+  `#pragma` directives only `opt_common_subs off` and `opt_strength_reduction off` survive,
+  file-wide.
 
 The general lesson: a complete, correctly-homed RTTI triple says the *name* is real. It says
 nothing about where the *file* boundary falls. Check the span for overlap before scoping a fold.

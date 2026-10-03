@@ -33,7 +33,7 @@ collision object's `Clear` and `Update` methods directly. These replacements
 remove six manually spelled mangled declarations across the two methods.
 No headers, member layouts, metadata, enrollment, or attribution entries change.
 
-ROM scope is ov090, Behavior at `0x02132c94` (420 bytes) and InitResources at
+ROM scope is [ov090](../../../config/arm9/overlays/ov090/symbols.txt), `Behavior` at `0x02132c94` (420 bytes) and `InitResources` at
 `0x02132e38` (432 bytes), ending at `0x02132fe8`. This is a source-interface
 repair to existing matched methods, not a new match or a complete class recovery.
 
@@ -44,9 +44,9 @@ repair to existing matched methods, not a new match or a complete class recovery
 - `PATHPTR-2729-02` (reconstruction): the six unnecessary loader/model/collision
   aliases identified in these two methods are removed. The separate collision
   initialization bridge remains and is recorded below.
-- `PATHPTR-2729-03` (reconstruction): Behavior still uses `C3`/`Obj` shadow types
+- `PATHPTR-2729-03` (reconstruction): `Behavior` still uses `C3`/`Obj` shadow types
   for its state callback. The Manta portion is tracked in issue #2750, owned by
-  `codex-integrator-0918` for a separately claimed continuation. The daShark_c
+  `codex-integrator-0918` for a separately claimed continuation. The `daShark_c`
   observation from the broader #2729 review is outside this repair and is not
   closed by it.
 - `PATHPTR-2729-04` (reconstruction): raw path/node reinterpretations, vector
@@ -91,12 +91,12 @@ is required for this narrow change. Private PR validation remains pending.
 ## Independent review rework
 
 The first candidate was rejected for two additional retained return-contract
-errors. `PATHPTR-2729-05` identified that `func_ov090_02132ac4` returns `int`,
+errors. `PATHPTR-2729-05` identified that [func_ov090_02132ac4](../../../src/actors/daManta_c.cpp)(ROM Ordinal 5) returns `int`,
 not `void`; `PATHPTR-2729-06` identified the same mistake for
 `ApproachLinear(short&, short, short)`. Both callers discard the return value,
 which is why byte equality alone did not reveal either incorrect declaration.
 This revision corrects both declarations to match their definitions. It also
-restores the `char*` parameter of `func_ov090_02132b14` and the const input
+restores the `char*` parameter of [func_ov090_02132b14](../../../src/actors/daManta_c.cpp)(ROM Ordinal 6) and the const input
 pointers of the two vector-angle helpers. Fresh committed-candidate results
 belong to the separate rework verification evidence. The initial review and its
 findings remain in the queue history; the first candidate was not accepted.

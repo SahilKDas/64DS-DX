@@ -2,9 +2,9 @@
  * _ZTI13daObjBlockS_c (0x0213c4d4), whose name string at 0x0213c500 is
  * "13daObjBlockS_c". The tree used to spell the class Crate.
  *
- * SIZE 0x608, the literal daObjBlockS_c_classInit (src/d_a_obj_block_s.cpp) passes to
+ * SIZE 0x608, the literal daObjBlockS_c_classInit (src/actors/daObjBlockS_c.cpp) passes to
  * fBase_c::operator new. dBgActor_c ends 0x320; everything from there down is
- * this class's own, confirmed by _ZN13daObjBlockS_cD1Ev.cpp destroying
+ * this class's own, confirmed by the destructor (D1) destroying
  * dCcAcPos_c x2, ShadowModel and dBgCh_Actr in reverse before
  * storing _ZTV10dBgActor_c (inlined) and chaining to dActor_c.
  *

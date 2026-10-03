@@ -239,3 +239,38 @@ void func_ov002_020b0a0c(daChScene_c *self)
     }
 }
 }
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 1 -- _ZN11daChScene_cD0Ev, 0x020b09d4, size 0x38 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN11daChScene_cD0Ev
+/* recovered: real C++ deleting destructor -- the compiler emits the whole body
+ *
+ * D0 destroys through this class and its bases, then returns the object to its
+ * heap; the deallocation is dActor_c's inline `operator delete`, which is why
+ * nothing here mentions a heap. Nobody writes that body -- declaring the
+ * destructor is enough.
+ *
+ * Deleted here twice over. The legacy file carried a hand-written mangled-name
+ * D0 free function, which next to a real out-of-line D1 in the same TU is an
+ * mwcc internal compiler error (ELFgen.c:483), confirmed on
+ * InvisiblePole/daCamTag_c/daChRoom_c; and the out-of-line D1 it sat beside is
+ * now gone too, into the class body. With the destructor inline, mwcc emits
+ * exactly D1 then D0 and no D2 -- the ROM's shape -- so both variants are
+ * licensed functions of this TU and neither needs a deadstrip policy row. */
+
+/* -------------------------------------------------------------------------- */
+/* ROM ordinal 0 -- _ZN11daChScene_cD1Ev, 0x020b09b0, size 0x24 */
+/* -------------------------------------------------------------------------- */
+// @symbol _ZN11daChScene_cD1Ev
+/* recovered: real C++ destructor -- the compiler emits the whole body
+ *
+ * One vptr store and the base chain's own destruction, every bit of it a
+ * consequence of `struct daChScene_c : dActor_c`. This class adds no member
+ * with a destructor of its own; Matrix4x3 is a plain aggregate.
+ *
+ * The destructor body lives in the class declaration in
+ * include/daChScene_c.h. Out of line here, mwcc emitted D2, D0, D1; the ROM
+ * has D1 at 0x020b09b0 then D0 at 0x020b09d4 and no D2, and production
+ * isolation places .text into the spanning delink in emission order, so the
+ * out-of-line spelling fails linkcheck even with every byte matching. Inline
+ * in the class body it emits D1, D0 and no D2. */

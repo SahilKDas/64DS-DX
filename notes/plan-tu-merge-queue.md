@@ -64,7 +64,7 @@ it lose it. Both directions are live. Affected Tier 1:
 |---|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)/`daObjWc_Obj02_c(1/9)`  [ov029](../config/arm9/overlays/ov029/symbols.txt)/`daObjWc_Obj05_c(1/9)`  [ov029](../config/arm9/overlays/ov029/symbols.txt)/`daObjWc_Obj07_c(1/5)` |
 |[ov014](../config/arm9/overlays/ov014/symbols.txt)/`daObjBSwdoor_c(1/6)` [ov030](../config/arm9/overlays/ov030/symbols.txt)/`daObjHmMaruta_c(3/6)` [ov063](../config/arm9/overlays/ov063/symbols.txt)/`daObjTh_Fall_Block_c(2/5)` |
-|[ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Fall_Block_c(2/5)` [ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Ukisima_c(1/5)` [ov022](../config/arm9/overlays/ov022/symbols.txt)/`RotatingPlatformLll(1/5)` |
+|[ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Fall_Block_c(2/5)` [ov015](../config/arm9/overlays/ov015/symbols.txt)/`daObjBk_Ukisima_c(1/5)` [ov022](../config/arm9/overlays/ov022/symbols.txt)/`daObjFl_Koma_D_c(1/5)` |
 |[ov036](../config/arm9/overlays/ov036/symbols.txt)/`RotatingPlatformRr(1/5)` [ov064](../config/arm9/overlays/ov064/symbols.txt)/`TiltingPlatformLll(2/5)` [ov016](../config/arm9/overlays/ov016/symbols.txt)/`FloatOnWaterPlatformJrb(1/4)` |
 
 
@@ -286,7 +286,7 @@ first module where a `config_tu/` conversion becomes conceivable.
 |[ov015](../config/arm9/overlays/ov015/symbols.txt)| 0x2112bd0|  n=5|    `daObjBk_Ukisima_c`|       1/5|
 |[ov015](../config/arm9/overlays/ov015/symbols.txt)| 0x2112cf4|  n=5|    `daObjBk_Fall_Block_c`|              2/5  pcov=3|
 |[ov016](../config/arm9/overlays/ov016/symbols.txt)| 0x2112ef4|  n=4|    `FloatOnWaterPlatformJrb`|  1/4|
-|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21115a8|  n=5|    `RotatingPlatformLll`|      1/5|
+|[ov022](../config/arm9/overlays/ov022/symbols.txt)| 0x21115a8|  n=5|    `daObjFl_Koma_D_c`|      1/5|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x211137c|  n=9|    `daObjWc_Obj02_c`|                1/9  CONF2|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x2111ac4|  n=9|    `daObjWc_Obj05_c`|                 1/9  NORM1|
 |[ov029](../config/arm9/overlays/ov029/symbols.txt)| 0x2112080|  n=5|    `daObjWc_Obj07_c`|          1/5  pcov=3|
@@ -624,7 +624,7 @@ reorder: run B1–B9 (no normalizer needed) and hold B10–B11.
 ## 5. The Tier 2 campaign — 73 TUs / 1,338 files / net −1,265 / 40,621 lines
 
 Sizes: 31 TUs at 10–14 members, 11 at 15–19, 18 at 20–24, **13 at 25+** (largest:
-[ov081](../config/arm9/overlays/ov081/symbols.txt)/`MrBlizzard` 35, [ov102](../config/arm9/overlays/ov102/symbols.txt)/`BobOmb` 35, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`daTgz_c` 34, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`daJgm_c` 32,
+[ov081](../config/arm9/overlays/ov081/symbols.txt)/`daSnowman_c` 35, [ov102](../config/arm9/overlays/ov102/symbols.txt)/`BobOmb` 35, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`daTgz_c` 34, [ov077](../config/arm9/overlays/ov077/symbols.txt)/`daJgm_c` 32,
 [ov085](../config/arm9/overlays/ov085/symbols.txt)/`daMip_c` 32). 18 are multi-class. 48 of 73 need the normalizer.
 
 ### 5.1 Greedy admission
@@ -707,7 +707,7 @@ wall clock, then decide whether Tier 2 is a campaign or a backlog. Second-best p
 [ov094](../config/arm9/overlays/ov094/symbols.txt)/`HootTheOwl` (22 files, whole-module, corroborated) — but `pcov=0`, so it confounds
 language with admission.
 
-## 6. Deferred-but-recoverable: [ov063](../config/arm9/overlays/ov063/symbols.txt) Boo (94) and [ov060](../config/arm9/overlays/ov060/symbols.txt) Bowser (80)
+## 6. Deferred-but-recoverable: [ov063](../config/arm9/overlays/ov063/symbols.txt) Boo (94) and [ov060](../config/arm9/overlays/ov060/symbols.txt) daKpa_c (80)
 
 Neither is "blocked only by pragmas/incomplete members".
 
@@ -716,20 +716,21 @@ Per `tubuild.py inspect` (authoritative over the census): **6 functions without
 `complete`**, of which **3 have no legacy source at all** — [func_ov063_021166ac](../config/arm9/overlays/ov063/symbols.txt),
 [func_ov063_02117cdc](../config/arm9/overlays/ov063/symbols.txt), `_ZN3Boo6RenderEv`/`_ZN3Boo8BehaviorEv`/`_ZN3Boo13InitResourcesEv`
 region. Boo has no legacy source anywhere and no directory of its own; the nearest
-named relatives are `src/game/actors/daTrs_c` and `src/game/actors/daTBasket_c`.
+named relatives were the `daTrs_c` and `daTBasket_c` shard directories under
+`src/game/actors/`. (Since promoted as one TU: [src/actors/daTrs_c.cpp](../src/actors/daTrs_c.cpp).)
 3 members carry `opt_propagation off` / `opt_common_subs off` / `optimize_for_size on`.
 **Swallower: 97 functions, 69% of [ov063](../config/arm9/overlays/ov063/symbols.txt)**, carrying 4 class labels, **3 separate vtables**
 (`_ZTV3Boo`, `_ZTV7BooCage`, `_ZTV10BigBooIcon`) and 3 destructor pairs. 94 members is
 9.4× the cliff.
 
-**[ov060](../config/arm9/overlays/ov060/symbols.txt) — `Bowser+BowserTail`, `.text 0x2111900..0x2116484`, 80 files.**
+**[ov060](../config/arm9/overlays/ov060/symbols.txt) — `daKpa_c+daKpaTail_c`, `.text 0x2111900..0x2116484`, 80 files.**
 **1 function with no legacy source** ([func_ov060_021140c0](../config/arm9/overlays/ov060/symbols.txt); the census said 0). 2 members
 carry `opt_common_subs` / `opt_lifetimes`. **Swallower: 81 functions, 53% of [ov060](../config/arm9/overlays/ov060/symbols.txt).**
 3,181 lines, 15 includes.
 
 **What actually unblocks them**, in order:
 
-1. **Write the missing sources** (3 for Boo, 1 for Bowser). Without `complete`, dsd
+1. **Write the missing sources** (3 for Boo, 1 for daKpa_c). Without `complete`, dsd
    supplies the range from ROM bytes and your source is never compiled — a merge over
    them proves nothing. Ordinary matching work, not merge work.
 2. **Resolve the swallower.** A 94-function run spanning 69% of a module with 4 class
@@ -809,7 +810,7 @@ builds**, for −567 files (5.1% of `src/`).
 Tier 2 whole: unmeasurable until the daOnms_c probe returns. Lower bound ~1,338 compiles for
 one linear pass, ~2,700 with the retry, plus reconcile on 40,621 lines — **plausibly
 2.5–4× Tier 1's effort for 2.2× the files**, with partial results that cost more to
-review. [ov081](../config/arm9/overlays/ov081/symbols.txt)/`MrBlizzard` (35 members, 1,416 lines, 17 local-struct files, 9 normalizer
+review. [ov081](../config/arm9/overlays/ov081/symbols.txt)/`daSnowman_c` (35 members, 1,416 lines, 17 local-struct files, 9 normalizer
 files) is the worst single unit; budget it in hours, alone.
 
 **Bounding the commitment:** B0 + Pilot 1 is ~1 hour and settles whether the toolchain and

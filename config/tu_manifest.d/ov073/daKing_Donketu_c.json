@@ -8,13 +8,15 @@
   "boundary_evidence": [
     "contiguous linker run: 0x211f000..0x2121ec8, 46 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daKing_Donketu_c",
-    "module sinit corroboration: 2 sinit(s) / 2 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 2 sinit(s) / 2 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "WIDENED to the whole tu_map unit 0x0211f000..0x02121ec8 (46 functions): Behavior (0x021218a0, 0x42c), InitResources (0x02121ccc, 0x1f4) and OnAimedAtWithEgg (0x02121ec0, 0x8) folded in above Render, in ROM-ascending order under the file's existing `#pragma defer_codegen off`. The right edge was then the unit's own; the abutting factory daKing_Donketu_c_classInit was folded in by the 0930c classInit fold (below).",
+    "classInit fold (0930c): the KING_DONKETU registry factory daKing_Donketu_c_classInit (0x02121ec8, 0xc8) abuts the tu_map unit's end 0x02121ec8 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range 0x0211f000..0x02121f90 (47 functions) ends where the daObjEwbIce_c TU (src/actors/daObjEwbIce_c.cpp) begins."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x0211f000",
-      "end": "0x021218a0"
+      "end": "0x02121f90"
     }
   ],
   "functions": [
@@ -318,6 +320,34 @@
       "size": "0x00000030",
       "legacy_source": "src/_ZN16daKing_Donketu_c6RenderEv.cpp",
       "ordinal": 42
+    },
+    {
+      "symbol": "_ZN16daKing_Donketu_c8BehaviorEv",
+      "address": "0x021218a0",
+      "size": "0x0000042c",
+      "legacy_source": "src/_ZN16daKing_Donketu_c8BehaviorEv.cpp",
+      "ordinal": 43
+    },
+    {
+      "symbol": "_ZN16daKing_Donketu_c13InitResourcesEv",
+      "address": "0x02121ccc",
+      "size": "0x000001f4",
+      "legacy_source": "src/_ZN16daKing_Donketu_c13InitResourcesEv.cpp",
+      "ordinal": 44
+    },
+    {
+      "symbol": "_ZN16daKing_Donketu_c16OnAimedAtWithEggEv",
+      "address": "0x02121ec0",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN16daKing_Donketu_c16OnAimedAtWithEggEv.cpp",
+      "ordinal": 45
+    },
+    {
+      "symbol": "daKing_Donketu_c_classInit",
+      "address": "0x02121ec8",
+      "size": "0x000000c8",
+      "legacy_source": "src/d_a_king_donketu.cpp",
+      "ordinal": 46
     }
   ],
   "data": [],
@@ -455,7 +485,9 @@
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('typedef', 'Vec3') differs between the legacy file that used to hold func_ov073_0211f494 and the one that held func_ov073_021215cc; kept the first, the other is commented out for review RESOLVED: one spelling survives -- `typedef struct { int x, y, z; } Vec3;` declared once near the top of src/actors/daKing_Donketu_c.cpp and used by every member that wanted a POD triple rather than types.h's Vector3. The func_ov073_021215cc variant was dropped, not commented out, so no marker remains.",
     "tubuild create warning (RESOLVED): CONFLICT: local declaration ('struct', 'C') differs between the legacy file that used to hold func_ov073_02120c7c and the one that held _ZN16daKing_Donketu_c8BehaviorEv; kept the first, the other is commented out for review RESOLVED, and by exclusion rather than by merge. _ZN16daKing_Donketu_c8BehaviorEv is NOT part of this fold -- it stays in its own shard above the opt_propagation split -- so its `struct C` never entered the TU. The surviving declaration is func_ov073_02120c7c's side of the pair, kept COMPLETE (`struct C { char pad[0x37c]; PMF *pp; };`) because mwccarm 2004/b56 picks its pointer-to-member representation from the completeness of the class. That shard's own field-offset view of the same object keeps its offsets under the distinct name `struct CB`.",
     "PROMOTION IS REFUSED BY tools/tubuild.py promote --dry-run, and the TU is banked text-verified rather than promoted. The two printed reasons are 'manifest status is not link-verified or data-verified' and 'the promotion-ready status is not the recorded linkcheck result'. The recorded result is `scratch-link-verified`, which promotion_refusals() can never accept: it demands status in (link-verified, data-verified) AND linkcheck.result == status, while classify_link_result() returns the `scratch-` prefix whenever the compiler-only policy rewrites the object before the link -- which it does for every key-function TU, this one included (it deadstrips _ZN16daKing_Donketu_cD2Ev, _ZN7Vector3D1Ev and eleven typeinfo/vtable records). Census of config/tu_manifest.d on this tree: 213 manifests, 182 promoted, 169 of those carrying compiler_only_output, 80 promoted entries recording exactly this `scratch-*` result, and only 2 entries in the whole tree satisfying status == recorded result -- neither of them promoted. cmd_promote also has no mutating path at all: anything but --dry-run exits 2. The refusal is therefore structural to the gate, not a defect in this TU, and clearing it is a tools change that belongs in its own review.",
-    "PROMOTED ON THIS BRANCH, BY HAND, FOLLOWING THE DRY RUN'S OWN PLAN: src_tu/actors/daKing_Donketu_c.cpp moved to src/actors/daKing_Donketu_c.cpp, the 43 superseded one-function sources deleted, and config/arm9/overlays/ov073/delinks.txt's 43 `complete` entries replaced by a single `complete` .text claim 0x0211f000..0x021218a0. Before the edit both invariants were asserted against HEAD: the 43 removed entries tiled that span with no gap and no overlap, and their path set equalled this manifest's functions[].legacy_source exactly. `status` is deliberately left at text-verified -- tools/tubuild.py promote still refuses this entry for the two structural reasons recorded above, and the verification level actually reached is the one banked. notes/data/tu-promotion-queue.tsv therefore keeps already_promoted = no, which is the value tools/queue_audit.py --check-promoted wants for any status other than exactly `promoted`, and which is independently correct here because this is a PARTIAL fold: 43 of the unit's 47 functions. Behavior, InitResources, OnAimedAtWithEgg and daKing_Donketu_c_classInit keep their own shards and their own delinks.txt entries -- see the source file's header for the opt_propagation measurement that splits the unit there."
+    "PROMOTED ON THIS BRANCH, BY HAND, FOLLOWING THE DRY RUN'S OWN PLAN: src_tu/actors/daKing_Donketu_c.cpp moved to src/actors/daKing_Donketu_c.cpp, the 43 superseded one-function sources deleted, and config/arm9/overlays/ov073/delinks.txt's 43 `complete` entries replaced by a single `complete` .text claim 0x0211f000..0x021218a0. Before the edit both invariants were asserted against HEAD: the 43 removed entries tiled that span with no gap and no overlap, and their path set equalled this manifest's functions[].legacy_source exactly. `status` is deliberately left at text-verified -- tools/tubuild.py promote still refuses this entry for the two structural reasons recorded above, and the verification level actually reached is the one banked. notes/data/tu-promotion-queue.tsv therefore keeps already_promoted = no, which is the value tools/queue_audit.py --check-promoted wants for any status other than exactly `promoted`, and which is independently correct here because this is a PARTIAL fold: 43 of the unit's 47 functions. Behavior, InitResources, OnAimedAtWithEgg and daKing_Donketu_c_classInit keep their own shards and their own delinks.txt entries -- see the source file's header for the opt_propagation measurement that splits the unit there.",
+    "WIDEN 2026-09-28: the opt_propagation split is closed. Behavior's shard carried a file-scope `#pragma opt_propagation off`; at file scope in this TU it costs eight members (measured: 0211f2c0, 0211f494, 0211fa74, 021203ac, 02120d80, 0212128c, 021215cc and InitResources DIFF, 38/46). Because this TU already runs with `#pragma defer_codegen off`, a positional bracket binds: `#pragma push` / `opt_propagation off` directly above Behavior and `#pragma pop` after it gives 46/46 MATCH, objisolate clean, reloc-destinations clean. ONE placement detail is load-bearing and was measured both ways: the pop must not directly follow Behavior's closing brace. With the pop (or an `opt_propagation on`) immediately after the `}`, Behavior comes out DIFF (0x428 vs 0x42c with the propagated constant 0x2000 and a re-loaded &data_020a0e68 instead of the retail register copies) because the directive is read as lookahead before Behavior is generated; with no closing directive at all Behavior matches and InitResources DIFFs. Putting InitResources' extern declarations between Behavior and the pop keeps it clear. The three shards src/_ZN16daKing_Donketu_c8BehaviorEv.cpp, src/_ZN16daKing_Donketu_c13InitResourcesEv.cpp and src/_ZN16daKing_Donketu_c16OnAimedAtWithEggEv.cpp are retired and their delinks entries merged into this TU's single .text claim. Their declarations were reconciled onto the TU's existing spellings (BCA_File*[2] globals cast to SharedFilePtr* at the Animation/Model LoadFile calls, data_ov073_02123330 passed as (PMF *) as every other ChangeState call site here does, HugeLandingDustAt called as the dActor_c member the TU already uses); none moved a byte. Behavior adds one homeless compiler-only symbol, _ZN9RayParamsD1Ev, licensed as plain deadstrip.",
+    "classInit fold (0930c): daKing_Donketu_c_classInit is folded in last, in ROM order, under the file's `#pragma defer_codegen off`. `return new daKing_Donketu_c();` was tried first and DIFFs: types.h's Vector3 has no user-declared constructor, so the synthesized constructor omits the cartridge's three __cxa_vec_ctor(..., func_0203d384, _ZN7Vector3D1Ev) calls over mWaypointsA (0x3e8, 8), mWaypointsB (0x448, 8) and unk_4d4 (0x4d4, 2) -- the same wall the ov095/daObjFlamethrower_c fold measured. The factory therefore keeps the retired source's hand-built sequence verbatim (operator new(sizeof = 0x504), dEnemyBase_c C2, vtable store, dCcAcPos_c / dBgCh_Actr / BlendModelAnim / ShadowModel C1, three __cxa_vec_ctor), with one change the merge requires: this TU is the key-function TU and defines _ZTV16daKing_Donketu_c at the start of the vtable object, so the store reads `&_ZTV16daKing_Donketu_c[2]` (declared `extern int[]` at namespace scope) instead of the loose file's address-point reference. The ABI-seam externs sit in the file's top extern \"C\" block, above the first @symbol marker; __cxa_vec_ctor is declared with the definition's (void *, unsigned int, unsigned int, ctor, dtor) spelling, so the retired file's banked declaration-agreement row is dropped rather than re-keyed. No new compiler-only output. tubuild verify: 47/47 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_king_donketu.cpp; its credit carries in attribution.json as a path#symbol override."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
@@ -463,29 +495,24 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov073-daKing_Donketu_c/daKing_Donketu_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 43,
-    "functions_declared": 43,
+    "functions_matched": 47,
+    "functions_declared": 47,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN16daKing_Donketu_cD2Ev",
-        "_ZN7Vector3D1Ev"
+        "_ZN7Vector3D1Ev",
+        "_ZN9RayParamsD1Ev"
       ],
       "deadstripped": [
         "_ZN16daKing_Donketu_cD2Ev",
-        "_ZN7Vector3D1Ev"
+        "_ZN7Vector3D1Ev",
+        "_ZN9RayParamsD1Ev"
       ],
       "droppedSections": [
         9,
         10,
         11,
-        83,
-        84,
         85,
-        86,
-        87,
-        88,
-        89,
-        90,
         91,
         92,
         93,
@@ -494,7 +521,15 @@
         96,
         97,
         98,
-        99
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107
       ],
       "data": [
         "_ZTI16daKing_Donketu_c",
@@ -614,6 +649,11 @@
       "symbol": "_ZN7Vector3D1Ev",
       "disposition": "deadstrip-duplicate",
       "reason": "Vector3 is deliberately non-POD in include/types.h (it declares a destructor), so every TU that has a Vector3 local emits its own vague copy of that destructor. The cartridge's canonical copy is arm9 0x020072c0, kind:function(arm,size=0x4) in config/arm9/symbols.txt, owned by another source -- so this is a duplicate body with a real ROM home, not compiler-only output with none. rombuild proves the body against the cartridge before discarding it; this scratch path only links."
+    },
+    {
+      "symbol": "_ZN9RayParamsD1Ev",
+      "disposition": "deadstrip",
+      "reason": "Homeless. RayParams is Behavior's file-local bundle of four Vector3 triples for the ground ray; Vector3 is deliberately non-POD in include/types.h (it declares a destructor), so RayParams gets an implicit destructor and mwccarm emits a vague out-of-line copy of it (size 0x4, a bare return). Behavior never calls it -- tubuild verify's reloc-destination audit is clean over Behavior's whole body -- and _ZN9RayParamsD1Ev appears in no symbols.txt and no delinks.txt anywhere in the tree, so it has no ROM home: plain deadstrip, not deadstrip-duplicate. The one-function shard this TU absorbed emitted the same symbol."
     },
     {
       "symbol": "_ZTI16daKing_Donketu_c",

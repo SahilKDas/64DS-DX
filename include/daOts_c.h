@@ -9,7 +9,7 @@
 #include "dBgCh_Actr.h"
 
 /* The shared base of the three Bully variants. The ROM's RTTI names it daOts_c and
- * gives it exactly three children: daDonketu_c (Bully), daBDonketu_c (BigBully) and
+ * gives it exactly three children: daDonketu_c, daBDonketu_c and
  * daIDonketu_c. All three ROM names are the tree's names too now; the coined
  * `ChillBully` this file used to gloss daIDonketu_c with is gone. The production name
  * daOts_c is kept, as #1400 did for
@@ -35,7 +35,7 @@
  *
  * The vtable is data_ov064_0211b768: the word before it is 0x021138bc, which is
  * _ZTI7daOts_c. (Reading that address out of the merged symbol table answers
- * `data_ov009_021138bc`, and the destructor answers `_ZN7ChuckyaD1Ev` -- ov062
+ * `data_ov009_021138bc`, and the destructor answers `_ZN10daHolhei_cD1Ev` -- ov062
  * through ov066 all load their .text at 0x02115ee0. Resolve inside ov064 or the
  * table will lie to you.)
  *
@@ -47,7 +47,7 @@
  *
  * 0x398..0x3f9 ARE WRITTEN by this class's helpers (state, pos snapshot, shadow
  * matrix, counters). They still stay the children's padding: annexing them would
- * grow this sizeof and force shrinking pad_398 on Bully, BigBully and
+ * grow this sizeof and force shrinking pad_398 on daDonketu_c, daBDonketu_c and
  * daIDonketu_c, which is out of this TU. Helpers reach those bytes as offset soup.
  */
 /* THE VTABLE, all 37 slots diffed against dEnemyBase_c's and against all three children's:
@@ -55,14 +55,14 @@
  *   slot 0  InitResources    LITERAL ZERO here -- pure virtual. All three children
  *   slot 6  Behavior         override both, which is why they must.
  *   slot 3  CleanupResources 0x02116ca0 in ALL FOUR tables, so it is this class's.
- *   slot 9  Render           0x02116cf0 here, in Bully and in daIDonketu_c; BigBully
+ *   slot 9  Render           0x02116cf0 here, in daDonketu_c and in daIDonketu_c; daBDonketu_c
  *                            is the only one that overrides it.
  *   slot 29 OnAimedAtWithEgg 0x02115f84 in all four, so also this class's.
  *   slot 16/17               the destructor pair, one per class.
  *
  * THE NAMING DEFECT THIS NOTE USED TO RECORD IS NOW FIXED. The tree called 0x02116ca0
- * and 0x02116cf0 `_ZN5Bully16CleanupResourcesEv` and `_ZN5Bully6RenderEv`; the table
- * above says they are daOts_c's, because Bully does not override either -- it inherits
+ * and 0x02116cf0 `_ZN11daDonketu_c16CleanupResourcesEv` and `_ZN11daDonketu_c6RenderEv`; the table
+ * above says they are daOts_c's, because daDonketu_c does not override either -- it inherits
  * them. Both are renamed, and so are the three placeholders: 0x02115f84 (which carried
  * a `daBDonketu_c::OnAimedAtWithEgg -- recovered from vtable slot identity` comment,
  * naming a BASE's method after a CHILD) and the destructor pair.
@@ -88,9 +88,9 @@ struct daOts_c : dEnemyBase_c {
     dBgCh_Actr        mWithMeshClsn;          /* 0x174 */
     /* Pointer to a per-variant config block (this TU casts it 16 times). All
        three children declare a field here, which is what makes it the base's
-       rather than any one of theirs. Bully::InitResources points it at
-       data_ov064_0211b834; daOts_c::CleanupResources (inherited by Bully)
-       releases five SharedFilePtrs through it. BigBully's own header called it
+       rather than any one of theirs. daDonketu_c::InitResources points it at
+       data_ov064_0211b834; daOts_c::CleanupResources (inherited by daDonketu_c)
+       releases five SharedFilePtrs through it. daBDonketu_c's own header called it
        a u8; two of the three call it a word, and the use above is a pointer, so
        a word it is. */
     s32                 mFileTable;             /* 0x330 */
@@ -108,18 +108,7 @@ struct daOts_c : dEnemyBase_c {
        does not have. Being inline also leaves this class without a key function, so
        merely including this header does not emit _ZTV7daOts_c. Same reasoning, same
        wording, as include/dBgActor_c.h. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daOts_c() {}   /* no slot */
-#else
-    virtual ~daOts_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daOts_c() {}
 
     /* The three slots this class owns outright, each named by the diff above rather
        than by any one child's source. InitResources and Behavior are the pure-virtual
@@ -152,6 +141,26 @@ struct daOts_c : dEnemyBase_c {
        whichever virtual was first and non-inline before is still first now. */
     virtual int InitResources() = 0;        /* slot  0 */
     virtual int Behavior() = 0;             /* slot  6 */
+
+    /* Non-virtual shared workers. All three children wrap these from the
+       pure-virtual InitResources / Behavior slots after their own preamble.
+       Class ownership is proven by this-pointer layout (ModelAnim 0x110,
+       dBgCh_Actr 0x174, mFileTable 0x330, dCcAc_c 0x33c, ShadowModel 0x370)
+       and by named daOts callees already in this TU. The English spellings
+       describe those call sites; the stripped image carries no original
+       method names. */
+    int InitResourcesCommon();
+    int BehaviorCommon();
+    void func_ov064_02115f98(char* a1);
+    int func_ov064_02116110(short step);
+    int func_ov064_0211616c();
+    void func_ov064_02116220();
+    void func_ov064_02116460();
+    int func_ov064_02116560();
+    void func_ov064_021165d8();
+    int func_ov064_021166f0();
+    void func_ov064_02116754();
+    void func_ov064_02116bac();
 };
 
 #ifndef SM64DS_PLATFORM_PC

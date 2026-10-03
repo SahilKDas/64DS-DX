@@ -37,15 +37,35 @@
 #include "dBgCh_Actr.h"
 
 struct daWater_Ring_c : dEnemyBase_c {
+    /* One state is two member-function pointers: init runs once, when
+       func_ov064_02119ecc installs the state, and execute runs every frame
+       from Behavior. The tables (0x0211c944, 0x0211c954, 0x10 each) are
+       filled in by the overlay's static initializer. */
+    struct State {
+        int (daWater_Ring_c::*init)();
+        int (daWater_Ring_c::*execute)();
+    };
+
     dCcAcPos_c    mdCcAcPos_c; /* 0x110 */
     dBgCh_Actr                 mWithMeshClsn;         /* 0x150 */
     Model                        mModel;                /* 0x30c */
     TextureTransformer           mTextureTransformer;   /* 0x35c */
-    u8                           unk_370;               /* 0x370 */
-    u8  pad_371[0xb];
+    const State                 *mState;                /* 0x370 */
+    /* Phase accumulators: each frame adds 0x1000 / 0x800, and the high bits
+       index the sine table for the scale wobble / the spin. */
+    s32                          unk_374;               /* 0x374 */
+    s32                          unk_378;               /* 0x378 */
+    /* param1 & 0xff, clamped to 0..2. 1 is the heal ring. */
     s32                          unk_37c;               /* 0x37c */
-    s8                           unk_380;               /* 0x380 */
-    u8  pad_381[0xf];
+    u8                           unk_380;               /* 0x380 -- opacity */
+    u8  pad_381[0x3];
+    s32                          unk_384;               /* 0x384 -- scale target */
+    /* The player's side of the ring, as HorzAngleToCPlayer's sign bit. */
+    s16                          unk_388;               /* 0x388 */
+    u8  pad_38a[0x2];
+    /* The actor that spawned this ring; stored by the spawner after
+       dActor_c::Spawn (daWater_Hakidasi_c for type 2). */
+    char                        *unk_38c;               /* 0x38c */
 
     /* --- vtable --- */
     virtual ~daWater_Ring_c();

@@ -4,123 +4,19 @@
     .ctor       start:0x02127f60 end:0x02127f6c kind:rodata align:4
     .data       start:0x02127f80 end:0x021283c0 kind:data align:32
     .bss        start:0x021283c0 end:0x02128860 kind:bss align:32
-src/_ZN9MontyMoleD1Ev.cpp:
+src/actors/daChoropu_c.cpp:
     complete
-    .text start:0x02123740 end:0x02123778
-
-src/_ZN9MontyMoleD0Ev.cpp:
-    complete
-    .text start:0x02123778 end:0x021237c4
-
-src/_ZN13MontyMoleRockD1Ev.cpp:
-    complete
-    .text start:0x021237c4 end:0x02123804
-
-src/_ZN13MontyMoleRockD0Ev.cpp:
-    complete
-    .text start:0x02123804 end:0x02123858
-
-src/_ZN9MontyMole16OnAimedAtWithEggEv.cpp:
-    complete
-    .text start:0x02123858 end:0x02123860
-
-src/func_ov080_02123860.c:
-    complete
-    .text start:0x02123860 end:0x02123924
-
-src/func_ov080_02123924.cpp:
-    complete
-    .text start:0x02123924 end:0x02123a34
-
-src/func_ov080_02123a34.cpp:
-    complete
-    .text start:0x02123a34 end:0x02123c24
-
-src/func_ov080_02123c24.c:
-    complete
-    .text start:0x02123c24 end:0x02123ecc
-
-src/func_ov080_02123ecc.cpp:
-    complete
-    .text start:0x02123ecc end:0x02123fcc
-
-src/func_ov080_02123fcc.cpp:
-    complete
-    .text start:0x02123fcc end:0x02124088
-
-src/func_ov080_02124088.cpp:
-    complete
-    .text start:0x02124088 end:0x02124208
-
-src/func_ov080_02124208.c:
-    complete
-    .text start:0x02124208 end:0x02124360
-
-src/func_ov080_02124360.c:
-    complete
-    .text start:0x02124360 end:0x021243d8
-
-src/func_ov080_021243d8.c:
-    complete
-    .text start:0x021243d8 end:0x02124418
-
-src/func_ov080_02124418.c:
-    complete
-    .text start:0x02124418 end:0x02124458
-
-src/_ZN9MontyMole16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02124458 end:0x021244b4
-
-src/_ZN13MontyMoleRock16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021244b4 end:0x021244d8
-
-src/_ZN9MontyMole6RenderEv.cpp:
-    complete
-    .text start:0x021244d8 end:0x02124500
-
-src/_ZN13MontyMoleRock6RenderEv.cpp:
-    complete
-    .text start:0x02124500 end:0x02124530
-
-src/_ZN9MontyMole8BehaviorEv.cpp:
-    complete
-    .text start:0x02124530 end:0x0212459c
-
-src/_ZN13MontyMoleRock8BehaviorEv.cpp:
-    complete
-    .text start:0x0212459c end:0x0212478c
-
-src/_ZN9MontyMole13InitResourcesEv.cpp:
-    complete
-    .text start:0x0212478c end:0x021248b4
-
-src/_ZN13MontyMoleRock13InitResourcesEv.cpp:
-    complete
-    .text start:0x021248b4 end:0x02124998
-
-src/d_a_choro_rock.c:
-    complete
-    .text start:0x02124998 end:0x021249e0
-
-src/d_a_choropu.c:
-    complete
-    .text start:0x021249e0 end:0x02124a20
+    .text start:0x02123740 end:0x02124a20
 
 src/actors/daBttBk_c.cpp:
     complete
-    .text start:0x02124a20 end:0x021253b4
+    .text start:0x02124a20 end:0x02125404
 
-src/d_a_btt_bk.c:
-    complete
-    .text start:0x021253b4 end:0x02125404
-
-src/_ZN8PaintingD1Ev.cpp:
+src/_ZN11daPicGate_cD1Ev.cpp:
     complete
     .text start:0x02125404 end:0x02125428
 
-src/_ZN8PaintingD0Ev.cpp:
+src/_ZN11daPicGate_cD0Ev.cpp:
     complete
     .text start:0x02125428 end:0x02125460
 
@@ -184,49 +80,9 @@ src/func_ov080_02126124.c:
     complete
     .text start:0x02126124 end:0x021261f4
 
-src/func_ov080_021264ec.c:
+src/actors/daPicGate_c.cpp:
     complete
-    .text start:0x021264ec end:0x021265ec
-
-src/func_ov080_021265ec.c:
-    complete
-    .text start:0x021265ec end:0x0212677c
-
-src/func_ov080_0212677c.c:
-    complete
-    .text start:0x0212677c end:0x021269b8
-
-src/func_ov080_021269b8.c:
-    complete
-    .text start:0x021269b8 end:0x02126a54
-
-src/func_ov080_02126a54.c:
-    complete
-    .text start:0x02126a54 end:0x02126bfc
-
-src/_ZN8Painting16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x02126bfc end:0x02126c1c
-
-src/_ZN8Painting16OnPendingDestroyEv.cpp:
-    complete
-    .text start:0x02126c1c end:0x02126c20
-
-src/_ZN8Painting6RenderEv.cpp:
-    complete
-    .text start:0x02126c20 end:0x02126c60
-
-src/_ZN8Painting8BehaviorEv.cpp:
-    complete
-    .text start:0x02126c60 end:0x02126ca0
-
-src/_ZN8Painting13InitResourcesEv.cpp:
-    complete
-    .text start:0x02126ca0 end:0x02126f8c
-
-src/d_a_pic_gate.c:
-    complete
-    .text start:0x02126f8c end:0x02126fbc
+    .text start:0x021264ec end:0x02126fbc
 
 src/_ZN13daObjMaruta_cD0Ev.cpp:
     complete

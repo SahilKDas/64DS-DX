@@ -35,6 +35,8 @@
 #include "dBgActor_c.h"
 #include "dBgCh_Actr.h"
 
+extern "C" void *_ZN7fBase_cnwEj(unsigned size);
+
 struct daObjRc_Tikuwa_c : dBgActor_c {
     u8 pad_31e[0x2];                 /* 0x31e -- dBgActor_c tail */
     dBgCh_Actr mWithMeshClsn;        /* 0x320 */
@@ -55,6 +57,13 @@ struct daObjRc_Tikuwa_c : dBgActor_c {
     virtual s32 Behavior();            /* slot 6 */
     virtual s32 Render();              /* slot 9 */
     virtual void OnPendingDestroy();   /* slot 12 -- empty body in the ROM */
+
+    /* Leaf adapter until fBase_c::operator new(size_t) lands.
+       `return new daObjRc_Tikuwa_c` then routes through the retail allocator,
+       which is the 0x4ec allocation the cartridge's factory makes. */
+    static void *operator new(size_t size) {
+        return _ZN7fBase_cnwEj((unsigned)size);
+    }
 };
 
 #ifndef SM64DS_PLATFORM_PC

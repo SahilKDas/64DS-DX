@@ -4,9 +4,10 @@
 #include "types.h"
 #include "dBgActor_c.h"
 
-/* Lethal Lava Land's rotating fire ring (registry profile FL_RING, actor 0xf3's
- * parent): a dBgActor_c that spins about Y, and on a timer spawns the flame
- * actor that rides it.
+/* Lethal Lava Land's rotating fire ring (registry profile FL_RING): a
+ * dBgActor_c that spins about Y and, while stopped, spawns actor 0xf3
+ * (OBJ_VOLCANO_CANNON, daObj_volcanoCannon_c), which keeps a pointer back to
+ * the ring.
  *
  * NAME: daObjFl_Ring_c is the cartridge's own RTTI spelling. _ZTS at ov022
  * 0x02113ce0 is the byte string "14daObjFl_Ring_c", and _ZTI at 0x02113cd4
@@ -37,7 +38,9 @@ struct daObjFl_Ring_c : dBgActor_c {
        0x021112ac), not proven semantics. */
     u8  mState;            /* 0x31e -- Behavior's own two-case switch */
     u8  mSpawnGuard;        /* 0x31f -- DecIfAbove0_Byte-gated once per spawn */
-    u8  mTriggered;        /* 0x320 -- read once, reset to 0 every Behavior call */
+    u8  mTriggered;        /* 0x320 -- read once, reset to 0 every Behavior call;
+                              the collision callback func_ov022_02111564 sets it
+                              (func_ov022_02111558 writes 1 to byte 0x320) */
     u8  pad_321[0x1];
     u16 mCooldown;          /* 0x322 -- DecIfAbove0_Short, gates the whole switch */
     u16 mSpawnCount;        /* 0x324 -- incremented once per actorID 0xf3 spawn */

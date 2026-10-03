@@ -1,7 +1,7 @@
 //cpp
-/* daDonketu_c -- the small Bully (DONKETU), ov064 0x02117070..0x02117444.
+/* daDonketu_c -- the small Bully (DONKETU), ov064 0x02117070..0x021174a0.
  *
- * One translation unit, ten functions, the way the cartridge's own build had
+ * One translation unit, eleven functions, the way the cartridge's own build had
  * it; the destructor is inline in include/daDonketu_c.h.
  *
  * daDonketu_c derives from daOts_c, the shared Bully base whose own promoted TU
@@ -33,8 +33,8 @@
  * D0 0x021170c4 and additionally deletes the homeless D2 that no module gives a
  * symbol to. All ten functions still byte-match either way.
  *
- * The factory is NOT in this TU. daDonketu_c_classInit begins at 0x02117444,
- * immediately past this entry's end, and keeps its own source.
+ * The registry factory daDonketu_c_classInit (0x02117444) is the last function,
+ * `new daDonketu_c()`; the unit is 0x02117070..0x021174a0, eleven functions.
  *
  * FUNCTION ORDER IS THE REVERSE OF THE ROM'S -- mwccarm 2004/b56 emits one
  * .text section per function in reverse source order, so the highest-address ROM
@@ -54,6 +54,18 @@ extern "C" {
 extern void func_0201267c(u32 soundID, const Vector3 *pos);
 extern int RandomIntInternal(int *seed);
 extern int data_0209e650;
+}
+
+/* ROM ordinal 10 -- daDonketu_c_classInit, 0x02117444, size 0x5c. Written
+ * first so reverse-order emission puts it last. Reconstructed source-style
+ * name: SM64DS proves daDonketu_c through RTTI, allocation size, vtable
+ * identity, and the DONKETU registry profile; later EAD lineage supplies
+ * classInit. Exact original spelling is not preserved. Historical alias:
+ * Bully_Spawn. */
+// @symbol daDonketu_c_classInit
+extern "C" daDonketu_c *daDonketu_c_classInit()
+{
+    return new daDonketu_c();
 }
 
 // @symbol _ZN11daDonketu_c13InitResourcesEv
@@ -136,7 +148,7 @@ int daDonketu_c::Behavior()
  * finally returns non-zero. */
 void daDonketu_c::UpdateDeathState()
 {
-    if (func_ov064_0211616c(this) == 0)
+    if (func_ov064_0211616c() == 0)
         return;
     int pz = mPosZ;
     int py = mPosY + 0x136000;
@@ -174,7 +186,7 @@ int daDonketu_c::UpdateRunState()
 {
     if (*(u16 *)&mStateTimer < 0xa) {
         mHorzSpeed = 0;
-        int result = func_ov064_02116110((char *)this, 0x700);
+        int result = func_ov064_02116110(0x700);
         if (result != 0)
             return result;
         u16 *timer = (u16 *)&mStateTimer;

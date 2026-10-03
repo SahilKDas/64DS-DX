@@ -105,7 +105,14 @@ learn_aggregates(REPO / "include" / "types.h")
 # dimension and left `[0x24];` dangling after what should have been the
 # terminating `;`, so the whole match failed. Capture every bracket group as
 # one blob instead and multiply the dimensions in ARR_DIMS below.
-DECL = re.compile(r"^\s*(?:(?:struct|union|class|enum)\s+)?((?:\w+::)*[A-Za-z_]\w*)\s*(\**)\s*(\w+)\s*"
+# `const State *mState;` -- a cv-qualifier on the field's type, before or after the
+# type name. It changes neither the size nor the alignment, so it is skipped rather
+# than read as the type: without this the field came back UNPARSED and the walk
+# stopped there (#3214, #3215, #3219, #3220). `\b` keeps `u32 const_value;` a field
+# named const_value.
+DECL = re.compile(r"^\s*(?:(?:const|volatile)\s+)*(?:(?:struct|union|class|enum)\s+)?"
+                  r"(?:(?:const|volatile)\s+)*((?:\w+::)*[A-Za-z_]\w*)\s*"
+                  r"(?:(?:const|volatile)\b\s*)*(\**)\s*(\w+)\s*"
                   r"((?:\[\s*(?:0x[0-9a-fA-F]+|\d+)\s*\])*)\s*;"
                   r"(?:\s*/\*\s*(0x[0-9a-fA-F]+))?")
 ARR_DIMS = re.compile(r"\[\s*(0x[0-9a-fA-F]+|\d+)\s*\]")

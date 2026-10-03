@@ -3,7 +3,8 @@
  * 0x13, 0x2e) -- item blocks, the star block, the switch-activated
  * block. Kill is a switchboard on actorID: coins, stars, particles,
  * then destroy, except the 0x13 block which the event bit re-enables.
- * Factories live outside this TU.
+ * The TU is ov002 0x020b35a0..0x020b415c, nineteen functions; it ends
+ * with the five per-profile registry factories, each `new daObjBlockL_c()`.
  *
  * Leftover: Particle::System::NewSimple, dActor_c::SpawnCoins and
  *   dBgActor_c::IsClsnInRangeOnScreen stay mangled (Fix12<int> by
@@ -565,4 +566,41 @@ int daObjBlockL_c::InitResources()
 
 ret1:
     return 1;
+}
+
+/* The five registry factories, one per spawn profile, in ROM order.
+ * Reconstructed source-style names: SM64DS proves daObjBlockL_c through
+ * RTTI, allocation size, vtable identity, and the BK_FUTA, BLOCK_LL,
+ * SW_BLOCK_L, DP_BLOCK_L and BLOCK_L registry profiles; later EAD lineage
+ * supplies classInit. Exact original spellings are not preserved.
+ * Historical aliases: FortressTowerWall_Spawn, BlackBrickBlock_Spawn,
+ * BrickBlockSwitchActivated_Spawn, BigBrickBlock_Spawn, BrickBlock_Spawn. */
+// @symbol daObjBlockL_c_classInit_BK_FUTA
+extern "C" daObjBlockL_c *daObjBlockL_c_classInit_BK_FUTA()
+{
+    return new daObjBlockL_c();
+}
+
+// @symbol daObjBlockL_c_classInit_BLOCK_LL
+extern "C" daObjBlockL_c *daObjBlockL_c_classInit_BLOCK_LL()
+{
+    return new daObjBlockL_c();
+}
+
+// @symbol daObjBlockL_c_classInit_SW_BLOCK_L
+extern "C" daObjBlockL_c *daObjBlockL_c_classInit_SW_BLOCK_L()
+{
+    return new daObjBlockL_c();
+}
+
+// @symbol daObjBlockL_c_classInit_DP_BLOCK_L
+extern "C" daObjBlockL_c *daObjBlockL_c_classInit_DP_BLOCK_L()
+{
+    return new daObjBlockL_c();
+}
+
+// @symbol daObjBlockL_c_classInit_BLOCK_L
+extern "C" daObjBlockL_c *daObjBlockL_c_classInit_BLOCK_L()
+{
+    return new daObjBlockL_c();
 }

@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x21116c8..0x2111888, 6 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daObjWlKoopaShutter_c",
-    "module sinit corroboration: 5 sinit(s) / 5 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 5 sinit(s) / 5 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold: the daObjWlKoopaShutter_c_classInit registry factory (profile WL_KOOPA_SHUTTER, historical alias BowserShutter_Spawn), 0x02111888..0x021118b8, abuts this TU's InitResources with no gap; tu_map leaves it unlabelled because it cuts on symbol name. Folded as `return new daObjWlKoopaShutter_c();` at the end of the file (defer_codegen off, source order). The unit is now 0x021116c8..0x021118b8, 7 functions, bounded above by daObjWlSubmarine_c's D1 at 0x021118b8 (src/actors/daObjWlSubmarine_c.cpp)."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x021116c8",
-      "end": "0x02111888"
+      "end": "0x021118b8"
     }
   ],
   "functions": [
@@ -59,6 +60,13 @@
       "size": "0x000000b0",
       "legacy_source": "src/_ZN21daObjWlKoopaShutter_c13InitResourcesEv.cpp",
       "ordinal": 5
+    },
+    {
+      "symbol": "daObjWlKoopaShutter_c_classInit",
+      "address": "0x02111888",
+      "size": "0x00000030",
+      "legacy_source": "src/d_a_obj_wl_koopa_shutter.c",
+      "ordinal": 6
     }
   ],
   "data": [],
@@ -74,20 +82,72 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov026-daObjWlKoopaShutter_c/daObjWlKoopaShutter_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 6,
-    "functions_declared": 6,
+    "functions_matched": 7,
+    "functions_declared": 7,
     "compilerOnlyOutput": {
-      "requested": [],
-      "unhandled": [
+      "requested": [
+        "_ZN21daObjWlKoopaShutter_cD2Ev",
+        "_ZN10dBgActor_cD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN10dBgActor_cD2Ev",
         "_ZN21daObjWlKoopaShutter_cD2Ev"
       ],
-      "data": []
+      "droppedSections": [
+        9,
+        10,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ],
+      "data": [
+        "_ZTI21daObjWlKoopaShutter_c",
+        "_ZTS21daObjWlKoopaShutter_c",
+        "_ZTV21daObjWlKoopaShutter_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTI10dBgActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTI8dActor_c"
+      ],
+      "dataExternalized": [
+        "_ZTI10dBgActor_c",
+        "_ZTI21daObjWlKoopaShutter_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS10dBgActor_c",
+        "_ZTS21daObjWlKoopaShutter_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV21daObjWlKoopaShutter_c"
+      ]
     },
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 12 unlicensed section/symbol(s), 1 compiler-only policy error(s)",
-      "functions_occur_in_expected_order": "PARTIAL -- ordinal pair(s) not in ROM order: [(0, 1)]",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
       "relocation_destinations_verified": "PASS"
     }
   },
@@ -173,6 +233,11 @@
       "symbol": "_ZN21daObjWlKoopaShutter_cD2Ev",
       "disposition": "deadstrip",
       "reason": "compiler-emitted base-object destructor helper has no configured ROM symbol and no inbound relocation after the licensed leaf D1/D0 pair is retained"
+    },
+    {
+      "symbol": "_ZN10dBgActor_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "`return new daObjWlKoopaShutter_c();` in daObjWlKoopaShutter_c_classInit synthesizes the implicit default constructor, which emits the immediate base dBgActor_c's base-object destructor as an unwind helper (same as the ov033/daObjTtWater_c classInit fold). No configured ROM symbol and no inbound relocation."
     }
   ]
 }

@@ -307,7 +307,7 @@
       "disposition": "deadstrip-duplicate",
       "canonical_module": "arm9",
       "canonical_address": "0x020072c0",
-      "reason": "Vector3's four-byte inline destructor, emitted as vague linkage because daDpLift_c has a Vector3 mBulletPositions[10] member whose destruction the D1/D0 pair runs through __cxa_vec_cleanup. The cartridge owns the body at arm9:0x020072c0 and an enrolled source already reaches it, so this object's copy is a duplicate that production isolation discards."
+      "reason": "Vector3's four-byte inline destructor, emitted as vague linkage because daDpLift_c has a Vector3 mMarkerPositions[10] member whose destruction the D1/D0 pair runs through __cxa_vec_cleanup. The cartridge owns the body at arm9:0x020072c0 and an enrolled source already reaches it, so this object's copy is a duplicate that production isolation discards."
     }
   ]
 }

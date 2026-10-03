@@ -21,28 +21,30 @@
  * names; the ROM keeps no names for them. The state table reaches the three
  * state bodies only by address, through the .data words the static
  * initializer copies into it.
- * THE DESTRUCTOR IS INLINE AND EMPTY in the class header, so Behavior is the
+ * The destructor is inline and empty in the class header, so Behavior is the
  * key function and this TU emits _ZTV7daWbm_c, _ZTI7daWbm_c and _ZTS7daWbm_c
  * with the inherited bases' RTTI records. D1 and D0 are emitted from the
  * header, so there is no destructor text here to mark. The factory's
  * `new daWbm_c` synthesizes the constructor the ROM inlines into it.
  *
- * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S. mwccarm 2004/b56
+ * Function order is deliberately the reverse of the ROM's. mwccarm 2004/b56
  * emits one .text section per function in the REVERSE of source order, so
  * the highest-address ROM function, the factory, is written FIRST here. Do
  * not reorder.
  *
- * Leftover: dCcAc_c::Init, dBgCh_Actr::Init, dActor_c::DropShadowRadHeight,
+ * Known limits:
+ * - dCcAc_c::Init, dBgCh_Actr::Init, dActor_c::DropShadowRadHeight,
  *   Player::Hurt and Particle::System::NewSimple stay mangled. Each takes
  *   Fix12<int> by value (wall 6az): passing a Fix12<int> local to
  *   mdCcAc_c.Init makes InitResources 0x20 bytes longer.
- * Leftover: the hit check and the placement helper keep their
- *   func_ov098_* linker names as C-linkage functions over a daWbm_c
- *   pointer, because include/decl_common.h declares both by those names.
- * Leftover: the state table (data_ov098_0213c930, .bss), the fragment
- *   angle table (data_ov098_0213bf90) and the bomb model file
- *   (data_ov098_0213c91c) are unnamed ov098 rows this TU does not own;
- *   func_0201267c, the sound call, is an unnamed arm9 function.
+ * - The hit check and the placement helper keep their func_ov098_* linker
+ *   names as C-linkage functions over a daWbm_c pointer, because
+ *   include/decl_common.h declares both by those names.
+ * - The state table (data_ov098_0213c930, .bss), the fragment angle table
+ *   (data_ov098_0213bf90) and the bomb model file (data_ov098_0213c91c) are
+ *   unnamed ov098 rows this TU does not own; func_0201267c, the sound call,
+ *   is an unnamed arm9 function.
+ * - Sound ids, particle ids and timer lengths stay numeric.
  */
 
 /* common.h first, so its flat Matrix4x3 is the spelling this TU sees: with
@@ -54,6 +56,13 @@
 #include "Player.h"
 
 typedef void (daWbm_c::*State)();
+
+/* Actor ids are from symbols/actor_debug_names.tsv. */
+enum {
+    ACTOR_PLAYER = 191,
+    ACTOR_BOMBHEI = 206,
+    ACTOR_WATERBOMB = 208
+};
 
 int ApproachLinear(int &value, int target, int step);
 namespace cstd {
@@ -98,7 +107,6 @@ void func_ov098_0213b584(daWbm_c *bomb);
 int func_ov098_0213b6e0(daWbm_c *bomb);
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol daWbm_c_classInit
 /* Reconstructed source-style name: SM64DS proves daWbm_c through RTTI,
  * allocation size, vtable identity and the WATERBOMB registry profile; later
@@ -108,7 +116,6 @@ extern "C" int *daWbm_c_classInit(void)
     return (int *)new daWbm_c;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c13InitResourcesEv
 int daWbm_c::InitResources()
 {
@@ -174,7 +181,6 @@ int daWbm_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c8BehaviorEv
 int daWbm_c::Behavior()
 {
@@ -205,7 +211,6 @@ int daWbm_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c6RenderEv
 int daWbm_c::Render()
 {
@@ -215,7 +220,6 @@ int daWbm_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c16CleanupResourcesEv
 int daWbm_c::CleanupResources()
 {
@@ -228,7 +232,6 @@ int daWbm_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c9StateFallEv
 /* State 1, falling. A bomb that lands squashes and hops; a fragment that
  * lands is gone. A variant-3 bomb ignores the ground and is destroyed once
@@ -252,7 +255,6 @@ void daWbm_c::StateFall()
     MarkForDestruction();
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c9StateDropEv
 /* State 0, the dropper. Once the cooldown has run out, and the closest player
  * is within 1500 units horizontally and not above the dropper, drop a bomb
@@ -260,13 +262,13 @@ void daWbm_c::StateFall()
  * kept one step per statement: folded, the function is 8 bytes shorter. */
 void daWbm_c::StateDrop()
 {
-    Vector3 v;
+    Vector3 spawnPos;
     Player *player;
     s32 angle;
     s32 speed;
     u32 uangle;
     int lead;
-    int a;
+    int angleIdx;
     s16 sine, cosine;
     int x, y, z;
     int playerY, bombY;
@@ -278,13 +280,13 @@ void daWbm_c::StateDrop()
         return;
     {
         const Vector3 &pos = *(const Vector3 *)&player->mPosX;
-        v.x = pos.x;
-        v.y = pos.y;
-        v.z = pos.z;
+        spawnPos.x = pos.x;
+        spawnPos.y = pos.y;
+        spawnPos.z = pos.z;
     }
-    if (Vec3_HorzDist(&v, (Vector3 *)&mPosX) > 0x5dc000)
+    if (Vec3_HorzDist(&spawnPos, (Vector3 *)&mPosX) > 0x5dc000)
         return;
-    playerY = v.y;
+    playerY = spawnPos.y;
     bombY = mPosY;
     if (playerY > bombY)
         return;
@@ -293,23 +295,22 @@ void daWbm_c::StateDrop()
     speed = player->mHorzSpeed;
     y = playerY + 0x480000;
     uangle = (u32)(angle << 16) >> 16;
-    a = (int)uangle >> 4;
+    angleIdx = (int)uangle >> 4;
     lead = speed >> 12;
     lead = lead * 0x1c;
-    cosine = data_02082214[a * 2];
-    sine = data_02082214[a * 2 + 1];
+    cosine = data_02082214[angleIdx * 2];
+    sine = data_02082214[angleIdx * 2 + 1];
     lead = lead + 0x64;
-    x = lead * cosine + v.x;
-    v.y = y;
-    v.x = x;
-    z = lead * sine + v.z;
-    v.z = z;
-    dActor_c::Spawn(0xd0, 1, v, 0, mAreaId, -1)->mHorzSpeed = 0;
+    x = lead * cosine + spawnPos.x;
+    spawnPos.y = y;
+    spawnPos.x = x;
+    z = lead * sine + spawnPos.z;
+    spawnPos.z = z;
+    dActor_c::Spawn(ACTOR_WATERBOMB, 1, spawnPos, 0, mAreaId, -1)->mHorzSpeed = 0;
     mStateTimer = 0x96;
     func_0201267c(0xd8, &mCamSpacePosX);
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c11StateBounceEv
 /* State 2, after a landing. Phase 0 squashes, and on the third landing the
  * bomb bursts at the bottom of the squash. Phase 1 stretches back up and hops
@@ -365,23 +366,22 @@ void daWbm_c::StateBounce()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol func_ov098_0213b6e0
-/* The hit check. Touching a player (actor 0xbf) hurts them, and a bomb
- * bursts with a splash; touching actor 0xce bursts a bomb too. Returns 1
+/* The hit check. Touching a player hurts them, and a bomb
+ * bursts with a splash; touching a BOMBHEI (actor 206) bursts a bomb too. Returns 1
  * when the bomb burst. */
 extern "C" int func_ov098_0213b6e0(daWbm_c *bomb)
 {
     Vector3 pos;
-    u32 id = bomb->mdCcAc_c.otherOwner;
-    if (id != 0) {
-        dActor_c *other = dActor_c::FindWithID(id);
+    u32 otherID = bomb->mdCcAc_c.otherOwner;
+    if (otherID != 0) {
+        dActor_c *other = dActor_c::FindWithID(otherID);
         if (other != 0) {
             u16 actorID = other->actorID;
             /* Tested as a flag first: tested inline, or as a switch, the
                function is shorter than the ROM's. */
-            int is = actorID == 0xbf;
-            if (is) {
+            int cmp = actorID == ACTOR_PLAYER;
+            if (cmp) {
                 pos.x = bomb->mPosX;
                 pos.y = bomb->mPosY;
                 pos.z = bomb->mPosZ;
@@ -393,8 +393,8 @@ extern "C" int func_ov098_0213b6e0(daWbm_c *bomb)
                     return 1;
                 }
             } else {
-                is = actorID == 0xce;
-                if (is) {
+                cmp = actorID == ACTOR_BOMBHEI;
+                if (cmp) {
                     if (bomb->mVariant == 1) {
                         bomb->Burst();
                         return 1;
@@ -406,35 +406,33 @@ extern "C" int func_ov098_0213b6e0(daWbm_c *bomb)
     return 0;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c5BurstEv
 /* Throw five fragments out at the table's angles, play the splash and go. */
 void daWbm_c::Burst()
 {
     int i;
     for (i = 0; i < 5; i++) {
-        dActor_c *a = dActor_c::Spawn(0xd0, 2, *(const Vector3 *)&mPosX,
+        dActor_c *frag = dActor_c::Spawn(ACTOR_WATERBOMB, 2, *(const Vector3 *)&mPosX,
                                       (const Vector3_16 *)0, mAreaId, -1);
-        a->unk_0a4 = 0;
-        a->mVertSpeed = 0x14000;
-        a->unk_0ac = 0;
-        a->mHorzSpeed = 0x14000;
-        a->mPrevAngleX = 0;
-        a->mPrevAngleY = data_ov098_0213bf90[i];
-        a->mPrevAngleZ = 0;
+        frag->unk_0a4 = 0;
+        frag->mVertSpeed = 0x14000;
+        frag->unk_0ac = 0;
+        frag->mHorzSpeed = 0x14000;
+        frag->mPrevAngleX = 0;
+        frag->mPrevAngleY = data_ov098_0213bf90[i];
+        frag->mPrevAngleZ = 0;
     }
     func_0201267c(0xda, &mCamSpacePosX);
     MarkForDestruction();
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol func_ov098_0213b584
 /* Place the model and the drop shadow at the bomb's position. */
 extern "C" void func_ov098_0213b584(daWbm_c *bomb)
 {
-    Vector3 v;
-    Vec3_Asr(&v, (Vector3 *)&bomb->mPosX, 3);
-    Matrix4x3_FromTranslation(&data_020a0e68, v.x, v.y, v.z);
+    Vector3 shadowPos;
+    Vec3_Asr(&shadowPos, (Vector3 *)&bomb->mPosX, 3);
+    Matrix4x3_FromTranslation(&data_020a0e68, shadowPos.x, shadowPos.y, shadowPos.z);
     bomb->mShadowMat = data_020a0e68;
     Matrix4x3_ApplyInPlaceToRotationY(&data_020a0e68, bomb->mAngleY);
     bomb->mModel.mat4x3 = data_020a0e68;
@@ -443,7 +441,6 @@ extern "C" void func_ov098_0213b584(daWbm_c *bomb)
         bomb->mScaleX * 0xa0, 0x3e8000, 6);
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN7daWbm_c4LandEv
 /* Stop, start the squash from the current height and count the bounce. */
 void daWbm_c::Land()

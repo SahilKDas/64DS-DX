@@ -1,4 +1,4 @@
-# Player / Bowser / SpikeBomb field provenance
+# Player / daKpa_c / daKirai_c field provenance
 
 Why each `unk_NNN` in these headers got the name it has. Every row cites a matched
 body in `src/` and what that body does with the slot; a slot with no row is still
@@ -235,16 +235,16 @@ So the rule for this lever is not "naming is free". Naming is free; *deleting a
 cast* is not, and collapsing a poke deletes casts on both sides of a
 read-modify-write.
 
-## Bowser
+## daKpa_c
 
 Five matched functions only, so the evidence is thin and most of the header is
-still `unk_`. Both halves of `Bowser.h` carry every rename: the file has a
+still `unk_`. Both halves of `daKpa_c.h` carry every rename: the file has a
 `#else` C twin that spells the whole layout flat, and a name changed in only one
 half is a spelling that compiles nowhere and that no gate reports.
 
 | offset | name | evidence |
 | --- | --- | --- |
-| 0x3b0 | `mHomePosX` | `Bowser::InitResources` copies `mPosX/Y/Z` into 0x3b0/0x3b4/0x3b8 once, in the same block that sets `mVertAccel` and `mTerminalVelocity`. Saved-at-spawn position. |
+| 0x3b0 | `mHomePosX` | `daKpa_c::InitResources` copies `mPosX/Y/Z` into 0x3b0/0x3b4/0x3b8 once, in the same block that sets `mVertAccel` and `mTerminalVelocity`. Saved-at-spawn position. |
 | 0x3b4 | `mHomePosY` | as above. |
 | 0x3b8 | `mHomePosZ` | as above. |
 | 0x3ec | `mDistToTarget` | `Behavior`: `mDistToTarget = Vec3_HorzDist(&mPosX, &target->mPosX)` when `ClosestPlayer()` returned something, and `~0x80000000` (INT_MAX, "infinitely far") when it did not. |
@@ -256,8 +256,8 @@ half is a spelling that compiles nowhere and that no gate reports.
 `mTargetPlayer` (0x3a0) was declared `s32` and every read of it was spelt
 `*(dActor_c **)((char *)&mTargetPlayer)` -- three of those in `Behavior`, on top of
 an `(int)` cast on the store. It is now `dActor_c *`, and
-`_ZN6Bowser8BehaviorEv` still reproduces byte-for-byte under 2004/b56, as does
-`_ZN6Bowser13InitResourcesEv`, which zeroes it. So a pointer-typed member does
+`_ZN7daKpa_c8BehaviorEv` still reproduces byte-for-byte under 2004/b56, as does
+`_ZN7daKpa_c13InitResourcesEv`, which zeroes it. So a pointer-typed member does
 *not* change how mwcc loads it here; the four casts were pure noise and are gone,
 and `Vec3_HorzAngle` / `Vec3_HorzDist` now take `(Vector3 *)&mTargetPlayer->mPosX`
 instead of `(char *) ... + 0x5c`.
@@ -265,23 +265,23 @@ instead of `(char *) ... + 0x5c`.
 Two details that are not free and are worth copying:
 
 - It is `dActor_c *`, not `Player *`, even though `dActor_c::ClosestPlayer()`
-  returns `Player *`. `Bowser.h` cannot include `Player.h`, so `Player` is only
+  returns `Player *`. `daKpa_c.h` cannot include `Player.h`, so `Player` is only
   forward-declared, and mwcc rejects the implicit `Player *` -> `dActor_c *`
   conversion outright ("illegal implicit conversion") because it cannot see the
   derivation. The store therefore keeps ONE cast, `(dActor_c *)ClosestPlayer()`,
   which is exact: `dActor_c` is the base at offset 0, so no adjustment is
   involved.
-- The `#else` C twin of `Bowser.h` has no `dActor_c` declaration in scope, so
+- The `#else` C twin of `daKpa_c.h` has no `dActor_c` declaration in scope, so
   there the slot is `void *` -- same width, same offset, and the two halves still
   agree.
 
 Every "read by nothing matched" reason below was withdrawn on 2026-08-24. They
-were all decided by searching Bowser's own mangled methods, which is three files;
-Bowser's behaviour is in [ov060](../config/arm9/overlays/ov060/symbols.txt), dispatched through the pointer-to-member table
-[data_ov060_0211aeb4](../config/arm9/overlays/ov060/symbols.txt)`[*(int *)(this + 0x410)]` that [func_ov060_02112434](../src/func_ov060_02112434.cpp) calls.
+were all decided by searching daKpa_c's own mangled methods, which is three files;
+daKpa_c's behaviour is in [ov060](../config/arm9/overlays/ov060/symbols.txt), dispatched through the pointer-to-member table
+[data_ov060_0211aeb4](../config/arm9/overlays/ov060/symbols.txt)`[*(int *)(this + 0x410)]` that [func_ov060_02112434](../src/actors/daKpa_c.cpp) calls.
 A data-table dispatch names no caller, so the call graph never reaches those
 state functions -- but `tools/handler_owner.py` attributes ~30 [ov060](../config/arm9/overlays/ov060/symbols.txt) handlers to
-Bowser decisively, and they read almost all of it. Named from that evidence:
+daKpa_c decisively, and they read almost all of it. Named from that evidence:
 
 | offset | name | evidence |
 | --- | --- | --- |
@@ -289,21 +289,21 @@ Bowser decisively, and they read almost all of it. Named from that evidence:
 | 0x3fc | `mTimer` | incremented as a `u16`, tested `== 0`, and `& 1` for alternate-frame work. |
 | 0x40c | `mState` | assigned 0, 1, 5, 0xd and 0x13 by different state handlers and compared against 4. An enum-like state word, distinct from the pmf index at 0x410. |
 | 0x414 | `mVariantID` | `param1 & 3`, wrapped by `if (== 3) = 0`, then used to index [data_ov060_02119264](../config/arm9/overlays/ov060/symbols.txt) for the byte at 0x41e. A variant selector that picks per-instance configuration -- which is exactly the part the old note called a guess. |
-| 0x41c | `mOpacity` | the missing `0xff` exists: [func_ov060_021123dc](../src/func_ov060_021123dc.c) writes `0xff` here and to 0x41d, and [func_ov060_02112434](../src/func_ov060_02112434.cpp) steps 0x41c toward 0x41d by 0x14 a frame, clamping at 0xff and 0, while another handler passes `*(u8 *)(this + 0x41c) >> 3` to `ModelBase::ApplyOpacity` -- 0..255 scaled to the DS's 5-bit alpha. `Render`'s `< 8` early-out is the invisible case. |
+| 0x41c | `mOpacity` | the missing `0xff` exists: [func_ov060_021123dc](../src/actors/daKpa_c.cpp) writes `0xff` here and to 0x41d, and [func_ov060_02112434](../src/actors/daKpa_c.cpp) steps 0x41c toward 0x41d by 0x14 a frame, clamping at 0xff and 0, while another handler passes `*(u8 *)(this + 0x41c) >> 3` to `ModelBase::ApplyOpacity` -- 0..255 scaled to the DS's 5-bit alpha. `Render`'s `< 8` early-out is the invisible case. |
 | 0x424 | `mTalkStep` | `switch` on it: case 0 calls `Player::StartTalk`, case 1 waits for `Player::GetTalkState() == 0` then `Player::ShowMessage`, each case incrementing it. |
-| 0x426 | `mDropsShadow` | gates the `dBgCh_Gnd` raycast that projects Bowser onto the ground and writes the shadow matrix at 0x330 -- the same role `BowserFire::mDropsShadow` was named for. |
+| 0x426 | `mDropsShadow` | gates the `dBgCh_Gnd` raycast that projects daKpa_c onto the ground and writes the shadow matrix at 0x330 -- the same role `daKpaFire_c::mDropsShadow` was named for. |
 | 0x427 | `mBounceOnLand` | while set, `dBgCh_Actr::JustHitGround()` reflects the vertical speed at -60% (clamped to 0x14000); cleared once he settles. |
-| 0x42b | `mCapActorAlive` | actor 0x10d is the lost cap -- `MrBlizzard` spawns it under `SaveData::HasPlayerLostCap()` and stores its unique id as `mCapUniqueID`. This is the latch saying that actor still exists. |
+| 0x42b | `mCapActorAlive` | actor 0x10d is the lost cap -- `daSnowman_c` spawns it under `SaveData::HasPlayerLostCap()` and stores its unique id as `mCapUniqueID`. This is the latch saying that actor still exists. |
 | 0x444 | `mCutsceneStep` | `switch` on it drives the camera: `Camera::SetFlag_3`, `Camera::SetLookAt`, and the computed eye position at 0x438/0x43c. |
-| 0x446 | `mStompFxLatch` | [func_ov060_02111a28](../src/func_ov060_02111a28.cpp) matches the animation frame at 0x12c against per-animation windows and, on the rising edge only, emits landing dust from the left foot (0x3d4) or right (0x3e0), plays sound 0xb0 and calls `dActor_c::Earthquake`. This is the edge-detect latch that makes it fire once per window. |
+| 0x446 | `mStompFxLatch` | [func_ov060_02111a28](../src/actors/daKpa_c.cpp) matches the animation frame at 0x12c against per-animation windows and, on the rising edge only, emits landing dust from the left foot (0x3d4) or right (0x3e0), plays sound 0xb0 and calls `dActor_c::Earthquake`. This is the edge-detect latch that makes it fire once per window. |
 | 0x448 | `mParticleHandle` | stores the result of `Particle::System::New`. |
 | 0x44c | `mSoundHandle` | stores the result of `Sound::PlayLong`, and passes it back as that call's first argument. |
 | 0x450 | `mSoundID` | set to 0xba, compared against 0xba, and passed to `Sound::PlayLong` as the sound id. |
 
-Still `unk_` in Bowser, with the reason:
+Still `unk_` in daKpa_c, with the reason:
 
 - **0x416** -- `(param1 >> 2) & 1`. Unlike 0x414 this one really is consumed by
-  nothing, in the methods or in any handler attributed to Bowser.
+  nothing, in the methods or in any handler attributed to daKpa_c.
 - **0x423** -- a counter, reset beside `dBgCh_Actr::ClearGroundFlag` and
   incremented both when he settles on the ground and when a handler launches him
   upward. Nothing compares it, so whether it counts bounces, throws or landings
@@ -311,7 +311,7 @@ Still `unk_` in Bowser, with the reason:
 - **0x429, 0x42a** -- written once by `InitResources` (1 and 5) and read nowhere,
   including in the [ov060](../config/arm9/overlays/ov060/symbols.txt) handlers.
 
-## SpikeBomb
+## daKirai_c
 
 | offset | name | evidence |
 | --- | --- | --- |
@@ -320,9 +320,9 @@ Still `unk_` in Bowser, with the reason:
 | 0x178 | `mHomePosY` | as above; it is the one the `>> 3` term is added to. |
 | 0x17c | `mHomePosZ` | as above. |
 | 0x1a8 | `mSlotIndex` | `InitResources`: `mSlotIndex = AddSpikeBomb(this)`, and `src/AddSpikeBomb.c` returns the index of the first free slot in the eight-entry global [data_0209f3a4](../config/arm9/symbols.txt) (or -1). `src/ClearSpikeBomb.c` takes that index back. |
-| 0x1ae | `mOpacity` | `InitResources` sets 0xff; `SpikeBomb::Render` returns early on `< 8`. Full alpha at spawn plus a "too faint to bother drawing" guard is an opacity byte, and 0xff is not a plausible state id or counter. |
+| 0x1ae | `mOpacity` | `InitResources` sets 0xff; `daKirai_c::Render` returns early on `< 8`. Full alpha at spawn plus a "too faint to bother drawing" guard is an opacity byte, and 0xff is not a plausible state id or counter. |
 
-Left `unk_` in SpikeBomb: **0x180** (`Vec3_HorzLen` of the spawn position, i.e. a
+Left `unk_` in daKirai_c: **0x180** (`Vec3_HorzLen` of the spawn position, i.e. a
 distance from the world origin -- plausibly an orbit radius, but nothing matched
 reads it back) and **0x184** (`0x2ee000`, whose only use is the `>> 3` term added
 to `mHomePosY`).
@@ -334,7 +334,7 @@ Three more, all found while chasing the arrays.
 | offset | name | evidence |
 | --- | --- | --- |
 | 0x560/0x564/0x568 | `mWallNormalX/Y/Z` | The exact counterpart of `mFloorNormal*` three words earlier, and written the same way: [func_ov002_020c25a8](../src/actors/Player.cpp) (func 80 used to assemble TU) calls `SurfaceInfo::CopyNormalTo(dBgCh_Actr::GetWallResult(&mMeshClsn) + 4, &wn)` and stores `wn.x/y/z` into the three slots, then pushes the actor back out along it (`mPosX -= mWallNormalX * 2`, `mPosZ -= mWallNormalZ * 2`). Seven bodies read the X/Z pair back as `cstd::atan2(mWallNormalX, mWallNormalZ)` to recover the wall's facing -- `St_Shell_Main`, `St_OnWall_Main` (twice), `St_Balloon_Main`, `St_CrazedCrate_Main`, [func_ov002_020c2138](../src/actors/Player.cpp)(func 77 used to assemble the TU), [func_ov002_020dd2f4](../src/func_ov002_020dd2f4.c), [func_ov002_020e28d4](../src/func_ov002_020e28d4.c)(relation to `Player::UpdateAirMovement` on N64 decomp,[n64-decomp-cross-reference](../notes/archive/n64-decomp-cross-reference.md)). 0x564 was declared padding until that middle store was disassembled, which is exactly how 0x554 and 0x55c got here. |
-| 0x719 | `mKeyModelId` | `CleanupResources` passes it to `UnloadKeyModels(i)` under `mLoadedResourceFlags & 0x10`, and that function (`src/UnloadKeyModels.cpp`) indexes two eight-entry `SharedFilePtr` tables with it and releases both. `St_LevelEnter_Init` seeds it with -1, which `UnloadKeyModels`'s `if (i >= 8) return` treats as "nothing loaded". The same argument slot is `mState` in `daObjKey_c::CleanupResources` and `v - 7` in `Door::CleanupResources`, so it selects WHICH key model, not how many. |
+| 0x719 | `mKeyModelId` | `CleanupResources` passes it to `UnloadKeyModels(i)` under `mLoadedResourceFlags & 0x10`, and that function (in `src/actors/daObjKey_c.cpp`) indexes two eight-entry `SharedFilePtr` tables with it and releases both. `St_LevelEnter_Init` seeds it with -1, which `UnloadKeyModels`'s `if (i >= 8) return` treats as "nothing loaded". The same argument slot is `mState` in `daObjKey_c::CleanupResources` and `v - 7` in `daDoor_c::CleanupResources`, so it selects WHICH key model, not how many. |
 | 0x6f7 | `mSwimMusicPushed` | A latch on a music push. `St_Swim_Main` sets it to 1 immediately after [func_ov002_020bd928](../src/actors/Player.cpp)`(this, 0x33)`, (func 3 used to assemble the TU) and clears it immediately after [func_ov002_020bd8c0](../src/actors/Player.cpp)`(this, 0x33)`, (func 2 used to assemble the TU); `St_Swim_Cleanup` does nothing unless it is set, and then clears it and calls [func_ov002_020bd8c0](../src/actors/Player.cpp)`(this, 0x33)`. The two helpers are `Sound::SetMusic` / `Sound::EndMusic` wrappers around the track words at 0x678/0x67c/0x680, so what is latched is "this state has a temporary track pushed and still owes the pop". Only the Swim states touch it. |
 
 ## daSldMng_c

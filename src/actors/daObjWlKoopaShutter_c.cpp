@@ -7,6 +7,10 @@
  * system state word vetoes; CleanupResources disables the collider
  * and releases both files; Render draws the model.
  *
+ * Seven functions, ov026 .text 0x021116c8..0x021118b8: the D1/D0 pair,
+ * the four virtual overrides, and the registry factory
+ * daObjWlKoopaShutter_c_classInit last.
+ *
  * deslop
  * Leftover: dBgW_KcMbg::SetFile keeps its mangled spelling (by-value
  *   Fix12<int> parameters, wall 6az).
@@ -76,4 +80,14 @@ s32 daObjWlKoopaShutter_c::InitResources() {
   if(*(int*)(data_0209caa0+4) & 0x204) return 0;
   mMeshCollider.Enable(this);
   return 1;
+}
+
+/* Reconstructed source-style name: SM64DS proves daObjWlKoopaShutter_c through
+ * RTTI, allocation size, vtable identity, and the WL_KOOPA_SHUTTER registry
+ * profile; later EAD lineage supplies classInit. Exact original spelling is
+ * not preserved. Historical alias: BowserShutter_Spawn. */
+// @symbol daObjWlKoopaShutter_c_classInit
+extern "C" daObjWlKoopaShutter_c *daObjWlKoopaShutter_c_classInit()
+{
+    return new daObjWlKoopaShutter_c();
 }

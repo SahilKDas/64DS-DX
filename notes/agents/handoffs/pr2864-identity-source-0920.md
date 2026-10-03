@@ -68,7 +68,7 @@ Consequently no production full-ROM pass is asserted by this source stage.
 The actual declaration gate exits 1 with six diagnostics. One is the old Koopa
 death-helper call declaration that root will retire. Five are unchanged main
 diagnostics: three SetNoControlState return disagreements based on plurality,
-and two ov090 resource declarations. The exact nine-file declaration population
+and two [ov090](../../../config/arm9/overlays/ov090/symbols.txt) resource declarations. The exact nine-file declaration population
 and all eleven underlying findings are identical to main2705; root's independent
 main inventory also contains the five fingerprints. They are neither caused nor
 resolved here, and no baseline was changed. Root must resolve the concrete

@@ -1,21 +1,21 @@
 //cpp
-/* Production translation unit for ov034/daHanachan_c, the Wiggler.
- * 34 function(s), .text 0x021111a0..0x021136a4.
+/* daHanachan_c: the Wiggler (ov034, registry profile HANACHAN). 35 functions,
+ * .text 0x021111a0..0x02113820: D1, D0, four virtual methods, 28
+ * non-virtual members (22 state functions, SetState, ExecState and four
+ * helpers) and the factory. The run is gap-free and this is the only class
+ * in it.
  *
- * NAME: _ZTS12daHanachan_c is "12daHanachan_c" at ov034 0x02114478; _ZTI at
- * 0x0211445c reads [__si_class_type_info, that string, _ZTI12dEnemyBase_c].
- * The vtable's address point is 0x021144bc; the word before it (0x021144b8)
- * is that _ZTI. The tree previously called the class Wiggler (coined).
- *
- * D1, D0 and four virtual methods, with 28 non-virtual members between
- * them: 22 state functions, SetState, ExecState and four helpers. The run is
- * gap-free and this is the only class in it. daHanachan_c_classInit at
- * 0x021136a4 is the next function and is not part of this translation unit.
+ * ROM evidence: _ZTS12daHanachan_c is "12daHanachan_c" at ov034 0x02114478;
+ * _ZTI at 0x0211445c reads [__si_class_type_info, that string,
+ * _ZTI12dEnemyBase_c]. The vtable's address point is 0x021144bc; the word
+ * before it (0x021144b8) is that _ZTI. The tree previously called the class
+ * Wiggler (coined).
  *
  * #pragma defer_codegen off emits .text in source order, so the file is
  * ROM-ascending. One out-of-line destructor is the key function, so this TU
  * emits _ZTV, _ZTI and _ZTS: D1 (0x021111a0), D0 (0x021112b0), then a D2 the
- * cartridge has no home for (manifest: deadstrip).
+ * cartridge has no home for (manifest: deadstrip). The registry factory
+ * daHanachan_c_classInit (0x021136a4) closes the unit and ov034's .text.
  */
 
 #pragma defer_codegen off
@@ -29,7 +29,7 @@
 #include "Message.h"
 
 void ApproachLinear(int &value, int target, int step);
-void ApproachLinear(short &value, short target, short step);
+bool ApproachLinear(short &value, short target, short step);
 
 /* The state table, filled in by __sinit_ov034_021138ec. */
 extern daHanachan_c::State data_ov034_02114538[];
@@ -37,11 +37,11 @@ extern daHanachan_c::State data_ov034_02114538[];
 extern "C" {
 extern int _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *anim, void *file, int flags, int speed, unsigned int startFrame);
 extern void **data_ov034_02113888[];
-extern "C" int DecIfAbove0_Byte(void*);
+extern int DecIfAbove0_Byte(void*);
 extern void **data_ov034_0211389c[];
 extern void **data_ov034_02113860[];
-extern "C" int Math_Function_0203b14c(void *base, int a, int b, int c, int d);
-extern "C" int data_ov034_021138c4[];
+extern int Math_Function_0203b14c(void *base, int a, int b, int c, int d);
+extern int data_ov034_021138c4[];
 extern void func_0201267c(int, void *);
 extern void _ZN6Camera9SetFlag_3Ev(void* cam);
 extern short Vec3_HorzAngle(const void* a, const void* b);
@@ -56,9 +56,9 @@ extern int data_ov034_02114488[];
 void _ZN5Sound22LoadAndSetMusic_Layer3Ej(unsigned);
 void _ZN5Sound22StopLoadedMusic_Layer3Ev(void);
 extern char data_020a0e68[];
-extern "C" void Matrix4x3_FromRotationY(void *m, int angle);
-extern "C" void MulVec3Mat4x3(void *in, void *m, void *out);
-extern "C" void Vec3_Add(void *out, void *a, void *b);
+extern void Matrix4x3_FromRotationY(void *m, int angle);
+extern void MulVec3Mat4x3(void *in, void *m, void *out);
+extern void Vec3_Add(void *out, void *a, void *b);
 extern void _ZN6Player4HurtERK7Vector3j5Fix12IiEjjj(void *self, struct Vector3 *v, unsigned int b, int c, unsigned int d, unsigned int e, unsigned int f);
 extern int NormalizeVec3IfNonZero(void *v);
 extern void Vec3_MulScalarInPlace(void *v, int s);
@@ -351,7 +351,7 @@ void daHanachan_c::StateDamageInit()
 void daHanachan_c::StateMoveMain()
 {
     int len;
-    int r4;
+    int rnd;
     int v[3];
 
     Vec3_Sub(v, &mPosX, &mHomePos);
@@ -368,26 +368,26 @@ void daHanachan_c::StateMoveMain()
     }
 
     if (DecIfAbove0_Byte(&mStateTimer) == 0) {
-        r4 = RandomIntInternal(&data_0209e650);
+        rnd = RandomIntInternal(&data_0209e650);
         {
-            unsigned char db = mHealth;
-            unsigned int hi;
-            if (db <= 3 || (((hi = (unsigned int)r4 >> 0x1b)) & 1) == 0) {
+            unsigned char health = mHealth;
+            unsigned int bits;
+            if (health <= 3 || (((bits = (unsigned int)rnd >> 0x1b)) & 1) == 0) {
                 mTargetAngleY = HorzAngleToCPlayer();
             } else {
-                mTargetAngleY = (short)((hi & 0xf) << 0xc);
+                mTargetAngleY = (short)((bits & 0xf) << 0xc);
             }
         }
-        mStateTimer = (unsigned char)((unsigned int)(r4 + 0x1e) >> 0x1b);
+        mStateTimer = (unsigned char)((unsigned int)(rnd + 0x1e) >> 0x1b);
         mStateTimer = (unsigned char)(mStateTimer - (4 - mHealth) * 0x1e);
         if (mStateTimer >= 0x40)
             mStateTimer = 0;
     }
 
     if (mWithMeshClsn.IsOnWall() != 0 || len > 0x5dc000) {
-        r4 = RandomIntInternal(&data_0209e650);
+        rnd = RandomIntInternal(&data_0209e650);
         mTargetAngleY = Vec3_HorzAngle(&mPosX, &mHomePos);
-        mStateTimer = (unsigned char)((unsigned int)(r4 + 0x1e) >> 0x1b);
+        mStateTimer = (unsigned char)((unsigned int)(rnd + 0x1e) >> 0x1b);
         mStateTimer = (unsigned char)(mStateTimer - (4 - mHealth) * 0x1e);
         if (mStateTimer >= 0x40)
             mStateTimer = 0;
@@ -1172,3 +1172,58 @@ int daHanachan_c::InitResources()
     return 1;
 }
 
+
+/* The factory's hand-built construction sequence. */
+extern "C" {
+extern void *_ZN7fBase_cnwEj(unsigned int size);
+extern void *_ZN12dEnemyBase_cC2Ev(void *p);
+extern void __cxa_vec_ctor(void *arr, unsigned int count, unsigned int size, void (*ctor)(void *), void (*dtor)(void *));
+extern void *_ZN10dBgCh_ActrC1Ev(void *p);
+extern void *_ZN10dCcAcPos_cC1Ev(void *p);
+extern dCcAcPos_c *_ZN10dCcAcPos_cD1Ev(dCcAcPos_c *p);
+extern void func_0203d73c(void);
+extern void *_ZN8Vector3sD1Ev(void *p);
+extern void func_0203d384(void);
+extern void *_ZN7Vector3D1Ev(void *p);
+extern void *_ZN15TextureSequenceC1Ev(void *p);
+extern TextureSequence *_ZN15TextureSequenceD1Ev(TextureSequence *p);
+extern void *_ZN15MaterialChangerC1Ev(void *p);
+extern MaterialChanger *_ZN15MaterialChangerD1Ev(MaterialChanger *p);
+extern void *_ZN9ModelAnimC1Ev(void *p);
+extern ModelAnim *_ZN9ModelAnimD1Ev(ModelAnim *p);
+}
+extern int _ZTV12daHanachan_c[];
+
+/* Reconstructed source-style name: SM64DS proves daHanachan_c through RTTI,
+ * allocation size, vtable identity, and the HANACHAN registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: Wiggler_Spawn.
+ *
+ * Not `new daHanachan_c()`: types.h's Vector3 and Vector3s have no
+ * user-declared constructor, so an idiomatic `new` skips the ROM's
+ * per-element __cxa_vec_ctor(..., func_0203d384 / func_0203d73c, ...) calls
+ * over the two Vector3 arrays and the Vector3s array (measured: 999 words
+ * differ, first wrong relocation _ZN15TextureSequenceC1Ev). Kept as the loose
+ * file's explicit hand-built sequence; the one change the fold required is the
+ * vtable store: this TU owns the key function and so defines
+ * _ZTV12daHanachan_c at the start of the vtable object, two words ahead of the
+ * address point. */
+// @symbol daHanachan_c_classInit
+extern "C" daHanachan_c *daHanachan_c_classInit()
+{
+    char *c = (char *)_ZN7fBase_cnwEj(sizeof(daHanachan_c));
+    if (c) {
+        _ZN12dEnemyBase_cC2Ev(c);
+        *(int **)c = &_ZTV12daHanachan_c[2];
+        __cxa_vec_ctor(c + 0x110, 5, 0x64, (void (*)(void *))_ZN9ModelAnimC1Ev, (void (*)(void *))_ZN9ModelAnimD1Ev);
+        __cxa_vec_ctor(c + 0x304, 5, 0x14, (void (*)(void *))_ZN15MaterialChangerC1Ev, (void (*)(void *))_ZN15MaterialChangerD1Ev);
+        __cxa_vec_ctor(c + 0x368, 5, 0x14, (void (*)(void *))_ZN15TextureSequenceC1Ev, (void (*)(void *))_ZN15TextureSequenceD1Ev);
+        __cxa_vec_ctor(c + 0x3cc, 5, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+        __cxa_vec_ctor(c + 0x408, 5, 0xc, (void (*)(void *))func_0203d384, (void (*)(void *))_ZN7Vector3D1Ev);
+        __cxa_vec_ctor(c + 0x444, 5, 6, (void (*)(void *))func_0203d73c, (void (*)(void *))_ZN8Vector3sD1Ev);
+        __cxa_vec_ctor(c + 0x478, 5, 0x40, (void (*)(void *))_ZN10dCcAcPos_cC1Ev, (void (*)(void *))_ZN10dCcAcPos_cD1Ev);
+        __cxa_vec_ctor(c + 0x5b8, 5, 0x40, (void (*)(void *))_ZN10dCcAcPos_cC1Ev, (void (*)(void *))_ZN10dCcAcPos_cD1Ev);
+        _ZN10dBgCh_ActrC1Ev(c + 0x708);
+    }
+    return (daHanachan_c *)c;
+}

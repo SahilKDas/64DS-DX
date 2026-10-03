@@ -176,8 +176,10 @@ check:
     p = dActor_c::FindWithActorID(0x22, p);
     if (p != 0) goto check;
 }
-
+// @symbol _ZN16daObjC0_Switch_cD1Ev
+// @symbol _ZN16daObjC0_Switch_cD0Ev
 /* -------------------------------------------------------------------------- */
+/* ROM ordinals 0 and 1 -- _ZN16daObjC0_Switch_cD1Ev 0x021111a0 size 0x44 and   */
 /* _ZN16daObjC0_Switch_cD0Ev 0x021111e4 size 0x58 -- are NOT written here.      */
 /*                                                                             */
 /* The destructor body is INLINE in include/daObjC0_Switch_c.h and declared     */

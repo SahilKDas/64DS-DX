@@ -1,18 +1,20 @@
 //cpp
-/* Production translation unit for ov025/daDpLift_c.
- * 6 function(s), .text 0x021120e4..0x021125bc.
+/*
+ * daDpLift_c: the DP_LIFT lift (actor 88), a dBgActor_c that idles until
+ * mHadClsn is set, shakes, then sinks at a fixed 10 units a frame down a
+ * column of ten markers spaced 0x1cc000 (460 units) apart, and settles at
+ * Y 0x80000 (128 units) with a second short shake. Render draws its own model
+ * plus one mModel2 copy per marker the platform has not yet passed.
  *
- * The DP_LIFT pyramid lift: a dBgActor_c that waits until something stands on
- * it, shakes for eight frames, then sinks at a fixed speed down a column of
- * ten markers spaced 0x1cc000 apart, and settles with a second short shake
- * at Y 0x80000. Render draws its own model plus one mModel2 copy per marker
- * the platform has not yet passed.
+ * ROM: ov025, 6 functions, .text 0x021120e4..0x021125bc. daDpLift_c is the
+ * cartridge's RTTI spelling: _ZTS at ov025 0x021139a0 is the byte string
+ * "10daDpLift_c", and _ZTI at 0x02113994 reads
+ * [__si_class_type_info, that string, _ZTI10dBgActor_c]. mHadClsn is set by
+ * the collision callback InitResources installs (func_ov025_021125dc, which
+ * forwards to func_ov025_021125bc): it stores 1 when the other actor's ID is
+ * 0xbf, PLAYER in symbols/actor_debug_names.tsv.
  *
- * NAME: daDpLift_c is the cartridge's RTTI spelling -- _ZTS at ov025
- * 0x021139a0 is the byte string "10daDpLift_c", and _ZTI at 0x02113994 reads
- * [__si_class_type_info, that string, _ZTI10dBgActor_c].
- *
- * THE DESTRUCTOR IS THE KEY FUNCTION, declared first in the class header and
+ * The destructor is the key function, declared first in the class header and
  * defined first below, so this TU emits _ZTV10daDpLift_c and the RTTI chain
  * as vague linkage. `#pragma defer_codegen off` is load-bearing twice over:
  *   - it makes mwccarm emit each function as it is parsed, so the file is
@@ -21,21 +23,22 @@
  *   - it makes the opt_strength_reduction bracket around InitResources
  *     bind. Without it the pragma is file-global last-wins, and the two
  *     members want opposite settings: InitResources' marker loop needs it
- *     off, and Render's indexed mBulletPositions[i] loop comes out 4 bytes
+ *     off, and Render's indexed mMarkerPositions[i] loop comes out 4 bytes
  *     long with it off (only a raw `this + i * 0xc` walk survives that).
  * MEASURED against the alternatives: with the inline-empty destructor the
  * sibling promotions use, defer_codegen off lays D1/D0 down after
  * InitResources, and without defer_codegen off the bracket does not bind.
  *
- * Leftover: dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay mangled --
- *   both take Fix12<int> by value (wall 6az); a member call homes the
- *   argument and changes the ROM ABI.
- * Leftover: func_020393d4 / func_020393c4 are 4-byte stores into dBgW's
- *   callback slots; naming belongs with dBgW in arm9.
- * Leftover: func_ov025_021125dc, the collision callback InitResources
- *   installs, and the factory daDpLift_c_classInit (0x021125f0) sit just past
- *   this run's right edge and stay one-function sources.
- * Leftover: data_02082214 is arm9's sine/cosine table, still unnamed there.
+ * Known limits:
+ * - dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay mangled: both take
+ *   Fix12<int> by value (wall 6az), and a member call homes the argument and
+ *   changes the ROM ABI.
+ * - func_020393d4 / func_020393c4 are 4-byte stores into dBgW's callback
+ *   slots; naming belongs with dBgW in arm9.
+ * - func_ov025_021125dc, the collision callback InitResources installs, and
+ *   the factory daDpLift_c_classInit (0x021125f0) sit just past this run's
+ *   right edge and stay one-function sources.
+ * - data_02082214 is arm9's sine/cosine table, still unnamed there.
  */
 
 #include "daDpLift_c.h"
@@ -64,14 +67,12 @@ void func_020393c4(int *p, int v);
 void func_ov025_021125dc(char *self, char *a, char *b);
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN10daDpLift_cD1Ev
 // @symbol _ZN10daDpLift_cD0Ev
 daDpLift_c::~daDpLift_c()
 {
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN10daDpLift_c16CleanupResourcesEv
 s32 daDpLift_c::CleanupResources()
 {
@@ -81,54 +82,61 @@ s32 daDpLift_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN10daDpLift_c6RenderEv
 s32 daDpLift_c::Render()
 {
     mModel.Render(0);
-    for (int i = mNextBullet; i < 10; i++) {
+    for (int i = mNextMarker; i < 10; i++) {
         Matrix4x3_FromTranslation(&mModel2.mat4x3,
-                                  mBulletPositions[i].x >> 3,
-                                  mBulletPositions[i].y >> 3,
-                                  mBulletPositions[i].z >> 3);
+                                  mMarkerPositions[i].x >> 3,
+                                  mMarkerPositions[i].y >> 3,
+                                  mMarkerPositions[i].z >> 3);
         mModel2.Render(0);
     }
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
+/* mState: idle until mHadClsn, first shake (mShakeTimer counts 0 to 8), sink
+   until below Y 0x80000, then the settling shake. */
+enum {
+    STATE_IDLE,
+    STATE_SHAKE,
+    STATE_SINK,
+    STATE_SETTLE
+};
+
 // @symbol _ZN10daDpLift_c8BehaviorEv
 s32 daDpLift_c::Behavior()
 {
     switch (mState) {
-    case 0:
+    case STATE_IDLE:
         if (mHadClsn != 0) {
-            mState = 1;
+            mState = STATE_SHAKE;
             mShakeTimer = 0;
         }
         break;
-    case 1: {
+    case STATE_SHAKE: {
         s16 ang = mShakeTimer << 12;
         mPosY = mBasePosY + (s32)(((s64)data_02082214[((u16)ang >> 4) * 2] * 10 + 0x800) >> 12);
         if (mShakeTimer == 8) {
-            mState = 2;
+            mState = STATE_SINK;
             mVertSpeed = -0xa000;
         }
         mShakeTimer++;
         break;
     }
-    case 2: {
-        if (mPosY <= mBulletPositions[mNextBullet].y + 0x14000)
-            mNextBullet++;
+    case STATE_SINK: {
+        if (mPosY <= mMarkerPositions[mNextMarker].y + 0x14000)
+            mNextMarker++;
         mPosY += mVertSpeed;
         if (mPosY < 0x80000) {
             mPosY = 0x80000;
-            mState = 3;
+            mState = STATE_SETTLE;
             mShakeTimer = 0;
         }
         break;
     }
-    case 3: {
+    case STATE_SETTLE: {
         s16 ang = mShakeTimer << 12;
         mPosY = (s32)(((s64)data_02082214[((u16)ang >> 4) * 2] * 10 + 0x800) >> 12) + 0x80000;
         if (mShakeTimer >= 8) {
@@ -146,7 +154,6 @@ s32 daDpLift_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN10daDpLift_c13InitResourcesEv
 #pragma push
 #pragma opt_strength_reduction off
@@ -166,7 +173,7 @@ s32 daDpLift_c::InitResources()
        last. MEASURED: this is the spelling that reproduces. The ROM walks a
        copy of `this` by 0xc and multiplies afresh each trip -- the shape
        strength reduction off leaves -- and neither an indexed
-       mBulletPositions[i] loop nor a Vector3 pointer walk (which folds the
+       mMarkerPositions[i] loop nor a Vector3 pointer walk (which folds the
        0x37c into the base) gives that register assignment. */
     {
         int n;

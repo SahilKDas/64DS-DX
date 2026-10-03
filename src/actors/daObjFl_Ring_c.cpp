@@ -2,51 +2,53 @@
 /* Production translation unit for ov022/daObjFl_Ring_c, hand-curated.
  * 6 function(s), .text 0x021111a0..0x02111558.
  *
- * Lethal Lava Land's spinning fire ring of the FL_RING profile: a dBgActor_c
- * that turns about Y at a rate it approaches on its own Z channel, and while
- * that rate is up drops the actor 0xf3 flames that ride it. ov022 is Lethal
- * Lava Land.
+ * FL_RING, the fire ring of Lethal Lava Land (ov022): a dBgActor_c that turns
+ * about Y at a rate kept in its own Z channel (mPrevAngleZ). It starts at
+ * -0x100 per frame (or the placement's Z angle); a trigger
+ * slows it to 0 and holds it there while a 0x96 frame cooldown runs, during which it spawns actor 0xf3 (OBJ_VOLCANO_CANNON,
+ * daObj_volcanoCannon_c) whenever it is on screen and its spawn guard has run
+ * down. Then the rate returns to -0x100.
  *
  * NAME: daObjFl_Ring_c is the cartridge's RTTI spelling -- _ZTS at ov022
  * 0x02113ce0 is the byte string "14daObjFl_Ring_c", and _ZTI at 0x02113cd4
  * reads [__si_class_type_info+8, that string, _ZTI10dBgActor_c].
  *
- * THE DESTRUCTOR IS THIS CLASS'S KEY FUNCTION, so this TU also emits
- * _ZTV14daObjFl_Ring_c, _ZTI14daObjFl_Ring_c and _ZTS14daObjFl_Ring_c as
- * vague linkage, alongside the inherited bases' RTTI records. Every one of
- * them has a configured ROM home, so all of them license as deadstrip-data
- * and the six-function object isolates cleanly. The destructor is declared
- * and defined inline and empty in the class header -- see that file for why
- * the body must not move here, and note that there is deliberately no
- * destructor text in this .cpp for an @symbol marker to sit above.
+ * The destructor is the key function, so this TU also emits _ZTV14daObjFl_Ring_c,
+ * _ZTI14daObjFl_Ring_c and _ZTS14daObjFl_Ring_c as vague linkage, alongside the
+ * inherited bases' RTTI records. Every one of them has a configured ROM home,
+ * so all of them license as deadstrip-data and the six-function object isolates
+ * cleanly. The destructor is declared and defined inline and empty in the class
+ * header (see that file for why), so there is no destructor text here for an
+ * @symbol marker to sit above.
  *
- * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S. mwccarm 2004/b56
- * emits one .text section per function in the REVERSE of source order, so the
- * highest-address ROM function is written FIRST here. Do not reorder. The
- * compiler chooses where the D1/D0 pair lands on its own.
+ * Function order is the reverse of the ROM's: mwccarm 2004/b56 emits one .text
+ * section per function in the reverse of source order, so the highest-address
+ * ROM function is written first. Do not reorder. The compiler places the D1/D0
+ * pair on its own.
  *
- * deslop
- * Leftover: dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay mangled in
- *   this TU -- both take Fix12<int> by value (wall 6az); a member call homes
- *   the argument and size-DIFFs InitResources / Behavior.
- * Leftover: func_020393d4 / func_020393c4 are 4-byte stores into dBgW's
- *   callback slots, and func_020393a4 / func_02039394 write its collision
- *   extents. This TU calls them; naming belongs with dBgW in arm9.
- * Leftover: the three pointers this class's file table holds -- the ov022
- *   .bss SharedFilePtrs at 0x02114500 and 0x02114508, and the ov064 CLPS
- *   block at 0x0211bbac -- are unnamed rows in their own modules' data, which
- *   this TU does not own.
- * Leftover: func_ov022_02111564, the collision callback InitResources
- *   installs, sits at 0x02111564 just past this run's right edge and is still
- *   a one-function C source; so is the factory daObjFl_Ring_c_classInit at
- *   0x02111578. tu_map.py cuts those three as their own candidate
+ * Known limits:
+ * - dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay mangled -- both
+ *   take Fix12<int> by value (wall 6az); a member call homes the argument and
+ *   size-DIFFs InitResources / Behavior.
+ * - func_020393d4 / func_020393c4 are 4-byte stores into dBgW's callback
+ *   slots, and func_020393a4 / func_02039394 write its collision extents.
+ *   This TU calls them; naming belongs with dBgW in arm9.
+ * - The three pointers this class's file table holds -- the ov022 .bss
+ *   SharedFilePtrs at 0x02114500 and 0x02114508, and the ov064 CLPS block at
+ *   0x0211bbac -- are unnamed rows in their own modules' data, which this TU
+ *   does not own.
+ * - func_ov022_02111564, the collision callback InitResources installs, sits at
+ *   0x02111564 just past this run's right edge and is still a one-function C
+ *   source; so is the factory daObjFl_Ring_c_classInit at 0x02111578.
+ *   tu_map.py cuts those three as their own candidate
  *   (ov022/@02111558-021115a8), so they are deliberately out of scope here.
- * Leftover: g_profile_FL_RING, the registry row that names that factory, is
- *   ov022 .data at 0x02113cf4 and lives outside this TU.
+ * - g_profile_FL_RING, the registry row that names that factory, is ov022
+ *   .data at 0x02113cf4 and lives outside this TU.
  */
 
 #include "daObjFl_Ring_c.h"
 #include "SharedFilePtr.h"
+#include "daObj_volcanoCannon_c.h"
 
 /* This class's own file table, ov022 .data at 0x02113cc8: the model and
  * collision SharedFilePtrs (ov022 .bss 0x02114500 / 0x02114508) and the CLPS
@@ -78,8 +80,6 @@ void func_020393c4(void *p, void *fn);
 void func_ov022_02111564(void *);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjFl_Ring_c13InitResourcesEv
 /* dBgW_KcMbg::SetFile takes Fix12<int> by value. An ordinary member call
  * triggers mwccarm's by-value-class parameter homing and changes the ROM ABI,
@@ -107,8 +107,6 @@ s32 daObjFl_Ring_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjFl_Ring_c8BehaviorEv
 /* IsClsnInRange takes two Fix12<int> by value; see InitResources for why that
  * one call keeps the measured register-level spelling. */
@@ -116,6 +114,8 @@ s32 daObjFl_Ring_c::Behavior()
 {
     switch (mState) {
     case 0:
+        /* Turning: once the cooldown is spent and mTriggered is set, slow
+           the spin to 0. */
         if (DecIfAbove0_Short(&mCooldown) != 0)
             break;
         if (mTriggered == 0)
@@ -128,6 +128,7 @@ s32 daObjFl_Ring_c::Behavior()
         break;
 
     case 1:
+        /* Stopped: spawn while the cooldown runs, then spin back up. */
         if (DecIfAbove0_Short(&mCooldown) == 0) {
             if (ApproachAngle(&mPrevAngleZ, -0x100, 0xf, 0x30, 2) != 0)
                 break;
@@ -137,6 +138,7 @@ s32 daObjFl_Ring_c::Behavior()
         }
         {
             int offscreen;
+            /* mFlags bit 3 is the framework's off-screen flag. */
             offscreen = (int)((mFlags & 8) != 0);
             if (offscreen != 0)
                 break;
@@ -145,15 +147,15 @@ s32 daObjFl_Ring_c::Behavior()
             break;
         {
             int v[3];
-            void *s;
+            daObj_volcanoCannon_c *s;
             v[0] = mPosX;
             v[1] = mPosY;
             v[2] = mPosZ;
             v[1] = mPosY + 0x1f4000;
-            s = dActor_c::Spawn(
+            s = (daObj_volcanoCannon_c *)dActor_c::Spawn(
                 0xf3, 0, *(Vector3 *)v, 0, mAreaId, -1);
-            *(void **)((u8 *)s + 0x10c) = this;
-            *(int *)((u8 *)s + 0x118) = mPosY;
+            s->mSpawner = this;
+            s->mKillPosY = mPosY;
             {
                 u16 *t = &mSpawnCount;
                 *t = *t + 1;
@@ -179,8 +181,6 @@ s32 daObjFl_Ring_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjFl_Ring_c6RenderEv
 s32 daObjFl_Ring_c::Render()
 {
@@ -188,8 +188,6 @@ s32 daObjFl_Ring_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN14daObjFl_Ring_c16CleanupResourcesEv
 s32 daObjFl_Ring_c::CleanupResources()
 {

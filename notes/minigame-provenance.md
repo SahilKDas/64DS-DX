@@ -133,34 +133,29 @@ family.
 dScMgSingle3DBase_c : dScMgBase_c, confirmed by build/rtti.json (its
 `__si_class_type_info` points at dScMgBase_c, offset 0). It is itself a
 hierarchy root: 13 direct RTTI children -- the "single 3D minigame" family
-(card, cup, memory x2, mahjong-carlo x2, roulette, slot3, sound, BSC, snowball,
-flower, plus dScMg3DEsp_c). Its own fields start at ROM offset 0x4660 ==
-sizeof(dScMgBase_c).
+(dScMgCard_c, dScMgCup_c, dScMg3DEsp_c, dScMgMemory_c, dScMgMemory2_c,
+dScMgMCarlo_c, dScMgMCarlo2_c, dScMgRoulette_c, dScMgSlot3_c, dScMgSound_c,
+dScMgBSC_c, dScMgSnowball_c, dScMgFlower_c). Its own fields start at ROM offset
+0x4660 == sizeof(dScMgBase_c).
 
 **Own vtable slots** (`tools/rtti_vtables.py --own dScMgSingle3DBase_c`): 2, 5,
-7, 10 re-override slots dScMgBase_c already gave a body (AfterInitResources,
-AfterCleanupResources, BeforeBehavior, BeforeRender); 16/17 are its own D1/D0;
-26 and 33 are new overrides (an OnHitByCannonBlastedChar-shaped routine and a
-VRAM/graphics-bank setup routine). The eight source files still carry an
-auto-generated `recovered name: dScMgFlower_c_*` comment -- the same off-by-one
-"recovered from vtable slot identity" mislabelling documented for dScMgBase_c's
-siblings, where an arbitrary concrete descendant's name is borrowed for what is
-really the base's own method. The vtable dump is the authority, not the comment.
+7, 10, 26 and 33 re-override slots dScMgBase_c already gave a body
+(AfterInitResources, AfterCleanupResources, BeforeBehavior, BeforeRender,
+OnHitByCannonBlastedChar, Virtual84); 16/17 are its own D1/D0. It adds no
+virtual, so its table is dScMgBase_c's 36 slots (ov006:0x0213e448, 0x90 bytes).
 
 **mSysTracker at 0x471c is hand-verified**, four independent witnesses agreeing
 on the offset: this class's D1 and D0 both destroy it
 (`_ZN8Particle10SysTrackerD1Ev((char*)c + 0x471c)`), AfterInitResources
-initialises it, BeforeBehavior updates it conditionally. Particle::SysTracker is
-declared locally rather than shared, for the reason Stage.h's own note gives
-(two independent gen_header.py shadows, union gives 0x81c, no file here includes
-either shadow header). This is a third local copy of the identical type;
-consolidating all three is a separate change with its own blast radius.
+initialises it, BeforeBehavior updates it conditionally. Its type is the one
+shared definition in include/Particle__SysTracker.h, which Stage.h also uses.
 
 **0x4700..0x4718** (seven fields) were split out of the former `pad_4660[0xbc]`:
 dScMgRoulette_c's Render (_ZN15dScMgRoulette_c6RenderEv, in src/actors/dScMgRoulette_c.cpp) and dScMg3DEsp_c's Render
-(src/_ZN12dScMg3DEsp_c6RenderEv.cpp) both write those exact offsets, so they belong to
-this class, not either leaf. 0x4718..0x471b has no matched access and stays
-padding.
+(_ZN12dScMg3DEsp_c6RenderEv, in src/actors/dMg3DEspAnimSet_c.cpp) both write those exact offsets, so they belong to
+this class, not either leaf. The camera angle at 0x4718 comes from
+Camera_UpdateMatrices (see the camera section below); 0x471a..0x471b has no
+matched access and stays padding.
 
 **Their comments deliberately avoid the usual `/* 0xNN */` style.**
 tools/check_header_offsets.py's `DATA_SIZE` precompute walks a struct's commented
@@ -188,8 +183,9 @@ latent bug; #1421 never tested a real descendant. No separate `operator delete`
 copy is needed here -- dScMgBase_c, the immediate base, already provides one,
 and mwcc's inline-D0 route only needs to reach the immediate base.
 
-`Particle::SysTracker::Initialise` / `::Update` and `Particle::RenderAll` are
-declared in the header only so the calls can be spelled normally; they are
+`Particle::SysTracker::Initialise` / `::Update` (in Particle__SysTracker.h) and
+`Particle::RenderAll` (in this class's header) are declared so the calls can be
+spelled normally; they are
 non-virtual and add neither a field nor a vtable slot. Before that they were
 reached through `extern "C"` declarations of the mangled symbols at the call
 sites, which is the same call the compiler emits from the declaration.
@@ -201,7 +197,7 @@ Real ROM name confirmed by `tools/rtti_extract.py` (build/rtti.json). Own vtable
 `_ZTS19cMgSmartball_ball_c` at [ov006](../config/arm9/overlays/ov006/symbols.txt):0x0213edc0. One of eleven direct children of `cMgSmartball_object_c` -- see that header for the family's shape (a root,
 three slots, no virtual destructor).
 
-Size 0x12c, from `_Znwj(0x12c)` in [func_ov006_02115b0c](../src/func_ov006_02115b0c.c). The base ends at 0x34,
+Size 0x12c, from `_Znwj(0x12c)` in [func_ov006_02115b0c](../src/actors/dScMgSmartball_c.cpp). The base ends at 0x34,
 so this class adds 0xf8 bytes -- the densest of the eleven children. Everything
 below 0x34 is reached through inherited members; this class's four functions
 never touch the base's 0x31-0x33 region, so no raw cast is needed anywhere.
@@ -211,24 +207,24 @@ RestoreInitial, which is exhaustive -- every array length and every scalar width
 below comes from that function's loop bounds and store widths. SaveSnapshot and
 Update corroborate roughly half of the same offsets.
 
-**Several names are borrowed, not invented.** [func_ov006_02112ad8.c](../src/func_ov006_02112ad8.c) and
-[func_ov006_021128fc.c](../src/func_ov006_021128fc.c) -- two out-of-scope helpers `SaveSnapshot` calls with `this` -- each reinterpret the pointer through their own local Obj-style struct cast
+**Several names are borrowed, not invented.** [func_ov006_02112ad8](../src/actors/dScMgSmartball_c.cpp) and
+[func_ov006_021128fc](../src/actors/dScMgSmartball_c.cpp) -- two out-of-scope helpers `SaveSnapshot` calls with `this` -- each reinterpret the pointer through their own local Obj-style struct cast
 and name a number of these exact offsets (hit/hitA/hitB/hitC, anyHit,
 specialHit, nearby, targetIndex, soundTimer, soundPlayed, state3a, state3b).
 Every one of those offsets is also independently touched by RestoreInitial, so
 the width and existence of each field is evidenced in-scope; only the spelling
 is borrowed. Anything without that corroboration keeps an `unk_` name.
 
-0x44-0x4b are hitX/hitZ in [func_ov006_02112ad8.c](../src/func_ov006_02112ad8.c)'s naming, but none of this
+0x44-0x4b are hitX/hitZ in [func_ov006_02112ad8](../src/actors/dScMgSmartball_c.cpp)'s naming, but none of this
 class's own four functions touches them, so per the wing_c precedent they stay
 an explicit pad -- unmodelled, not unread. pad_0e7[0x11] (0xe7-0xf7) is a
 genuine gap: RestoreInitial's exhaustive zero pass skips straight over it
-(nearby[] ends at 0xe6, targetIndex starts at 0xf8) and [func_ov006_02112ad8.c](../src/func_ov006_02112ad8.c)'s
+(nearby[] ends at 0xe6, targetIndex starts at 0xf8) and [func_ov006_02112ad8](../src/actors/dScMgSmartball_c.cpp)'s
 Obj cast also treats it as padding. pad_101 / pad_111 / pad_122 / pad_12a are
 pure alignment gaps between adjacent int fields (house style: explicit pads over
 implicit compiler-inserted ones).
 
-Constructed by [func_ov006_02114548](../src/func_ov006_02114548.c), left a free function per the recipe. It
+Constructed by [func_ov006_02114548](../src/actors/dScMgSmartball_c.cpp), left a free function per the recipe. It
 calls the base constructor and writes only this vtable and the base's
 `unk_028 = 0x8000`; it touches nothing at or past 0x34, so it adds no evidence
 to the field list.
@@ -610,7 +606,7 @@ Only the fields several descendants corroborate are named here; this class has
 
 | Offset | Name | Evidence |
 | --- | --- | --- |
-| 0x0b4 | `mHudScore` | `dScMgBase_c::BeforeInitResources` zeroes it. [func_ov004_020adb1c](../src/func_ov004_020adb1c.c) -- the routine that writes the dMeter_c counter word at scene+0x464c -- is handed it directly by `func_ov006_02125364` (part of:[d_s_mg_bsc.cpp](../src/minigames/d_s_mg_bsc.cpp), func 15 used to assemble TU) and [func_ov006_020ea3d0.c](../src/func_ov006_020ea3d0.c); dScMgMemory_c and dScMgSound_c seed it in their own InitResources; dScMgCard_c::Render keeps its own high-water mark of it; dScMgAmida_c::Behavior copies its round score into it. Deliberately NOT called `mScore`: five leaves already have a field of their own by that name, and naming the base's the same would silently shadow every one of them (see the round-2 `mPrevPosX` incident). |
+| 0x0b4 | `mHudScore` | `dScMgBase_c::BeforeInitResources` zeroes it. [func_ov004_020adb1c](../src/func_ov004_020adb1c.c) -- the routine that writes the dMeter_c counter word at scene+0x464c -- is handed it directly by `func_ov006_02125364` (part of:[d_s_mg_bsc.cpp](../src/minigames/d_s_mg_bsc.cpp), func 15 used to assemble TU) and [func_ov006_020ea3d0](../src/actors/dScMgHanachan_c.cpp); dScMgMemory_c and dScMgSound_c seed it in their own InitResources; dScMgCard_c::Render keeps its own high-water mark of it; dScMgAmida_c::Behavior copies its round score into it. Deliberately NOT called `mScore`: five leaves already have a field of their own by that name, and naming the base's the same would silently shadow every one of them (see the round-2 `mPrevPosX` incident). |
 | 0x21c | `mSavedMainBgBits` | src/_ZN11dScMgBase_c16OnAimedAtWithEggEv.cpp (slot 29) stores [data_0209d45c](../config/arm9/symbols.txt) here; src/_ZN11dScMgBase_c25OnAimedAtWithEggReturnVecEv.cpp (slot 30) restores it from here. |
 | 0x220 | `mSavedSubBgBits` | The same save/restore pair for [data_0209d454](../config/arm9/symbols.txt). |
 | 0x224 | `mSavedScreenSwap` | Saved as `(POWCNT1 & 0x8000) >> 15` and restored as `n << 15` by that same pair. |

@@ -230,12 +230,12 @@ Also spelled `u16 *p = (u16*)(((int)c + 0x4c0c) & 0xFFFFFFFFFFFFFFFFULL); *p = *
    #define M(a) (*(int*)(((long long)(unsigned)(a)) & 0xFFFFFFFFFFFFFFFFLL))
    #define N(a) (*(int*)(((long long)(long)(a))     & 0xFFFFFFFFFFFFFFFFLL))
    ```
-   (verbatim from `src/func_ov006_02114c04.c`, which needs all three)
+   (verbatim from `func_ov006_02114c04`, which needs all three)
 
 **Landed examples** (all byte-identical, strict relocs, linkcheck VERIFIED):
-`src/func_ov006_02114c04.c` (the clearest -- RMW/single-use split across a whole loop body),
+`func_ov006_02114c04` (the clearest -- RMW/single-use split across a whole loop body),
 `src/func_ov006_0211fe78.c` (63 divergences -> 0 in one edit),
-`src/func_ov006_020d8d84.c`, `src/func_ov006_0211e8a8.c`.
+`src/actors/dScMgBomroom_c.cpp` (`func_ov006_020d8d84`, folded from its shard), `src/func_ov006_0211e8a8.c`.
 
 **Cost of the stale note.** `func_ov006_0211e8a8` was worked to 12 divergences, correctly diagnosed
 as the "first-access-fold wall" per the old text, and abandoned as unmatchable. Pointed at the
@@ -251,7 +251,7 @@ mwcc pool-load it and hoist the result into callee-saved registers (observed: 7-
 Modelling the same thing as a **stride-0x40 struct array** indexed `[i]` yields the ROM's
 `add rX,self,i,lsl#6; add rX,rX,#0x4000; ldrb [rX,#0x694]` and rematerializes per region.
 (`src/actors/dScMgBomroom_c.cpp`, which absorbed the former `func_ov006_020d69b8`
-shard; and `src/func_ov006_020d816c.c`.)
+and `func_ov006_020d816c` shards.)
 
 Related: write the cast **inline** at each use. Hoisting it into a local pointer (`Ent *ents = ...`)
 forces one addressing form everywhere; inline lets mwcc pick per context, which is what the ROM does.

@@ -1,0 +1,391 @@
+{
+  "id": "ov100/daDoor_c",
+  "module": "ov100",
+  "source": "src/actors/daDoor_c.cpp",
+  "promoted_source": "src/actors/daDoor_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x21443f4..0x214589c, 31 function(s), from build/tu_map.json (tools/tu_map.py) -- the whole unit. daWanwan2_c_classInit (src/d_a_wanwan2.cpp) ends exactly at 0x021443f4 below it.",
+    "class label(s): daDoor_c",
+    "module sinit corroboration: 7 sinit(s) / 7 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit tail fold: daDoor_c_classInit (0x0214589c..0x021458d4) abuts the unit with no gap and is now inside it; tu_map cuts on symbol name and left it out. The unit is 0x021443f4..0x021458d4, bounded above by daStarGate_c's first function (src/game/actors/d_a_star_gate.cpp) at 0x021458d4."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x021443f4",
+      "end": "0x021458d4"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN8daDoor_cD1Ev",
+      "address": "0x021443f4",
+      "size": "0x00000030",
+      "legacy_source": "src/_ZN8daDoor_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN8daDoor_cD0Ev",
+      "address": "0x02144424",
+      "size": "0x00000044",
+      "legacy_source": "src/_ZN8daDoor_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov100_02144468",
+      "address": "0x02144468",
+      "size": "0x00000080",
+      "legacy_source": "src/func_ov100_02144468.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov100_021444e8",
+      "address": "0x021444e8",
+      "size": "0x00000040",
+      "legacy_source": "src/func_ov100_021444e8.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov100_02144528",
+      "address": "0x02144528",
+      "size": "0x000001d0",
+      "legacy_source": "src/func_ov100_02144528.c",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov100_021446f8",
+      "address": "0x021446f8",
+      "size": "0x00000038",
+      "legacy_source": "src/func_ov100_021446f8.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov100_02144730",
+      "address": "0x02144730",
+      "size": "0x000001ec",
+      "legacy_source": "src/func_ov100_02144730.cpp",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov100_0214491c",
+      "address": "0x0214491c",
+      "size": "0x00000034",
+      "legacy_source": "src/func_ov100_0214491c.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov100_02144950",
+      "address": "0x02144950",
+      "size": "0x00000078",
+      "legacy_source": "src/func_ov100_02144950.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov100_021449c8",
+      "address": "0x021449c8",
+      "size": "0x00000070",
+      "legacy_source": "src/func_ov100_021449c8.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov100_02144a38",
+      "address": "0x02144a38",
+      "size": "0x000001bc",
+      "legacy_source": "src/func_ov100_02144a38.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov100_02144bf4",
+      "address": "0x02144bf4",
+      "size": "0x00000070",
+      "legacy_source": "src/func_ov100_02144bf4.cpp",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov100_02144c64",
+      "address": "0x02144c64",
+      "size": "0x00000008",
+      "legacy_source": "src/func_ov100_02144c64.c",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov100_02144c6c",
+      "address": "0x02144c6c",
+      "size": "0x00000060",
+      "legacy_source": "src/func_ov100_02144c6c.c",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov100_02144ccc",
+      "address": "0x02144ccc",
+      "size": "0x0000002c",
+      "legacy_source": "src/func_ov100_02144ccc.c",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov100_02144cf8",
+      "address": "0x02144cf8",
+      "size": "0x0000028c",
+      "legacy_source": "src/func_ov100_02144cf8.c",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov100_02144f84",
+      "address": "0x02144f84",
+      "size": "0x00000048",
+      "legacy_source": "src/func_ov100_02144f84.c",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov100_02144fcc",
+      "address": "0x02144fcc",
+      "size": "0x00000048",
+      "legacy_source": "src/func_ov100_02144fcc.cpp",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov100_02145014",
+      "address": "0x02145014",
+      "size": "0x0000005c",
+      "legacy_source": "src/func_ov100_02145014.c",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov100_02145070",
+      "address": "0x02145070",
+      "size": "0x00000010",
+      "legacy_source": "src/func_ov100_02145070.c",
+      "ordinal": 19
+    },
+    {
+      "symbol": "func_ov100_02145080",
+      "address": "0x02145080",
+      "size": "0x000000f0",
+      "legacy_source": "src/func_ov100_02145080.c",
+      "ordinal": 20
+    },
+    {
+      "symbol": "func_ov100_02145170",
+      "address": "0x02145170",
+      "size": "0x00000054",
+      "legacy_source": "src/func_ov100_02145170.c",
+      "ordinal": 21
+    },
+    {
+      "symbol": "func_ov100_021451c4",
+      "address": "0x021451c4",
+      "size": "0x00000120",
+      "legacy_source": "src/func_ov100_021451c4.cpp",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov100_021452e4",
+      "address": "0x021452e4",
+      "size": "0x0000008c",
+      "legacy_source": "src/func_ov100_021452e4.c",
+      "ordinal": 23
+    },
+    {
+      "symbol": "func_ov100_02145370",
+      "address": "0x02145370",
+      "size": "0x00000068",
+      "legacy_source": "src/func_ov100_02145370.c",
+      "ordinal": 24
+    },
+    {
+      "symbol": "func_ov100_021453d8",
+      "address": "0x021453d8",
+      "size": "0x00000054",
+      "legacy_source": "src/func_ov100_021453d8.cpp",
+      "ordinal": 25
+    },
+    {
+      "symbol": "_ZN8daDoor_c16CleanupResourcesEv",
+      "address": "0x0214542c",
+      "size": "0x00000098",
+      "legacy_source": "src/_ZN8daDoor_c16CleanupResourcesEv.cpp",
+      "ordinal": 26
+    },
+    {
+      "symbol": "_ZN8daDoor_c16OnPendingDestroyEv",
+      "address": "0x021454c4",
+      "size": "0x00000004",
+      "legacy_source": "src/_ZN8daDoor_c16OnPendingDestroyEv.cpp",
+      "ordinal": 27
+    },
+    {
+      "symbol": "_ZN8daDoor_c6RenderEv",
+      "address": "0x021454c8",
+      "size": "0x00000088",
+      "legacy_source": "src/_ZN8daDoor_c6RenderEv.cpp",
+      "ordinal": 28
+    },
+    {
+      "symbol": "_ZN8daDoor_c8BehaviorEv",
+      "address": "0x02145550",
+      "size": "0x00000050",
+      "legacy_source": "src/_ZN8daDoor_c8BehaviorEv.cpp",
+      "ordinal": 29
+    },
+    {
+      "symbol": "_ZN8daDoor_c13InitResourcesEv",
+      "address": "0x021455a0",
+      "size": "0x000002fc",
+      "legacy_source": "src/_ZN8daDoor_c13InitResourcesEv.c",
+      "ordinal": 30
+    },
+    {
+      "symbol": "daDoor_c_classInit",
+      "address": "0x0214589c",
+      "size": "0x00000038",
+      "legacy_source": "src/d_a_door.c",
+      "ordinal": 31
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Thirty-two-function unit 0x021443f4..0x021458d4: D1 and D0 from the out-of-line destructor, the twenty-four helpers func_ov100_02144468..func_ov100_021453d8, CleanupResources, OnPendingDestroy, Render, Behavior, InitResources, and the folded registry factory daDoor_c_classInit as `return new daDoor_c;`.",
+    "Written in ROM order under `#pragma defer_codegen off`, which keeps D1 ahead of D0. None of the legacy shards carried a pragma.",
+    "The per-shard extern blocks are merged into one declaration per callee. Where shards disagreed (func_ov100_021453d8's argument types, the int/void* return of func_ov100_02145370, data_0209caa0 as bytes, words or a three-word struct, data_ov100_02148204 as bytes or a 16-byte entry) the TU keeps one spelling and casts at the call sites; every caller reproduces with it. The nine state tables are declared as the int include/decl_common.h gives two of them, and the helpers' Player calls are member calls through include/Player.h.",
+    "Eighteen of the helpers, InitResources and the factory were C sources; they compile as C++ here. Their stack and static vectors are a plain three-word struct so they carry no destructor, and InitResources copies the door matrix into both models through a twelve-word array struct (the struct-copy lever of notes/cpp-class-form.md).",
+    "InitResources is now the real daDoor_c::InitResources method rather than a C free function taking the object explicitly; the redundant (u32) cast on the param1 shift is still what keeps the offset folded into both accesses.",
+    "Fourteen helpers (func_ov100_02144468..func_ov100_02144cf8) are the enter/execute members of the door's nine states: pointer-to-member constants at ov100 0x021480d4..0x02148144, copied by the module's static initializer into the 16-byte tables data_ov100_021488a4..data_ov100_02148924. func_ov100_021453d8 stores a state at +0x140 and calls its enter half; Behavior calls the execute half."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN8daDoor_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Homeless. One out-of-line destructor under #pragma defer_codegen off emits D1, D0, then D2. The cartridge has D1 at ov100:0x021443f4 and D0 at 0x02144424 and no D2. Production isolation discards it. It is emitted after D0, and the licensed functions stay ROM-ascending."
+    },
+    {
+      "symbol": "_ZTV8daDoor_c",
+      "disposition": "deadstrip-data",
+      "reason": "The out-of-line destructor is the key function, so this TU emits the vtable. ov100:0x02148188 is in .data, outside the licensed text span 0x021443f4..0x021458d4. D1, D0 and the factory store this vptr; text-only production discards the emitted copy and retains cartridge data.",
+      "canonical_module": "ov100",
+      "canonical_address": "0x02148188"
+    },
+    {
+      "symbol": "_ZTI8daDoor_c",
+      "disposition": "deadstrip-data",
+      "reason": "This class's __si_class_type_info, dragged in with the vtable. Cartridge copy ov100:0x02148158. Its base word is _ZTI8dActor_c.",
+      "canonical_module": "ov100",
+      "canonical_address": "0x02148158"
+    },
+    {
+      "symbol": "_ZTS8daDoor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Type-name string 8daDoor_c at ov100:0x0214814c.",
+      "canonical_module": "ov100",
+      "canonical_address": "0x0214814c"
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e390, outside this TU's licensed range (.text 0x021443f4-0x021458d4), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390"
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e384, outside this TU's licensed range (.text 0x021443f4-0x021458d4), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e78, outside this TU's licensed range (.text 0x021443f4-0x021458d4), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e54, outside this TU's licensed range (.text 0x021443f4-0x021458d4), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54"
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086d70, outside this TU's licensed range (.text 0x021443f4-0x021458d4), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e60, outside this TU's licensed range (.text 0x021443f4-0x021458d4), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60"
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov100-daDoor_c/daDoor_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 32,
+    "functions_declared": 32,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN8daDoor_cD2Ev"
+      ],
+      "deadstripped": [
+        "_ZN8daDoor_cD2Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81
+      ],
+      "data": [
+        "_ZTV8daDoor_c",
+        "_ZTI8daDoor_c",
+        "_ZTS8daDoor_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTI8daDoor_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTS8daDoor_c",
+        "_ZTV8daDoor_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

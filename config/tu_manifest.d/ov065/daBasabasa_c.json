@@ -8,13 +8,14 @@
   "boundary_evidence": [
     "contiguous linker run: 0x2116f98..0x2117ee8, 21 function(s), from build/tu_map.json (tools/tu_map.py)",
     "class label(s): daBasabasa_c",
-    "module sinit corroboration: 10 sinit(s) / 10 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)"
+    "module sinit corroboration: 10 sinit(s) / 10 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold (0930c): the BASABASA registry factory daBasabasa_c_classInit (0x02117ee8, 0x58) abuts this TU's former end 0x02117ee8 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range ends at 0x02117f40, where the daDossy_c TU (src/actors/daDossy_c.cpp) begins."
   ],
   "sections": [
     {
       "name": ".text",
       "start": "0x02116f98",
-      "end": "0x02117ee8"
+      "end": "0x02117f40"
     }
   ],
   "functions": [
@@ -164,15 +165,23 @@
       "size": "0x00000008",
       "legacy_source": "src/_ZN12daBasabasa_c13OnYoshiTryEatEv.cpp",
       "ordinal": 20
+    },
+    {
+      "symbol": "daBasabasa_c_classInit",
+      "address": "0x02117ee8",
+      "size": "0x00000058",
+      "legacy_source": "src/d_a_basabasa.c",
+      "ordinal": 21
     }
   ],
   "data": [],
   "bss": [],
   "notes": [
-    "Text span 0x02116f98..0x02117ee8, 21 functions, class daBasabasa_c only. daBasabasa_c_classInit at 0x02117ee8 is the next function and is not absorbed.",
+    "Text span 0x02116f98..0x02117f40, 22 functions, class daBasabasa_c only: tu_map's 21-function run 0x02116f98..0x02117ee8 plus the zero-gap registry factory daBasabasa_c_classInit (0x02117ee8..0x02117f40). The next delinks entry, src/actors/daDossy_c.cpp, opens at 0x02117f40.",
     "Cartridge type string is 12daBasabasa_c: vtable 0x0211cca0 word at -4 is _ZTI12daBasabasa_c (0x0211cc60), typeinfo+4 is the string at 0x0211cc6c. The coined _ZTV5Swoop alias was deleted.",
     "One out-of-line destructor under #pragma defer_codegen off. D2 is homeless deadstrip. Vector3 D1 is the vague duplicate of arm9:0x020072c0. Vtable and the ancestor RTTI chain are deadstrip-data at their existing addresses.",
-    "Nine functions are members under coined names, their ov065 symbols.txt rows renamed in place: SetState 0x02117944, ExecuteReturn 0x02117404, EnterReturn 0x021175b0, ExecuteChase 0x02117624, EnterChase 0x021176fc, ExecuteDrop 0x02117780, EnterDrop 0x021177e4, ExecutePerch 0x02117888, EnterPerch 0x021178fc. The .data member-pointer pairs at 0x0211cc20..0x0211cc60 reach the eight state bodies by address. func_ov065_0211704c and func_ov065_02117994 keep C linkage because include/decl_common.h declares them."
+    "Nine functions are members under coined names, their ov065 symbols.txt rows renamed in place: SetState 0x02117944, ExecuteReturn 0x02117404, EnterReturn 0x021175b0, ExecuteChase 0x02117624, EnterChase 0x021176fc, ExecuteDrop 0x02117780, EnterDrop 0x021177e4, ExecutePerch 0x02117888, EnterPerch 0x021178fc. The .data member-pointer pairs at 0x0211cc20..0x0211cc60 reach the eight state bodies by address. func_ov065_0211704c and func_ov065_02117994 keep C linkage because include/decl_common.h declares them.",
+    "classInit fold (0930c): daBasabasa_c_classInit is folded in last, in ROM order, under the file's `#pragma defer_codegen off`, as `return new daBasabasa_c();`. The retired one-function source hand-called fBase_c::operator new(0x440), dEnemyBase_c's C2 constructor, this class's vtable store and the five member C1 constructors (dCcAc_c 0x110, dBgCh_Actr 0x144, two ModelAnim at 0x300/0x364, ShadowModel 0x3c8); daBasabasa_c has no user-declared constructor, so the synthesized one emits the identical sequence and no new compiler-only output. tubuild verify: 22/22 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_basabasa.c; its credit carries in attribution.json as a path#symbol override."
   ],
   "compiler_only_output": [
     {
@@ -276,8 +285,8 @@
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
     "object": "build/tu/ov065-daBasabasa_c/daBasabasa_c.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
-    "functions_matched": 21,
-    "functions_declared": 21,
+    "functions_matched": 22,
+    "functions_declared": 22,
     "compilerOnlyOutput": {
       "requested": [
         "_ZN12daBasabasa_cD2Ev",
@@ -294,8 +303,6 @@
         10,
         13,
         26,
-        46,
-        47,
         48,
         49,
         50,
@@ -310,7 +317,9 @@
         59,
         60,
         61,
-        62
+        62,
+        63,
+        64
       ],
       "data": [
         "_ZTV12daBasabasa_c",

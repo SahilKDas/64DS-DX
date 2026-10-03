@@ -1,12 +1,9 @@
 //cpp
-/* Translation unit for ov071/daObjCasket_c, hand-curated.
- * 14 function(s), .text 0x02121fe4..0x021226a0.
- *
- * The casket in Big Boo's Haunt (profile CASKET): a dBgActor_c lying on its
- * back that stands up on end when a player comes near, shakes for a moment,
- * and falls back down with a thud and a camera shake. Behavior runs one of
- * two states out of a table of { init, exec, name } entries at
- * data_ov071_02122ecc, which __sinit_ov071_02122a64 fills:
+/* daObjCasket_c -- CASKET, a dBgActor_c in ov071, .text 0x02121fe4..0x021226a0
+ * (14 functions). It lies flat until a player comes near, swings up on end for
+ * a moment, and swings back down. Behavior runs one of two states out of a
+ * table of { init, exec, name } entries at data_ov071_02122ecc, which
+ * __sinit_ov071_02122a64 fills:
  *
  *   0 "WAIT"     init St_Wait_Init     exec St_Wait_Main
  *   1 "STANDUP"  init St_StandUp_Init  exec St_StandUp_Main
@@ -25,14 +22,14 @@
  * emits one .text section per function in the REVERSE of source order, so
  * the highest-address ROM function is written FIRST here. Do not reorder.
  *
- * Leftover: dBgW_KcMbg::SetFile, dBgActor_c::IsClsnInRange and
- *   dActor_c::Earthquake stay mangled bridges. Each takes Fix12<int> by
- *   value, and a member call puts it on the stack: SetFile as a member grows
- *   InitResources from 0x114 to 0x120 bytes, as in
- *   notes/experiments/batch2-2685-dossunbar-setfile.md.
- * Leftover: the state table (data_ov071_02122ecc) and the model and
- *   collision files (data_ov071_021230d0, data_ov071_021230d8) are unnamed
- *   ov071 rows this TU does not own.
+ * Known limits:
+ * - dBgW_KcMbg::SetFile, dBgActor_c::IsClsnInRange and dActor_c::Earthquake
+ *   stay mangled bridges. Each takes Fix12<int> by value, and a member call
+ *   puts it on the stack: SetFile as a member grows InitResources from 0x114
+ *   to 0x120 bytes, as in notes/experiments/batch2-2685-dossunbar-setfile.md.
+ * - The state table (data_ov071_02122ecc) and the model and collision files
+ *   (data_ov071_021230d0, data_ov071_021230d8) are unnamed ov071 rows this TU
+ *   does not own.
  */
 
 #include "daObjCasket_c.h"
@@ -48,7 +45,7 @@ struct CasketState {
     const char *name;
 };
 
-int ApproachLinear(short &value, short target, short step);
+bool ApproachLinear(short &value, short target, short step);
 
 extern "C" {
 /* The state table, indexed by mState. */
@@ -77,7 +74,6 @@ int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
 void _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(void *self, Vector3 *pos, int strength);
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol daObjCasket_c_classInit
 /* Reconstructed source-style name: SM64DS proves daObjCasket_c through RTTI,
  * allocation size, vtable identity, and the CASKET registry profile; later EAD
@@ -88,7 +84,6 @@ extern "C" daObjCasket_c *daObjCasket_c_classInit()
     return new daObjCasket_c();
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c13InitResourcesEv
 int daObjCasket_c::InitResources()
 {
@@ -96,23 +91,24 @@ int daObjCasket_c::InitResources()
     mVertAccel = -0x2000;
     mTerminalVelocity = -0x3c000;
 
-    /* The model's origin is at the foot; the actor sits 200 units along its
-       facing from there. */
-    Vector3 in;
-    Vector3 out;
-    in.x = 0;
-    in.y = 0;
-    in.z = 0xc8000;
-    out.x = 0;
-    out.y = 0;
-    out.z = 0;
+    /* Moves the actor 200 units along its facing from where it was placed.
+       St_Wait_Main measures from, and lands its dust at, the point 200 units
+       back along the facing. */
+    Vector3 localOffset;
+    Vector3 worldOffset;
+    localOffset.x = 0;
+    localOffset.y = 0;
+    localOffset.z = 0xc8000;
+    worldOffset.x = 0;
+    worldOffset.y = 0;
+    worldOffset.z = 0;
     Matrix4x3_FromRotationY(&data_020a0e68, mAngleY);
-    MulVec3Mat4x3(&in, &data_020a0e68, &out);
-    Vector3 res;
-    Vec3_Add(&res, (Vector3 *)&mPosX, &out);
-    mPosX = res.x;
-    mPosY = res.y;
-    mPosZ = res.z;
+    MulVec3Mat4x3(&localOffset, &data_020a0e68, &worldOffset);
+    Vector3 newPos;
+    Vec3_Add(&newPos, (Vector3 *)&mPosX, &worldOffset);
+    mPosX = newPos.x;
+    mPosY = newPos.y;
+    mPosZ = newPos.z;
 
     UpdateModelTransform();
     UpdateClsnPosAndRot();
@@ -123,7 +119,6 @@ int daObjCasket_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c8BehaviorEv
 int daObjCasket_c::Behavior()
 {
@@ -143,7 +138,6 @@ int daObjCasket_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c6RenderEv
 int daObjCasket_c::Render()
 {
@@ -151,7 +145,6 @@ int daObjCasket_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c16CleanupResourcesEv
 int daObjCasket_c::CleanupResources()
 {
@@ -163,7 +156,6 @@ int daObjCasket_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c8RunStateEv
 /* Runs the current state's exec function. */
 void daObjCasket_c::RunState()
@@ -171,7 +163,6 @@ void daObjCasket_c::RunState()
     (this->*data_ov071_02122ecc[mState].exec)();
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c8SetStateEi
 /* Enters a state and runs its init function. */
 void daObjCasket_c::SetState(int state)
@@ -180,7 +171,6 @@ void daObjCasket_c::SetState(int state)
     (this->*data_ov071_02122ecc[mState].init)();
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c12St_Wait_InitEv
 /* State 0 init, WAIT. */
 void daObjCasket_c::St_Wait_Init()
@@ -189,53 +179,63 @@ void daObjCasket_c::St_Wait_Init()
     mStateTimer = 60;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c12St_Wait_MainEv
-/* State 0 exec, WAIT. While still tilted, swing back down, gathering speed,
- * and land with a camera shake and a puff of dust at the head. Once flat,
- * stand up again when a player comes within 300 units of the head and the
- * wait timer has run out. */
+/* State 0 exec, WAIT. While mAngleX is not 0, swing back down, gathering
+ * speed toward -0x7d0 a frame; on reaching 0, call dActor_c::Earthquake at the
+ * actor's position, spawn dust at the point 200 units back along the facing and
+ * play sound 0x5a. Once flat, go to STANDUP when a player is within 300 units
+ * (horizontally) of that same point and the wait timer has run out. */
 void daObjCasket_c::St_Wait_Main()
 {
-    Vector3 vin, vout;
-    Vector3 pp;
-    Vector3 din, dout;
-    Vector3 eq;
-    Vector3 ld;
+    Vector3 landLocal, landWorld;
+    Vector3 playerPos;
+    Vector3 reachLocal, reachWorld;
+    Vector3 quakePos;
+    Vector3 dustPos;
 
     if (mAngleX != 0) {
         ApproachLinear(mAngleStep, -0x7d0, 0xc8);
         if (ApproachLinear(mAngleX, 0, -mAngleStep) == 0)
             return;
-        eq.x = mPosX;
-        eq.y = mPosY;
-        eq.z = mPosZ;
-        _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(this, &eq, 0x5dc000);
+        quakePos.x = mPosX;
+        quakePos.y = mPosY;
+        quakePos.z = mPosZ;
+        _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(this, &quakePos, 0x5dc000);
 
-        vin.x = 0; vin.y = 0; vin.z = -0xc8000;
-        vout.x = 0; vout.y = 0; vout.z = 0;
+        landLocal.x = 0;
+        landLocal.y = 0;
+        landLocal.z = -0xc8000;
+        landWorld.x = 0;
+        landWorld.y = 0;
+        landWorld.z = 0;
         Matrix4x3_FromRotationY(&data_020a0e68, mAngleY);
-        MulVec3Mat4x3(&vin, &data_020a0e68, &vout);
-        AddVec3(&vout, (Vector3 *)&mPosX, &vout);
-        ld.x = vout.x; ld.y = vout.y; ld.z = vout.z;
-        LandingDustAt(ld, true);
+        MulVec3Mat4x3(&landLocal, &data_020a0e68, &landWorld);
+        AddVec3(&landWorld, (Vector3 *)&mPosX, &landWorld);
+        dustPos.x = landWorld.x;
+        dustPos.y = landWorld.y;
+        dustPos.z = landWorld.z;
+        LandingDustAt(dustPos, true);
         Sound::PlayBank3(0x5a, *(Vector3 *)&mCamSpacePosX);
     } else {
-        Vector3 *plp;
-        Player *pl = ClosestPlayer();
-        if (pl == 0)
+        Vector3 *playerPosPtr;
+        Player *closest = ClosestPlayer();
+        if (closest == 0)
             return;
         /* Through a pointer: copied straight off the player, it is one instruction short. */
-        plp = (Vector3 *)&pl->mPosX;
-        pp.x = plp->x;
-        pp.y = plp->y;
-        pp.z = plp->z;
-        din.x = 0; din.y = 0x64000; din.z = -0xc8000;
-        dout.x = 0; dout.y = 0; dout.z = 0;
+        playerPosPtr = (Vector3 *)&closest->mPosX;
+        playerPos.x = playerPosPtr->x;
+        playerPos.y = playerPosPtr->y;
+        playerPos.z = playerPosPtr->z;
+        reachLocal.x = 0;
+        reachLocal.y = 0x64000;
+        reachLocal.z = -0xc8000;
+        reachWorld.x = 0;
+        reachWorld.y = 0;
+        reachWorld.z = 0;
         Matrix4x3_FromRotationY(&data_020a0e68, mAngleY);
-        MulVec3Mat4x3(&din, &data_020a0e68, &dout);
-        AddVec3(&dout, (Vector3 *)&mPosX, &dout);
-        if (Vec3_HorzDist(&dout, &pp) >= 0x12c000)
+        MulVec3Mat4x3(&reachLocal, &data_020a0e68, &reachWorld);
+        AddVec3(&reachWorld, (Vector3 *)&mPosX, &reachWorld);
+        if (Vec3_HorzDist(&reachWorld, &playerPos) >= 0x12c000)
             return;
         if (DecIfAbove0_Short(&mStateTimer) != 0)
             return;
@@ -243,7 +243,6 @@ void daObjCasket_c::St_Wait_Main()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c15St_StandUp_InitEv
 /* State 1 init, STANDUP. */
 void daObjCasket_c::St_StandUp_Init()
@@ -253,11 +252,11 @@ void daObjCasket_c::St_StandUp_Init()
     Sound::PlayBank3(0x58, *(Vector3 *)&mCamSpacePosX);
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c15St_StandUp_MainEv
-/* State 1 exec, STANDUP. Swing up to stand on end, gathering speed; then
- * shake from side to side, rattling every fourth frame, and go back to WAIT
- * when the timer runs out. */
+/* State 1 exec, STANDUP. Swing mAngleX up to 0x4000, gathering speed toward
+ * 0x3e8 a frame. Then the timer counts down from 60: while it is 30 or less,
+ * mAngleZ alternates between -0xc8 and 0xc8 each frame and sound 0x59 plays
+ * every fourth frame. At zero, go back to WAIT and level mAngleZ. */
 void daObjCasket_c::St_StandUp_Main()
 {
     if (mAngleX != 0x4000) {
@@ -278,7 +277,6 @@ void daObjCasket_c::St_StandUp_Main()
     mAngleZ = (mBehaviorTimer & 1) * 0x190 - 0xc8;
 }
 
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN13daObjCasket_c20UpdateModelTransformEv
 /* Puts the model where the actor is. */
 void daObjCasket_c::UpdateModelTransform()

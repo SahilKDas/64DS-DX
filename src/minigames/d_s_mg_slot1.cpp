@@ -1,6 +1,6 @@
 //cpp
 /* Slot machine scene factory (MG_SLOT1). The scene's methods live in
- * src/actors/dScMgSlot1_c.cpp.
+ * src/actors/dScMgSlots.cpp.
  *
  * The allocation, the base C2 call and the three vptr stores are written out
  * by hand: the ROM has no dScMgSlot1_c C1, so `new dScMgSlot1_c` cannot link.
@@ -11,7 +11,7 @@
 #include "dScMgSlot1_c.h"
 
 extern "C" {
-extern void _ZN11dScMgBase_cC2Ev(void *);
+extern void *_ZN11dScMgBase_cC2Ev(void *);
 extern void func_ov006_0210c2b0(char *p);
 extern void func_ov006_0210c208(char *p);
 extern void *_ZTV12dScMgSlot1_c;

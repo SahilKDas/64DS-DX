@@ -43,8 +43,7 @@
  *       Particle::System::NewSimple (also absent from Particle.h).
  *
  *   (b) No usable declaration: dActor_c::Earthquake is not on dActor_c.h
- *       (func_ov102_02149c78). KillAndTrackInDeathTable is void, but
- *       func_ov102_021494cc returns the bl's r0.
+ *       (func_ov102_02149c78).
  *
  * Known limits:
  *   func_020393a4 / func_02039394 poke mMeshCollider, which has no setter
@@ -52,7 +51,7 @@
  *   The func_ov102_* helpers keep their linker names: offset soup and PMF
  *   dispatch through data_ov102_0214e890 / 0214e870 / 0214e8c0. None coined.
  *   data_ov002_0210da58 and gPFlower* stay char[]. A SharedFilePtr decl
- *   would outvote the char[] spelling that Goomboss, daFeather and
+ *   would outvote the char[] spelling that daKuriKing_c, daFeather and
  *   PowerFlower share, and check_decl_agreement would flag those files; and
  *   Init's LoadFile still treats each slot as the model handle.
  *
@@ -83,6 +82,7 @@
 #include "SharedFilePtr.h"
 #include "Sound.h"
 #include "SaveData.h"
+#include "daSCoin_c.h"
 
 struct CLPS_Block;
 struct KCL_File;
@@ -149,7 +149,7 @@ extern SharedFilePtr data_ov002_0210d9c0;
 extern SharedFilePtr data_ov002_0210d9d8;
 extern SharedFilePtr data_ov002_0210d9e0;
 /* da58 / gPFlower*: SharedFilePtr here would outvote the char[]
-   spelling Goomboss, daFeather and PowerFlower share, so
+   spelling daKuriKing_c, daFeather and PowerFlower share, so
    check_decl_agreement would flag those files. */
 extern SharedFilePtr data_ov002_0210da18;
 extern SharedFilePtr data_ov002_0210da30;
@@ -174,15 +174,12 @@ extern int DecIfAbove0_Short(void *p);
 extern void Matrix4x3_FromRotationY(void *m, int angle);
 extern void func_020393a4(int *p, int v);
 extern void func_02039394(int *p, int v);
-/* local extern: dActor_c.h declares it void, but func_ov102_021494cc returns the bl's r0 */
-extern int _ZN8dActor_c24KillAndTrackInDeathTableEv(void *self);
 extern void _ZN8dActor_c10EarthquakeERK7Vector35Fix12IiE(void *self, void *pos, s32 radius);
 extern void _ZN8dActor_c18DropShadowScaleXYZER11ShadowModelR9Matrix4x35Fix12IiES5_S5_j(void *self, void *shadow, void *mtx, int fix, int t1, int t2, unsigned int n);
 extern int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
 extern void _ZN9ModelAnim7SetAnimEP8BCA_Filei5Fix12IiEj(void *thiz, void *bca, int a, int fx, unsigned int f);
 extern void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(void *thiz, void *kcl, void *mtx, int fix, short s, void *clps);
 extern void func_ov102_0214ad14(void *actor);
-extern void func_ov002_020f0438(void *actor);
 extern void _ZN8Particle6System9NewSimpleEj5Fix12IiES2_S2_(unsigned id, int x, int y, int z);
 
 int func_ov102_02149078(dActor_c *self);
@@ -193,7 +190,6 @@ int func_ov102_02149610(char *c);
 void func_ov102_02149684(int *dst, int *src);
 void func_ov102_02149da8(C *c, int i);
 void func_ov102_02149df0(C *c);
-void func_ov102_02149e38(char *self);
 void func_ov102_02149ea4(char *c);
 void func_ov102_02149ff0(char *c);
 }
@@ -275,7 +271,7 @@ int daObjHatenaBlock_c::InitResources()
     mScaleY = 0x1000;
     mScaleZ = 0x1000;
     func_ov102_02149ff0((char *)this);
-    func_ov102_02149e38((char *)this);
+    func_ov102_02149e38();
     mShadowMat = mModel.mat4x3;
     {
         void *kcl = dBgW_Kc::LoadFile(data_ov102_0214e7d0);
@@ -381,12 +377,12 @@ int daObjHatenaBlock_c::Behavior()
     }
     if (data_0209f2f8 == 0x1c) {
         if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0x460000, 0x46000) != 0) {
-            func_ov102_02149e38((char *)this);
+            func_ov102_02149e38();
         }
         goto end;
     }
     if (_ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(this, 0x118000, 0x46000) != 0) {
-        func_ov102_02149e38((char *)this);
+        func_ov102_02149e38();
     }
 end:
     return 1;
@@ -538,18 +534,18 @@ skipcall:
 }
 }
 
-// @symbol func_ov102_02149e38
+// @symbol _ZN18daObjHatenaBlock_c19func_ov102_02149e38Ev
 extern "C" {
-
 struct HbMbgObj { char p[0x2ec]; Matrix4x3 m; };
-void func_ov102_02149e38(char* self){
+}
+void daObjHatenaBlock_c::func_ov102_02149e38(){
+    char* self = (char*)this;
     HbMbgObj* o = (HbMbgObj*)self;
     o->m = *(Matrix4x3*)(self + 0xf0);
     *(int*)(self+0x310) = *(int*)(self+0x5c);
     *(int*)(self+0x314) = *(int*)(self+0x60) + *(int*)(self+0x3dc);
     *(int*)(self+0x318) = *(int*)(self+0x64);
     ((dBgW_KcMbg *)(self+0x124))->Transform(o->m, *(short*)(self+0x8e));
-}
 }
 
 // @symbol func_ov102_02149df0
@@ -569,23 +565,23 @@ void func_ov102_02149d80(void *c) {
 }
 }
 
-// @symbol func_ov102_02149ccc
-extern "C" void func_ov102_02149ccc(char *self)
+// @symbol _ZN18daObjHatenaBlock_c19func_ov102_02149cccEv
+void daObjHatenaBlock_c::func_ov102_02149ccc()
 {
     dActor_c *player;
     if (!(data_0209caa0[1] & 0x80000000)) {
-        int b = (int)(*(unsigned short *)(self + 0xc) == 0x14);
+        int b = (int)(*(unsigned short *)((char *)this + 0xc) == 0x14);
         if (b)
             return;
     }
-    player = (dActor_c *)((dActor_c *)self)->ClosestPlayer();
+    player = (dActor_c *)ClosestPlayer();
     if (*(unsigned char *)((char *)player + 0x703) == 0)
         return;
-    if (Vec3_HorzDist(self + 0x5c, (char *)player + 0x5c) >= 0xc8000)
+    if (Vec3_HorzDist((char *)this + 0x5c, (char *)player + 0x5c) >= 0xc8000)
         return;
-    if (*(int *)(self + 0x60) <= *(int *)((char *)player + 0x60))
+    if (*(int *)((char *)this + 0x60) <= *(int *)((char *)player + 0x60))
         return;
-    ((Obj *)self)->call(player);
+    ((Obj *)this)->call(player);
 }
 
 // @symbol func_ov102_02149c78
@@ -603,9 +599,10 @@ void func_ov102_02149c78(void *c)
 }
 }
 
-// @symbol func_ov102_021498e0
-extern "C" void func_ov102_021498e0(C *self)
+// @symbol _ZN18daObjHatenaBlock_c19func_ov102_021498e0Ev
+void daObjHatenaBlock_c::func_ov102_021498e0()
 {
+    C *self = (C *)this;
     char *c = (char *)self;
     Vector3 pos;
     int ch;
@@ -636,7 +633,7 @@ extern "C" void func_ov102_021498e0(C *self)
     held = *(void **)(c + 0x3f4);
     if (held != 0) {
         if (*(u16 *)((char *)held + 0xc) == 0x149)
-            func_ov002_020f0438(held);
+            ((daSCoin_c *)held)->func_ov002_020f0438();
         *(void **)(c + 0x3f4) = 0;
     }
     Sound::PlayBank3(0, *(Vector3 *)(c + 0x74));
@@ -702,16 +699,14 @@ void func_ov102_021498c4(void *p) {
 }
 }
 
-// @symbol func_ov102_02149878
-extern "C" {
-int func_ov102_02149878(char *c)
+// @symbol _ZN18daObjHatenaBlock_c19func_ov102_02149878Ev
+int daObjHatenaBlock_c::func_ov102_02149878()
 {
-    int r = DecIfAbove0_Short(c + 0x3ee);
+    int r = DecIfAbove0_Short((char *)this + 0x3ee);
     if (r != 0) return r;
-    r = ((dActor_c *)c)->DistToCPlayer();
+    r = DistToCPlayer();
     if (r <= 0x64000) return r;
-    func_ov102_02149da8((C *)c, 0);
-}
+    func_ov102_02149da8((C *)this, 0);
 }
 
 // @symbol _ZN18daObjHatenaBlock_c15OnGroundPoundedER8dActor_c
@@ -826,7 +821,7 @@ void func_ov102_0214953c(char* c, int p1, int p2)
 
 // @symbol func_ov102_021494cc
 extern "C" {
-int func_ov102_021494cc(char* c){
+void func_ov102_021494cc(char* c){
   int s[3];
   func_ov102_02149684(s, (int*)c);
   int count = (*(unsigned int*)(c+8) >> 8) & 0xff;
@@ -834,28 +829,24 @@ int func_ov102_021494cc(char* c){
   int w[3];
   w[0] = s[0]; w[1] = s[1]; w[2] = s[2];
   func_ov102_02149100(c, (Vector3 *)w, count, 0x1800, 0);
-  return _ZN8dActor_c24KillAndTrackInDeathTableEv(c);
-}
-}
-
-// @symbol func_ov102_02149478
-extern "C" {
-void func_ov102_02149478(char* c){
-  char local[12];
-  func_ov102_02149684((int *)local, (int *)c);
-  dActor_c::Spawn(0xb2, *(unsigned char*)(c+0x3f1)|0x40, *(Vector3 *)local, 0, *(signed char*)(c+0xcc), -1);
-  ((fBase_c *)c)->MarkForDestruction();
-}
-}
-
-// @symbol func_ov102_02149428
-extern "C" {
-void func_ov102_02149428(char* c){
-  struct Vector3 pos;
-  func_ov102_02149684((int *)&pos, (int *)c);
-  dActor_c::Spawn(0x114, 0, pos, 0, *(signed char*)(c+0xcc), -1);
   ((dActor_c *)c)->KillAndTrackInDeathTable();
 }
+}
+
+// @symbol _ZN18daObjHatenaBlock_c19func_ov102_02149478Ev
+void daObjHatenaBlock_c::func_ov102_02149478(){
+  char local[12];
+  func_ov102_02149684((int *)local, (int *)this);
+  dActor_c::Spawn(0xb2, *(unsigned char*)((char *)this+0x3f1)|0x40, *(Vector3 *)local, 0, *(signed char*)((char *)this+0xcc), -1);
+  MarkForDestruction();
+}
+
+// @symbol _ZN18daObjHatenaBlock_c19func_ov102_02149428Ev
+void daObjHatenaBlock_c::func_ov102_02149428(){
+  struct Vector3 pos;
+  func_ov102_02149684((int *)&pos, (int *)this);
+  dActor_c::Spawn(0x114, 0, pos, 0, *(signed char*)((char *)this+0xcc), -1);
+  KillAndTrackInDeathTable();
 }
 
 // @symbol func_ov102_021493dc

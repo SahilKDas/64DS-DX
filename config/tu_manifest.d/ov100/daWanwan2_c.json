@@ -1,0 +1,322 @@
+{
+  "id": "ov100/daWanwan2_c",
+  "module": "ov100",
+  "source": "src/actors/daWanwan2_c.cpp",
+  "promoted_source": "src/actors/daWanwan2_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "high",
+  "boundary_evidence": [
+    "contiguous linker run: 0x21431c4..0x21442dc, 16 function(s), from build/tu_map.json (tools/tu_map.py) -- the whole unit. daIbl_c_classInit (src/actors/daIbl_c.cpp) ends exactly at 0x021431c4 below it.",
+    "class label(s): daWanwan2_c (tu_map also tags daIbl_c, read from three words past daIbl_c's 31-slot vtable that are really this class's state-table pointer-to-member constants)",
+    "module sinit corroboration: 7 sinit(s) / 7 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "upper edge: daWanwan2_c_classInit (src/d_a_wanwan2.cpp, 0x021442dc..0x021443f4) abuts this unit with no gap and stays a separate source: `return new daWanwan2_c;` omits its three __cxa_vec_ctor calls over the Vector3/Vector3s arrays (0xa4 bytes for 0x118). daDoor_c's D1 starts exactly at 0x021443f4 above it."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x021431c4",
+      "end": "0x021442dc"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN11daWanwan2_cD1Ev",
+      "address": "0x021431c4",
+      "size": "0x000000cc",
+      "legacy_source": "src/_ZN11daWanwan2_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN11daWanwan2_cD0Ev",
+      "address": "0x02143290",
+      "size": "0x000000e0",
+      "legacy_source": "src/_ZN11daWanwan2_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov100_02143370",
+      "address": "0x02143370",
+      "size": "0x000000dc",
+      "legacy_source": "src/func_ov100_02143370.cpp",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov100_0214344c",
+      "address": "0x0214344c",
+      "size": "0x0000019c",
+      "legacy_source": "src/func_ov100_0214344c.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov100_021435e8",
+      "address": "0x021435e8",
+      "size": "0x000001ec",
+      "legacy_source": "src/func_ov100_021435e8.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov100_021437d4",
+      "address": "0x021437d4",
+      "size": "0x000002d0",
+      "legacy_source": "src/func_ov100_021437d4.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov100_02143aa4",
+      "address": "0x02143aa4",
+      "size": "0x0000003c",
+      "legacy_source": "src/func_ov100_02143aa4.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov100_02143ae0",
+      "address": "0x02143ae0",
+      "size": "0x00000038",
+      "legacy_source": "src/func_ov100_02143ae0.c",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov100_02143b18",
+      "address": "0x02143b18",
+      "size": "0x00000050",
+      "legacy_source": "src/func_ov100_02143b18.cpp",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov100_02143b68",
+      "address": "0x02143b68",
+      "size": "0x00000148",
+      "legacy_source": "src/func_ov100_02143b68.cpp",
+      "ordinal": 9
+    },
+    {
+      "symbol": "_ZN11daWanwan2_c16CleanupResourcesEv",
+      "address": "0x02143cb0",
+      "size": "0x00000058",
+      "legacy_source": "src/_ZN11daWanwan2_c16CleanupResourcesEv.cpp",
+      "ordinal": 10
+    },
+    {
+      "symbol": "_ZN11daWanwan2_c16OnPendingDestroyEv",
+      "address": "0x02143d08",
+      "size": "0x00000004",
+      "legacy_source": "src/_ZN11daWanwan2_c16OnPendingDestroyEv.cpp",
+      "ordinal": 11
+    },
+    {
+      "symbol": "_ZN11daWanwan2_c6RenderEv",
+      "address": "0x02143d0c",
+      "size": "0x00000058",
+      "legacy_source": "src/_ZN11daWanwan2_c6RenderEv.cpp",
+      "ordinal": 12
+    },
+    {
+      "symbol": "_ZN11daWanwan2_c8BehaviorEv",
+      "address": "0x02143d64",
+      "size": "0x00000324",
+      "legacy_source": "src/_ZN11daWanwan2_c8BehaviorEv.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "_ZN11daWanwan2_c13InitResourcesEv",
+      "address": "0x02144088",
+      "size": "0x0000024c",
+      "legacy_source": "src/_ZN11daWanwan2_c13InitResourcesEv.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "_ZN11daWanwan2_c16OnAimedAtWithEggEv",
+      "address": "0x021442d4",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN11daWanwan2_c16OnAimedAtWithEggEv.cpp",
+      "ordinal": 15
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Sixteen-function unit 0x021431c4..0x021442dc: D1 and D0 from the out-of-line destructor, the eight helpers func_ov100_02143370..func_ov100_02143b68, CleanupResources, OnPendingDestroy, Render, Behavior, InitResources and OnAimedAtWithEgg.",
+    "Written in ROM order under `#pragma defer_codegen off`, which keeps D1 ahead of D0. None of the legacy shards carried a pragma.",
+    "The per-shard extern blocks are merged into one declaration per callee. Where shards disagreed on a callee's shape (dActor_c::Spawn's position by reference or pointer, data_ov100_02148008 as a Vector3 or three words, data_ov100_021486ac as a SharedFilePtr or an int array, the void/int return of func_02012694 and dCc_c::Update) the TU keeps one spelling; every caller reproduces with it.",
+    "func_ov100_0214344c, func_ov100_021437d4, func_ov100_02143aa4 and func_ov100_02143ae0 were C shards; they compile as C++ here, and their stack vectors are a plain three-word struct so they carry no destructor.",
+    "func_ov100_02143b68 copies the identity matrix through a twelve-word array struct; the C++ Matrix4x3 copy is the struct-copy DIFF described in notes/cpp-class-form.md (0x184 bytes for 0x148 inside this TU).",
+    "func_ov100_02143b18 and Behavior share one pointer-to-member pair type (ChompState: enter, execute) over a non-polymorphic stand-in class; the two legacy shards each spelled their own.",
+    "func_ov100_02143aa4 is the execute member of the only state (pointer-to-member constant data_ov100_02147ff8, copied by the module's static initializer into data_ov100_021486f4), with func_ov100_02143ae0 as its enter (data_ov100_02148000). Those constants follow daIbl_c's 31-slot vtable directly, which is where tu_map's daIbl_c tag and the old 'RollingIronBall_Kill' label came from.",
+    "daWanwan2_c_classInit (0x021442dc..0x021443f4) is not folded: `return new daWanwan2_c;` emits 0xa4 bytes for 0x118, without the three __cxa_vec_ctor calls (func_0203d384 over the two Vector3 arrays, func_0203d73c over the Vector3s array), because types.h's Vector3 and Vector3s declare no constructor. src/d_a_wanwan2.cpp keeps it."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN11daWanwan2_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "Homeless. One out-of-line destructor under #pragma defer_codegen off emits D1, D0, then D2. The cartridge has D1 at ov100:0x021431c4 and D0 at 0x02143290 and no D2. Production isolation discards it. It is emitted after D0, and the licensed functions stay ROM-ascending."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "reason": "include/types.h defines Vector3::~Vector3() inline and empty. The floor probe and Behavior take Vector3 locals and D1 tears down the two Vector3 arrays, so this TU emits that four-byte body once as vague linkage. The cartridge's copy is arm9:0x020072c0 (src/_ZN7Vector3D1Ev.cpp); this object is not its home.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0"
+    },
+    {
+      "symbol": "_ZN8Vector3sD1Ev",
+      "disposition": "deadstrip-duplicate",
+      "reason": "The same vague-linkage case for Vector3s, whose empty inline destructor is declared in include/types.h: D1 tears down mUnk_768 through __cxa_vec_cleanup with it. The cartridge keeps exactly one copy at arm9:0x02011508 (src/_ZN8Vector3sD1Ev.cpp); this object's four-byte `bx lr` copy is not its home.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02011508"
+    },
+    {
+      "symbol": "_ZTV11daWanwan2_c",
+      "disposition": "deadstrip-data",
+      "reason": "The out-of-line destructor is the key function, so this TU emits the vtable. ov100:0x02148054 is in .data, outside the licensed text span 0x021431c4..0x021442dc. D1 and D0 store this vptr, as does the separate factory; text-only production discards the emitted copy and retains cartridge data.",
+      "canonical_module": "ov100",
+      "canonical_address": "0x02148054"
+    },
+    {
+      "symbol": "_ZTI11daWanwan2_c",
+      "disposition": "deadstrip-data",
+      "reason": "This class's __si_class_type_info, dragged in with the vtable. Cartridge copy ov100:0x02148014. Its base word is _ZTI12dEnemyBase_c.",
+      "canonical_module": "ov100",
+      "canonical_address": "0x02148014"
+    },
+    {
+      "symbol": "_ZTS11daWanwan2_c",
+      "disposition": "deadstrip-data",
+      "reason": "Type-name string 11daWanwan2_c at ov100:0x02148020.",
+      "canonical_module": "ov100",
+      "canonical_address": "0x02148020"
+    },
+    {
+      "symbol": "_ZTI12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at ov002:0x021081c0, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081c0"
+    },
+    {
+      "symbol": "_ZTS12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at ov002:0x021081cc, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081cc"
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e390, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390"
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x0208e384, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e78, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e54, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54"
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo record for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086d70, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Owning the key function makes mwcc emit the whole inherited RTTI chain as vague linkage; this is the typeinfo name for an ancestor. The cartridge keeps the canonical copy at arm9:0x02086e60, outside this TU's licensed range (.text 0x021431c4-0x021442dc), so dsd supplies that ROM data independently. romdata_check compares the emitted copy against the cartridge before production isolation discards it.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60"
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov100-daWanwan2_c/daWanwan2_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 16,
+    "functions_declared": 16,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN11daWanwan2_cD2Ev",
+        "_ZN7Vector3D1Ev",
+        "_ZN8Vector3sD1Ev"
+      ],
+      "deadstripped": [
+        "_ZN11daWanwan2_cD2Ev",
+        "_ZN7Vector3D1Ev",
+        "_ZN8Vector3sD1Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        11,
+        12,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "data": [
+        "_ZTV11daWanwan2_c",
+        "_ZTI11daWanwan2_c",
+        "_ZTS11daWanwan2_c",
+        "_ZTI12dEnemyBase_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI11daWanwan2_c",
+        "_ZTI12dEnemyBase_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS11daWanwan2_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV11daWanwan2_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

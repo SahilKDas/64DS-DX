@@ -75,6 +75,7 @@ namespace tail_6c4 { extern "C" int func_ov029_021116c4(void *a, void *b); }
  * address through that view); the function definition lives in a namespace so both
  * spellings of the one C symbol can coexist. */
 namespace fndef_e4 {
+// @symbol func_ov029_021116e4
 extern "C" int func_ov029_021116e4(void *a, void *b, void *c)
 {
     return tail_6c4::func_ov029_021116c4(b, c);
@@ -86,6 +87,7 @@ extern "C" int func_ov029_021116e4(void *a, void *b, void *c)
 /* -------------------------------------------------------------------------- */
 /* BeforeClsn helper: if the other actor's actorID (dActor_c+0x0c) is PLAYER
  * (0xbf), arm mTriggered. The unsigned char temporary is load-bearing. */
+// @symbol func_ov029_021116c4
 extern "C" void func_ov029_021116c4(char *a, char *b)
 {
     unsigned char ok = *(unsigned short *)(b + 0xc) == 0xbf;
@@ -215,6 +217,7 @@ int daObjWc_Obj02_c::CleanupResources()
     data_ov029_02114248.Release();
     return 1;
 }
-
+// @symbol _ZN15daObjWc_Obj02_cD1Ev
+// @symbol _ZN15daObjWc_Obj02_cD0Ev
 /* daObjWc_Obj02_c's inline class-body destructor is instantiated by the
  * definitions above. mwccarm emits D1 and D0 into this object. */

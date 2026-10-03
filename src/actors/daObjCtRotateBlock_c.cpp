@@ -1,6 +1,6 @@
 //cpp
 /* Production translation unit for ov065/daObjCtRotateBlock_c.
- * 9 function(s), .text 0x021196d8..0x02119ebc. The rotating cube on Tick
+ * 11 function(s), .text 0x021196d8..0x02119f3c. The rotating cube on Tick
  * Tock Clock (profiles CT_MECHA01 and CT_MECHA02).
  *
  * NAME: _ZTS20daObjCtRotateBlock_c is "20daObjCtRotateBlock_c" at ov065
@@ -18,9 +18,16 @@
  *   a member call homes the argument and changes the ROM ABI.
  * Leftover: func_020393d4 is a 4-byte store into dBgW's callback slot;
  *   naming belongs with dBgW in arm9.
- * Leftover: the two factories, daObjCtRotateBlock_c_classInit_CT_MECHA02
- *   (0x02119ebc) and _CT_MECHA01 (0x02119efc), sit past this run's right
- *   edge and stay one-function sources.
+ *
+ * The two registry factories close the run in ROM order:
+ * daObjCtRotateBlock_c_classInit_CT_MECHA02 (0x02119ebc, historical alias
+ * TtcRotatingPrism_Spawn) and daObjCtRotateBlock_c_classInit_CT_MECHA01
+ * (0x02119efc, historical alias TtcRotatingCube_Spawn). Each is operator
+ * new(0x3d8), the dBgActor_c constructor, the vtable store and the Model and
+ * ShadowModel constructors, which is exactly `new daObjCtRotateBlock_c()`.
+ * Their names are reconstructed from the profiles; retail does not store
+ * them. The new-expression also emits dBgActor_c's base-object destructor,
+ * which has no ROM home (manifest: deadstrip).
  */
 
 #include "decl_common.h"
@@ -53,7 +60,7 @@ extern int data_0209e650;
 extern s32 data_020a0e68[];
 }
 
-int ApproachLinear(s16 &val, short target, short step);
+bool ApproachLinear(short &value, short target, short step);
 
 #pragma defer_codegen off
 
@@ -269,4 +276,16 @@ int daObjCtRotateBlock_c::InitResources()
     }
 
     return 1;
+}
+
+// @symbol daObjCtRotateBlock_c_classInit_CT_MECHA02
+extern "C" daObjCtRotateBlock_c *daObjCtRotateBlock_c_classInit_CT_MECHA02()
+{
+    return new daObjCtRotateBlock_c();
+}
+
+// @symbol daObjCtRotateBlock_c_classInit_CT_MECHA01
+extern "C" daObjCtRotateBlock_c *daObjCtRotateBlock_c_classInit_CT_MECHA01()
+{
+    return new daObjCtRotateBlock_c();
 }

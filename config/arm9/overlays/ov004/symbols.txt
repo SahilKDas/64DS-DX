@@ -843,10 +843,8 @@ data_ov004_020bfa24 kind:bss addr:0x020bfa24
 data_ov004_020bfa28 kind:bss addr:0x020bfa28
 data_ov004_020bfa34 kind:bss addr:0x020bfa34
 data_ov004_020bfa56 kind:bss addr:0x020bfa56
-data_ov004_020bfd04 kind:bss addr:0x020bfd04
-_ZGVsEnterTable$19 kind:bss addr:0x020bfd04
-data_ov004_020bfd08 kind:bss addr:0x020bfd08
-sEnterTable$19 kind:bss addr:0x020bfd08
+_ZGVsEnterTable$26 kind:bss addr:0x020bfd04
+sEnterTable$26 kind:bss addr:0x020bfd08
 data_ov004_020bfda8 kind:bss addr:0x020bfda8
 data_ov004_020bfdb4 kind:bss addr:0x020bfdb4
 data_ov004_020bfdc0 kind:bss addr:0x020bfdc0

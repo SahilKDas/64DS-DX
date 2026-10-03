@@ -1,8 +1,8 @@
-_ZN9MontyMoleD1Ev kind:function(arm,size=0x38) addr:0x02123740
-_ZN9MontyMoleD0Ev kind:function(arm,size=0x4c) addr:0x02123778
-_ZN13MontyMoleRockD1Ev kind:function(arm,size=0x40) addr:0x021237c4
-_ZN13MontyMoleRockD0Ev kind:function(arm,size=0x54) addr:0x02123804
-_ZN9MontyMole16OnAimedAtWithEggEv kind:function(arm,size=0x8) addr:0x02123858
+_ZN11daChoropu_cD1Ev kind:function(arm,size=0x38) addr:0x02123740
+_ZN11daChoropu_cD0Ev kind:function(arm,size=0x4c) addr:0x02123778
+_ZN14daChoro_Rock_cD1Ev kind:function(arm,size=0x40) addr:0x021237c4
+_ZN14daChoro_Rock_cD0Ev kind:function(arm,size=0x54) addr:0x02123804
+_ZN11daChoropu_c16OnAimedAtWithEggEv kind:function(arm,size=0x8) addr:0x02123858
 func_ov080_02123860 kind:function(arm,size=0xc4) addr:0x02123860
 func_ov080_02123924 kind:function(arm,size=0x110) addr:0x02123924
 func_ov080_02123a34 kind:function(arm,size=0x1f0) addr:0x02123a34
@@ -14,14 +14,14 @@ func_ov080_02124208 kind:function(arm,size=0x158) addr:0x02124208
 func_ov080_02124360 kind:function(arm,size=0x78) addr:0x02124360
 func_ov080_021243d8 kind:function(arm,size=0x40) addr:0x021243d8
 func_ov080_02124418 kind:function(arm,size=0x40) addr:0x02124418
-_ZN9MontyMole16CleanupResourcesEv kind:function(arm,size=0x5c) addr:0x02124458
-_ZN13MontyMoleRock16CleanupResourcesEv kind:function(arm,size=0x24) addr:0x021244b4
-_ZN9MontyMole6RenderEv kind:function(arm,size=0x28) addr:0x021244d8
-_ZN13MontyMoleRock6RenderEv kind:function(arm,size=0x30) addr:0x02124500
-_ZN9MontyMole8BehaviorEv kind:function(arm,size=0x6c) addr:0x02124530
-_ZN13MontyMoleRock8BehaviorEv kind:function(arm,size=0x1f0) addr:0x0212459c
-_ZN9MontyMole13InitResourcesEv kind:function(arm,size=0x128) addr:0x0212478c
-_ZN13MontyMoleRock13InitResourcesEv kind:function(arm,size=0xe4) addr:0x021248b4
+_ZN11daChoropu_c16CleanupResourcesEv kind:function(arm,size=0x5c) addr:0x02124458
+_ZN14daChoro_Rock_c16CleanupResourcesEv kind:function(arm,size=0x24) addr:0x021244b4
+_ZN11daChoropu_c6RenderEv kind:function(arm,size=0x28) addr:0x021244d8
+_ZN14daChoro_Rock_c6RenderEv kind:function(arm,size=0x30) addr:0x02124500
+_ZN11daChoropu_c8BehaviorEv kind:function(arm,size=0x6c) addr:0x02124530
+_ZN14daChoro_Rock_c8BehaviorEv kind:function(arm,size=0x1f0) addr:0x0212459c
+_ZN11daChoropu_c13InitResourcesEv kind:function(arm,size=0x128) addr:0x0212478c
+_ZN14daChoro_Rock_c13InitResourcesEv kind:function(arm,size=0xe4) addr:0x021248b4
 daChoro_Rock_c_classInit kind:function(arm,size=0x48) addr:0x02124998
 daChoropu_c_classInit kind:function(arm,size=0x40) addr:0x021249e0
 _ZN9daBttBk_cD1Ev kind:function(arm,size=0x48) addr:0x02124a20
@@ -45,8 +45,8 @@ _ZN9daBttBk_c8BehaviorEv kind:function(arm,size=0x20) addr:0x021251cc
 _ZN9daBttBk_c13InitResourcesEv kind:function(arm,size=0x12c) addr:0x021251ec
 _ZN9daBttBk_c13OnTurnIntoEggER6Player kind:function(arm,size=0x9c) addr:0x02125318
 daBttBk_c_classInit kind:function(arm,size=0x50) addr:0x021253b4
-_ZN8PaintingD1Ev kind:function(arm,size=0x24) addr:0x02125404
-_ZN8PaintingD0Ev kind:function(arm,size=0x38) addr:0x02125428
+_ZN11daPicGate_cD1Ev kind:function(arm,size=0x24) addr:0x02125404
+_ZN11daPicGate_cD0Ev kind:function(arm,size=0x38) addr:0x02125428
 func_ov080_02125460 kind:function(arm,size=0xfc) addr:0x02125460
 func_ov080_0212555c kind:function(arm,size=0xd4) addr:0x0212555c
 func_ov080_02125630 kind:function(arm,size=0xc8) addr:0x02125630
@@ -68,16 +68,16 @@ func_ov080_021265ec kind:function(arm,size=0x190) addr:0x021265ec
 func_ov080_0212677c kind:function(arm,size=0x23c) addr:0x0212677c
 func_ov080_021269b8 kind:function(arm,size=0x9c) addr:0x021269b8
 func_ov080_02126a54 kind:function(arm,size=0x1a8) addr:0x02126a54
-_ZN8Painting16CleanupResourcesEv kind:function(arm,size=0x20) addr:0x02126bfc
-_ZN8Painting16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02126c1c
-_ZN8Painting6RenderEv kind:function(arm,size=0x40) addr:0x02126c20
-_ZN8Painting8BehaviorEv kind:function(arm,size=0x40) addr:0x02126c60
-_ZN8Painting13InitResourcesEv kind:function(arm,size=0x2ec) addr:0x02126ca0
+_ZN11daPicGate_c16CleanupResourcesEv kind:function(arm,size=0x20) addr:0x02126bfc
+_ZN11daPicGate_c16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02126c1c
+_ZN11daPicGate_c6RenderEv kind:function(arm,size=0x40) addr:0x02126c20
+_ZN11daPicGate_c8BehaviorEv kind:function(arm,size=0x40) addr:0x02126c60
+_ZN11daPicGate_c13InitResourcesEv kind:function(arm,size=0x2ec) addr:0x02126ca0
 daPicGate_c_classInit kind:function(arm,size=0x30) addr:0x02126f8c
 _ZN13daObjMaruta_cD0Ev kind:function(arm,size=0x58) addr:0x02126fbc
 _ZN13daObjMaruta_cD1Ev kind:function(arm,size=0x44) addr:0x02127014
 _ZN13daObjMaruta_c15OnHitByMegaCharER6Player kind:function(arm,size=0x3c) addr:0x02127058
-func_ov080_02127094 kind:function(arm,size=0x48) addr:0x02127094
+_ZN13daObjMaruta_c19func_ov080_02127094Ev kind:function(arm,size=0x48) addr:0x02127094
 func_ov080_021270dc kind:function(arm,size=0x48) addr:0x021270dc
 _ZN13daObjMaruta_c6RenderEv kind:function(arm,size=0x28) addr:0x02127124
 func_ov080_0212714c kind:function(arm,size=0x360) addr:0x0212714c
@@ -112,11 +112,9 @@ _ZTS11daChoropu_c kind:data(any) addr:0x02127fc8
 _ZTS14daChoro_Rock_c kind:data(any) addr:0x02127fd8
 g_profile_CHOROPU kind:data(any) addr:0x02127fec ambiguous
 g_profile_CHORO_ROCK kind:data(any) addr:0x02128008 ambiguous
-_ZTV13MontyMoleRock kind:data(any) addr:0x0212802c
 _ZTV14daChoro_Rock_c kind:data(any) addr:0x0212802c
 data_ov080_02128070 kind:data(any) addr:0x02128070 ambiguous
 data_ov080_0212808c kind:data(any) addr:0x0212808c ambiguous
-_ZTV9MontyMole kind:data(any) addr:0x021280b0
 _ZTV11daChoropu_c kind:data(any) addr:0x021280b0
 data_ov080_0212812c kind:data(any) addr:0x0212812c
 data_ov080_02128134 kind:data(any) addr:0x02128134
@@ -143,7 +141,7 @@ data_ov080_0212826c kind:data(any) addr:0x0212826c
 _ZTI11daPicGate_c kind:data(any) addr:0x02128274
 _ZTS11daPicGate_c kind:data(any) addr:0x02128280
 g_profile_PICTURE_GATE kind:data(any) addr:0x02128290 ambiguous
-_ZTV8Painting kind:data(any) addr:0x021282b4
+_ZTV11daPicGate_c kind:data(any) addr:0x021282b4
 _ZTV13daObjMaruta_c kind:data(any) addr:0x02128338
 data_ov080_021283c0 kind:bss addr:0x021283c0
 data_ov080_021283c8 kind:bss addr:0x021283c8

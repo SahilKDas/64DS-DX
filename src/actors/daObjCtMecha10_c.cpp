@@ -1,69 +1,76 @@
 //cpp
-/**
- * Tick Tock Clock's rotating cog (registry profiles CT_MECHA10, CT_MECHA12L
- * and CT_MECHA12S).
+/*
+ * daObjCtMecha10_c: the rotating cogs of Tick Tock Clock, one class behind
+ * three profiles -- CT_MECHA10 (actor 0x77), CT_MECHA12L (0x79) and
+ * CT_MECHA12S (0x7a), ids from symbols/actor_debug_names.tsv.
  *
- * One class behind three profiles. InitResources reads the actor ID the
- * registry spawned it under: 0x77 is the cog that carries Mario, so it loads
- * the collision mesh as well as the model, hands the collider dBgW's
- * position/angle updater and takes mRotationState 0; 0x79 and anything else
- * are the two decorative gears, which load a model only and take state 1.
+ * InitResources reads the actor ID the registry spawned it under. 0x77 is the
+ * cog that carries Mario: it loads a collision mesh as well as its model,
+ * hands the collider dBgW's position/angle updater and takes mRotationState 0.
+ * 0x79 and any other ID (CT_MECHA12S in practice) are decorative gears that
+ * load a model only and take state 1.
  *
  * Behavior turns the cog toward mTargetAngleY at a fixed 0xc8 per frame. When
  * it arrives and mStepTimer runs out, the target advances by mAngleYStep and
  * the timer is re-seeded from data_ov035_02111ef4[state][clock setting]. Under
- * clock setting 2 -- the random hand -- the dwell is re-rolled instead, and
- * every time mDirTimer expires the step flips sign for a randomly chosen span.
- * Setting 3 stops the clock: the body only keeps the model and collider where
- * the actor is and returns.
+ * clock setting 2 the dwell is re-rolled instead, and every time mDirTimer
+ * expires the step direction is re-picked at random (forward two times in
+ * three, otherwise reversed). Setting 3 stops the
+ * cog: the body only keeps the model and collider where the actor is and
+ * returns.
  *
- * This TU owns text only: ov035 delinks no .data here, so the _ZTV / _ZTI /
- * _ZTS group the class names is compiler-only output, compared against the
- * cartridge's own copies at ov035 0x02112b00 / 0x02112a84 / 0x02112a90.
+ * ROM: this TU owns text only. ov035 delinks no .data here, so the _ZTV /
+ * _ZTI / _ZTS group the class names is compiler-only output, compared against
+ * the cartridge's own copies at ov035 0x02112b00 / 0x02112a84 / 0x02112a90.
+ * Source order is reverse ROM order: mwccarm 2004/b56 emits .text back to
+ * front under this tree's flags, so the three classInit factories are
+ * written first, then InitResources, and CleanupResources last. The
+ * destructor pair comes off the in-class `~daObjCtMecha10_c() {}` in
+ * include/daObjCtMecha10_c.h and lands ahead of everything, D1 then D0,
+ * which is the order the cartridge has (0x021111a0, then 0x021111e4).
  *
- * SOURCE ORDER IS REVERSE ROM ORDER. mwccarm 2004/b56 emits .text back to
- * front under this tree's flags, so InitResources is written first and
- * CleanupResources last; the destructor pair comes off the in-class
- * `~daObjCtMecha10_c() {}` in include/daObjCtMecha10_c.h and lands ahead of
- * everything, D1 then D0, which is the order the cartridge has (0x021111a0,
- * then 0x021111e4).
+ * daObjCtMecha10_c_classInit_CT_MECHA10/_CT_MECHA12L/_CT_MECHA12S are
+ * reconstructed names (RTTI daObjCtMecha10_c, the three registry profiles);
+ * retail does not store them. Historical aliases: RotatingClockHand_Spawn
+ * (CT_MECHA10) and func_ov035_0211168c (CT_MECHA12L); CT_MECHA12S has none
+ * on record.
  *
- * deslop
- * Leftover: dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay spelled as
- *   mangled extern-C free functions. Each takes Fix12<int> by value, and a
- *   real method call homes the argument and size-DIFFs the caller
+ * Known limits:
+ * - dBgW_KcMbg::SetFile and dBgActor_c::IsClsnInRange stay spelled as mangled
+ *   extern-C free functions. Each takes Fix12<int> by value, and a real
+ *   method call homes the argument and size-DIFFs the caller
  *   (notes/mwccarm-codegen.md 6az); include/dBgW_KcMbg.h records the same.
- * Leftover: _Z14ApproachLinearRsss, DecIfAbove0_Short and RandomIntInternal
- *   keep linker names -- no header home, the kaitendai precedent.
- * Leftover: func_020393d4 and func_020396c0 are small stores into dBgW (the
- *   collision callback and the range flag). This TU calls them; naming
- *   belongs with dBgW in arm9.
- * Leftover: data_ov035_02112c60 / c68 / c70 / c78 are this overlay's four
- *   shared-file handles, data_ov035_021121d8 its CLPS block, and
- *   data_ov035_02111ef0 / 02111ef4 the two rotation tables. None of them is
- *   owned by this TU.
- * Leftover: data_0209f2c0 is arm9's clock-setting byte and data_0209e650 the
- *   shared RNG state.
- * Leftover: g_profile_CT_MECHA10 / CT_MECHA12L / CT_MECHA12S and their three
- *   classInit factories live outside this TU, at 0x0211165c and above.
+ * - DecIfAbove0_Short and RandomIntInternal keep linker names: no header home,
+ *   the kaitendai precedent.
+ * - func_020393d4 and func_020396c0 are small stores into dBgW (the collision
+ *   callback and the range flag). This TU calls them; naming belongs with
+ *   dBgW in arm9.
+ * - data_ov035_02112c60 / c68 / c70 / c78 are this overlay's four shared-file
+ *   handles, data_ov035_021121d8 its CLPS block, and data_ov035_02111ef0 /
+ *   02111ef4 the two rotation tables. None of them is owned by this TU.
+ * - data_0209f2c0 is arm9's clock-setting byte and data_0209e650 the shared
+ *   RNG state.
+ * - g_profile_CT_MECHA10 / CT_MECHA12L / CT_MECHA12S (the registry
+ *   descriptors the three factories back) live outside this TU.
  */
 
 #include "daObjCtMecha10_c.h"
 #include "SharedFilePtr.h"
 #include "dBgW.h"
 
+bool ApproachLinear(short &value, short target, short step);
+
 extern "C" {
-extern SharedFilePtr data_ov035_02112c60;   /* CT_MECHA10 model */
-extern SharedFilePtr data_ov035_02112c68;   /* CT_MECHA12S collision KCL */
-extern SharedFilePtr data_ov035_02112c70;   /* CT_MECHA12L model */
-extern SharedFilePtr data_ov035_02112c78;   /* CT_MECHA12S model */
+extern SharedFilePtr data_ov035_02112c60;   /* model of the fall-through profile (CT_MECHA12S) */
+extern SharedFilePtr data_ov035_02112c68;   /* collision KCL of the id 0x77 cog */
+extern SharedFilePtr data_ov035_02112c70;   /* model of id 0x79 (CT_MECHA12L) */
+extern SharedFilePtr data_ov035_02112c78;   /* model of id 0x77 (CT_MECHA10) */
 extern CLPS_Block    data_ov035_021121d8;
 extern s16 data_ov035_02111ef0[];           /* |angle step| by rotation state */
 extern s16 data_ov035_02111ef4[][4];        /* dwell by state, by clock setting */
 extern u8  data_0209f2c0[];                 /* arm9 clock setting */
 extern int data_0209e650[];                 /* arm9 RNG state */
 
-int _Z14ApproachLinearRsss(s16 *p, s16 target, s16 step);
 u16 DecIfAbove0_Short(u16 *p);
 int RandomIntInternal(int *state);
 void func_020393d4(dBgW *collider, void *callback);
@@ -75,10 +82,26 @@ void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
     Fix12i scale, s16 angle, CLPS_Block *clps);
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
+// @symbol daObjCtMecha10_c_classInit_CT_MECHA10
+extern "C" daObjCtMecha10_c *daObjCtMecha10_c_classInit_CT_MECHA10()
+{
+    return new daObjCtMecha10_c();
+}
+
+// @symbol daObjCtMecha10_c_classInit_CT_MECHA12L
+extern "C" daObjCtMecha10_c *daObjCtMecha10_c_classInit_CT_MECHA12L()
+{
+    return new daObjCtMecha10_c();
+}
+
+// @symbol daObjCtMecha10_c_classInit_CT_MECHA12S
+extern "C" daObjCtMecha10_c *daObjCtMecha10_c_classInit_CT_MECHA12S()
+{
+    return new daObjCtMecha10_c();
+}
+
 // @symbol _ZN16daObjCtMecha10_c13InitResourcesEv
-/* The cog that carries Mario (CT_MECHA12S, actor 0x77) is the only one with a
+/* The cog that carries Mario (CT_MECHA10, actor 0x77) is the only one with a
    collision mesh; the other two profiles are scenery and load a model alone.
    Either way the dwell and the step magnitude come out of the same two tables,
    indexed by the state this function just chose. */
@@ -89,10 +112,10 @@ int daObjCtMecha10_c::InitResources()
        in a register across the arm and re-tests it; folding either test into
        its `if` re-orders the whole body and DIFFs. The reuse of one local for
        both tests is what the second branch's codegen wants. */
-    int isCarrier;
+    int idMatch;
 
-    isCarrier = (actorID == 0x77);
-    if (isCarrier) {
+    idMatch = (actorID == 0x77);
+    if (idMatch) {
         mModel.SetFile((BMD_File *)Model::LoadFile(data_ov035_02112c78), 1, -1);
         UpdateModelPosAndRotY();
         UpdateClsnPosAndRot();
@@ -105,8 +128,8 @@ int daObjCtMecha10_c::InitResources()
             (void *)&dBgW::UpdatePosAndAngs);
         mRotationState = 0;
     } else {
-        isCarrier = (actorID == 0x79);
-        if (isCarrier)
+        idMatch = (actorID == 0x79);
+        if (idMatch)
             mModel.SetFile((BMD_File *)Model::LoadFile(data_ov035_02112c70), 1, -1);
         else
             mModel.SetFile((BMD_File *)Model::LoadFile(data_ov035_02112c60), 1, -1);
@@ -120,14 +143,13 @@ int daObjCtMecha10_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha10_c8BehaviorEv
-/* Clock setting 3 is the stopped hand: hold position and leave. Otherwise turn
+/* Clock setting 3 stops the cog: hold position and leave. Otherwise turn
    toward the target, and once there and the dwell has run out, advance the
-   target one step and re-seed the dwell. Setting 2 is the random hand, which
-   also re-rolls the dwell every frame and flips the step's sign whenever
-   mDirTimer expires. */
+   target one step and re-seed the dwell. Setting 2 also re-rolls the dwell
+   at random and, whenever mDirTimer expires, picks the step's direction at
+   random: forward two times in three for 0x5a..0x10e frames, otherwise
+   reversed for 0x1e frames. */
 int daObjCtMecha10_c::Behavior()
 {
     if (data_0209f2c0[0] == 3) {
@@ -138,7 +160,7 @@ int daObjCtMecha10_c::Behavior()
         return 1;
     }
 
-    if (_Z14ApproachLinearRsss(&mAngleY, mTargetAngleY, 0xc8) != 0 &&
+    if (ApproachLinear(mAngleY, mTargetAngleY, 0xc8) != 0 &&
         DecIfAbove0_Short((u16 *)&mStepTimer) == 0) {
         mTargetAngleY += mAngleYStep;
 
@@ -166,8 +188,6 @@ int daObjCtMecha10_c::Behavior()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha10_c6RenderEv
 int daObjCtMecha10_c::Render()
 {
@@ -175,8 +195,6 @@ int daObjCtMecha10_c::Render()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN16daObjCtMecha10_c16CleanupResourcesEv
 /* Give back exactly what InitResources took: the carrying cog frees its
    collider and both of its files, each decorative gear its one model. */
@@ -189,8 +207,8 @@ int daObjCtMecha10_c::CleanupResources()
         data_ov035_02112c68.Release();
     } else {
         /* MEASURED: widened, like InitResources' pair above. */
-        int isLarge = (actorID == 0x79);
-        if (isLarge)
+        int isMecha12L = (actorID == 0x79);
+        if (isMecha12L)
             data_ov035_02112c70.Release();
         else
             data_ov035_02112c60.Release();

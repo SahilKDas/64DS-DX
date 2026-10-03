@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-/* Bowser's castle walls. BK_KABE00 (actor 0x30) breaks, plays the secret
+/* daKpa_c's castle walls. BK_KABE00 (actor 0x30) breaks, plays the secret
  * jingle and spawns a star; BK_KABE01 (actor 0x2f) is destroyed on Kill.
  * Cartridge RTTI is _ZTS14daObjBk_Kabe_c at ov079 0x02128044, and this
  * class's vtable at 0x021280b0 points at that typeinfo.

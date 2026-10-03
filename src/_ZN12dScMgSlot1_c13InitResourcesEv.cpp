@@ -10,6 +10,8 @@
 #include "decl_common.h"
 #include "dScMgSlot1_c.h"
 
+extern int data_ov004_020bc8b4;
+
 extern "C" {
 
 extern u32 LoadCompressedFileAt(int fileID, void *target);
@@ -135,7 +137,7 @@ s32 dScMgSlot1_c::InitResources()
     data_ov004_020bc878 = 0x80;
     data_ov004_020bc890 = 0x40;
     data_ov004_020bc8b8 = 0x80;
-    func_020bc8b4 = 0x40;
+    data_ov004_020bc8b4 = 0x40;
 
     if (*(int *)(c + 8) & 0xff) {
         unsigned char *tbl = data_ov006_0213ea20;

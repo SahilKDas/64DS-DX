@@ -6,8 +6,8 @@
   "generated_utc": "2026-09-19T18:35:21.210647+00:00",
   "cases": [
     {
-      "source": "src/_ZN11PowerFlower6RenderEv.cpp",
-      "symbol": "_ZN11PowerFlower6RenderEv",
+      "source": "src/_ZN18daObjPowerUpItem_c6RenderEv.cpp",
+      "symbol": "_ZN18daObjPowerUpItem_c6RenderEv",
       "module": "ov002",
       "address": "0x20b9aac",
       "rom_size": 196,
@@ -20,7 +20,7 @@
           "object_signature": {
             "definitions": [
               {
-                "name": "_ZN11PowerFlower6RenderEv",
+                "name": "_ZN18daObjPowerUpItem_c6RenderEv",
                 "size": 196,
                 "bind": "STB_GLOBAL",
                 "section": ".text",
@@ -38,14 +38,14 @@
             "relocations": []
           },
           "linkcheck": {
-            "name": "_ZN11PowerFlower6RenderEv",
+            "name": "_ZN18daObjPowerUpItem_c6RenderEv",
             "module": "ov002",
             "addr": "0x020b9aac",
             "verdict": "VERIFIED",
             "diffs": [],
             "blind": 0
           },
-          "reproduce_linkcheck": "python tools/linkcheck.py --name _ZN11PowerFlower6RenderEv --c src/_ZN11PowerFlower6RenderEv.cpp --addr 0x20b9aac --size 0xc4 --module ov002"
+          "reproduce_linkcheck": "python tools/linkcheck.py --name _ZN18daObjPowerUpItem_c6RenderEv --c src/_ZN18daObjPowerUpItem_c6RenderEv.cpp --addr 0x20b9aac --size 0xc4 --module ov002"
         },
         {
           "variant": "candidate",
@@ -55,7 +55,7 @@
           "object_signature": {
             "definitions": [
               {
-                "name": "_ZN11PowerFlower6RenderEv",
+                "name": "_ZN18daObjPowerUpItem_c6RenderEv",
                 "size": 196,
                 "bind": "STB_GLOBAL",
                 "section": ".text",
@@ -73,14 +73,14 @@
             "relocations": []
           },
           "linkcheck": {
-            "name": "_ZN11PowerFlower6RenderEv",
+            "name": "_ZN18daObjPowerUpItem_c6RenderEv",
             "module": "ov002",
             "addr": "0x020b9aac",
             "verdict": "VERIFIED",
             "diffs": [],
             "blind": 0
           },
-          "reproduce_linkcheck": "python tools/linkcheck.py --name _ZN11PowerFlower6RenderEv --c src/_ZN11PowerFlower6RenderEv.cpp --addr 0x20b9aac --size 0xc4 --module ov002"
+          "reproduce_linkcheck": "python tools/linkcheck.py --name _ZN18daObjPowerUpItem_c6RenderEv --c src/_ZN18daObjPowerUpItem_c6RenderEv.cpp --addr 0x20b9aac --size 0xc4 --module ov002"
         },
         {
           "variant": "rejected_direct_flag_test",
@@ -90,7 +90,7 @@
           "object_signature": {
             "definitions": [
               {
-                "name": "_ZN11PowerFlower6RenderEv",
+                "name": "_ZN18daObjPowerUpItem_c6RenderEv",
                 "size": 184,
                 "bind": "STB_GLOBAL",
                 "section": ".text",
@@ -108,7 +108,7 @@
             "relocations": []
           },
           "linkcheck": {
-            "name": "_ZN11PowerFlower6RenderEv",
+            "name": "_ZN18daObjPowerUpItem_c6RenderEv",
             "module": "ov002",
             "addr": "0x020b9aac",
             "verdict": "NO-REPRO",
@@ -757,8 +757,8 @@
   "result": "5/5 baseline and final candidate functions VERIFIED, blind 0. Four render object signatures are unchanged. Ground probe uses direct subobjects with exact relocated bytes. Rejected flag and local scale alternatives are measured separately.",
   "retained_form_probes": [
     {
-      "probe": "PowerFlower-local-scale",
-      "symbol": "_ZN11PowerFlower6RenderEv",
+      "probe": "daObjPowerUpItem_c-local-scale",
+      "symbol": "_ZN18daObjPowerUpItem_c6RenderEv",
       "source_sha256": "6be350f220e68ece63fdb2f9a646be83daeb586269709668191a07bf57a8fa3b",
       "replacements": [
         {
@@ -777,7 +777,7 @@
       "object_signature": {
         "definitions": [
           {
-            "name": "_ZN11PowerFlower6RenderEv",
+            "name": "_ZN18daObjPowerUpItem_c6RenderEv",
             "size": 212,
             "bind": "STB_GLOBAL",
             "section": ".text",
@@ -801,7 +801,7 @@
         "relocations": []
       },
       "linkcheck": {
-        "name": "_ZN11PowerFlower6RenderEv",
+        "name": "_ZN18daObjPowerUpItem_c6RenderEv",
         "module": "ov002",
         "addr": "0x020b9aac",
         "verdict": "WRONG",

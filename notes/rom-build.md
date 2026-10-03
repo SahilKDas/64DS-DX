@@ -452,7 +452,7 @@ compiling the same snippet under both compilers in isolation:
   index) stops it. Every sharing site has to be respelled together -- `func_02062428`
   has three, and respelling any one alone left the other two sharing. Fixed
   [func_ov015_02111e80](../src/game/actors/d_a_obj_bk_dossunbar.cpp) (func 12 used to assemble the TU - `d_a_obj_bk_dossunbar`), [func_ov006_020ded00](../src/actors/dScMgCup_c.cpp) (part of `dScMgCup_c.cpp`, element 11 used to assemble the TU), `func_02062428`,
-  [func_ov006_02111e90](../src/func_ov006_02111e90.c).
+  [func_ov006_02111e90](../src/actors/dScMgSmartball_c.cpp).
 - **Prefer pointer arithmetic on a typed pointer over integer arithmetic then a cast.**
   `ldr` carries a 12-bit displacement and `ldrh`/`ldrsh`/`strh` only 8, so a large
   offset must be split. Given pointer arithmetic b56 splits it the ROM's way; given

@@ -8,53 +8,9 @@ src/game/actors/d_a_obj_bk_billboard.cpp:
     complete
     .text start:0x021111a0 end:0x02111314
 
-src/_ZN17daObjBk_Botaosi_cD1Ev.cpp:
+src/actors/daObjBk_Botaosi_c.cpp:
     complete
-    .text start:0x02111314 end:0x02111360
-
-src/_ZN17daObjBk_Botaosi_cD0Ev.cpp:
-    complete
-    .text start:0x02111360 end:0x021113c0
-
-src/_ZN17daObjBk_Botaosi_c15OnHitByMegaCharER6Player.cpp:
-    complete
-    .text start:0x021113c0 end:0x021113fc
-
-src/_ZN17daObjBk_Botaosi_c8OnKickedER8dActor_c.cpp:
-    complete
-    .text start:0x021113fc end:0x02111408
-
-src/_ZN17daObjBk_Botaosi_c11OnAttacked2ER8dActor_c.cpp:
-    complete
-    .text start:0x02111408 end:0x02111414
-
-src/func_ov015_02111414.c:
-    complete
-    .text start:0x02111414 end:0x021114f0
-
-src/func_ov015_0211166c.c:
-    complete
-    .text start:0x0211166c end:0x021116b4
-
-src/_ZN17daObjBk_Botaosi_c16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x021116b4 end:0x021116f8
-
-src/_ZN17daObjBk_Botaosi_c6RenderEv.cpp:
-    complete
-    .text start:0x021116f8 end:0x02111720
-
-src/_ZN17daObjBk_Botaosi_c8BehaviorEv.cpp:
-    complete
-    .text start:0x02111720 end:0x02111960
-
-src/_ZN17daObjBk_Botaosi_c13InitResourcesEv.cpp:
-    complete
-    .text start:0x02111960 end:0x02111b68
-
-src/d_a_obj_bk_botaosi.c:
-    complete
-    .text start:0x02111b68 end:0x02111ba0
+    .text start:0x02111314 end:0x02111ba0
 
 src/game/actors/d_a_obj_bk_dossunbar.cpp:
     complete

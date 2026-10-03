@@ -1,0 +1,440 @@
+{
+  "id": "ov081/daSnowman_c",
+  "module": "ov081",
+  "source": "src/actors/daSnowman_c.cpp",
+  "promoted_source": "src/actors/daSnowman_c.cpp",
+  "status": "promoted",
+  "boundary_confidence": "medium",
+  "boundary_evidence": [
+    "contiguous linker run: 0x2124090..0x2125ec0, 34 function(s), from build/tu_map.json (tools/tu_map.py)",
+    "class label(s): daSnowman_c",
+    "module sinit corroboration: 5 sinit(s) / 5 .ctor entries, sinit_vs_tu=ok, corroborated=False (module-wide, NOT narrowed to this one TU -- see notes/tu-reconstruction-pilot-report.md sec 2 for the by-hand narrowing step)",
+    "classInit fold (0930c): the SNOWMAN registry factory daSnowman_c_classInit (0x02125ec0, 0x54) abuts the run's end 0x02125ec0 with no gap and no other symbol between; tu_map left it in its own unlabelled unit because it cuts on symbol name. The widened range 0x02124090..0x02125f14 (35 functions) ends where the daSnowball_c TU (src/actors/daSnowball_c.cpp) begins."
+  ],
+  "sections": [
+    {
+      "name": ".text",
+      "start": "0x02124090",
+      "end": "0x02125f14"
+    }
+  ],
+  "functions": [
+    {
+      "symbol": "_ZN11daSnowman_cD1Ev",
+      "address": "0x02124090",
+      "size": "0x00000048",
+      "legacy_source": "src/_ZN11daSnowman_cD1Ev.cpp",
+      "ordinal": 0
+    },
+    {
+      "symbol": "_ZN11daSnowman_cD0Ev",
+      "address": "0x021240d8",
+      "size": "0x0000005c",
+      "legacy_source": "src/_ZN11daSnowman_cD0Ev.cpp",
+      "ordinal": 1
+    },
+    {
+      "symbol": "func_ov081_02124134",
+      "address": "0x02124134",
+      "size": "0x00000108",
+      "legacy_source": "src/func_ov081_02124134.c",
+      "ordinal": 2
+    },
+    {
+      "symbol": "func_ov081_0212423c",
+      "address": "0x0212423c",
+      "size": "0x00000190",
+      "legacy_source": "src/func_ov081_0212423c.c",
+      "ordinal": 3
+    },
+    {
+      "symbol": "func_ov081_021243cc",
+      "address": "0x021243cc",
+      "size": "0x0000021c",
+      "legacy_source": "src/func_ov081_021243cc.cpp",
+      "ordinal": 4
+    },
+    {
+      "symbol": "func_ov081_021245e8",
+      "address": "0x021245e8",
+      "size": "0x000000b8",
+      "legacy_source": "src/func_ov081_021245e8.c",
+      "ordinal": 5
+    },
+    {
+      "symbol": "func_ov081_021246a0",
+      "address": "0x021246a0",
+      "size": "0x000000fc",
+      "legacy_source": "src/func_ov081_021246a0.c",
+      "ordinal": 6
+    },
+    {
+      "symbol": "func_ov081_0212479c",
+      "address": "0x0212479c",
+      "size": "0x000000f8",
+      "legacy_source": "src/func_ov081_0212479c.cpp",
+      "ordinal": 7
+    },
+    {
+      "symbol": "func_ov081_02124894",
+      "address": "0x02124894",
+      "size": "0x000000f8",
+      "legacy_source": "src/func_ov081_02124894.c",
+      "ordinal": 8
+    },
+    {
+      "symbol": "func_ov081_0212498c",
+      "address": "0x0212498c",
+      "size": "0x00000068",
+      "legacy_source": "src/func_ov081_0212498c.c",
+      "ordinal": 9
+    },
+    {
+      "symbol": "func_ov081_021249f4",
+      "address": "0x021249f4",
+      "size": "0x00000114",
+      "legacy_source": "src/func_ov081_021249f4.c",
+      "ordinal": 10
+    },
+    {
+      "symbol": "func_ov081_02124b08",
+      "address": "0x02124b08",
+      "size": "0x00000090",
+      "legacy_source": "src/func_ov081_02124b08.c",
+      "ordinal": 11
+    },
+    {
+      "symbol": "func_ov081_02124b98",
+      "address": "0x02124b98",
+      "size": "0x0000017c",
+      "legacy_source": "src/func_ov081_02124b98.cpp",
+      "ordinal": 12
+    },
+    {
+      "symbol": "func_ov081_02124d14",
+      "address": "0x02124d14",
+      "size": "0x0000003c",
+      "legacy_source": "src/func_ov081_02124d14.cpp",
+      "ordinal": 13
+    },
+    {
+      "symbol": "func_ov081_02124d50",
+      "address": "0x02124d50",
+      "size": "0x000000ac",
+      "legacy_source": "src/func_ov081_02124d50.cpp",
+      "ordinal": 14
+    },
+    {
+      "symbol": "func_ov081_02124dfc",
+      "address": "0x02124dfc",
+      "size": "0x00000068",
+      "legacy_source": "src/func_ov081_02124dfc.c",
+      "ordinal": 15
+    },
+    {
+      "symbol": "func_ov081_02124e64",
+      "address": "0x02124e64",
+      "size": "0x0000005c",
+      "legacy_source": "src/func_ov081_02124e64.c",
+      "ordinal": 16
+    },
+    {
+      "symbol": "func_ov081_02124ec0",
+      "address": "0x02124ec0",
+      "size": "0x00000060",
+      "legacy_source": "src/func_ov081_02124ec0.c",
+      "ordinal": 17
+    },
+    {
+      "symbol": "func_ov081_02124f20",
+      "address": "0x02124f20",
+      "size": "0x0000005c",
+      "legacy_source": "src/func_ov081_02124f20.cpp",
+      "ordinal": 18
+    },
+    {
+      "symbol": "func_ov081_02124f7c",
+      "address": "0x02124f7c",
+      "size": "0x000000bc",
+      "legacy_source": "src/func_ov081_02124f7c.c",
+      "ordinal": 19
+    },
+    {
+      "symbol": "func_ov081_02125038",
+      "address": "0x02125038",
+      "size": "0x00000030",
+      "legacy_source": "src/func_ov081_02125038.cpp",
+      "ordinal": 20
+    },
+    {
+      "symbol": "func_ov081_02125068",
+      "address": "0x02125068",
+      "size": "0x00000060",
+      "legacy_source": "src/func_ov081_02125068.cpp",
+      "ordinal": 21
+    },
+    {
+      "symbol": "func_ov081_021250c8",
+      "address": "0x021250c8",
+      "size": "0x00000138",
+      "legacy_source": "src/func_ov081_021250c8.c",
+      "ordinal": 22
+    },
+    {
+      "symbol": "func_ov081_02125200",
+      "address": "0x02125200",
+      "size": "0x00000008",
+      "legacy_source": "src/func_ov081_02125200.c",
+      "ordinal": 23
+    },
+    {
+      "symbol": "func_ov081_02125208",
+      "address": "0x02125208",
+      "size": "0x00000184",
+      "legacy_source": "src/func_ov081_02125208.c",
+      "ordinal": 24
+    },
+    {
+      "symbol": "func_ov081_0212538c",
+      "address": "0x0212538c",
+      "size": "0x000000fc",
+      "legacy_source": "src/func_ov081_0212538c.c",
+      "ordinal": 25
+    },
+    {
+      "symbol": "func_ov081_02125488",
+      "address": "0x02125488",
+      "size": "0x00000050",
+      "legacy_source": "src/func_ov081_02125488.cpp",
+      "ordinal": 26
+    },
+    {
+      "symbol": "func_ov081_021254d8",
+      "address": "0x021254d8",
+      "size": "0x000002d8",
+      "legacy_source": "src/func_ov081_021254d8.cpp",
+      "ordinal": 27
+    },
+    {
+      "symbol": "_ZN11daSnowman_c16CleanupResourcesEv",
+      "address": "0x021257b0",
+      "size": "0x0000006c",
+      "legacy_source": "src/_ZN11daSnowman_c16CleanupResourcesEv.cpp",
+      "ordinal": 28
+    },
+    {
+      "symbol": "_ZN11daSnowman_c16OnPendingDestroyEv",
+      "address": "0x0212581c",
+      "size": "0x00000004",
+      "legacy_source": "src/_ZN11daSnowman_c16OnPendingDestroyEv.cpp",
+      "ordinal": 29
+    },
+    {
+      "symbol": "_ZN11daSnowman_c6RenderEv",
+      "address": "0x02125820",
+      "size": "0x0000006c",
+      "legacy_source": "src/_ZN11daSnowman_c6RenderEv.cpp",
+      "ordinal": 30
+    },
+    {
+      "symbol": "_ZN11daSnowman_c8BehaviorEv",
+      "address": "0x0212588c",
+      "size": "0x00000314",
+      "legacy_source": "src/_ZN11daSnowman_c8BehaviorEv.cpp",
+      "ordinal": 31
+    },
+    {
+      "symbol": "_ZN11daSnowman_c13InitResourcesEv",
+      "address": "0x02125ba0",
+      "size": "0x00000318",
+      "legacy_source": "src/_ZN11daSnowman_c13InitResourcesEv.cpp",
+      "ordinal": 32
+    },
+    {
+      "symbol": "_ZN11daSnowman_c16OnAimedAtWithEggEv",
+      "address": "0x02125eb8",
+      "size": "0x00000008",
+      "legacy_source": "src/_ZN11daSnowman_c16OnAimedAtWithEggEv.cpp",
+      "ordinal": 33
+    },
+    {
+      "symbol": "daSnowman_c_classInit",
+      "address": "0x02125ec0",
+      "size": "0x00000054",
+      "legacy_source": "src/d_a_snowman.c",
+      "ordinal": 34
+    }
+  ],
+  "data": [],
+  "bss": [],
+  "notes": [
+    "Whole class, text only. The abutting registry factory daSnowman_c_classInit (0x02125ec0) was folded in by the 0930c classInit fold (below).",
+    "Renamed from the cartridge type string 11daSnowman_c. The coined vtable label was dropped; the ROM name _ZTV11daSnowman_c stays.",
+    "classInit fold (0930c): daSnowman_c_classInit is folded in last, in ROM order, under the file's `#pragma defer_codegen off`, as `return new daSnowman_c();`. The retired one-function source hand-called fBase_c::operator new(1132 = 0x46c), dEnemyBase_c's C2 constructor, this class's vtable store and the four member C1 constructors (dCcAcPos_c 0x110, dBgCh_Actr 0x150, ModelAnim 0x30c, ShadowModel 0x370); daSnowman_c has no user-declared constructor, so the synthesized one emits the identical sequence and no new compiler-only output. tubuild verify: 35/35 MATCH, objisolate clean, reloc-destinations clean, TEXT-VERIFIED. Retired src/d_a_snowman.c; its credit carries in attribution.json as a path#symbol override."
+  ],
+  "compiler_only_output": [
+    {
+      "symbol": "_ZN11daSnowman_cD2Ev",
+      "disposition": "deadstrip",
+      "reason": "compiler-generated base-object destructor. The cartridge has only the D1 and D0 pair, at 0x02124090 and 0x021240d8, and no symbols row spells _ZN11daSnowman_cD2Ev."
+    },
+    {
+      "symbol": "_ZN7Vector3D1Ev",
+      "disposition": "deadstrip-duplicate",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020072c0",
+      "reason": "Vector3 four-byte destructor, vague linkage from Vector3 locals. The cartridge owns the one copy at arm9:0x020072c0."
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70",
+      "reason": "inherited vague-linkage RTTI; the canonical copy stays in arm9."
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60",
+      "reason": "inherited vague-linkage RTTI name; the canonical copy stays in arm9."
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78",
+      "reason": "inherited vague-linkage RTTI; the canonical copy stays in arm9."
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54",
+      "reason": "inherited vague-linkage RTTI name; the canonical copy stays in arm9."
+    },
+    {
+      "symbol": "_ZTI8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e390",
+      "reason": "inherited vague-linkage RTTI; the canonical copy stays in arm9."
+    },
+    {
+      "symbol": "_ZTS8dActor_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "arm9",
+      "canonical_address": "0x0208e384",
+      "reason": "inherited vague-linkage RTTI name; the canonical copy stays in arm9."
+    },
+    {
+      "symbol": "_ZTI12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081c0",
+      "reason": "direct base __si_class_type_info. The third word of _ZTI11daSnowman_c points here. The canonical copy stays in ov002."
+    },
+    {
+      "symbol": "_ZTS12dEnemyBase_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov002",
+      "canonical_address": "0x021081cc",
+      "reason": "inherited vague-linkage RTTI name; the canonical copy stays in ov002."
+    },
+    {
+      "symbol": "_ZTI11daSnowman_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov081",
+      "canonical_address": "0x021289b0",
+      "reason": "this class typeinfo, emitted because the out-of-line destructor is the key function. Homes at ov081:0x021289b0, outside the licensed .text."
+    },
+    {
+      "symbol": "_ZTS11daSnowman_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov081",
+      "canonical_address": "0x021289bc",
+      "reason": "type-name string. The overlay bytes at 0x021289bc are 11daSnowman_c. Text-only; the ROM keeps the string."
+    },
+    {
+      "symbol": "_ZTV11daSnowman_c",
+      "disposition": "deadstrip-data",
+      "canonical_module": "ov081",
+      "canonical_address": "0x021289f0",
+      "reason": "compiler-emitted vtable anchored by the out-of-line destructor. Public address point ov081:0x021289f0. This promotion stays text-only and the ROM keeps the table."
+    }
+  ],
+  "verification": {
+    "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
+    "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
+    "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
+    "object": "build/tu/ov081-daSnowman_c/daSnowman_c.o (gitignored)",
+    "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
+    "functions_matched": 35,
+    "functions_declared": 35,
+    "compilerOnlyOutput": {
+      "requested": [
+        "_ZN11daSnowman_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "deadstripped": [
+        "_ZN11daSnowman_cD2Ev",
+        "_ZN7Vector3D1Ev"
+      ],
+      "droppedSections": [
+        9,
+        10,
+        15,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90
+      ],
+      "data": [
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS8dActor_c",
+        "_ZTI12dEnemyBase_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTI11daSnowman_c",
+        "_ZTS11daSnowman_c",
+        "_ZTV11daSnowman_c"
+      ],
+      "dataExternalized": [
+        "_ZTI11daSnowman_c",
+        "_ZTI12dEnemyBase_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dActor_c",
+        "_ZTS11daSnowman_c",
+        "_ZTS12dEnemyBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dActor_c",
+        "_ZTV11daSnowman_c"
+      ]
+    },
+    "criteria": {
+      "every_declared_function_defined": "PASS",
+      "every_declared_function_bytes_match": "PASS",
+      "declared_function_set_equals_defined_function_set": "PASS",
+      "functions_occur_in_expected_order": "PASS",
+      "relocation_destinations_verified": "PASS"
+    }
+  }
+}

@@ -1,8 +1,9 @@
 //cpp
-/* dMeter_c -- the in-game HUD (METER), ov002 0x020fb8f8..0x020fe154.
+/* dMeter_c -- the in-game HUD (METER), ov002 0x020fb8f8..0x020fe190.
  *
- * One translation unit, nineteen functions, the way the cartridge's own build
- * had it. This replaces nineteen one-function shards. Their bodies are
+ * One translation unit, twenty functions, the way the cartridge's own build
+ * had it: nineteen members, which replaced nineteen one-function shards, plus
+ * the METER registry factory. The members' bodies are
  * unchanged apart from spelling: the four members include/dMeter_c.h did not
  * declare are now real methods rather than hand-mangled extern "C" free
  * functions, the offset casts that reached this object's fields are now the
@@ -34,13 +35,22 @@
  * the licensed .text is no longer ROM-ascending; inlining additionally deletes
  * the homeless D2 that no module gives a symbol to.
  *
- * The factory is NOT in this TU. dMeter_c_classInit begins at 0x020fe154,
- * immediately past this entry's end, and keeps its own source. dMap_c's
- * translation unit ends immediately below, at 0x020fb8f8.
+ * The registry factory dMeter_c_classInit (0x020fe154..0x020fe190) closes the
+ * unit, written as `return new dMeter_c();`. dMap_c's translation unit ends
+ * immediately below, at 0x020fb8f8; src/stage/LevelObjects.cpp starts
+ * immediately above, at 0x020fe190.
  *
  * FUNCTION ORDER IS THE REVERSE OF THE ROM'S -- mwccarm 2004/b56 emits one
  * .text section per function in reverse source order, so the highest-address ROM
  * function is written first. Do not reorder.
+ *
+ * Known limits:
+ * - The HUD globals are data_ names: symbols.txt has no recovered name for them.
+ * - HUDInfo, S154, Rec18 and VObj below are file-local shadows of objects the
+ *   tree has no header for; they carry only the offsets and slot this TU uses.
+ * - The OAM class below stands in for the OamAttr statics include/OAM.h lacks.
+ * - data_0209f2d8 is CURRENT_GAMEMODE (symbols/verified.tsv); mode 1 is the one
+ *   dMap_c draws its VS icons for.
  */
 
 #include "dMeter_c.h"
@@ -102,10 +112,6 @@ namespace GX { void LoadOBJPltt(const void*, u32, u32); }
 
 namespace GXS { void LoadOBJPltt(const void*, u32, u32); }
 
-
-
-
-
 extern "C" {
 extern unsigned char data_ov002_02111184;
 extern Timer data_0209d4c8;
@@ -125,8 +131,8 @@ struct OamAttr;
 extern OamAttr* _ZN3OAM10LIFE_ICONSE[];
 extern OamAttr _ZN3OAM5TIMESE;
 struct HUDInfo {
-char pad[0x6d9];
-unsigned char field_6d9;
+    char pad[0x6d9];
+    unsigned char field_6d9;
 };
 extern HUDInfo* data_0209f394[];
 extern u8 data_020a0e40;
@@ -194,16 +200,27 @@ void func_0203da4c(void);
  * [0] and the byte read at line 663 takes its address directly. */
 }
 
-/* -------------------------------------------------------------------------- */
+/* ROM ordinal 19 -- dMeter_c_classInit, 0x020fe154, size 0x3c.
+ * Reconstructed source-style name: SM64DS proves dMeter_c through RTTI,
+ * allocation size, vtable identity, and the METER registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: HUD_Spawn. It was once labelled
+ * _ZN8dMeter_cC1Ev, but it takes no `this`: it is the registry factory. */
+// @symbol dMeter_c_classInit
+extern "C" dMeter_c *dMeter_c_classInit()
+{
+    return new dMeter_c();
+}
+
 /* ROM ordinal 18 -- _ZN8dMeter_c13InitResourcesEv, 0x020fda04, size 0x750 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c13InitResourcesEv
 int dMeter_c::InitResources()
 {
-    char* vram_a = (char*)0x6400000;
-    char* vram_b = (char*)0x6600000;
-    int cond1 = (data_0209f2d8 == 1);
-    if (cond1 != 0) {
+    /* Main and sub engine OBJ VRAM. */
+    char* objVramMain = (char*)0x6400000;
+    char* objVramSub = (char*)0x6600000;
+    int isVsMode = (data_0209f2d8 == 1);
+    if (isVsMode != 0) {
         void* h;
         if (GetOwnerLanguage() == 5) {
             h = LoadFile(0xB003);
@@ -211,7 +228,7 @@ int dMeter_c::InitResources()
             DecompressLZ16(h, 0x6600000);
             Deallocate(h);
             h = LoadFile(0xB007);
-            DecompressLZ16(h, (int)(vram_a + 0x2000));
+            DecompressLZ16(h, (int)(objVramMain + 0x2000));
             Deallocate(h);
         } else if (GetOwnerLanguage() == 4) {
             h = LoadFile(0xAC03);
@@ -219,7 +236,7 @@ int dMeter_c::InitResources()
             DecompressLZ16(h, 0x6600000);
             Deallocate(h);
             h = LoadFile(0xAC07);
-            DecompressLZ16(h, (int)(vram_a + 0x2000));
+            DecompressLZ16(h, (int)(objVramMain + 0x2000));
             Deallocate(h);
         } else if (GetOwnerLanguage() == 3) {
             h = LoadFile(0xA803);
@@ -227,7 +244,7 @@ int dMeter_c::InitResources()
             DecompressLZ16(h, 0x6600000);
             Deallocate(h);
             h = LoadFile(0xA807);
-            DecompressLZ16(h, (int)(vram_a + 0x2000));
+            DecompressLZ16(h, (int)(objVramMain + 0x2000));
             Deallocate(h);
         } else if (GetOwnerLanguage() == 2) {
             h = LoadFile(0xA403);
@@ -235,7 +252,7 @@ int dMeter_c::InitResources()
             DecompressLZ16(h, 0x6600000);
             Deallocate(h);
             h = LoadFile(0xA407);
-            DecompressLZ16(h, (int)(vram_a + 0x2000));
+            DecompressLZ16(h, (int)(objVramMain + 0x2000));
             Deallocate(h);
         } else {
             h = LoadFile(0xA003);
@@ -243,11 +260,11 @@ int dMeter_c::InitResources()
             DecompressLZ16(h, 0x6600000);
             Deallocate(h);
             h = LoadFile(0xA007);
-            DecompressLZ16(h, (int)(vram_a + 0x2000));
+            DecompressLZ16(h, (int)(objVramMain + 0x2000));
             Deallocate(h);
         }
         h = LoadFile(0x8000);
-        DecompressLZ16(h, (int)(vram_b + 0x2000));
+        DecompressLZ16(h, (int)(objVramSub + 0x2000));
         Deallocate(h);
         h = LoadFile(0x8002);
         GX::LoadOBJPltt(h, 0, 0x120);
@@ -274,10 +291,10 @@ int dMeter_c::InitResources()
         else if (GetOwnerLanguage() == 3) h = LoadFile(0xA80E);
         else if (GetOwnerLanguage() == 2) h = LoadFile(0xA40E);
         else h = LoadFile(0xA00E);
-        DecompressLZ16(h, (int)(vram_a + 0x2000));
+        DecompressLZ16(h, (int)(objVramMain + 0x2000));
         Deallocate(h);
         h = LoadFile(0x229);
-        DecompressLZ16(h, (int)(vram_b + 0x2000));
+        DecompressLZ16(h, (int)(objVramSub + 0x2000));
         Deallocate(h);
         if (GetOwnerLanguage() == 5) h = LoadFile(0xB00A);
         else if (GetOwnerLanguage() == 4) h = LoadFile(0xAC0A);
@@ -295,12 +312,12 @@ int dMeter_c::InitResources()
         Deallocate(h);
     }
 
-    int var_r2 = 0;
+    int isVsTimer = 0;
     unk62 = 0;
     unk64 = 0xB4;
     mVsTimerY = 0xA;
-    if (data_0209f2d8 == 1) var_r2 = 1;
-    if (var_r2 != 0) {
+    if (data_0209f2d8 == 1) isVsTimer = 1;
+    if (isVsTimer != 0) {
         if (data_0209f2f8 == 0x33) mVsTimer = 0x1E;
         else if (data_0209f2f8 == 0x2B) *(volatile u16 *)&mVsTimer = 0x1E;
         else mVsTimer = 0x1E;
@@ -323,19 +340,20 @@ int dMeter_c::InitResources()
         mHealthMeterState = 1;
     }
 
-    int var_r0_2 = 0;
-    int var_r1;
-    if (data_0209f2d8 == 1) var_r1 = 1; else var_r1 = 0;
-    if (var_r1 == 0) {
+    /* Nine pixels per digit of NumStars(). */
+    int starDigitsWidth = 0;
+    int isVsStars;
+    if (data_0209f2d8 == 1) isVsStars = 1; else isVsStars = 0;
+    if (isVsStars == 0) {
         int n = NumStars();
-        if (n > 0x63) var_r0_2 = 0x1B;
-        else if (n > 9) var_r0_2 = 0x12;
-        else var_r0_2 = 9;
+        if (n > 0x63) starDigitsWidth = 0x1B;
+        else if (n > 9) starDigitsWidth = 0x12;
+        else starDigitsWidth = 9;
     }
 
-    int var_r1_2;
-    if (data_0209f2d8 == 1) var_r1_2 = 1; else var_r1_2 = 0;
-    if (var_r1_2 != 0) {
+    int isVsLayout;
+    if (data_0209f2d8 == 1) isVsLayout = 1; else isVsLayout = 0;
+    if (isVsLayout != 0) {
         data_ov002_02111178 = 0;
         mLifeCountX = 0x10;
         mStarCountX = 0xF0;
@@ -343,7 +361,7 @@ int dMeter_c::InitResources()
     } else if (!(data_0209caa0[2] & 0x80)) {
         data_ov002_02111178 = 6;
         mLifeCountX = -0x3A;
-        mStarCountX = (s16)(var_r0_2 + 0x120);
+        mStarCountX = (s16)(starDigitsWidth + 0x120);
         mStarCountSlideIn = 1;
     } else if (data_0209f2fc == 2) {
         data_ov002_02111178 = 1;
@@ -353,7 +371,7 @@ int dMeter_c::InitResources()
     } else if (data_0209f2fc == 1) {
         data_ov002_02111178 = 2;
         mLifeCountX = -0x3A;
-        mStarCountX = (s16)(var_r0_2 + 0x120);
+        mStarCountX = (s16)(starDigitsWidth + 0x120);
         mStarCountSlideIn = 0;
     } else {
         data_ov002_02111178 = 0;
@@ -366,9 +384,7 @@ int dMeter_c::InitResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 17 -- _ZN8dMeter_c8BehaviorEv, 0x020fd7a4, size 0x260 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c8BehaviorEv
 int dMeter_c::Behavior()
 {
@@ -471,12 +487,8 @@ body:
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 16 -- _ZN8dMeter_c6RenderEv, 0x020fd5e0, size 0x1c4 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c6RenderEv
-/* recovered: named members + shared header, real C++ method, declarations from a shared header */
-/* recovered: named members + shared header, real C++ method */
 // _ZN8dMeter_c6RenderEv at 0x020fd5e0
 // Matched byte-for-byte with mwccarm 1.2/sp2p3 (ov002).
 int dMeter_c::Render()
@@ -527,11 +539,8 @@ end:
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 15 -- _ZN8dMeter_c16OnPendingDestroyEv, 0x020fd5dc, size 0x4 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c16OnPendingDestroyEv
-/* recovered: named members + shared header, real C++ method */
 /* dMeter_c::OnPendingDestroy() at 0x020fd5dc (ov002) -- vtable slot 12.
  * Empty override; the dMeter_c does nothing when marked for destruction.
  */
@@ -540,11 +549,8 @@ void dMeter_c::OnPendingDestroy()
     (void)this;
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 14 -- _ZN8dMeter_c16CleanupResourcesEv, 0x020fd5d4, size 0x8 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c16CleanupResourcesEv
-/* recovered: named members + shared header, real C++ method */
 /* dMeter_c::CleanupResources() at 0x020fd5d4 (ov002) -- vtable slot 3.
  * Returns VS_FAIL (1); the dMeter_c holds no SharedFilePtr/heap resources to
  * release on death. dMeter_c : dBase_c : fBase_c.
@@ -555,12 +561,8 @@ s32 dMeter_c::CleanupResources()
     return 1;
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 13 -- _ZN8dMeter_c17UpdateHealthMeterEv, 0x020fd218, size 0x3bc */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c17UpdateHealthMeterEv
-/* recovered: named members + shared header, real C++ method, declarations from a shared header */
-/* recovered: named members + shared header, real C++ method */
 void dMeter_c::UpdateHealthMeter()
 {
     int chr = data_0209f250;
@@ -683,12 +685,8 @@ void dMeter_c::UpdateHealthMeter()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 12 -- _ZN8dMeter_c17RenderHealthMeterEv, 0x020fcfec, size 0x22c */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c17RenderHealthMeterEv
-/* recovered: named members + shared header, real C++ method, declarations from a shared header */
-/* recovered: named members + shared header, real C++ method */
 // _ZN8dMeter_c17RenderHealthMeterEv at 0x020fcfec
 // Matched byte-for-byte with mwccarm 1.2/sp2p3 (ov002).
 void dMeter_c::RenderHealthMeter()
@@ -716,9 +714,7 @@ void dMeter_c::RenderHealthMeter()
         &data_ov002_0210c310[data_ov002_0210c29c[data_ov002_0211117c[0]]], 0x60, 0x20);
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 11 -- _ZN8dMeter_c13UpdateVsTimerEv, 0x020fce9c, size 0x150 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c13UpdateVsTimerEv
 /* include/dMeter_c.h does not declare this member, and a member cannot be added to
  * a class from outside it, so it takes the hand-mangled free-function form.
@@ -769,13 +765,9 @@ void dMeter_c::UpdateVsTimer()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 10 -- _ZN8dMeter_c13RenderVsTimerEv, 0x020fca18, size 0x484 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c13RenderVsTimerEv
-/* recovered: named members + shared header, real C++ method
- *
- * The VS-mode countdown: a localised "TIME" caption, and below it either the
+/* The VS-mode countdown: a localised "TIME" caption, and below it either the
  * remaining seconds or a localised "TIME UP".
  *
  * Both captions are chosen by a GetOwnerLanguage() ladder testing 5, 4, 3, 2
@@ -841,9 +833,7 @@ void dMeter_c::RenderVsTimer()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 9 -- _ZN8dMeter_c15RenderCoinCountEv, 0x020fc81c, size 0x1fc */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c15RenderCoinCountEv
 /* _ZN8dMeter_c15RenderCoinCountEv at 0x020fc81c (ov002), size 0x1fc
  * Matched byte-for-byte with mwccarm 1.2/sp2p3.
@@ -882,13 +872,9 @@ void dMeter_c::RenderCoinCount()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 8 -- _ZN8dMeter_c14RenderRedCoinsEv, 0x020fc77c, size 0xa0 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c14RenderRedCoinsEv
-/* recovered: shared header, real C++ method
- *
- * Draws one sprite per red coin still to collect, stepping 0xb across from
+/* Draws one sprite per red coin still to collect, stepping 0xb across from
  * x=0x10. Both the count (data_0209f30c) and the row selector (data_0209f310)
  * are indexed by the same data_0209f250.
  *
@@ -915,13 +901,9 @@ void dMeter_c::RenderRedCoins()
   }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 7 -- _ZN8dMeter_c15RenderStarCountEv, 0x020fc458, size 0x324 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c15RenderStarCountEv
-/* recovered: named members + shared header, real C++ method
- *
- * Draws the star counter: the star icon, an "x", and up to three digits laid
+/* Draws the star counter: the star icon, an "x", and up to three digits laid
  * out RIGHT to LEFT from mStarCountX, skipping the -1 slots CalculateDigits
  * blanked.
  *
@@ -1002,13 +984,9 @@ void dMeter_c::RenderStarCount()
     OAM::Render(true, &_ZN3OAM10POWER_STARE, x - 16, 10, -1, 1, 0);
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 6 -- _ZN8dMeter_c17RenderSilverStarsEv, 0x020fc3c4, size 0x94 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c17RenderSilverStarsEv
-/* recovered: shared header, real C++ method
- *
- * Draws one sprite per silver star collected, in a row starting at x=0x10 and
+/* Draws one sprite per silver star collected, in a row starting at x=0x10 and
  * stepping 0x11 across at y=0xa. The count comes from data_0209f310 indexed by
  * data_0209f250 -- the same byte dMeter_c::RenderRedCoins reads, where a non-zero
  * value instead pushes the red-coin row from y=0xa down to y=0x1c. So this row
@@ -1034,9 +1012,7 @@ void dMeter_c::RenderSilverStars()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 5 -- _ZN8dMeter_c19RenderCameraButtonsEv, 0x020fc04c, size 0x378 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c19RenderCameraButtonsEv
 /* Takes the object only because its caller in this TU passes it; the body
  * never reads it, which is why the legacy source could spell it static. */
@@ -1104,9 +1080,7 @@ void dMeter_c::RenderCameraButtons()
     OAM::RenderSub(&OAM::S_CAM_ZOOM_BUTTON, 0xe7, y, -1, 1);
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 4 -- _ZN8dMeter_c15RenderLifeCountEv, 0x020fbe38, size 0x214 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c15RenderLifeCountEv
 void dMeter_c::RenderLifeCount()
 {
@@ -1142,13 +1116,9 @@ void dMeter_c::RenderLifeCount()
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 3 -- _ZN8dMeter_c15CalculateDigitsEt, 0x020fbdac, size 0x8c */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c15CalculateDigitsEt
-/* recovered: named members + shared header, real C++ method
- *
- * Splits a count into the three decimal digits the dMeter_c draws, most significant
+/* Splits a count into the three decimal digits the dMeter_c draws, most significant
  * first, and blanks leading zeros by writing -1 rather than a digit.
  *
  * The suppression stops at i != 2, so the units digit is always drawn: a value
@@ -1175,12 +1145,8 @@ void dMeter_c::CalculateDigits(unsigned short value)
     }
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 2 -- _ZN8dMeter_c15RenderTimeTimerEv, 0x020fb96c, size 0x440 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_c15RenderTimeTimerEv
-/* recovered: named members + shared header, real C++ method, declarations from a shared header */
-/* recovered: named members + shared header, real C++ method */
 // _ZN8dMeter_c15RenderTimeTimerEv at 0x020fb96c (ov002)
 void dMeter_c::RenderTimeTimer()
 {
@@ -1228,9 +1194,7 @@ void dMeter_c::RenderTimeTimer()
     OAM::Render(false, _ZN3OAM7NUMBERSE[centi % 10], 0xf0, 0x16, -1, 1, 0);
 }
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 1 -- _ZN8dMeter_cD0Ev, 0x020fb928, size 0x44 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_cD0Ev
 /* No body here, and none is possible: D0 is the deleting destructor and the
  * compiler writes all of it. The inline `~dMeter_c() {}` in include/dMeter_c.h
@@ -1245,9 +1209,7 @@ void dMeter_c::RenderTimeTimer()
  * arm9 0x020a0eac.
  */
 
-/* -------------------------------------------------------------------------- */
 /* ROM ordinal 0 -- _ZN8dMeter_cD1Ev, 0x020fb8f8, size 0x30 */
-/* -------------------------------------------------------------------------- */
 // @symbol _ZN8dMeter_cD1Ev
 /* No body here either, for the same reason. The cartridge's 0x30 bytes are two
  * vtable stores and one call, and every one of the three follows from

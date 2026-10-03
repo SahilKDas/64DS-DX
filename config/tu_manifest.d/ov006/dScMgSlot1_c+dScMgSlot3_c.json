@@ -1,17 +1,17 @@
 {
   "id": "ov006/dScMgSlot1_c+dScMgSlot3_c",
   "module": "ov006",
-  "source": "src_tu/actors/dScMgSlot1_c+dScMgSlot3_c.cpp",
-  "promoted_source": "src/actors/dScMgSlot1_c+dScMgSlot3_c.cpp",
-  "status": "text-verified",
+  "source": "src/actors/dScMgSlots.cpp",
+  "promoted_source": "src/actors/dScMgSlots.cpp",
+  "status": "promoted",
   "boundary_confidence": "medium",
   "boundary_evidence": [
-    "SUB-RANGE OF A LARGER TU, DISCLOSED. The ROM's translation unit is 0x0210a8c0..0x0210d6b8, 41 functions, holding dScMgSlot1_c and dScMgSlot3_c together; tools/tu_map.py derives the same span and label. This entry claims ordinals 0..38, 0x0210a8c0..0x0210c9e0.",
-    "WHY NOT ALL 41: ROM ordinal 39, _ZN12dScMgSlot1_c8BehaviorEv at 0x0210c9e0 size 0x81c, has NO entry of any kind in config/arm9/overlays/ov006/delinks.txt. Its recovered source src/_ZN12dScMgSlot1_c8BehaviorEv.cpp carries an honest NONMATCHING banner (19 of 519 words diverge, colouring residue) and tools/enroll.py keeps it out of the ROM build, so dsd serves that range from raw ROM. A delink entry cannot skip a range and resume, so no single claim reaches past it; ordinal 40 lies beyond it. 0..38 is the largest contiguous claimable run in this unit.",
-    "TWO CLASSES, ONE UNIT: sorting every ov006 symbol by address over 0x0210a8c0..0x0210d6b8 yields only dScMgSlot1_c (with its nested betIcon_c), dScMgSlot3_c, and unnamed func_ov006_* / *_classInit free functions. No third NAMED class falls between the first and last member, so the two classes cannot be separate units.",
-    "Bounds are hard on the left: 0x0210a8c0 is exactly where the already-promoted src/minigames/d_s_mg_single3_d_base.cpp complete range ends.",
-    "PRAGMA COLLISION RESOLVED BY #pragma defer_codegen off, MEASURED NOT ASSUMED. Three configurations of this same 39-function source were compiled and byte-compared. (a) file-global `opt_strength_reduction off`: 34/39, DIFF at ROM ordinals 12, 13, 19, 30, 35. (b) no optimisation pragma at all: 34/39, DIFF at ordinals 13, 15, 16, 19, 38. The two DIFF sets are disjoint apart from 13 and 19, which is the delete-outright positive control: the pragma demonstrably moves bytes at file scope, so a bracket test on it can carry signal. (c) `#pragma defer_codegen off` plus an ascending-ROM-order rewrite, with `opt_strength_reduction off` bracketed around ordinals 15, 16 and 38 and both it and `opt_loop_invariants off` around ordinal 13: 38/39, and the brackets bind per function -- ordinals 12, 30 and 35 stay matching outside them. Deferred codegen is why these pragmas are otherwise file-global last-wins; with it off they bind positionally, and mwccarm then emits .text in source order, which is why the source is written ascending.",
-    "The last DIFF, dScMgSlot3_c_classInit at ordinal 19, was a real relocation defect and not a byte difference: tools/objisolate.py refused `_ZTV12dScMgSlot3_c: unexpected reloc type=2 addend=0`. Because this TU defines dScMgSlot3_c's key function it also EMITS that class's vtable, and mwccarm's _ZTV symbol addresses the vtable object, two words of ABI preamble ahead of the slot array that config/arm9/overlays/ov006/symbols.txt names. The machine-shaped C shard inherited the importing-TU spelling (+0), which in an emitting TU points 8 bytes early. Rewriting that one store as &_ZTV12dScMgSlot3_c[2] took the unit to 39/39 with objisolate clean. The dScMgSingle3DBase_c store beside it stays at +0 because that vtable is only imported here. Same rule, opposite side, as src/game/actors/daTrs_c/d_a_trs_factories.cpp."
+    "PARTIAL TU, DISCLOSED. This promotion owns the 39-function contiguous prefix ov006:0x0210a8c0..0x0210c9e0. The enclosing Slot1/Slot3 unit continues through Slot1 Behavior, InitResources and its factory to 0x0210d740. Those three functions retain their existing source owners.",
+    "The lower bound meets the promoted Single3DBase unit at 0x0210a8c0. Slot1 destructors precede every Slot3 function, then Slot1 helpers, methods and its factory follow. This contiguous ownership supports the combined unit; original filename spelling is not recovered.",
+    "Current production src/actors/dScMgSlot1_c.cpp supplies the existing 18-function c180..c6c0 subset. Its latest accepted bodies are reused; the combined promotion supersedes that subset manifest and retires all absorbed sources through tu_promote.",
+    "The complete 42-function probe gave 41 MATCH with clean isolation and relocation destinations. Slot1 InitResources (d1fc..d6b8) and the factory (d6b8..d740) matched; Behavior (c9e0..d1fc) retained its existing 19-word mismatch. The latter prevents one contiguous full-TU production claim.",
+    "The remaining Behavior barrier is concrete: retail materializes idx*4 inside the touch-hit block (+0x264..+0x2c4), while full-width source folds shift+add (size 0x818 instead of 0x81c) and the existing u16 source emits a redundant narrowing pair plus different register choices (19 words). notes/mwccarm-codegen.md section 6cm records the prior exhaustive compiler/source experiments; this continuation independently reproduced those outcomes with typed index/access, scope, pointer, helper, loop and pragma probes. The broader class task remains partial; a future owner must recover that block before extending production ownership past c9e0.",
+    "PRAGMA COLLISION RESOLVED BY #pragma defer_codegen off, MEASURED NOT ASSUMED. Three configurations of this same 39-function source were compiled and byte-compared. (a) file-global `opt_strength_reduction off`: 34/39, DIFF at ROM ordinals 12, 13, 19, 30, 35. (b) no optimisation pragma at all: 34/39, DIFF at ordinals 13, 15, 16, 19, 38. The two DIFF sets are disjoint apart from 13 and 19, which is the delete-outright positive control: the pragma demonstrably moves bytes at file scope, so a bracket test on it can carry signal. (c) `#pragma defer_codegen off` plus an ascending-ROM-order rewrite, with `opt_strength_reduction off` bracketed around ordinals 15, 16 and 38 and both it and `opt_loop_invariants off` around ordinal 13: 38/39, and the brackets bind per function -- ordinals 12, 30 and 35 stay matching outside them. Deferred codegen is why these pragmas are otherwise file-global last-wins; with it off they bind positionally, and mwccarm then emits .text in source order, which is why the source is written ascending."
   ],
   "sections": [
     {
@@ -298,62 +298,21 @@
   "data": [],
   "bss": [],
   "notes": [
-    "Generated by tools/tubuild.py create. See the file's own header comment for what was and was not reconciled, and notes/translation-unit-reconstruction-plan.md section 7.3 for what this generator does and does not attempt to resolve automatically.",
-    "tubuild create emitted two defects that were fixed by hand in the shadow source: (1) its 'TUBUILD CONFLICT ... NOT applied' blocks are /* */ comments wrapping legacy text that itself contains /* */ comments, so the inner terminator closed the outer block and 20 of 23 blocks became syntax errors -- converted to // line comments here; (2) ROM ordinals 37..20 all come from ONE already-promoted legacy file, src/actors/dScMgSlot1_c.cpp, and create pasted that entire file once per ordinal, 18 identical copies -- deduplicated to a single copy, whose own internal order is already ROM-descending.",
-    "Declaration reconciliation done by hand: data_ov006_0213e5ec had two incompatible spellings (char *[] with byte offsets, void **[] with word indices); the extern \"C\" char *[] spelling was kept and the three void**-style subscripts rewritten to the same byte offsets. func_02012718, data_020a0e40 (scalar) and func_ov004_020b0a54 duplicated declarations already in include/decl_common.h with different parameter types; the local copies were dropped. struct Obj was applied in its virtual-only spelling but the dScMgSlot3_c bodies need the data members, so the reconciled spelling create computed and then discarded was applied instead, and the slot-18 virtual's two legacy names (v18 / m48) were unified.",
-    "tools/tubuild.py linkcheck REFUSES this TU, and the refusal is about enrollment, not about these bytes: `entry src/_ZN12dScMgSlot3_c13InitResourcesEv.cpp is NOT complete today (dsd serves it from ROM bytes); substituting the TU would change enrollment and byte provenance in the same step`. ROM ordinal 18 is enrolled in delinks.txt without a `complete` marker. That is pre-existing tree state; this entry is text-verified and changes no delinks entry, so nothing here depends on the link running.",
-    "The baseline control for the harness was run at this branch point before any of this work: tools/tubuild.py linkcheck --baseline --module ov006 -- modules PASS, 106/106 exact, ROM built, with `dsd check symbols --fail` reporting 9 pre-existing errors (overlay_100/overlay_102, two arm9 data symbols, five ITCM symbols) none of which is in ov006.",
-    "The 41 'tubuild create warning' lines below were dropped when these notes were written by hand, while all 41 markers stayed in the shadow source; the gate over deferred decisions reported them as unrecorded and they are restored here verbatim as tools/tubuild.py create emitted them. They are recorded as OPEN, not resolved. 21 of them are the same key, the local stand-in struct 'Obj': that struct's body was reconciled by hand against the byte-verified promoted src/actors/dScMgSlot1_c.cpp spelling, so what the file holds today is neither legacy text, but the 20 remaining alternate bodies were never individually adjudicated and the markers stay. The other 20 are extern declarations where two legacy files disagreed and the generator kept the first; the kept spelling is the one every member compiles and byte-matches against, which constrains those declarations but does not by itself prove the losing spelling wrong. Resolving any of them is the two-line edit the gate documents: drop the marker from the source and rewrite its line here to the RESOLVED form.",
-    "tubuild create warning: CONFLICT: extern declaration 'DecIfAbove0_Byte' differs between the legacy file that used to hold func_ov006_0210ab94 and the one that held func_ov006_0210ac3c; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'DecIfAbove0_Byte' differs between the legacy file that used to hold func_ov006_0210ab94 and the one that held func_ov006_0210adac; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_02012790' differs between the legacy file that used to hold func_ov006_0210adac and the one that held _ZN12dScMgSlot3_c13OnYoshiTryEatEi; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'RandomIntInternal' differs between the legacy file that used to hold _ZN12dScMgSlot3_c13OnYoshiTryEatEi and the one that held _ZN12dScMgSlot3_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'LoadCompressedFileAt' differs between the legacy file that used to hold _ZN12dScMgSlot3_c9Virtual80Ev and the one that held _ZN12dScMgSlot3_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'data_0209d45c' differs between the legacy file that used to hold _ZN12dScMgSlot3_c9Virtual80Ev and the one that held _ZN12dScMgSlot3_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'Hud_RenderSprite' differs between the legacy file that used to hold _ZN12dScMgSlot3_c6RenderEv and the one that held _ZN12dScMgSlot1_c6RenderEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'GetGameLanguage' differs between the legacy file that used to hold _ZN12dScMgSlot3_c9Virtual80Ev and the one that held _ZN12dScMgSlot1_c6RenderEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'DecIfAbove0_Byte' differs between the legacy file that used to hold func_ov006_0210ab94 and the one that held _ZN12dScMgSlot1_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'Sound_PlayIfNotActive' differs between the legacy file that used to hold func_ov006_0210af64 and the one that held _ZN12dScMgSlot1_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_02012790' differs between the legacy file that used to hold func_ov006_0210adac and the one that held _ZN12dScMgSlot1_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov004_020adb1c' differs between the legacy file that used to hold func_ov006_0210adac and the one that held _ZN12dScMgSlot1_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'func_ov006_0210c2d4' differs between the legacy file that used to hold func_ov006_0210c180 and the one that held _ZN12dScMgSlot1_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'LoadCompressedFileAt' differs between the legacy file that used to hold _ZN12dScMgSlot3_c9Virtual80Ev and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_ZN2G212GetBG2ScrPtrEv' differs between the legacy file that used to hold _ZN12dScMgSlot3_c13InitResourcesEv and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_ZN3G2S13GetBG2CharPtrEv' differs between the legacy file that used to hold _ZN12dScMgSlot3_c13InitResourcesEv and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration '_ZN3G2S12GetBG2ScrPtrEv' differs between the legacy file that used to hold _ZN12dScMgSlot3_c13InitResourcesEv and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'GetGameLanguage' differs between the legacy file that used to hold _ZN12dScMgSlot3_c9Virtual80Ev and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: extern declaration 'data_0209d454' differs between the legacy file that used to hold _ZN12dScMgSlot3_c13InitResourcesEv and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot3_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot3_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c180; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c1a8; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c208; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c218; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c234; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c278; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c2b0; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c2c0; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c2d4; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c354; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c9betIcon_c6RenderEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c9betIcon_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c478; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c19OnHitFromUnderneathEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c15OnHitByMegaCharEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c500; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held func_ov006_0210c638; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c13OnYoshiTryEatEi; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('namespace', 'Sound') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c8BehaviorEv; kept the first, the other is commented out for review",
-    "tubuild create warning: CONFLICT: local declaration ('struct', 'Obj') differs between the legacy file that used to hold func_ov006_0210ac3c and the one that held _ZN12dScMgSlot1_c13InitResourcesEv; kept the first, the other is commented out for review",
-    "ROOT CAUSE of the linkcheck refusal recorded above, measured: src/_ZN12dScMgSlot3_c13InitResourcesEv.cpp (ROM ordinal 18) is enrolled without `complete` because tools/eligible.py rejects it under rule 5 -- `unresolvable: func_020bc8b4`. That name is declared `extern int func_020bc8b4;` in include/decl_common.h and written as data by the body, but no config/**/symbols.txt defines it, so an isolated object would bind it weakly to 0. The address itself is genuinely ambiguous, not missing: config/arm9/overlays/ov006/relocs.txt records `from:0x0210c114 kind:load to:0x020bc8b4 module:overlays(0,2,4)`, and three different overlays name that address -- data_ov000_020bc8b4 (itself marked `ambiguous`), daObjHeart_c_classInit in ov002, and data_ov004_020bc8b4. Picking one is an overlay-residency question this entry has no evidence for, and the same unresolved name blocks src/_ZN12dScMgSlot1_c13InitResourcesEv.cpp (from:0x0210d6a4, the same destination) in the sibling ov006/dScMgSlot1_c unit, so settling it is a decl_common.h change spanning both units, not a change to this TU. Until it is settled, linkcheck cannot run and this entry stays text-verified.",
-    "SECOND, INDEPENDENT promotion blocker, so fixing the enrollment above alone will not promote this entry: tools/tu_promote.py --dry-run refuses with \"'src/actors/dScMgSlot1_c+dScMgSlot3_c.cpp' has a character the linker command file cannot carry unquoted; rename the file before promoting\". The `+` multi-class naming convention is safe for src_tu/ -- nothing links those -- but dsd writes bare unquoted object names into the LCF and mwldarm's parser treats `+` as punctuation. This entry's promoted_source must be renamed to a `+`-free path before promotion, which is a separate decision about what the two-class file should be called.",
-    "compiler-only policy: the two unlicensed FUNCTIONS are now licensed as plain `deadstrip` (see compiler_only_output; both D2 variants, 0 configured ROM homes each). tubuild verify accordingly reports 0 compiler-only policy errors. The remaining 21 unlicensed symbols are all non-text -- the _ZTV/_ZTI/_ZTS records this TU emits because it defines both classes' key functions, plus the ancestor RTTI passengers they drag in -- and each still needs its own deadstrip-data (or deadstrip, where homeless) row before promotion, on the same pattern the promoted ov006 siblings use. They were deliberately left unwritten here: with the two blockers above open, promotion cannot be reached, and a canonical address banked now would not be validated by anything until it is."
+    "RESOLVED generated Obj alternates: removed the shared shadow class entirely. Slot3 state dispatch uses void (dScMgSlot3_c::*)() and mState; self-dispatch uses the real OnYoshiTryEat override. The eighteen existing Slot1 helpers/methods reuse their production bodies and typed betIcon_c interface.",
+    "RESOLVED Sound/G2/local-layout alternates: Sound.h and OAM.h provide existing public interfaces; unused T4fe4 removed. SlotReels retains only the established private reel layout used by the accepted Slot1 helper. No shared header changed.",
+    "RESOLVED declaration alternates: DecIfAbove0_Byte returns unsigned char and accepts unsigned char*; RandomIntInternal returns int and accepts int*; func_02012790 now agrees with its definition as unsigned int(unsigned int). Equivalent u8/unsigned char and redundant C-linkage spellings were consolidated. Existing Hud_RenderSprite, GetGameLanguage, Sound_PlayIfNotActive and helper declarations are unchanged.",
+    "RESOLVED data_ov006_0213e5ec conflict: use void**[] as in the current production Slot1 owner, with typed pointer indexing in Slot3 calls instead of byte-offset pointer casts. Existing data_0209d45c/data_0209d454 byte declarations are retained.",
+    "RESOLVED missing import: Slot3 InitResources writes data_ov004_020bc8b4, the configured data symbol at 0x020bc8b4, instead of the unresolved func_020bc8b4 spelling. The exact relocation destination is checked for its store; no config symbol alias is invented.",
+    "RETAINED measured LoadCompressedFileAt caller ABI: its definition uses u16, while this candidate preserves the existing int parameter declaration. Changing this declaration to u16 adds a narrowing operation in Slot3 Virtual80, changing its size and bytes. This declaration disagreement is not represented as fully reconstructed interface agreement; it needs a separate matching repair.",
+    "RESOLVED non-text ownership: 21 compiler-emitted metadata symbols have explicit canonical homes outside this text-only unit. romdata_check reports 12 VERIFIED, 9 PARTIAL name strings, zero DIFFERS, zero UNNAMED and zero blind words. A direct LC.link_function comparison additionally proves all 552 emitted bytes including vtable preambles and string tails against their canonical ROM storage.",
+    "RESOLVED emitted-vtable factory addresses: The Slot3 factory addresses its emitted class table at +8 bytes; the imported base table retains its configured address point.",
+    "Both D2 variants remain explicit compiler-only deadstrip outputs with no configured ROM home. All 39 licensed ROM functions are emitted in ascending ROM order. Unnamed helper identities, opaque embedded fields and explicit factory construction remain reconstruction work; promotion is a production ownership claim, not complete original-source recovery."
   ],
   "verification": {
     "round": "tools/tubuild.py verify -- text-only, whole shadow TU compiled once",
     "toolchain": "tools/mwccarm/2004/b56/mwccarm.exe",
     "flags": "-O4,p -enum int -lang c++ -char signed -interworking -proc arm946e -gccext,on -msgstyle gcc -Cpp_exceptions off",
-    "object": "build/tu/ov006-dScMgSlot1_c+dScMgSlot3_c/dScMgSlot1_c+dScMgSlot3_c.o (gitignored)",
+    "object": "build/tu/ov006-dScMgSlot1_c+dScMgSlot3_c/dScMgSlots.o (gitignored)",
     "comparison": "tools/match.py extract_func+compare (bytes/relocs) AND tools/objisolate.py plan() (relocation type/addend) AND tools/reloc_audit.py check_destinations() (relocation target identity)",
     "functions_matched": 39,
     "functions_declared": 39,
@@ -370,15 +329,92 @@
         9,
         10,
         15,
-        16
+        16,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110
       ],
-      "data": [],
-      "dataExternalized": []
+      "data": [
+        "_ZTV12dScMgSlot1_c",
+        "_ZTVN12dScMgSlot1_c9betIcon_cE",
+        "_ZTV12dScMgSlot3_c",
+        "_ZTI12dScMgSlot3_c",
+        "_ZTS12dScMgSlot3_c",
+        "_ZTI19dScMgSingle3DBase_c",
+        "_ZTS19dScMgSingle3DBase_c",
+        "_ZTI11dScMgBase_c",
+        "_ZTI12dScMgSlot1_c",
+        "_ZTS12dScMgSlot1_c",
+        "_ZTIN12dScMgSlot1_c9betIcon_cE",
+        "_ZTSN12dScMgSlot1_c9betIcon_cE",
+        "_ZTI9dThIcon_c",
+        "_ZTS11dScMgBase_c",
+        "_ZTI8dScene_c",
+        "_ZTS9dThIcon_c",
+        "_ZTS8dScene_c",
+        "_ZTI7dBase_c",
+        "_ZTS7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTS7fBase_c"
+      ],
+      "dataExternalized": [
+        "_ZTI11dScMgBase_c",
+        "_ZTI12dScMgSlot1_c",
+        "_ZTI12dScMgSlot3_c",
+        "_ZTI19dScMgSingle3DBase_c",
+        "_ZTI7dBase_c",
+        "_ZTI7fBase_c",
+        "_ZTI8dScene_c",
+        "_ZTI9dThIcon_c",
+        "_ZTIN12dScMgSlot1_c9betIcon_cE",
+        "_ZTS11dScMgBase_c",
+        "_ZTS12dScMgSlot1_c",
+        "_ZTS12dScMgSlot3_c",
+        "_ZTS19dScMgSingle3DBase_c",
+        "_ZTS7dBase_c",
+        "_ZTS7fBase_c",
+        "_ZTS8dScene_c",
+        "_ZTS9dThIcon_c",
+        "_ZTSN12dScMgSlot1_c9betIcon_cE",
+        "_ZTV12dScMgSlot1_c",
+        "_ZTV12dScMgSlot3_c",
+        "_ZTVN12dScMgSlot1_c9betIcon_cE"
+      ]
     },
     "criteria": {
       "every_declared_function_defined": "PASS",
       "every_declared_function_bytes_match": "PASS",
-      "declared_function_set_equals_defined_function_set": "FAIL-BY-DESIGN -- 21 unlicensed section/symbol(s), 0 compiler-only policy error(s)",
+      "declared_function_set_equals_defined_function_set": "PASS",
       "functions_occur_in_expected_order": "PASS",
       "relocation_destinations_verified": "PASS"
     }
@@ -393,6 +429,165 @@
       "symbol": "_ZN12dScMgSlot3_cD2Ev",
       "disposition": "deadstrip",
       "reason": "Homeless, and independently of the dScMgSlot1_c row above -- this is the second of the two classes this TU folds, and each one's destructor is its own definition. This TU carries the one out-of-line dScMgSlot3_c::~dScMgSlot3_c() definition, ROM ordinal 2, whose body is the single explicit func_ov006_020c21e4((char *)this + 0x4f38) call; mwccarm 2004/b56 emits D1, D0 and D2 from it. The cartridge keeps D1 at ov006:0x0210a954 and D0 at ov006:0x0210a9a8, both licensed here, and drops D2. dScMgSlot3_c is likewise a leaf: no edge in the ROM's RTTI graph names its typeinfo record ov006:0x0213e588 as a base, so its base-object destructor is never odr-used. No address in config/ names a D2 for this class -- relocs.load_symbol_homes() over all 106 symbols.txt returns 0 homes for the name, with the same positive controls as the row above. 0 configured homes, so plain deadstrip rather than deadstrip-duplicate. Emitted inside the leading structor group, ahead of ordinal 4, so the licensed run's ROM-ascending emission order is unaffected."
+    },
+    {
+      "symbol": "_ZTV12dScMgSlot1_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 144 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213eb40"
+    },
+    {
+      "symbol": "_ZTVN12dScMgSlot1_c9betIcon_cE",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e5d4"
+    },
+    {
+      "symbol": "_ZTV12dScMgSlot3_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 144 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213eaa8"
+    },
+    {
+      "symbol": "_ZTI12dScMgSlot3_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e588"
+    },
+    {
+      "symbol": "_ZTS12dScMgSlot3_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e5ac"
+    },
+    {
+      "symbol": "_ZTI19dScMgSingle3DBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213bc64"
+    },
+    {
+      "symbol": "_ZTS19dScMgSingle3DBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 20 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213bd00"
+    },
+    {
+      "symbol": "_ZTI11dScMgBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov004",
+      "canonical_address": "0x020bbf6c"
+    },
+    {
+      "symbol": "_ZTI12dScMgSlot1_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e5a0"
+    },
+    {
+      "symbol": "_ZTS12dScMgSlot1_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e5bc"
+    },
+    {
+      "symbol": "_ZTIN12dScMgSlot1_c9betIcon_cE",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e594"
+    },
+    {
+      "symbol": "_ZTSN12dScMgSlot1_c9betIcon_cE",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 24 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov006",
+      "canonical_address": "0x0213e66c"
+    },
+    {
+      "symbol": "_ZTI9dThIcon_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov001",
+      "canonical_address": "0x020ad478"
+    },
+    {
+      "symbol": "_ZTS11dScMgBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov004",
+      "canonical_address": "0x020bbf84"
+    },
+    {
+      "symbol": "_ZTI8dScene_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914d4"
+    },
+    {
+      "symbol": "_ZTS9dThIcon_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "ov001",
+      "canonical_address": "0x020ad480"
+    },
+    {
+      "symbol": "_ZTS8dScene_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x020914b0"
+    },
+    {
+      "symbol": "_ZTI7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 12 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e78"
+    },
+    {
+      "symbol": "_ZTS7dBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e54"
+    },
+    {
+      "symbol": "_ZTI7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: VERIFIED, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086d70"
+    },
+    {
+      "symbol": "_ZTS7fBase_c",
+      "disposition": "deadstrip-data",
+      "reason": "Compiler-emitted metadata, compared against its unique configured ROM home: PARTIAL, 8 compared bytes, zero blind words. Retained canonical storage lies outside this text-only promotion; the isolated object imports that storage. The direct full-symbol comparison also verifies every emitted byte, including vtable preambles and null-terminated name tails; padding to the next ROM symbol remains ROM-owned.",
+      "canonical_module": "arm9",
+      "canonical_address": "0x02086e60"
+    }
+  ],
+  "remaining_work": [
+    {
+      "symbol": "_ZN12dScMgSlot1_c8BehaviorEv",
+      "module": "ov006",
+      "address": "0x0210c9e0",
+      "size": "0x81c",
+      "status": "nonmatching-existing",
+      "source": "src/_ZN12dScMgSlot1_c8BehaviorEv.cpp",
+      "evidence": "notes/mwccarm-codegen.md section 6cm; full combined probe 19 word differences at +0x264..+0x2c4",
+      "next_action": "Resolve the touch-index materialization and register-lifetime source shape, then extend this unit through InitResources and the factory at 0x0210d740."
     }
   ]
 }
