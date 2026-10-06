@@ -83,7 +83,7 @@ src/game/actors/d_a_star_gate.cpp
 #       TextureSequence::Prepare register ride-through (the SHORT-1 argsweep
 #       row): the matched source calls a three-register method with two declared
 #       arguments and relies on r0-r2 riding through, which cdecl cannot do.
-#   _ZN14ArrowSignRight11OnAttacked1ER8dActor_c  unmatched/ArrowSign_OnAttacked1.cpp -- REAL. The
+#   _ZN15daObjYajirusi_c11OnAttacked1ER8dActor_c  unmatched/ArrowSign_OnAttacked1.cpp -- REAL. The
 #       matched source's inner slot-31 dispatch leaves the VTABLE in ecx and
 #       pushes `this`, while the seated slot-31 veneer as_kill is __fastcall and
 #       reads `this` from ecx. Wrong receiver, listings quoted in the file.

@@ -734,7 +734,7 @@ int _ZN6Player11ChangeStateERNS_5StateE(void *self, void *st);
 /* SM64DS_FORCE_STATE=squish. NOT a hand-written ChangeState: this is the ROM's
    own crush entry point, Player::Unk_020c6a10 (ov002 0x020c6a10), the exact
    function the crushers call -- ov073 0x02120284 with 1, ov074 0x02120d74 with
-   2, ov078 0x021240a0 with 1 (src/func_ov073_021200e0.c:73,
+   2, ov078 0x021240a0 with 1 (src/actors/daKing_Donketu_c.cpp:73,
    src/actors/Goomboss.cpp:73 and src/actors/daBombking_c.cpp:107). It runs the
    ROM's own three gates (mClsnFlags & 1, i.e. on the ground; not already in
    ST_SQUISH; func_ov002_020d82f0), then sets mScaleY = 0x100 and holds
@@ -1666,7 +1666,7 @@ extern "C" int port_rom_loop_enabled(void);
    history: rung H1 seated the member-pointer site that was smashing
    func_ov075_0211b418's frame, registered scene 6's and scene 360's graphics
    blocks, and faced the one virtual slot the registered block then reached
-   (0x0211c94c slot 1, from src/func_ov075_021160dc.cpp). Measured with this
+   (0x0211c94c slot 1, from src/actors/dScEntry_c.cpp). Measured with this
    gate ARMED, 300 frames each: scene 6 rc=0, scene 360 rc=0, scene 1 rc=0 with
    the counted 0/1/2/3 = 300/0/450/150 and the wrong block 0 times, scene 8
    rc=0. The [thr] line on a scene under the flipped default reads
@@ -2290,8 +2290,8 @@ static void pacer_begin(void)
    and every scene sets it for itself during its own InitResources:
 
        src/_ZN5Stage13InitResourcesEv.cpp:362        = 2   the 3D levels
-       src/_ZN16dScMgSmartball_c13InitResourcesEv.cpp  = 1   a minigame
-       src/_ZN11dScMgCoin_c13InitResourcesEv.cpp and its dozen peers = 1   the other minigames
+       src/actors/dScMgSmartball_c.cpp  = 1   a minigame
+       src/actors/dScMgCoin_c.cpp and its dozen peers = 1   the other minigames
        src/func_ov002_020f7780.c:23                  = 3
        src/_ZN10dScEntry_c13InitResourcesEv.cpp:140               = 2
 
@@ -8160,27 +8160,46 @@ static int g_frontend_character_cursor;
 static int g_frontend_character_seeded;
 static int g_frontend_character_swallow;
 
+static const int FRONTEND_RETAIL_ORDER[4] = { 0, 3, 1, 2 };
+
+static const sm64ds::packs::Character *frontend_pack_character(int cursor)
+{
+    const auto &items = sm64ds::packs::characters();
+    if (cursor == 3)
+        return sm64ds::packs::character("64ds-dx:waluigi");
+    if (cursor < 5) return nullptr;
+    int wanted = cursor - 5;
+    for (const auto &item : items) {
+        if (item.key == "64ds-dx:waluigi") continue;
+        if (wanted-- == 0) return &item;
+    }
+    return nullptr;
+}
+
 static int frontend_character_count(void)
 {
-    return 4 + (int)sm64ds::packs::characters().size();
+    int extras = 0;
+    for (const auto &item : sm64ds::packs::characters())
+        if (item.key != "64ds-dx:waluigi") ++extras;
+    return 5 + extras;
 }
 
 static const char *frontend_character_name(int cursor)
 {
-    if (cursor < 4) return CHAR_NAME[cursor & 3];
-    const auto &items = sm64ds::packs::characters();
-    const int index = cursor - 4;
-    return index >= 0 && index < (int)items.size()
-        ? items[index].name.c_str() : "Unavailable";
+    if (cursor == 3) return "Waluigi";
+    if (cursor < 5)
+        return CHAR_NAME[FRONTEND_RETAIL_ORDER[cursor < 3 ? cursor : 3]];
+    const auto *item = frontend_pack_character(cursor);
+    return item ? item->name.c_str() : "Unavailable";
 }
 
 static int frontend_character_base(int cursor)
 {
-    if (cursor < 4) return cursor & 3;
-    const auto &items = sm64ds::packs::characters();
-    const int index = cursor - 4;
-    return index >= 0 && index < (int)items.size()
-        ? items[index].base_character & 3 : 0;
+    if (cursor == 3) return 2;
+    if (cursor < 5)
+        return FRONTEND_RETAIL_ORDER[cursor < 3 ? cursor : 3];
+    const auto *item = frontend_pack_character(cursor);
+    return item ? item->base_character & 3 : 0;
 }
 
 static void frontend_character_seed(void)
@@ -8189,28 +8208,34 @@ static void frontend_character_seed(void)
     g_frontend_character_seeded = 1;
     const std::string &key = sm64ds::packs::selected_character_key();
     if (!key.empty()) {
-        const auto &items = sm64ds::packs::characters();
-        for (int i = 0; i < (int)items.size(); ++i)
-            if (items[i].key == key) {
-                g_frontend_character_cursor = i + 4;
+        if (key == "64ds-dx:waluigi") {
+            g_frontend_character_cursor = 3;
+            return;
+        }
+        int cursor = 5;
+        for (const auto &item : sm64ds::packs::characters()) {
+            if (item.key == "64ds-dx:waluigi") continue;
+            if (item.key == key) {
+                g_frontend_character_cursor = cursor;
                 return;
             }
+            ++cursor;
+        }
     }
-    g_frontend_character_cursor = sm64ds::packs::selected_base_character() & 3;
+    const int base = sm64ds::packs::selected_base_character() & 3;
+    g_frontend_character_cursor = base == 0 ? 0 : base == 3 ? 1 : base == 1 ? 2 : 4;
 }
 
 static void frontend_character_commit(void)
 {
     std::string error;
-    if (g_frontend_character_cursor < 4) {
+    if (g_frontend_character_cursor != 3 && g_frontend_character_cursor < 5) {
         if (!sm64ds::packs::select_retail_character(
-                g_frontend_character_cursor, error))
+                frontend_character_base(g_frontend_character_cursor), error))
             ss_note(error.c_str());
     } else {
-        const auto &items = sm64ds::packs::characters();
-        const int index = g_frontend_character_cursor - 4;
-        if (index < 0 || index >= (int)items.size() ||
-            !sm64ds::packs::select_character(items[index].key, error))
+        const auto *item = frontend_pack_character(g_frontend_character_cursor);
+        if (!item || !sm64ds::packs::select_character(item->key, error))
             ss_note(error.empty() ? "pack character is unavailable" : error.c_str());
     }
     character_set_pending(frontend_character_base(g_frontend_character_cursor));
@@ -8292,12 +8317,11 @@ static void frontend_draw(const OvlSurface &fb)
              g_frontend_character_cursor + 1, frontend_character_count(),
              CHAR_NAME[base]);
     ovl_text(fb, px + 118, py + 64, detail, 0xFFB8C8E8u);
-    if (g_frontend_character_cursor >= 4) {
-        const auto &item = sm64ds::packs::characters()[g_frontend_character_cursor - 4];
-        snprintf(detail, sizeof detail, "Pack: %.34s", item.pack_id.c_str());
+    if (const auto *item = frontend_pack_character(g_frontend_character_cursor)) {
+        snprintf(detail, sizeof detail, "Pack: %.34s", item->pack_id.c_str());
         ovl_text(fb, px + 118, py + 82, detail, 0xFFB8C8E8u);
         snprintf(detail, sizeof detail, "License: %.30s",
-                 item.license.empty() ? "not declared" : item.license.c_str());
+                 item->license.empty() ? "not declared" : item->license.c_str());
         ovl_text(fb, px + 118, py + 98, detail, 0xFFB8C8E8u);
     }
     ovl_text(fb, px + 20, py + 124,
@@ -8472,8 +8496,8 @@ static int scene_host_input_frame(HWND hwnd, int frame, XPad *pad,
                at all -- only the level loop did, and only its four
                direction bits -- so the title screen, the file select and
                every minigame menu had no raw source for ANY button,
-               including the directions: src/_ZN10dScTitle_c8BehaviorEv.cpp,
-               src/_ZN11dScMiniGm_c8BehaviorEv.cpp,
+               including the directions: src/actors/dScTitle_c.cpp,
+               src/actors/dScMiniGm_c.cpp,
                src/_ZN12dScStarSel_c8BehaviorEv.cpp and
                src/minigames/d_s_mg_base.cpp all read data_020a0e58
                directly, not the Ctrl block above. scene_raw_all is the
@@ -9515,7 +9539,7 @@ int main(void)
        but which hal/scene_boot.cpp's port_graph_block_register has never been
        told about. The port's OWN beat therefore refuses it and answers 1; the
        ROM's func_02019144 and func_02019100 have no such test, so under the
-       wake they dispatch it for the first time. src/_ZN10dScEntry_c15graphCallback_c14GraphCallback2Ev.cpp --
+       wake they dispatch it for the first time. src/actors/dScEntry_c.cpp --
        slot 2, the VS menu's own display sync -- is
 
          *(u16*)0x400100c = (BG2CNT_B & ~0x1f00) | (c[0xc] << 8);
@@ -13399,7 +13423,7 @@ int main(void)
            CLEARS it. So a frame's registrations can only happen after that
            frame's CleanAll and before its RenderAll, and the registrations are
            made from actors' own Behavior methods (SignPost::Behavior and
-           ArrowSignRight::Behavior are the two matched examples). On the ROM
+           daObjYajirusi_c::Behavior are the two matched examples). On the ROM
            that works because the Stage ticks at the head of the behaviour list
            -- its spawn record at 0x0209213c carries behaviour priority 3
            against the hundreds other classes use. The port's equivalent of
@@ -13913,7 +13937,7 @@ int main(void)
                     mode the trigger's inner gate is
                         (VS && data_0209fc68 == 0) || (data_0209caa0[2] & 0x80)
                     and on the CARTRIDGE exactly one write sets that bit --
-                    src/func_ov085_0212d5dc.cpp:51, LakituBro's last opening
+                    src/game/actors/d_a_c_jugem.cpp:51, LakituBro's last opening
                     state.
                     ON THIS PORT IT IS ALREADY SET ON EVERY LEVEL ENTRY, and a
                     reader who takes the sentence above as the whole story will

@@ -30,11 +30,7 @@ src/_ZN11daDsnBase_cD1Ev.cpp:
 
 src/actors/daDsnBase_c.cpp:
     complete
-    .text start:0x02132dc0 end:0x02133254
-
-src/func_ov091_02133254.cpp:
-    complete
-    .text start:0x02133254 end:0x021333fc
+    .text start:0x02132dc0 end:0x021333fc
 
 src/actors/daObjPile_c.cpp:
     complete

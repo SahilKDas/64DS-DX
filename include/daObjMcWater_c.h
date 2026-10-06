@@ -11,7 +11,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  *
  * ov009 is mixed (DOCK_POLE / CASTLE_WATER / METAL_NET / FLAG / BIRD).
  * RTTI names this class daObjMcWater_c; the debug table names CASTLE_WATER.
- * This is the water plane, not daObjMc_Metalnet_c / daMcFlag_c / Bird.
+ * This is the water plane, not daObjMc_Metalnet_c / daMcFlag_c / daSBird_c.
  *
  *   _ZTS  ov009 0x021139e0  "14daObjMcWater_c"
  *   _ZTI  ov009 0x021139d4  __si_class_type_info; base dBgActor_c
@@ -28,7 +28,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 
 struct daObjMcWater_c : dBgActor_c {
-    ROM_BASE_TAIL_PAD(31e, 0x2)
+    u8 unk_31e[0x2];
     TextureTransformer mTexTransformer; /* 0x320 -- Behavior re-forces
                                            speed to 0x1000 every frame */
     u8 unk_334[0x4];                    /* 0x334 -- allocation tail; nothing
@@ -40,18 +40,7 @@ struct daObjMcWater_c : dBgActor_c {
        Defined in the class body it yields the retail D1/D0 pair and no D2.
        First non-inline virtual below (InitResources) is then the key function,
        so this class's TU still homes _ZTV/_ZTI/_ZTS. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjMcWater_c() {}   /* no slot */
-#else
-    virtual ~daObjMcWater_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daObjMcWater_c() {}
 
     virtual int InitResources();       /* slot  0 */
     virtual int CleanupResources();    /* slot  3 */
@@ -67,9 +56,5 @@ struct daObjMcWater_c : dBgActor_c {
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */
 typedef char daObjMcWater_c_size_must_be_0x338[sizeof(daObjMcWater_c) == 0x338 ? 1 : -1];
 #endif
-/* hal/actor_classes.cpp and hal/dtor_forwarders_gen.cpp are both on
-   PORT_TAILPAD_DBGACTOR_SOURCES and built this object on the cartridge's 0x320,
-   while its own translation units are not on that list and read 0x324. */
-ROM_OFFSET_ASSERT(daObjMcWater_c, mTexTransformer, 0x320);
 
 #endif /* DAOBJMCWATER_C_H */

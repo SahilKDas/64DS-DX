@@ -29,7 +29,9 @@ int main(int argc, char **argv)
     }
     const auto *waluigi = sm64ds::packs::character(4);
     if (!waluigi || waluigi->name != "Waluigi" ||
-        waluigi->key != "64ds-dx:waluigi" || waluigi->base_character != 2)
+        waluigi->key != "64ds-dx:waluigi" || waluigi->base_character != 2 ||
+        waluigi->body_model.empty() || waluigi->head_cap_model.empty() ||
+        waluigi->head_no_cap_model.empty())
         return 9;
     const auto *character = sm64ds::packs::character("probe:probe");
     if (!character || character->id != 5 || character->name != "Probe" ||

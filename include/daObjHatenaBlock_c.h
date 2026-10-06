@@ -16,7 +16,9 @@
  * daObjHatenaBlock_c_classInit_* are reconstructed (RTTI daObjHatenaBlock_c,
  * those six registry IDs). Retail does not store those spellings. */
 struct daObjHatenaBlock_c : dBgActor_c {
+#ifndef _MSC_VER
     u8  pad_31e[0x2];
+#endif
     ModelAnim mModelAnim;             /* 0x320 -- only HATENA_BLOCK (20) loads and draws it */
     ShadowModel mShadowModel;         /* 0x384 */
     /* Seeded from mModel.mat4x3 by InitResources, then rebuilt every frame

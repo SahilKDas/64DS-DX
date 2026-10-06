@@ -42,6 +42,8 @@ reference/
 # Unlicensed third-party character sources and generated native packs stay local.
 /port/mods/.local-src/
 /port/mods/characters/*/assets/
+!/port/mods/characters/waluigi/assets/
+!/port/mods/characters/waluigi/assets/**
 
 # --- Internal working files: kept local, not published ---
 knowledge/

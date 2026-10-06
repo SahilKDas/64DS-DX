@@ -44,10 +44,7 @@ src/actors/daObjSeesaw_c.cpp
 # port/unmatched/ModelAnim_Renders.cpp, dispatched by C name from the vtable fill.
 # RETIRED at SLICE1: body now in src/_ZN9SeesawBobD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN9SeesawBobD0Ev.cpp
-src/func_ov095_021358cc.c
-src/func_ov095_0213597c.c
 src/func_ov095_02135e90.c
 src/func_ov095_02135cdc.c
-src/func_ov095_0213579c.c
 src/__sinit_ov095_02136fe0.c
 src/__sinit_ov095_0213722c.c

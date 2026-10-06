@@ -452,6 +452,10 @@ void reserve_waluigi_slot()
         item.version = "1";
         item.license = "local assets required";
         item.base_character = 2; // Wario abilities until a pack supplies assets.
+        item.body_model = "port/mods/characters/waluigi/assets/waluigi_model.bmd";
+        item.head_cap_model = "port/mods/characters/waluigi/assets/waluigi_head_cap.bmd";
+        item.head_no_cap_model = "port/mods/characters/waluigi/assets/waluigi_head_nocap.bmd";
+        item.icon = "port/mods/characters/waluigi/assets/waluigi_icon.png";
         item.hitbox.radius = 48.0f;
         item.hitbox.height = 116.0f;
         item.hitbox.hurt_radius = 48.0f;

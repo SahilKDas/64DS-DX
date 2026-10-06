@@ -1,14 +1,6 @@
 /* __sinit_ov002_021071f4 at 0x021071f4
  *
  * Matched byte-for-byte with mwccarm 1.2/sp2p3 (overlay ov002).
- *
- * The destination is data_ov002_0210af2c, NOT data_ov002_021097bc: dsd
- * merged two different 68-byte state tables under the 021097bc name (a
- * cross-address symbol collision). The ROM's own literal pool word at
- * 0x02107294 is 0x0210af2c and every store in the body is relative to the
- * register that loads it -- this sinit fills the OTHER class's table.
- * (Found by gate 200's seat guard: with both sinits writing one host
- * symbol, whichever ran second stomped PushBlock's three dispatch cells.)
  */
 
 typedef struct { int a, b; } Pair;

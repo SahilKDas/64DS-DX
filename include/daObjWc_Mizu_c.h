@@ -30,7 +30,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 
 struct daObjWc_Mizu_c : dBgActor_c {
-    ROM_BASE_TAIL_PAD(31e, 0x2)
+    u8  pad_31e[0x2];
     TextureTransformer mTextureTransformer; /* 0x320 */
     s32 mTargetPosY;                  /* 0x334 */
     u8 mUseSpawnPosY;                 /* 0x338 -- param1 & 1; when clear InitResources overrides mPosY from the WDW water-level table data_ov029_02112b2c[setting] */
@@ -39,7 +39,7 @@ struct daObjWc_Mizu_c : dBgActor_c {
     u8 mTrueAreaID;                    /* 0x340 -- stored u8; Behavior reads it signed (ldrsb) */
     u8  pad_341;
     /* Behavior adds 0x200 per frame; (u16)>>4 indexes data_02082214.
-       Same sine-table shape as LavaPlank::mPhaseAngle. Was pad_341[3]
+       Same sine-table shape as daObjFl_UkiKi_c::mPhaseAngle. Was pad_341[3]
        covering this live halfword. */
     s16 mPhaseAngle;                   /* 0x342 */
     s32 mWaterHeight;                  /* 0x344 */
@@ -49,18 +49,7 @@ struct daObjWc_Mizu_c : dBgActor_c {
        Defined in the class body it yields the retail D1/D0 pair and no D2.
        First non-inline virtual below (InitResources) is then the key function,
        so this class's TU still homes _ZTV/_ZTI/_ZTS. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjWc_Mizu_c() {}   /* no slot */
-#else
-    virtual ~daObjWc_Mizu_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daObjWc_Mizu_c() {}
 
     virtual int InitResources();       /* slot  0 */
     virtual int CleanupResources();    /* slot  3 */

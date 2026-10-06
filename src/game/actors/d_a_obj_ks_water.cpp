@@ -1,4 +1,5 @@
 //cpp
+#include "Sound.h"
 /* Production translation unit for ov017/daObjKsWater_c, hand-curated.
  * 7 function(s), .text 0x021111a0..0x021114b8.
  *
@@ -36,7 +37,7 @@
 
 #include "daObjKsWater_c.h"
 #include "SharedFilePtr.h"
-#include "TreasureChest.h"
+#include "daObjTbox_c.h"
 
 struct BMD_File;
 struct BTA_File;
@@ -44,8 +45,6 @@ struct KCL_File;
 struct CLPS_Block;
 
 extern "C" {
-unsigned _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned a, unsigned b, unsigned c,
-                                           void *pos, unsigned e);
 void _ZN18TextureTransformer7SetFileER8BTA_Filei5Fix12IiEj(
     TextureTransformer *self, BTA_File *file, int flags, int speed, u32 startFrame);
 void _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
@@ -108,7 +107,7 @@ int daObjKsWater_c::Behavior()
         int ok = 1;
         dActor_c *p = dActor_c::FindWithActorID(0xd, 0);
         while (p != 0) {
-            int state = ((TreasureChest *)p)->mState;
+            int state = ((daObjTbox_c *)p)->mState;
             int cond = 1;
             if (state != 1) {
                 if (state != 2) cond = 0;
@@ -121,8 +120,7 @@ int daObjKsWater_c::Behavior()
         int d = mOriginalPosY - mPosY;
         if (d < 0) d = -d;
         if (d < 0x92e000) {
-            mSoundID = _ZN5Sound8PlayLongEjjjRK7Vector3s(
-                mSoundID, 3, 0x96, (void *)&mCamSpacePosX, 0);
+            mSoundID = Sound::PlayLong(mSoundID, 3, 0x96, *(const Vector3 *)&mCamSpacePosX, 0);
             mPosY -= 0x5000;
         }
     }

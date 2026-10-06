@@ -23,7 +23,13 @@ struct daObjKm1_Kurumajiku_c : daObjKurumajiku_c {
     virtual s32 CleanupResources(); /* slot 3 */
     virtual s32 InitResources();    /* slot 0 */
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(
+#ifdef SM64DS_PLATFORM_PC
+        size_t size
+#else
+        unsigned long size
+#endif
+    ) {
         return _ZN7fBase_cnwEj(size);
     }
 };

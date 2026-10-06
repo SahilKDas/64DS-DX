@@ -77,7 +77,7 @@ struct daFeather_c : dActor_c {
 
     /* Leaf adapter until fBase_c::operator new(unsigned long) lands (#2570).
        `return new daFeather_c()` then routes through the retail allocator. */
-    static void *operator new(unsigned long size) {
+    static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);
     }
 };

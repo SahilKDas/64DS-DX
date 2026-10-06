@@ -49,7 +49,7 @@ struct daBrq_c : dActor_c {
        matrix IDENTITY_MATRIX4X3 (0x30 bytes) into it; UpdateModelTransform writes
        the position (>>3) at m[9]/m[10]/m[11] -- exactly the translation row --
        and passes &mMat4x3 as the matrix argument of DropShadowRadHeight. Same
-       role as Lakitu's 0x3f8 translation words. */
+       role as daJgm_c's 0x3f8 translation words. */
     Matrix4x3                 mMat4x3;                       /* 0x3d4 */
     Vector3                   mOrbitCenter;                  /* 0x404 */
     Vector3                   mCylinderOffset;               /* 0x410 */
@@ -62,18 +62,7 @@ struct daBrq_c : dActor_c {
     u8                        mStateTimer;                   /* 0x430 */
     u8                        pad_431[0x3];
 
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daBrq_c() {}   /* no slot */
-#else
-    virtual ~daBrq_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daBrq_c() {}
 
     virtual s32 InitResources();
     virtual s32 CleanupResources();

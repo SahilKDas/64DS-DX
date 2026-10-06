@@ -34,7 +34,7 @@
  * FOUR DESCENDANTS, one per level overlay: daObjBk_Fall_Block_c (daObjBk_Fall_Block_c,
  * ov015), daObjFl_Fall_Block_c (ov022, only ever named by its factory
  * daObjFl_Fall_Block_c_classInit), daObjKm2_Fall_Block_c (FallBlockBfs, ov045) and
- * daObjTh_Fall_Block_c (FallBlockBbh, ov063). Each one's destructor stores this
+ * daObjTh_Fall_Block_c (daObjTh_Fall_Block_c, ov063). Each one's destructor stores this
  * class's vtable between its own and _ZTV10dBgActor_c.
  *
  * SIZE 0x34c, the literal all four factories pass to fBase_c::operator new.
@@ -128,18 +128,7 @@ struct daObjFallBlock_c : dBgActor_c {
        file and config/tu_manifest.d/ov098/daObjFallBlock_c.json. Do not "fix"
        the ordering by moving this body out of line: it trades four descendants'
        bytes for one TU's. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjFallBlock_c() {}   /* no slot */
-#else
-    virtual ~daObjFallBlock_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daObjFallBlock_c() {}
 
     /* Slot 31, dBgActor_c's own new virtual (include/dBgActor_c.h). This class
        overrides it; it adds no slot and no field, so the size assert below is

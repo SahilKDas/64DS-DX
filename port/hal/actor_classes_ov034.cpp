@@ -137,7 +137,7 @@ void port_ov034_syms_patch(void);
    destructor chain nodes and the twenty-two state pmfs. */
 void __sinit_ov034_021138ec(void);
 
-/* what port_factory_wiggler spells by hand (src/d_a_hanachan.c is held out --
+/* what port_factory_wiggler spells by hand (src/actors/daHanachan_c.cpp is held out --
    it rides the ROM's r0 through into Enemy::C2, the ChiefChilly shape) */
 void *_ZN7fBase_cnwEj(unsigned int sz);
 void _ZN12dEnemyBase_cC2Ev(void *self);
@@ -290,7 +290,7 @@ int _ZN7Wiggler13InitResourcesEv(void *self)
 // ============================================================================
 // THE FACTORY, SPELLED BY HAND -- the ChiefChilly r0 ride-through
 // ============================================================================
-/* src/d_a_hanachan.c is HELD OUT of the slice. It calls `func_020aed98();`
+/* src/actors/daHanachan_c.cpp is HELD OUT of the slice. It calls `func_020aed98();`
    with NO ARGUMENT because in the ROM the object operator new just returned is
    still in r0 when Enemy::C2 is entered:
        021136b0 bl 0x02043444   ActorBase::operator new(0x8e8)
@@ -299,7 +299,7 @@ int _ZN7Wiggler13InitResourcesEv(void *self)
    mwcc reproduced that, so the TU is byte-faithful and unusable under cdecl --
    and the name it spells, func_020aed98, is an arm9-style spelling of an ov002
    symbol that exists nowhere in the link. Exactly the shape
-   port/slice_w12.txt holds src/d_a_king_donketu.cpp out for, and this is that
+   port/slice_w12.txt holds src/actors/daKing_Donketu_c.cpp out for, and this is that
    lane's remedy: the ROM's own sequence with the receiver spelled, every
    offset, count and stride read from the disassembly at 0x021136a4. The
    allocation size 0x8e8 is the ROM's own literal pool word at 0x021137d4. */

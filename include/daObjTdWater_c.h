@@ -32,7 +32,7 @@ struct daObjTdWater_c : dBgActor_c {
        the two bytes of its tail padding are unused here -- unlike
        daObjRc_Guruguru_c::mAngVelY, this class's first member is 4-byte
        aligned and starts at 0x320. */
-    ROM_BASE_TAIL_PAD(31e, 0x2)
+    u8 pad_31e[0x2];
 
     /* THIS CLASS'S OWN. InitResources hands it the BTA at ov032 0x02112f64 and
        Behavior sets its rate to 0x1000 and advances it every frame -- that is
@@ -43,18 +43,7 @@ struct daObjTdWater_c : dBgActor_c {
        two are emitted; with the body out of line mwcc emits D0 ahead of D1
        and the ROM has D1 first (rombuild refuses the object outright). An
        inline body also drops the D2 variant the cartridge never carried. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjTdWater_c() {}   /* no slot */
-#else
-    virtual ~daObjTdWater_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daObjTdWater_c() {}               /* slots 16 (D1), 17 (D0) */
 
     virtual s32   InitResources();         /* slot  0 */
     virtual s32   CleanupResources();      /* slot  3 */
