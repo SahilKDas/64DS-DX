@@ -210,7 +210,7 @@ DSSTATE_END
 }
 
 /* Both tables are named by TU declarations that sit OUTSIDE extern "C" --
-   src/d_a_obj_path_lift.cpp spells `extern void* data_ov002_0210af70;` and
+   src/game/actors/daObjPathLift_c.cpp spells `extern void* data_ov002_0210af70;` and
    `extern void* data_ov100_0214857c;` as plain C++ objects and takes their
    ADDRESS -- so MSVC mangles the type into the name. Bind the decorated
    spellings onto the one C-named array each (the ?data_020a0e68@@3UMtx43@@A
@@ -356,7 +356,7 @@ static int __fastcall pl_kill(void *s, void *)
    SAME word (0x020eff18), so both get the same thunk.
 
    THE THIRD PARAMETER IS THE POP, NOT A VALUE. The dispatch site is
-   src/func_ov002_020eff90.cpp, `b->m(x)` over a 33-virtual class, which MSVC
+   src/actors/dPathLiftActor_c.cpp, `b->m(x)` over a 33-virtual class, which MSVC
    emits as thiscall with the argument PUSHED and no caller cleanup:
 
        mov  ecx,dword ptr [ebp+0Ch]      ; this

@@ -84,18 +84,7 @@ typedef char dScMgLuigi_Iris_size_must_be_0x14[sizeof(dScMgLuigi_Iris) == 0x14 ?
 #endif
 
 struct dScMgLuigi_c : dScMgBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgLuigi_c();   /* no slot */
-#else
-    virtual ~dScMgLuigi_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgLuigi_c();
     virtual s32 InitResources();          /* slot 0 */
     virtual void AfterCleanupResources(u32 vfSuccess); /* slot 5 */
     virtual s32 Behavior();               /* slot 6 */

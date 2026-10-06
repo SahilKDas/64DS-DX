@@ -13,7 +13,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  *
  * SIZE 0x114 is the factory's own literal; mParticle at 0x110 closes on it.
  * dActor_c ends at 0x0d0. pad_0d0 is unevidenced (not read in this TU);
- * dCcAc_c sits at 0x0d4. The old "Bubble" alias also names LavaBubble.
+ * dCcAc_c sits at 0x0d4. The old "Bubble" alias also names daBbl_c.
  *
  * Vtable vs _ZTV8dActor_c: only slot 0 (InitResources) and slot 6 (Behavior)
  * differ. InitResources is the key function.
@@ -22,7 +22,7 @@ struct daObjAbuku_c : dActor_c {
     u8  pad_0d0[0x4];
     /* Named by the factory C1 and the destructor D1 at +0xd4. */
     dCcAc_c mdCcAc_c;            /* 0x0d4 */
-    /* Same float as WingFeather: mSwayAngle += 0x400 a frame,
+    /* Same float as daFeather_c: mSwayAngle += 0x400 a frame,
        (mSwayAngle >> 4) * 2 + 1 indexes data_02082214, times mDriftSpeed
        is mHorzSpeed. mDriftSpeed eases toward 0x6000. mLifeTimer starts
        at 0x12c and pops at 0; mParticle is the System::New handle. */
@@ -40,18 +40,7 @@ struct daObjAbuku_c : dActor_c {
     }
 
     /* Inline and last so instantiation emits retail D1 then D0 and no D2. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjAbuku_c() {}   /* no slot */
-#else
-    virtual ~daObjAbuku_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daObjAbuku_c() {}            /* slots 16 (D1), 17 (D0) */
 };
 
 #ifndef SM64DS_PLATFORM_PC

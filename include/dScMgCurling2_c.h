@@ -71,18 +71,7 @@ typedef char dScMgCurling2_value_size_must_be_0x18[sizeof(struct dScMgCurling2_v
 #endif
 
 struct dScMgCurling2_c : dScMgBase_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~dScMgCurling2_c();   /* no slot */
-#else
-    virtual ~dScMgCurling2_c();   /* D1 and D0 */
-#endif
+    virtual ~dScMgCurling2_c();
 
     virtual s32 InitResources();  /* slot 0 */
     virtual s32 Behavior();       /* slot 6 */

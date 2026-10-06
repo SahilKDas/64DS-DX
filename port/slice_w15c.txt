@@ -63,9 +63,6 @@
 src/actors/daObjDpBrock_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN11PyramidStepD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11PyramidStepD0Ev.cpp
-src/d_a_obj_dp_brock.c
-src/func_ov025_02111dec.cpp
-src/func_ov025_02111e30.c
 src/actors/daDpLift_c.cpp
 src/d_a_dp_lift.cpp
 src/func_ov025_021125bc.cpp

@@ -53,7 +53,7 @@ void _ZN11ShadowModelC1Ev(void *self) { ::new (self) ShadowModel(); }
 // MSVC emits the dActor_c / fBase_c vtable into -- and that vtable wants every
 // one of the 30 virtuals dActor_c declares. Slicing their real bodies pulls in
 // the whole actor runtime, so they take the shape the rest of this file uses:
-// present for the vtable, loud if anything dispatches. ArrowSignRight, the
+// present for the vtable, loud if anything dispatches. daObjYajirusi_c, the
 // class gate 9 actually exercises, overrides what it uses, so a trap firing
 // here is news -- it means the slice is missing a body, not that the port is
 // wrong.
@@ -94,7 +94,7 @@ ACTOR_TRAP(Vector3 dActor_c::OnAimedAtWithEggReturnVec(), "dActor_c::OnAimedAtWi
 
 ACTOR_TRAP(void dBgActor_c::Kill(), "dBgActor_c::Kill")
 
-// The raw Itanium spelling ArrowSignRight_Spawn.c still calls: cdecl, `this`
+// The raw Itanium spelling daObjYajirusi_c_Spawn.c still calls: cdecl, `this`
 // as an ordinary first argument, where the real method is __thiscall.
 extern "C" void *_ZTV5Model[8];
 extern "C" void _ZN10dBgActor_cC2Ev(void *self)

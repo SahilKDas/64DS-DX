@@ -77,7 +77,7 @@
 // define. The face supplies that name and nothing else; the ROM vtable word,
 // the seat and the call are all untouched. This is exactly the arrangement
 // lane FACEF shipped in hal/except_faces.cpp for Goomboss::Render,
-// ShipUp::Render, FloatOnWaterPlatformJrb::Render and Player::BlowAway, and
+// daObjKi_Fune_c::Render, FloatOnWaterPlatformJrb::Render and Player::BlowAway, and
 // the gate-1b LINK is what named it here rather than a reading.
 //
 // It is a FACE, not a shadow: it forwards with a qualified call, so the map
@@ -88,7 +88,7 @@
 
 #include "RabbitKey.h"
 
-extern "C" int _ZN9RabbitKey6RenderEv(void *self)
+extern "C" int _ZN15daObj_Mip_Key_c6RenderEv(void *self)
 {
     return ((RabbitKey *)self)->RabbitKey::Render();
 }

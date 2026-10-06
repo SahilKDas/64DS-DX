@@ -67,6 +67,4 @@ src/func_0203b20c.c
 
 # dBgW's non-virtual accessors: these were always sliced here. They are not
 # part of the vtable and have nothing to do with the constructor migration.
-src/_ZN4dBgW7DisableEv.cpp
-src/_ZN4dBgW9IsEnabledEv.cpp
 src/_ZN4dBgW6EnableEP8dActor_c.cpp

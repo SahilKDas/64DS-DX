@@ -59,7 +59,7 @@ src/_ZN11dScMgJump_c13OnYoshiTryEatEi.cpp
 #     on that path, so there is no value to invent), and the raw path is on
 #     PORT_FALLS_OFF_END_SOURCES for the C4716 that is left. Measured after the
 #     patch and before the row: compiles clean, defines exactly
-#     ?OnAttacked1@ArrowSignRight@@QAEHAAUdActor_c@@@Z, references nothing
+#     ?OnAttacked1@daObjYajirusi_c@@QAEHAAUdActor_c@@@Z, references nothing
 #     outside the link. The FLAT name the wall asks for is a reverse face, one R
 #     row in port/faces_sync.txt beside this class's four existing ones.
 #

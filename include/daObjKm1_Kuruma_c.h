@@ -22,7 +22,13 @@ struct daObjKm1_Kuruma_c : daObjKuruma_c {
     int CleanupResources();            /* slot  3 */
     int InitResources();               /* slot  0 */
 
-    static void *operator new(unsigned long size) {
+    static void *operator new(
+#ifdef SM64DS_PLATFORM_PC
+        size_t size
+#else
+        unsigned long size
+#endif
+    ) {
         return _ZN7fBase_cnwEj(size);
     }
 };

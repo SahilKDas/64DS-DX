@@ -69,7 +69,7 @@ void func_ov085_0212d2b8(void *self);
 /* PORT_HOST_ABI: ROM-order model slot-5 dispatch AND a convention
  * mismatch: the shadow's fn field is cdecl where mv_render is __fastcall.
  * See the note above. */
-/* _ZN9RabbitKey6RenderEv RETIRED (run link100, lane SEAT6, batch B6).
+/* _ZN15daObj_Mip_Key_c6RenderEv RETIRED (run link100, lane SEAT6, batch B6).
    The measured twist this file records -- the shadow's fn field is a
    PLAIN cdecl pointer where _ZTV5Model[5] holds __fastcall mv_render --
    is a property of the CALL, and the call is the only thing that moves.

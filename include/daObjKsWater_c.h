@@ -38,25 +38,14 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  */
 
 struct daObjKsWater_c : dBgActor_c {
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daObjKsWater_c() {}   /* no slot */
-#else
-    virtual ~daObjKsWater_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daObjKsWater_c() {}                  /* slots 16, 17 */
 
     virtual int InitResources();                  /* slot 0 */
     virtual int CleanupResources();               /* slot 3 */
     virtual int Behavior();                       /* slot 6 */
     virtual int Render();                         /* slot 9 */
 
-    ROM_BASE_TAIL_PAD(31e, 0x2)
+    u8  pad_31e[0x2];
     TextureTransformer mTextureTransformer;       /* 0x320 -- scrolls the water's
                                                      surface texture every frame */
     s32 mOriginalPosY;                            /* 0x334 -- the height it starts

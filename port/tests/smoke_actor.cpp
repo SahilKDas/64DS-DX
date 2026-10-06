@@ -115,7 +115,7 @@ int main(void)
     CHECK(Heap::SetupRootHeap() != NULL);
     ident_fx(data_0209b3ec);
 
-    /* stage the spawn context: actor 0x12b = ArrowSignRight, its SpawnInfo
+    /* stage the spawn context: actor 0x12b = daObjYajirusi_c, its SpawnInfo
        priorities, the actor heap, and the ov098 file entries (handle 1177 =
        yajirusi_r.bmd, 1178 = its kcl) in both column views */
     hal_fill_model_vtable();

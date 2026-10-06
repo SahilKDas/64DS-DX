@@ -129,12 +129,12 @@ DSSTATE_END
    The BabyPenguin/IceSheet/OneUpLogo/HootTheOwl/ShipWater recipe.
    InitResources needs NO face -- src/_ZN6ToxBox13InitResourcesEv.cpp is a .c
    file and already defines the flat name. */
-#include "ToxBox.h"
+#include "daOnms_c.h"
 extern "C" {
 int _ZN6ToxBox16CleanupResourcesEv(void *self)
-{ return ((ToxBox *)self)->ToxBox::CleanupResources(); }
+{ return ((daOnms_c *)self)->daOnms_c::CleanupResources(); }
 int _ZN6ToxBox6RenderEv(void *self)
-{ return ((ToxBox *)self)->ToxBox::Render(); }
+{ return ((daOnms_c *)self)->daOnms_c::Render(); }
 }
 
 // ============================================================================

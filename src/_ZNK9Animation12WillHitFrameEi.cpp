@@ -2,7 +2,7 @@
 // @symbol _ZNK9Animation12WillHitFrameEi
 #include "Animation.h"
 
-int Animation::WillHitFrame(int frame) const
+bool Animation::WillHitFrame(int frame) const
 {
     s32 f = frame << 12;
     s32 next = currFrame + speed;
@@ -14,23 +14,23 @@ int Animation::WillHitFrame(int frame) const
         {
             next = (next + num) % num;
             if ((f >= 0 && f < currFrame) || (next <= f && f < num))
-                return 1;
+                return true;
         }
         else if (next >= num)
         {
             next %= num;
             if ((currFrame <= f && f < num) || f < next)
-                return 1;
+                return true;
         }
         else if (currFrame <= next)
         {
             if (currFrame <= f && f < next)
-                return 1;
+                return true;
         }
         else
         {
             if (next <= f && f < currFrame)
-                return 1;
+                return true;
         }
     }
     else
@@ -43,11 +43,11 @@ int Animation::WillHitFrame(int frame) const
         if (currFrame <= next)
         {
             if (f >= currFrame && f < next)
-                return 1;
+                return true;
         }
         else if (f >= next && f < currFrame)
-            return 1;
+            return true;
     }
 
-    return 0;
+    return false;
 }

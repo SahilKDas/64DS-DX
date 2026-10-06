@@ -51,18 +51,7 @@ struct daPgDfdr_c : dBgActor_c {
        home. Empty body: the three member teardowns, the vptr store and
        dBgActor_c's two member teardowns are synthesised. Key function is
        InitResources, the first declared non-inline virtual. */
-    /* The destructor pair spelled as two plain virtuals on the host, plus
-       the non-virtual destructor declaration the src/ definitions need; the
-       whole ruling is in include/ModelBase.h. An override takes its base's
-       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
-       name would append a slot instead of claiming one. */
-#ifdef _MSC_VER
-    virtual void Destructor1();   /* D1 */
-    virtual void Destructor0();   /* D0 */
-    ~daPgDfdr_c() {}   /* no slot */
-#else
-    virtual ~daPgDfdr_c() {}   /* D1 and D0 */
-#endif
+    virtual ~daPgDfdr_c() {}
 
     virtual s32 InitResources();       /* slot  0 */
     virtual s32 CleanupResources();    /* slot  3 */

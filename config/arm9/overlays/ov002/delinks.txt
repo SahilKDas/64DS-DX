@@ -40,37 +40,9 @@ src/actors/daCoin_c.cpp:
     complete
     .text start:0x020b0f54 end:0x020b2ba0
 
-src/game/actors/WingFeather/_ZN11WingFeatherD1Ev.cpp:
+src/game/actors/daFeather_c/daFeather_c.cpp:
     complete
-    .text start:0x020b2ba0 end:0x020b2be8
-
-src/game/actors/WingFeather/_ZN11WingFeatherD0Ev.cpp:
-    complete
-    .text start:0x020b2be8 end:0x020b2c44
-
-src/game/actors/WingFeather/func_ov002_020b2c44.cpp:
-    complete
-    .text start:0x020b2c44 end:0x020b2e30
-
-src/game/actors/WingFeather/_ZN11WingFeather16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x020b2e30 end:0x020b2e54
-
-src/game/actors/WingFeather/_ZN11WingFeather6RenderEv.cpp:
-    complete
-    .text start:0x020b2e54 end:0x020b2e9c
-
-src/game/actors/WingFeather/_ZN11WingFeather8BehaviorEv.cpp:
-    complete
-    .text start:0x020b2e9c end:0x020b311c
-
-src/game/actors/WingFeather/_ZN11WingFeather13InitResourcesEv.cpp:
-    complete
-    .text start:0x020b311c end:0x020b3248
-
-src/game/actors/WingFeather/d_a_feather.c:
-    complete
-    .text start:0x020b3248 end:0x020b3298
+    .text start:0x020b2ba0 end:0x020b3298
 
 src/game/actors/d_a_obj_abuku.cpp:
     complete
@@ -88,29 +60,9 @@ src/game/actors/d_a_obj_kinoko_tag.cpp:
     complete
     .text start:0x020b46a0 end:0x020b4a70
 
-src/_ZN13daObjDorifu_cD0Ev.cpp:
+src/actors/daObjDorifu_c.cpp:
     complete
-    .text start:0x020b4a70 end:0x020b4af8
-
-src/_ZN13daObjDorifu_cD1Ev.cpp:
-    complete
-    .text start:0x020b4af8 end:0x020b4b6c
-
-src/_ZN13daObjDorifu_c16CleanupResourcesEP20daObjDorifuResources.cpp:
-    complete
-    .text start:0x020b4b6c end:0x020b4bc4
-
-src/_ZN13daObjDorifu_c6RenderEv.cpp:
-    complete
-    .text start:0x020b4bc4 end:0x020b4bfc
-
-src/_ZN13daObjDorifu_c8BehaviorEv.cpp:
-    complete
-    .text start:0x020b4bfc end:0x020b4d58
-
-src/_ZN13daObjDorifu_c13InitResourcesEP20daObjDorifuResources.cpp:
-    complete
-    .text start:0x020b4d58 end:0x020b4ed8
+    .text start:0x020b4a70 end:0x020b4ed8
 
 src/game/actors/d_a_obj_hatena_switch.cpp:
     complete
@@ -154,33 +106,9 @@ src/_ZN15daObjGuragura_cD1Ev.cpp:
     complete
     .text start:0x020b6030 end:0x020b6074
 
-src/func_ov002_020b6074.cpp:
+src/actors/daObjGuragura_c.cpp:
     complete
-    .text start:0x020b6074 end:0x020b60fc
-
-src/func_ov002_020b60fc.c:
-    complete
-    .text start:0x020b60fc end:0x020b6144
-
-src/_ZN15daObjGuragura_c6RenderEv.cpp:
-    complete
-    .text start:0x020b6144 end:0x020b616c
-
-src/_ZN15daObjGuragura_c8BehaviorEv.cpp:
-    complete
-    .text start:0x020b616c end:0x020b6244
-
-src/func_ov002_020b6244.c:
-    complete
-    .text start:0x020b6244 end:0x020b62cc
-
-src/func_ov002_020b62cc.c:
-    complete
-    .text start:0x020b62cc end:0x020b6374
-
-src/func_ov002_020b6374.c:
-    complete
-    .text start:0x020b6374 end:0x020b6388
+    .text start:0x020b6074 end:0x020b6388
 
 src/_ZN14daObjUkiyuka_cD0Ev.cpp:
     complete
@@ -190,21 +118,9 @@ src/_ZN14daObjUkiyuka_cD1Ev.cpp:
     complete
     .text start:0x020b63e0 end:0x020b6424
 
-src/func_ov002_020b6424.c:
+src/actors/daObjUkiyuka_c.cpp:
     complete
-    .text start:0x020b6424 end:0x020b646c
-
-src/_ZN14daObjUkiyuka_c6RenderEv.cpp:
-    complete
-    .text start:0x020b646c end:0x020b6494
-
-src/_ZN14daObjUkiyuka_c8BehaviorEv.cpp:
-    complete
-    .text start:0x020b6494 end:0x020b6584
-
-src/func_ov002_020b6584.c:
-    complete
-    .text start:0x020b6584 end:0x020b660c
+    .text start:0x020b6424 end:0x020b660c
 
 src/_ZN16daObjKaitendai_cD0Ev.cpp:
     complete
@@ -214,21 +130,9 @@ src/_ZN16daObjKaitendai_cD1Ev.cpp:
     complete
     .text start:0x020b6664 end:0x020b66a8
 
-src/func_ov002_020b66a8.c:
+src/actors/daObjKaitendai_c.cpp:
     complete
-    .text start:0x020b66a8 end:0x020b66f0
-
-src/_ZN16daObjKaitendai_c6RenderEv.cpp:
-    complete
-    .text start:0x020b66f0 end:0x020b6718
-
-src/_ZN16daObjKaitendai_c8BehaviorEv.cpp:
-    complete
-    .text start:0x020b6718 end:0x020b676c
-
-src/func_ov002_020b676c.cpp:
-    complete
-    .text start:0x020b676c end:0x020b6814
+    .text start:0x020b66a8 end:0x020b6814
 
 src/_ZN13daObjKuruma_cD0Ev.cpp:
     complete
@@ -238,21 +142,9 @@ src/_ZN13daObjKuruma_cD1Ev.cpp:
     complete
     .text start:0x020b686c end:0x020b68b0
 
-src/func_ov002_020b68b0.cpp:
+src/actors/daObjKuruma_c.cpp:
     complete
-    .text start:0x020b68b0 end:0x020b68f8
-
-src/_ZN13daObjKuruma_c6RenderEv.cpp:
-    complete
-    .text start:0x020b68f8 end:0x020b6920
-
-src/_ZN13daObjKuruma_c8BehaviorEv.cpp:
-    complete
-    .text start:0x020b6920 end:0x020b6958
-
-src/func_ov002_020b6958.c:
-    complete
-    .text start:0x020b6958 end:0x020b69e4
+    .text start:0x020b68b0 end:0x020b69e4
 
 src/_ZN17daObjKurumajiku_cD0Ev.cpp:
     complete
@@ -319,21 +211,9 @@ src/_ZN13daObjSwdoor_cD1Ev.cpp:
     complete
     .text start:0x020bab64 end:0x020baba8
 
-src/func_ov002_020baba8.cpp:
+src/actors/daObjSwdoor_c.cpp:
     complete
-    .text start:0x020baba8 end:0x020babf0
-
-src/_ZN13daObjSwdoor_c6RenderEv.cpp:
-    complete
-    .text start:0x020babf0 end:0x020bac18
-
-src/func_ov002_020bac18.c:
-    complete
-    .text start:0x020bac18 end:0x020bad10
-
-src/func_ov002_020bad10.c:
-    complete
-    .text start:0x020bad10 end:0x020badd0
+    .text start:0x020baba8 end:0x020badd0
 
 src/actors/daObjTatefuda_c.cpp:
     complete
@@ -2048,37 +1928,9 @@ src/actors/daSCoin_c.cpp:
     .text start:0x020f03c4 end:0x020f0894
     .data start:0x0210aff4 end:0x0210b0ac
 
-src/_ZN6NumberD1Ev.cpp:
+src/game/actors/d_a_obj_number.cpp:
     complete
-    .text start:0x020f0894 end:0x020f08cc
-
-src/_ZN6NumberD0Ev.cpp:
-    complete
-    .text start:0x020f08cc end:0x020f0918
-
-src/func_ov002_020f0918.c:
-    complete
-    .text start:0x020f0918 end:0x020f093c
-
-src/_ZN6Number16CleanupResourcesEv.cpp:
-    complete
-    .text start:0x020f093c end:0x020f0994
-
-src/_ZN6Number6RenderEv.cpp:
-    complete
-    .text start:0x020f0994 end:0x020f0a60
-
-src/_ZN6Number8BehaviorEv.cpp:
-    complete
-    .text start:0x020f0a60 end:0x020f0bd4
-
-src/_ZN6Number13InitResourcesEv.cpp:
-    complete
-    .text start:0x020f0bd4 end:0x020f0d90
-
-src/d_a_obj_number.c:
-    complete
-    .text start:0x020f0d90 end:0x020f0dd0
+    .text start:0x020f0894 end:0x020f0dd0
 
 src/actors/daObj1UpLogo_c.cpp:
     complete
@@ -2702,73 +2554,9 @@ src/actors/dMeter_c.cpp:
     complete
     .text start:0x020fb8f8 end:0x020fe190
 
-src/_ZN5Stage18LoadClsnAndObjectsER11LVL_OverlayjR7dBgW_Kc.cpp:
+src/stage/LevelObjects.cpp:
     complete
-    .text start:0x020fe190 end:0x020fe33c
-
-src/_Z11LoadObjectsRN11LVL_Overlay8ObjTableEij.cpp:
-    complete
-    .text start:0x020fe33c end:0x020fe3cc
-
-src/_Z21LoadStarCameraObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe3cc end:0x020fe3e4
-
-src/_Z23LoadUnusedType13ObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe3e4 end:0x020fe3f8
-
-src/_Z23LoadMinimapScaleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe3f8 end:0x020fe40c
-
-src/_Z22LoadMinimapTileObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe40c end:0x020fe420
-
-src/_Z15LoadExitObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe420 end:0x020fe4f0
-
-src/_Z15LoadDoorObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe4f0 end:0x020fe5cc
-
-src/_Z14LoadFogObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe5cc end:0x020fe5e0
-
-src/_Z23LoadTeleportDestObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe5e0 end:0x020fe5f4
-
-src/_Z25LoadTeleportSourceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe5f4 end:0x020fe690
-
-src/_Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe690 end:0x020fe6a4
-
-src/_Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe6a4 end:0x020fe6b8
-
-src/_Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe6b8 end:0x020fe6c8
-
-src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe6c8 end:0x020fe8ac
-
-src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe8ac end:0x020fe960
-
-src/_Z17LoadSimpleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp:
-    complete
-    .text start:0x020fe960 end:0x020fea4c
+    .text start:0x020fe190 end:0x020fea4c
 
 src/func_ov002_020fea4c.c:
     complete

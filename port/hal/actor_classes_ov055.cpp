@@ -254,7 +254,7 @@ extern PortMirrorLuigiCell data_ov055_02111b70;
 }
 
 /* RUN link100 LANE PMFB8 GATE 1: THE ENTER WORD IS A __fastcall FACE NOW.
-   src/func_ov055_021112c4.cpp is in the link (port/slice_pmfb8.txt), and its own
+   src/actors/daLuigi_c.cpp is in the link (port/slice_pmfb8.txt), and its own
    emitted dispatch is
        mov edx,[ecx] / test edx,edx / mov ecx,[ecx+4] / push a2 /
        add ecx,eax  / call edx

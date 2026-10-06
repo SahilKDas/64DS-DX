@@ -49,7 +49,6 @@
  * the ten records into the five bss cells.
  */
 #include "ModelAnim.h"
-#include "HeaveHo.h"
 
 extern "C" {
 
