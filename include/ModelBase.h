@@ -138,13 +138,10 @@ struct ModelBase {
     /* RETURNS int, not void. The definition at 0x02016fd4 is eight
        instructions: load the vtable, `blx` slot 2 (DoSetFile, which returns
        int), then the epilogue -- r0 is never touched after the call, so it
-       flows straight out. Callers corroborate: daShl_c::InitResources tests
+       flows straight out. Callers corroborate: KoopaShell::InitResources tests
        the result and bails on 0. */
     int SetFile(BMD_File *file, int a, int b);       /* dispatches DoSetFile */
-    /* Retail callers pass two scalar words. The second is unused here;
-       its unsigned type/name are reconstructed, not recovered source spelling.
-       See notes/experiments/applyopacity-api-0920.md. */
-    void ApplyOpacity(u32 opacity, u32);
+    void ApplyOpacity(u32 a);
 
     /* WHAT LETS A REAL `~Class()` REPRODUCE THE ROM'S DELETING DESTRUCTOR.
        The compiler generates D0 as "run the destructor body, then call operator

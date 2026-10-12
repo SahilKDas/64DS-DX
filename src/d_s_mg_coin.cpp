@@ -1,15 +1,7 @@
 //cpp
-/* STILL MACHINE-SHAPED (audit 2026-09-18) -- byte-exact; what blocks each part:
- *  1 func_*_* + 1 data_*         unnamed in config symbols.txt; each needs a
- *                                coined, behaviour-justified name.
- *  2 ctor/dtor/op-new call(s)    C1/C2/D0/D1/D2 is not expressible
- *                                in C++ source; only a real ctor emits it.
- *  ~1 *(T *)(p + 0x..)           class layout does not name these offsets.
- */
-
 extern "C" {
 extern void* _ZN7fBase_cnwEj(unsigned int sz);
-extern void *_ZN11dScMgBase_cC2Ev(void* p);
+extern int _ZN11dScMgBase_cC2Ev(void* p);
 extern void func_0203b9b4(int *p, int v);
 extern int data_ov006_0213bf50[];
 /* Reconstructed source-style name: SM64DS proves dScMgCoin_c through RTTI,

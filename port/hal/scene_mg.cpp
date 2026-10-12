@@ -269,7 +269,9 @@
 // copy nobody can call is a count rather than a port.
 
 #include "hal/screen_gap.h"
+#include "hal/dsstate_seg.h"   /* g_mg_mounts_done / g_mg_overlay_done roll back with the mount */
 
+#include "port_d16.h"   /* slot 16: fBase_c::AfterCleanupResources pushes the delete flag; PORT_D16 pops it */
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
@@ -762,7 +764,7 @@ static const MgFace kMgBaseFaces[] = {
     {0x020ad660u, (void *)mb_v35},
     /* the base class's own five, run link60 lane MG2 */
     {0x020b0618u, (void *)mb_beh_base},   {0x020b04ecu, (void *)mb_ren_base},
-    {0x020b2a84u, (void *)mb_d2_base},    {0x020b2a18u, (void *)mb_d0_base},
+    {0x020b2a84u, (void *)PORT_D16(mb_d2_base)},    {0x020b2a18u, (void *)mb_d0_base},
     {0x020b299cu, (void *)mb_reset_base},
 };
 
@@ -770,7 +772,7 @@ static const MgFace kMgBaseFaces[] = {
    these arrays per minigame and reuses everything above it. */
 static const MgFace kCurlingFaces[] = {
     {0x020e3578u, (void *)mg_init},   {0x020e3528u, (void *)mg_beh},
-    {0x020e34ecu, (void *)mg_render}, {0x020e0638u, (void *)mg_d2},
+    {0x020e34ecu, (void *)mg_render}, {0x020e0638u, (void *)PORT_D16(mg_d2)},
     {0x020e065cu, (void *)mg_d0},     {0x020e3470u, (void *)mg_reset},
 };
 
@@ -985,21 +987,32 @@ static void port_scene_mg_gc_seat(void)
     std::fflush(stderr);
 }
 
+/* THE TWO ONE-SHOT GUARDS OF THE MINIGAME MOUNT, IN THE CAPTURED SECTION (run
+   hunt7, lane SAVESTATE1). They were host statics "on purpose" (run mg15, lane
+   RELOAD2): a SCENE run was handed the whole process before the frame loop that
+   owns F8/F9, so it could not meet a save state. Since 0.5.5 a minigame can run
+   inside a level process (the Save-and-play row opens the minigame menu from
+   the castle and a crossing runs the scene there), so it can. F8 in the castle,
+   pick a minigame (the mount runs and the guard is set), back to the castle,
+   F9: the restore puts the ov004/ov006 images and every constructor's writes
+   back to what they were before the mount and leaves the guard set, so the
+   next pick skipped the whole pass and the first minigame frame faulted on the
+   unconstructed tables. The rule hal/level_boot.cpp states on g_level_mounted
+   applies as written: a one-shot guard belongs on the same side of the captured
+   section as the work it guards. Both passes are re-runnable (the
+   constructors, the pack checks and the patches write the mounted images and
+   .dsstate globals only, and port_graph_block_register skips a table it
+   already holds), which is the second fact that rule needs. */
+DSSTATE_BEGIN
+static int g_mg_mounts_done;
+static int g_mg_overlay_done;
+DSSTATE_END
+
 static void port_scene_mg_mounts(void)
 {
-    /* HOST-SIDE ON PURPOSE, adjudicated by run mg15 lane RELOAD2. The other
-       eighteen patch-pass guards moved into .dsstate so a restore rolls them
-       back with what they guard; these four did not, because a SCENE run
-       cannot meet a save state at all. main() hands the whole process to
-       port_scene_run/scene_window_run BEFORE the level bring-up and therefore
-       before lk7_persist_read and before the frame loop that owns F8/F9, so a
-       run that reaches this pass can neither write nor read one. Bracketing
-       these would cost .dsstate bytes to insure against a shape that cannot
-       occur. */
-    static int done;
-    if (done)
+    if (g_mg_mounts_done)
         return;
-    done = 1;
+    g_mg_mounts_done = 1;
     port_ov004_pack_check();
     port_ov004_syms_patch();
     port_ov006_pack_check();
@@ -1013,19 +1026,10 @@ static void port_scene_mg_mounts(void)
 
 extern "C" void port_scene_mg_overlay_load(void)
 {
-    /* HOST-SIDE ON PURPOSE, adjudicated by run mg15 lane RELOAD2. The other
-       eighteen patch-pass guards moved into .dsstate so a restore rolls them
-       back with what they guard; these four did not, because a SCENE run
-       cannot meet a save state at all. main() hands the whole process to
-       port_scene_run/scene_window_run BEFORE the level bring-up and therefore
-       before lk7_persist_read and before the frame loop that owns F8/F9, so a
-       run that reaches this pass can neither write nor read one. Bracketing
-       these would cost .dsstate bytes to insure against a shape that cannot
-       occur. */
-    static int done;
-    if (done)
+    /* the guard is g_mg_overlay_done above, in the captured section */
+    if (g_mg_overlay_done)
         return;
-    done = 1;
+    g_mg_overlay_done = 1;
 
     /* idempotent, and already run by the fill on this boot. Called again so
        this function is correct read on its own. */
@@ -1847,7 +1851,7 @@ static int __fastcall mgl_init_noop(void *, void *)
 static const MgFace kLuigiFaces[] = {
     {0x020f3460u, (void *)mgl_init},   {0x020efc68u, (void *)mgl_aclean},
     {0x020f3414u, (void *)mgl_beh},    {0x020f33c0u, (void *)mgl_render},
-    {0x020efc0cu, (void *)mgl_d2},     {0x020efc30u, (void *)mgl_d0},
+    {0x020efc0cu, (void *)PORT_D16(mgl_d2)},     {0x020efc30u, (void *)mgl_d0},
     {0x020f3294u, (void *)mgl_reset},
 };
 
@@ -1893,7 +1897,7 @@ extern "C" void port_scene_fill_luigi(void)
 
     /* THE CONSTRUCTORS, gated on the requested id exactly as the curling fill
        gates them, and idempotent behind port_scene_mg_overlay_load's own
-       `static int done`. Whichever minigame row's fill runs first is the one
+       g_mg_overlay_done. Whichever minigame row's fill runs first is the one
        that runs them; the rest are no-ops. */
     port_scene_mg_prepare(port_scene_env_want());
 
@@ -2293,7 +2297,7 @@ static int  __fastcall pch_reset(void *s, void *, int n)
 /* dScMgPachinko_c's own six, the per-class half. */
 static const MgFace kPachinkoFaces[] = {
     {0x020fefc0u, (void *)pch_init},   {0x020fee24u, (void *)pch_beh},
-    {0x020fedc4u, (void *)pch_render}, {0x020fa75cu, (void *)pch_d2},
+    {0x020fedc4u, (void *)pch_render}, {0x020fa75cu, (void *)PORT_D16(pch_d2)},
     {0x020fa780u, (void *)pch_d0},     {0x020fed58u, (void *)pch_reset},
 };
 
@@ -2636,7 +2640,7 @@ static int  __fastcall smb_v31(void *, void *)
 static const MgFace kSmartballFaces[] = {
     {0x02118b70u, (void *)smb_init},   {0x0211944cu, (void *)smb_aclean},
     {0x02118488u, (void *)smb_beh},    {0x021173c8u, (void *)smb_render},
-    {0x0210d740u, (void *)smb_d2},     {0x0210d7e0u, (void *)smb_d0},
+    {0x0210d740u, (void *)PORT_D16(smb_d2)},     {0x0210d7e0u, (void *)smb_d0},
     {0x02118a8cu, (void *)smb_reset},  {0x021147acu, (void *)smb_v25},
     {0x02118ae4u, (void *)smb_v31},
 };
@@ -2804,7 +2808,6 @@ void _ZN18cMgSmartball_ana_c14RestoreInitialEv(void *);
 void _ZN20cMgSmartball_board_c12SaveSnapshotEv(void *);   void _ZN20cMgSmartball_board_c6UpdateEv(void *);
 void _ZN20cMgSmartball_board_c14RestoreInitialEv(void *);
 void _ZN19cMgSmartball_slot_c12SaveSnapshotEv(void *);   void _ZN19cMgSmartball_slot_c6UpdateEv(void *);
-void port_mg_smartball_slot_restore(void *);
 void _ZN21cMgSmartball_kinoko_c12SaveSnapshotEv(void *);   void _ZN21cMgSmartball_kinoko_c6UpdateEv(void *);
 void _ZN21cMgSmartball_kinoko_c14RestoreInitialEv(void *);
 void _ZN21cMgSmartball_pakkun_c12SaveSnapshotEv(void *);   void _ZN21cMgSmartball_pakkun_c6UpdateEv(void *);
@@ -2885,7 +2888,27 @@ static void smb_brd_s1(void *s)   SMB_OBJ(_ZN20cMgSmartball_board_c6UpdateEv(s))
 static void smb_brd_s2(void *s)   SMB_OBJ(_ZN20cMgSmartball_board_c14RestoreInitialEv(s))
 static void smb_slt_s0(void *s)   SMB_OBJ(_ZN19cMgSmartball_slot_c12SaveSnapshotEv(s))
 static void smb_slt_s1(void *s)   SMB_OBJ(_ZN19cMgSmartball_slot_c6UpdateEv(s))
-static void smb_slt_s2(void *s)   SMB_OBJ(port_mg_smartball_slot_restore(s))
+/* SLOT 2 IS THE MATCHED MEMBER NOW (run linkfull, lane RS5A). It used to call
+   port_mg_smartball_slot_restore, a host copy of the body with the base call's
+   receiver placed by hand, because the src dropped it where the ROM keeps
+   r0 = this (0x02110158 mov r4,r0 then bl 0x02114738). main #1489 made
+   src/_ZN19cMgSmartball_slot_c14RestoreInitialEv.cpp the real member, whose base
+   call cMgSmartball_object_c::RestoreInitial() passes `this`, so the copy is
+   retired and the ROM body links from port/slice_smb.txt.
+
+   A QUALIFIED CALL through the member mangle, the smb_dok_s2 shape above: the
+   flat name at 0x02110154 is not defined anywhere on purpose, because
+   hal/cxx_aliases.cpp routes it to ov002's Wait State data (the shared load
+   window). Three virtuals in ROM slot order, which is what
+   include/cMgSmartball_slot_c.h declares; MSVC's mangle for a member does not
+   encode the base list or the fields. */
+struct cMgSmartball_slot_c {
+    virtual void SaveSnapshot();    /* slot 0 -- ROM 0x021100a8 */
+    virtual void Update();          /* slot 1 -- ROM 0x0210ff1c */
+    virtual void RestoreInitial();  /* slot 2 -- ROM 0x02110154 */
+};
+static void smb_slt_s2(void *s)
+    SMB_OBJ(((cMgSmartball_slot_c *)s)->cMgSmartball_slot_c::RestoreInitial())
 static void smb_kin_s0(void *s)   SMB_OBJ(_ZN21cMgSmartball_kinoko_c12SaveSnapshotEv(s))
 static void smb_kin_s1(void *s)   SMB_OBJ(_ZN21cMgSmartball_kinoko_c6UpdateEv(s))
 static void smb_kin_s2(void *s)   SMB_OBJ(_ZN21cMgSmartball_kinoko_c14RestoreInitialEv(s))
@@ -3174,7 +3197,7 @@ static int  __fastcall mc_reset(void *s, void *, int /*ridethrough*/)
    cannot land on a slot the ROM did not park that body in. */
 static const MgFace kCoinFaces[] = {
     {0x020de704u, (void *)mc_init},   {0x020de69cu, (void *)mc_beh},
-    {0x020de63cu, (void *)mc_render}, {0x020dbe40u, (void *)mc_d2},
+    {0x020de63cu, (void *)mc_render}, {0x020dbe40u, (void *)PORT_D16(mc_d2)},
     {0x020dbe64u, (void *)mc_d0},     {0x020de5b0u, (void *)mc_reset},
 };
 
@@ -3462,7 +3485,7 @@ static int  __fastcall lkt_reset(void *s, void *, int n)
    one address, and none of these six appears in the base table. */
 static const MgFace kPachinko2Faces[] = {
     {0x02103ed0u, (void *)lkt_init},   {0x02103d78u, (void *)lkt_beh},
-    {0x02103d28u, (void *)lkt_render}, {0x020ff420u, (void *)lkt_d2},
+    {0x02103d28u, (void *)lkt_render}, {0x020ff420u, (void *)PORT_D16(lkt_d2)},
     {0x020ff444u, (void *)lkt_d0},     {0x02103cbcu, (void *)lkt_reset},
 };
 
@@ -3745,7 +3768,7 @@ static int  __fastcall mp_reset(void *s, void *, int flag)
    address -- so the key sets stay disjoint by construction. */
 static const MgFace kPanelFaces[] = {
     {0x021073b0u, (void *)mp_init},   {0x02107358u, (void *)mp_beh},
-    {0x0210730cu, (void *)mp_render}, {0x0210428cu, (void *)mp_d2},
+    {0x0210730cu, (void *)mp_render}, {0x0210428cu, (void *)PORT_D16(mp_d2)},
     {0x021042b0u, (void *)mp_d0},     {0x021071fcu, (void *)mp_reset},
 };
 

@@ -57,7 +57,18 @@ struct daYurei_Mucho_c : dEnemyBase_c {
 
     /* --- vtable --- */
     /* The inline form emits the retail D1/D0 pair under the pinned compiler. */
-    virtual ~daYurei_Mucho_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daYurei_Mucho_c() {}   /* no slot */
+#else
+    virtual ~daYurei_Mucho_c() {}   /* D1 and D0 */
+#endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */
@@ -68,20 +79,6 @@ struct daYurei_Mucho_c : dEnemyBase_c {
     int InitResources();
     void OnPendingDestroy();
     int Render();
-
-    /* Non-virtual. Unowned .data PMFs resolve these by symbols.txt name. */
-    void func_ov065_0211696c();
-    int func_ov065_0211691c(State *s);
-    int func_ov065_021168a8();
-    int func_ov065_02116744();
-    int func_ov065_0211672c();
-    int func_ov065_021165d8();
-    short func_ov065_02116588();
-    int func_ov065_02116364();
-    int func_ov065_02116328();
-    int func_ov065_021162c0();
-    void func_ov065_02115ff0();
-    int func_ov065_02115f84();
 
     static void *operator new(size_t size) {
         return _ZN7fBase_cnwEj((unsigned)size);

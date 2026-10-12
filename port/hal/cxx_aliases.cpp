@@ -86,18 +86,25 @@ int _ZN4cstd6strcmpEPKcS1_(const char *a, const char *b)
 char *_ZN4cstd6strchrEPKcc(const char *s, char ch)
 { return cstd::strchr(s, ch); }
 
-/* PORT_HOST_ABI: ARM asm primitive (halfword copy loop), MSVC cannot assemble.
-   MultiCopyHalf: halfword copy loop, (src, dst, byteCount) in r0-r2 */
-void MultiCopyHalf(unsigned short *src, unsigned short *dst, unsigned n)
+/* MultiCopyHalf IS THE ROM'S OWN BODY: src/MultiCopyHalf.c is C since main
+   #3167 (the halfword loop, `s32 size` compared signed as the ROM's blt does),
+   and the port compiles it under a per-source rename,
+   MultiCopyHalf=MultiCopyHalf_rom (the ASMCPORT block of port/CMakeLists.txt).
+   This definition keeps the ROM name every caller links against and makes one
+   call into that body, so the copy itself is the cartridge's code. What stays
+   here is host instrumentation at the seam between the callers and the body:
+   run link60 Stage 5 lane T2's census of every halfword block copy, counted by
+   destination region in the 2D audit. The BG tilemap upload path
+   (func_ov007_020c076c -> func_020565xx -> G2::GetBGxScrPtr) ends in this
+   primitive, so "the tilemap is empty" and "nothing ever tried to write it"
+   are separable from one table. Inert unless SM64DS_PPU_AUDIT is set, and it
+   still counts before the copy, as the census's source-nonzero column needs. */
+void MultiCopyHalf_rom(const void *src, void *dst, int size);
+void MultiCopyHalf(const void *src, void *dst, int size)
 {
-    /* run link60 Stage 5 lane T2: every halfword block copy this primitive
-       makes, counted by destination region in the 2D audit. The BG tilemap
-       upload path (func_ov007_020c076c -> func_020565xx -> G2::GetBGxScrPtr)
-       ends here, so "the tilemap is empty" and "nothing ever tried to write
-       it" are separable from one table. Inert unless SM64DS_PPU_AUDIT is set. */
-    ntr::ppu_audit_note_copy((unsigned)(size_t)src, (unsigned)(size_t)dst, n);
-    for (unsigned i = 0; i < n; i += 2)
-        *(unsigned short *)((char *)dst + i) = *(unsigned short *)((char *)src + i);
+    ntr::ppu_audit_note_copy((unsigned)(size_t)src, (unsigned)(size_t)dst,
+                             (unsigned)size);
+    MultiCopyHalf_rom(src, dst, size);
 }
 
 /* PORT_HOST_ABI: ARM/Thumb asm primitives (matrix builders), MSVC cannot assemble.
@@ -461,8 +468,15 @@ void *_ZN13SharedFilePtr9ConstructEj(void *self, unsigned id);
    it off its slice. Seated last and alone, and gated on the whole sweep
    exactly as the paragraph above asks, because it runs in every ov006
    constructor. port/slice_l15fs.txt carries the row. */
-/* PORT_HOST_ABI: fileptr dtor veneer; host card seam does not refcount. */
-int func_02017ab4(int x) { return x; }   /* static-dtor veneer: no-op */
+/* RETIRED, run linkfull wave 23 lane BANNER3, LINK15 batch W23-3: the "host
+   card seam does not refcount" reason (this comment's old text) is stale for
+   this row. src/func_02017ab4.c is `func_02017e34(x); return x;` and is
+   directly called (not through the data_020aa3f0 MSL dtor-chain head) from
+   the already-linked class destructor family func_ov006_020c09f8 /
+   020c1c64 / 020c21e4 / 020c3e70 (dScMgBSC_c / dScMgMemory_c, ninja_objs.json
+   confirms these compile from their real src/ paths, not a hal/ substitute),
+   which runs whenever an instance of that class is torn down in normal play.
+   See port/slice_w23_stale3.txt. */
 /* RETIRED, run link100 wave 15 lane SEAT15C: src/func_02017b4c.c now spells
    both arguments. See port/slice_l15fs.txt. */
 /* RETIRED, run link100 wave 15 lane SEAT15C: src/func_020178cc.c now spells
@@ -472,15 +486,36 @@ int func_02017ab4(int x) { return x; }   /* static-dtor veneer: no-op */
    hal/fs.cpp's Construct ends too. func_020178b4 below is the matching
    dtor-chain callback the sinit registers by address and stays a host no-op,
    because the card seam does not refcount. See port/slice_l15fs.txt. */
+/* RE-CHECKED, run linkfull wave 23 lane BANNER3, LINK15 batch W23-3: KEPT AS
+   HOST. The refcount reason above may be stale, but that is not why this one
+   stays out. func_020731dc (src/func_020731dc.c) is the MSL global-dtor-chain
+   push: node[0]=data_020aa3f0 (prev head), node[1]=fn, node[2]=obj,
+   data_020aa3f0=node. __sinit_ov075_0211c51c and __sinit_ov080_02127b2c pass
+   &func_020178b4 as that node[1] to register it on the chain, not to call it.
+   port/hal/ctor_runner.cpp's dtor_chain_len() only walks node[0] (a counter,
+   for the [ctor] diagnostic line) and never reads or calls node[1]; the same
+   pattern is independently documented as undriven in port/fader_boot_map.txt
+   ("registered on data_020aa3f0's chain, nothing in the port walks that
+   chain"). No honest edge: stays a host no-op. */
 /* PORT_HOST_ABI: fileptr dtor callback the third ov080 sinit registers by
    address; host card seam does not refcount, so the body is a no-op. */
 int func_020178b4(int x) { return x; }   /* fileptr dtor callback: host no-op */
-/* PORT_HOST_ABI: fileptr dtor body; host card seam does not refcount. */
-int func_02017e34(int x) { return x; }   /* fileptr dtor body: host no-op */
-/* PORT_HOST_ABI: fileptr dtor veneer; host card seam does not refcount. */
-void SharedFilePtr_Destruct_TexSeq(void) {}
-/* PORT_HOST_ABI: fileptr dtor veneer; host card seam does not refcount. */
-void SharedFilePtr_Destruct_Anim(void) {}
+/* RETIRED, run linkfull wave 23 lane BANNER3, LINK15 batch W23-3: the "host
+   card seam does not refcount" reason (this comment's old text) is stale for
+   this row. src/func_02017e34.c is `data_0209d3bc=*(unsigned short*)c;
+   return c;`, writing the same "last fileID touched" breadcrumb
+   port/hal/fs.cpp:171/590 already keeps for the load side; this is the
+   release side. Called directly from func_02017ab4 and from the
+   already-linked func_ov006_020c09f8/020c1c64/020c21e4/020c3288/020c3e70
+   destructor family (see the func_02017ab4 retirement note above) -- 104
+   src/ files call this chain in all. See port/slice_w23_stale3.txt. */
+/* RETIRED, run linkfull wave 23 lane BANNER3, LINK15 batch W23-3: same
+   stale reason and same honest edge as func_02017e34/func_02017ab4 above:
+   src/SharedFilePtr_Destruct_TexSeq.c and src/SharedFilePtr_Destruct_Anim.c
+   are each `func_02017e34(x); return x;`, directly called from the
+   already-linked func_ov006_020c09f8/020c1c64/020c21e4/020c3288/020c3e70
+   destructor family (dScMgBSC_c / dScMgMemory_c). See
+   port/slice_w23_stale3.txt. */
 DSSTATE_BEGIN
 void *data_020aa3f0;                     /* MSL global-dtor chain head */
 DSSTATE_END
@@ -533,12 +568,15 @@ unsigned char data_020a0e98;
 /* The 32 sound-player records, stride 0x1c (func_0204f63c, func_0204f958,
    func_0204f9c4 and func_0204f504 all index it that way, and the ROM runs
    0x020a4d6c..0x020a50ec = 32 * 0x1c exactly). It was one int while sound was
-   stubbed. data_020a4d84 is the SAME array seen from field +0x18 -- the
-   playable-sequence limit that Stage::InitResources sets and func_0204f63c
-   tests before it evicts a voice -- so hal/sdat/sound_abi.cpp hosts
-   Sound::Player::SetPlayableSeqCount to write through THIS object and keep
-   the two views aliased the way DS memory does. */
+   stubbed. Field +0x18 is the playable-sequence limit that
+   Stage::InitResources sets and func_0204f63c tests before it evicts a voice;
+   the ROM's literal for it is 0x020a4d84, which the symbol list also names
+   data_020a4d84. The matched Sound::Player::SetPlayableSeqCount writes it as
+   data_020a4d6c[index].mPlayableSeqCount (include/SoundPlayerRecord.h), so the
+   write lands in THIS object. The row below points the C callers' flat name
+   at that class static: both sides __cdecl, two ints, no receiver. */
 unsigned char data_020a4d6c[32 * 0x1c];
+#pragma comment(linker, "/alternatename:__ZN5Sound6Player19SetPlayableSeqCountEii=?SetPlayableSeqCount@Player@Sound@@SAXHH@Z")
 /* data_ov006_02140330 and data_ov006_02140338, the two ov006 fileptrs
    St_LevelEnter_Main releases, used to be zeroed stand-ins here. The ov006
    mount hosts them now (run link60 lane s2-m46): both are ov006 .bss, both
@@ -705,11 +743,16 @@ extern "C" int port_gxbank_layout_check(void)
 
 #pragma comment(linker, "/alternatename:__ZN2GX12SetBankForBGEt=?SetBankForBG@GX@@YAXG@Z")
 
-/* Scene::ResetHardwareRegisters is defined against this exact local shadow
-   in its own TU; mirror it so the manglings agree. */
-struct Scene { void ResetHardwareRegisters(); };
-extern "C" void _ZN8dScene_c22ResetHardwareRegistersEv(void *s)
-{ ((Scene *)s)->Scene::ResetHardwareRegisters(); }
+/* dScene_c::ResetHardwareRegisters is STATIC (include/dScene_c.h) and the ROM
+   reaches it with a bare bl and nothing set up in r0 (InitCrashScreen at
+   0x02014150, whose src calls this flat name with no argument), so the face
+   takes nothing. It used to take `void *s` and call a shadow member on it,
+   which read a stack slot the argless caller never wrote. The one-member
+   shadow mangles to the matched static, ?ResetHardwareRegisters@dScene_c@@SAXXZ
+   (this file includes no dScene_c header). Run linkfull, lane RS2PORT. */
+struct dScene_c { static void ResetHardwareRegisters(); };
+extern "C" void _ZN8dScene_c22ResetHardwareRegistersEv(void)
+{ dScene_c::ResetHardwareRegisters(); }
 
 #pragma comment(linker, "/alternatename:?data_020a0e98@@3EA=_data_020a0e98")
 #pragma comment(linker, "/alternatename:?data_020a4d6c@@3PAEA=_data_020a4d6c")
@@ -787,17 +830,17 @@ struct Sound {
 SeqEntry *Sound::InfoSequenceEntry::GetWithID(unsigned id)
 { return _ZN5Sound17InfoSequenceEntry9GetWithIDEj(id); }
 
-/* Heap::_Deallocate is a DS tail-call veneer to Deallocate; operator delete
-   dispatches it as a method. Same-shadow definition forwarding to the HAL
-   dealloc keeps the mangling the reference expects. */
-struct Heap { void _Deallocate(void *ptr); };
-extern "C" void _ZN4Heap10DeallocateEPv(void *self, void *ptr);
-/* PORT_HOST_ABI: ARM register ride-through. The matched
-   src/_ZN4Heap11_DeallocateEPv.cpp is a zero-argument veneer whose this and
-   ptr ride in on r0/r1; linked under this MSVC name it would deallocate a
-   garbage pointer from a garbage heap on the first free. This forwarding
-   definition IS the faithful stand-in. */
-void Heap::_Deallocate(void *ptr) { _ZN4Heap10DeallocateEPv(this, ptr); }
+/* Heap::_Deallocate, the DS tail-call veneer to Deallocate that operator
+   delete dispatches as a method, was defined here as a host stand-in: RETIRED
+   at run linkfull wave 27 (lane P1). Its ruling was that the matched
+   src/_ZN4Heap11_DeallocateEPv.cpp was a zero-argument veneer whose this and
+   ptr rode in on r0/r1. It is now the member
+   `void Heap::_Deallocate(void *ptr) { Deallocate(ptr); }`, which passes both
+   (the receiver in ECX, the pointer on the stack) to the decorated
+   ?Deallocate@Heap@@QAEXPAX@Z the link already carries, so the matched TU is
+   linked instead (port/slice_w28_p1.txt). The flat name keeps its reverse face
+   in port/faces_sync.txt. hal/blend_vtable.cpp's copy of this definition
+   stays off on every target that links this file (PORT_CXX_ALIASES_LINKED). */
 
 /* RaycastGround::DetectClsn is defined against a local shadow in its own
    TU; mirror the shadow (no real header here) so the manglings agree. */
@@ -1527,9 +1570,14 @@ extern "C" int _ZN9dBgCh_Gnd10DetectClsnEv(void *self)
 #pragma comment(linker, "/alternatename:?data_ov002_0210cbf4@@3PAGA=_data_ov002_0210cbf4")
 #pragma comment(linker, "/alternatename:?data_ov002_0211118c@@3FA=_data_ov002_0211118c")
 /* Sound::LoadInitialGroup is a class static in its TU and a C name to the
-   kuppa tail; LoadGroupAndSetBank is the mirror case one call deeper. */
+   kuppa tail. LoadGroupAndSetBank is spelled three ways: LoadInitialGroup's TU
+   calls it as a class static (SAXHH), the C callers and hal/star_flow.cpp by
+   its flat name, and its matched TU defines the namespace function (YAXHH).
+   Both reference spellings name that definition directly; all three are
+   __cdecl with two ints and no receiver. */
 #pragma comment(linker, "/alternatename:__ZN5Sound16LoadInitialGroupEi=?LoadInitialGroup@Sound@@SAXH@Z")
-#pragma comment(linker, "/alternatename:?LoadGroupAndSetBank@Sound@@SAXHH@Z=__ZN5Sound19LoadGroupAndSetBankEii")
+#pragma comment(linker, "/alternatename:?LoadGroupAndSetBank@Sound@@SAXHH@Z=?LoadGroupAndSetBank@Sound@@YAXHH@Z")
+#pragma comment(linker, "/alternatename:__ZN5Sound19LoadGroupAndSetBankEii=?LoadGroupAndSetBank@Sound@@YAXHH@Z")
 /* gate 14, stage A2: the entrance step handlers. 020c71e0's own TU spells it
    as a C name while 020c72a4's declares it without extern "C". */
 /* RETIRED at ALIAS2 (wave 8, the main -> port sync). DEAD RHS and an UNREFERENCED left hand side: nothing in the build defines _func_ov002_020c71e0, and nothing references ?func_ov002_020c71e0@@YAXPAX@Z, so the row can never fire and nothing wants it to. */
@@ -2983,7 +3031,8 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:?data_ov035_02112cb0@@3USharedFilePtr@@A=_data_ov035_02112cb0")
 #pragma comment(linker, "/alternatename:?data_ov035_02112cb8@@3USharedFilePtr@@A=_data_ov035_02112cb8")
 #pragma comment(linker, "/alternatename:?data_ov047_02112508@@3PAUdaObjDorifuResources@@A=_data_ov047_02112508")
-#pragma comment(linker, "/alternatename:?operator_delete2@Memory@@YAXPAX@Z=__ZN6Memory16operator_delete2EPv")
+/* RETIRED (run linkfull, lane ASMCPORT). The left hand side is DEFINED in this link now: src/_ZN6Memory16operator_delete2EPv.cpp builds on every target that compiles this file, so the row would be defeated. The flat name aliases the other way, onto that body, in hal/cxxname_bridge.cpp. */
+// #pragma comment(linker, "/alternatename:?operator_delete2@Memory@@YAXPAX@Z=__ZN6Memory16operator_delete2EPv")
 #pragma comment(linker, "/alternatename:?_ZTV16daObjPushblock_c@@3PAPAXA=__ZTV16daObjPushblock_c")
 #pragma comment(linker, "/alternatename:?data_ov002_0210dbc0@@3PAP8dEnemyBase_c@@AEHAAUdBgCh_Actr@@@ZA=_data_ov002_0210dbc0")
 #pragma comment(linker, "/alternatename:?data_ov004_020beb68@@3PADA=_data_ov004_020beb68")
@@ -3245,6 +3294,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN5Sound22LoadAndSetMusic_Layer1Ei=?LoadAndSetMusic_Layer1@Sound@@YAXH@Z")
 #pragma comment(linker, "/alternatename:__ZN3G2x18SetBlendBrightnessEPVtts=?SetBlendBrightness@G2x@@SAXPCGGF@Z")
 #pragma comment(linker, "/alternatename:__Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij=?LoadStandardObjects@@YAXAAUObjSubTable@LVL_Overlay@@HI@Z")
+#pragma comment(linker, "/alternatename:__Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij=?LoadEntranceObjects@@YAXAAUObjSubTable@LVL_Overlay@@HI@Z")
 #pragma comment(linker, "/alternatename:__Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij=?LoadPathNodeObjects@@YAXAAUObjSubTable@LVL_Overlay@@HI@Z")
 #pragma comment(linker, "/alternatename:__Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij=?LoadPathObjects@@YAXAAUObjSubTable@LVL_Overlay@@HI@Z")
 #pragma comment(linker, "/alternatename:__Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij=?LoadViewObjects@@YAXAAUObjSubTable@LVL_Overlay@@HI@Z")
@@ -3280,9 +3330,17 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN3OAM9RenderSubEP7OamAttrii=?RenderSub@OAM@@SAXPAUOamAttr@@HH@Z")
 #pragma comment(linker, "/alternatename:__Z13CopyToViewMatPK9Matrix4x3=?CopyToViewMat@@YAXPBUMatrix4x3@@@Z")
 #pragma comment(linker, "/alternatename:__ZN2G212GetBG0ScrPtrEv=?GetBG0ScrPtr@G2@@YAPAXXZ")
-#pragma comment(linker, "/alternatename:__ZN8SaveData13GetCoinRecordEj=?GetCoinRecord@SaveData@@SAEI@Z")
+/* run rel042, lane NARROWRET1: the flat names of five NARROW static members
+   (SaveData::GetCoinRecord, SaveData::CountStarsCollectedInLevel, OAM::GetObjWidth,
+   OAM::GetObjHeight: u8; dBgCh::ShouldPassThroughImpl: bool) are bound below to the
+   widening wrappers tools/hostgen.py's NARROW_RETURN table appends to each definition
+   TU, not to the member itself: the cdecl ABI agrees either way, but this alias is a
+   NAME bridge, it cannot see the return type, and the flat callers that declare the
+   name `int` read EAX, whose upper bytes the member never writes. The ROM body
+   extends its result into r0; the wrapper extends it into EAX. */
+#pragma comment(linker, "/alternatename:__ZN8SaveData13GetCoinRecordEj=_hostgen_nrwide__ZN8SaveData13GetCoinRecordEj")
 #pragma comment(linker, "/alternatename:__ZN4cstd6strlenEPKc=?strlen@cstd@@YAIPBD@Z")
-#pragma comment(linker, "/alternatename:__ZN8SaveData26CountStarsCollectedInLevelEj=?CountStarsCollectedInLevel@SaveData@@SAEI@Z")
+#pragma comment(linker, "/alternatename:__ZN8SaveData26CountStarsCollectedInLevelEj=_hostgen_nrwide__ZN8SaveData26CountStarsCollectedInLevelEj")
 #pragma comment(linker, "/alternatename:__ZN2G212GetBG3ScrPtrEv=?GetBG3ScrPtr@G2@@YAPAXXZ")
 #pragma comment(linker, "/alternatename:__ZN5Sound21UnsetPlayerVoiceGroupEv=?UnsetPlayerVoiceGroup@Sound@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN8dScene_c14StartSceneFadeEjjt=?StartSceneFade@dScene_c@@SAXIIG@Z")
@@ -3335,7 +3393,7 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator10CreateNodeEPN10MemoryNode6TargetEt=?CreateNode@ExpandingHeapAllocator@@SAPAXPAUTarget@MemoryNode@@G@Z")
 #pragma comment(linker, "/alternatename:__ZN22ExpandingHeapAllocator8LinkNodeEP10MemoryNodeS1_S1_=?LinkNode@ExpandingHeapAllocator@@SAPAXPAUMemoryNode@@00@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd3absEi=?abs@cstd@@YAHH@Z")
-#pragma comment(linker, "/alternatename:__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b=?ShouldPassThroughImpl@dBgCh@@SA_NPAXABUCLPS@@ABU1@_N@Z")
+#pragma comment(linker, "/alternatename:__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b=_hostgen_nrwide__ZN5dBgCh21ShouldPassThroughImplEPvRK4CLPSRKS_b")
 #pragma comment(linker, "/alternatename:__ZN6Memory8AllocateEjiP4Heap=?Allocate@Memory@@YAPAXIHPAVHeap@@@Z")
 #pragma comment(linker, "/alternatename:__ZN4cstd11fdiv_resultEv=?fdiv_result@cstd@@YAHXZ")
 #pragma comment(linker, "/alternatename:__ZN5Sound13PlayCharVoiceEjjRK7Vector3=?PlayCharVoice@Sound@@YAIIIABUVector3@@@Z")
@@ -3356,8 +3414,8 @@ DSSTATE_END
 #pragma comment(linker, "/alternatename:__ZN5Sound22StopLoadedMusic_Layer3Ev=?StopLoadedMusic_Layer3@Sound@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN5Sound15PlaySecretSoundEP8dActor_cPt=?PlaySecretSound@Sound@@YAHPAUdActor_c@@PAG@Z")
 #pragma comment(linker, "/alternatename:__ZN8SaveData17SetCharacterIntroEi=?SetCharacterIntro@SaveData@@SAXH@Z")
-#pragma comment(linker, "/alternatename:__ZN3OAM11GetObjWidthEii=?GetObjWidth@OAM@@SAEHH@Z")
-#pragma comment(linker, "/alternatename:__ZN3OAM12GetObjHeightEii=?GetObjHeight@OAM@@SAEHH@Z")
+#pragma comment(linker, "/alternatename:__ZN3OAM11GetObjWidthEii=_hostgen_nrwide__ZN3OAM11GetObjWidthEii")
+#pragma comment(linker, "/alternatename:__ZN3OAM12GetObjHeightEii=_hostgen_nrwide__ZN3OAM12GetObjHeightEii")
 #pragma comment(linker, "/alternatename:__ZN3OAM16LoadAffineParamsEP7OamAttrPiP9Matrix2x2=?LoadAffineParams@OAM@@SAHPAUOamAttr@@PAHPAUMatrix2x2@@@Z")
 #pragma comment(linker, "/alternatename:__ZN3GXS18BeginLoadBGExtPlttEv=?BeginLoadBGExtPltt@GXS@@YAXXZ")
 #pragma comment(linker, "/alternatename:__ZN3GXS13LoadBGExtPlttEPKvjj=?LoadBGExtPltt@GXS@@YAXPBXII@Z")

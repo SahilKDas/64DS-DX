@@ -77,6 +77,7 @@ Xbox controller:
     A                   jump
     X                   run
     B                   punch
+    Y                   first-person look (press again to go back)
     Right trigger       crouch
     Right stick         swing the camera around
     Bumpers             zoom the camera in and out
@@ -89,6 +90,7 @@ Keyboard and mouse:
     Shift               run
     Ctrl                crouch
     X                   punch
+    Z                   first-person look (press again to go back)
     Q and E             swing the camera around
     R and F             tilt the camera
     C                   put the camera back behind Mario
@@ -111,6 +113,15 @@ Extra keys:
              character
          F5 does nothing during a multiplayer match, on purpose.
     Tab  show or hide the DS bottom screen under the main view
+    F8   save a state (not during cutscenes)
+    F9   load the saved state (it is not loaded automatically at startup)
+
+Smooth motion is off by default. To turn it on, open Settings in the
+launcher, pick a Frame rate of 60 or more on the General page and tick
+Smooth motion right under it.
+
+First-person look (Y and Z above) can be rebound like the other buttons,
+under Controls in the launcher's Settings.
 
 
 WHAT YOU CAN DO IN IT
@@ -165,7 +176,8 @@ Once you have run it, two more folders appear, both made from your own dump:
 
 The game itself reads your dump, writes those two folders next to itself, and
 runs. The launcher checks tangos.dev for updates, and if the game crashes it
-can send a small crash report so the bug gets fixed; that can be turned off
-in the launcher's settings. Multiplayer talks to our server only while you
-are in a room or a match. Nothing else here touches the internet or changes
-any setting on your PC.
+can send a small crash report, and after each session a short performance
+report (how the game ran and your PC's hardware), so problems get fixed;
+both can be turned off in the launcher's settings. Multiplayer talks to our
+server only while you are in a room or a match. Nothing else here touches
+the internet or changes any setting on your PC.

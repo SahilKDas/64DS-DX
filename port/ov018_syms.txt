@@ -64,11 +64,16 @@ g_profile_PENGUIN_MOTHER:0x1c
 # data_ov018_02113bc0 (Clsn/KCL, InitResources' _ZN7dBgW_Kc8LoadFileER13SharedFilePtr
 # arg) -- plus their two destruct-node cells at 02113bdc/02113bd0 (void*[3],
 # the func_020731dc shape, 12 bytes each by next-symbol delta). data_ov018_02112f48
-# is the CLPS_Block MovingMeshCollider::SetFile consumes, 0x10 bytes by
-# next-symbol delta (02112f48 -> 02112f58).
+# is the CLPS_Block MovingMeshCollider::SetFile consumes. It holds TWO rows
+# (43 4c 50 53 08 00 02 00, then c5 0f 00 00 ff.. and c5 0f 00 01 ff.., then 8
+# bytes of 0xff fill), so it is pinned to its ROM span 0x20, up to the next real
+# symbol data_ov018_02112f68. The next-symbol delta stopped at 0x10 because dsd
+# names 0x02112f58 (row 1) as an ambiguous symbol that nothing in ov018
+# references; the pack then padded row 1 with a zeroed gap and the ski lift's
+# row-1 triangles read an all-zero surface in place of the ROM's.
 data_ov018_02113bc8 data_ov018_02113bdc
 data_ov018_02113bc0 data_ov018_02113bd0
-data_ov018_02112f48
+data_ov018_02112f48:0x20
 #
 # ---- MotherPenguin's OWN vtable, _ZTV7SkiLift == _ZTV10daPgMthr_c at
 # 0x021139bc -- 31 words (0x021139bc..02113a34 inclusive), a PLAIN Actor

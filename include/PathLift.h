@@ -24,7 +24,7 @@
 #include "Model.h"
 
 struct dPathLiftActor_c : dBgActor_c {
-    u8  pad_31e[0x2];
+    ROM_BASE_TAIL_PAD(31e, 0x2)
     Model mModels[3];                     /* 0x320 */
     Vector3 mInitialPos;                  /* 0x410 */
     Vector3_16 mInitialAngle;             /* 0x41c */
@@ -51,15 +51,23 @@ struct dPathLiftActor_c : dBgActor_c {
        the same arrangement include/dBase_c.h records. The base's own D0/D1
        still exist as out-of-line symbols because the vtable needs an address;
        their files force the emission and objisolate keeps the bound variant. */
-    virtual ~dPathLiftActor_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dPathLiftActor_c() {}   /* no slot */
+#else
+    virtual ~dPathLiftActor_c() {}   /* D1 and D0 */
+#endif
 
-    /* Slot 32 of the ROM vtable. The compiler emits class metadata with this
-       definition; that emission alone does not prove the original TU boundary. */
+    /* Slot 32 of the ROM vtable. Its definition anchors this class's RTTI and
+       vtable in the same original translation unit as the state machine. */
     virtual void AfterClsn(int clsnResult);
 
-    /* Helper names below are inferred from the matched bodies and state table;
-       RTTI proves the class identity, not these original member spellings.
-       SetState's int parameter spelling is inferred; ARM proves a word argument. */
     void StateWaitInit();
     void StateWait();
     void StatePathInit();
@@ -71,8 +79,6 @@ struct dPathLiftActor_c : dBgActor_c {
     void ResetPath();
     void RenderPathModels();
     void UpdatePathModels();
-    /* The six query names and const qualification are inferred: the bodies
-       read state without writing it, but ARM bytes do not prove original const. */
     int HasNonzeroAngleZ() const;
     int Param10ModeIs1() const;
     int Param12ModeIs1() const;

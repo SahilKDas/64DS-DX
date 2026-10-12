@@ -10,7 +10,11 @@ struct AnimSlot {
     u8 pad[7];
 };
 
-#include "Particle__SysTracker.h"
+struct Particle {
+    struct SysTracker {
+        void Update();
+    };
+};
 
 struct ShadowModel {
     static void RenderAll();

@@ -127,6 +127,9 @@ void sd_mix_reset(void) {}
 void sd_consumer_reset(void) {}
 void sd_waves_reset(void) {}
 void sd_sdat_reseat(void) {}
+// The level-song restart lk6 makes after them (hal/star_flow.cpp) is a
+// no-op here for the same reason.
+extern "C" void port_course_music_after_restore(void) {}
 
 typedef int (__thiscall *Fn0)(void *);
 static int vcall0(void *actor, int slot)

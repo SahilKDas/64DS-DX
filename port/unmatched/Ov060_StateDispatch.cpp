@@ -49,7 +49,17 @@
  * runs and seven runtime tables, not two of anything, and one of them
  * (SpikeBomb's) was not in the bank at all.
  *
- * ==== WHY FIVE DISPATCHERS ARE HOST COPIES AND TWO ARE NOT ==================
+ * ==== WHY FIVE DISPATCHERS WERE HOST COPIES AND TWO WERE NOT ================
+ *
+ * NONE IS A HOST COPY ANY MORE, and the record below is the history. Lanes
+ * PMFB5 and FWD retired copies 2 to 5 for their matched TUs, and run linkfull
+ * lane SEATS3 retired the last, HOST COPY 1 (func_ov060_02112434). What made
+ * each retirement possible is the global /vmg /vmm pair in port/CMakeLists.txt,
+ * which makes every pointer-to-member MSVC forms the ROM's eight-byte {code,
+ * adjust} pair whatever the class looks like, together with the __fastcall
+ * faces in THE SEAT below, which take the receiver in ECX the way a matched
+ * TU's `(this->*pmf)()` hands it over. The measurements that follow were made
+ * WITHOUT that pair and stay as the record of why the copies existed.
  *
  * The ROM record is 8 bytes.  MSVC's pointer-to-member size depends on what it
  * knows about the class at the point the type is formed, and none of the
@@ -213,7 +223,9 @@ void func_ov060_021181b4(char *c);
 void func_ov060_021180e0(char *c);
 void func_ov060_02117db8(char *c);
 
-/* what the five host copies below call */
+/* what the five host copies below called; all five are retired, and the
+   declarations stay as the record of the pack's call surface, as HOST COPY 7's
+   block below says of its own */
 int Vec3_HorzDist(const void *a, const void *b);
 short Vec3_HorzAngle(const void *a, const void *b);
 int _ZN8dActor_c14GetSubtractionEss(void *self, short a, short b);
@@ -369,50 +381,15 @@ static_assert(sizeof(Ov60Vec3_16) == 6, "SpawnFireball's Vector3_16 is 3 halfwor
 static_assert(sizeof(short) == 2, "data_02082214 is indexed as s16[]");
 static_assert(sizeof(PortPmf) == 8, "the ROM's dispatch record is 8 bytes");
 
-/* ---- lane w7a's proof-of-life trace ---------------------------------------
- * OFF unless SM64DS_OV060_TRACE is set, stderr only, and it touches no game
- * state, so every stdout-comparing gate is byte-identical with the variable
- * set or unset.  It exists because walk_window has no per-actor state probe
- * and the two states this file just filled are exactly the ones that had to
- * be OBSERVED running. */
-namespace {
-bool ov60_trace(void)
-{
-    static int on = -1;
-    if (on < 0) on = (std::getenv("SM64DS_OV060_TRACE") != 0);
-    return on != 0;
-}
-int g_ov60_frame;                    /* Bowser::Behavior ticks = fight frames */
-struct Ov60Seen { const void *who; int state; };
-Ov60Seen g_ov60_seen[16];
-int g_ov60_nseen;
-void ov60_note(const char *what, const void *who, int state)
-{
-    int i;
-    for (i = 0; i < g_ov60_nseen; ++i)
-        if (g_ov60_seen[i].who == who)
-            break;
-    if (i == g_ov60_nseen) {
-        if (g_ov60_nseen >= 16)
-            return;                 /* trace capacity only; no game state */
-        g_ov60_seen[i].who = who;
-        g_ov60_seen[i].state = -1;
-        ++g_ov60_nseen;
-    }
-    if (g_ov60_seen[i].state == state)
-        return;
-    if (ov60_trace())
-        std::fprintf(stderr, "[ov060] frame %d: %s %p state %d -> %d\n",
-                     g_ov60_frame, what, who, g_ov60_seen[i].state, state);
-    g_ov60_seen[i].state = state;
-}
-void ov60_ran(const char *what, const void *who)
-{
-    if (ov60_trace())
-        std::fprintf(stderr, "[ov060] frame %d: %s RAN on %p\n",
-                     g_ov60_frame, what, who);
-}
-}
+/* ---- lane w7a's proof-of-life trace IS GONE --------------------------------
+ * SM64DS_OV060_TRACE printed state changes from inside the host copies of this
+ * file, and its frame counter was Bowser::Behavior's own tick. Every host copy
+ * that called it has been retired for its matched TU (the last, HOST COPY 6,
+ * in run linkfull wave 24), and a matched TU is not the place to put a trace
+ * back, so the helpers went with their last caller. The fight's state
+ * sequence is observable without it: a debugger breakpoint on the flat
+ * _ZN6Bowser8BehaviorEv reads the receiver's +0x40c / +0x410 state words on
+ * every tick (runs/linkfull/out/FACEFLIP1/ff1_trace.py). */
 
 /* ============ HOST COPY 7 IS RETIRED =====================================
  * run link100 wave 15, lane SEAT15A -- the stale-banner harvest, round 2.
@@ -437,63 +414,22 @@ void ov60_ran(const char *what, const void *who)
  */
 extern "C" void func_ov060_021140c0(char *c);
 
-/* ============ HOST COPY 1: func_ov060_02112434 ============================
- * BOWSER's per-frame target/flag pass, called from Bowser::Behavior.  Line for
- * line with src/actors/daKpa_c.cpp; only the dispatch is respelled.
- * PORT_HOST_ABI: mwcc pointer-to-member stride/receiver, the Crate case. */
-extern "C" void func_ov060_02112434(unsigned char *thiz)
-{
-    int zero[3];
-    zero[0] = 0;
-    zero[1] = 0;
-    zero[2] = 0;
-    *(int *)(thiz + 0x3f4) = Vec3_HorzDist(thiz + 0x5c, zero);
-    *(short *)(thiz + 0x408) = Vec3_HorzAngle(thiz + 0x5c, zero);
-
-    int s0 = _ZN8dActor_c14GetSubtractionEss(thiz, *(short *)(thiz + 0x8e),
-                                          *(short *)(thiz + 0x406));
-    int s1 = _ZN8dActor_c14GetSubtractionEss(thiz, *(short *)(thiz + 0x8e),
-                                          *(short *)(thiz + 0x408));
-
-    *(int *)(thiz + 0x418) &= ~0xff;
-    if (s0 < 0x2000)
-        *(int *)(thiz + 0x418) |= 2;
-    if (s1 < 0x3800)
-        *(int *)(thiz + 0x418) |= 4;
-    if (*(int *)(thiz + 0x3f4) < 0x3e8000)
-        *(int *)(thiz + 0x418) |= 0x10;
-    if (*(int *)(thiz + 0x3ec) < 0x352000)
-        *(int *)(thiz + 0x418) |= 8;
-
-    {
-        PortPmf *e = &data_ov060_0211aeb4[*(int *)(thiz + 0x410)];
-        ((void (*)(char *))(size_t)e->fn)((char *)thiz + (e->adj >> 1));
-    }
-
-    if (*(int *)(thiz + 0x40c) == 4)
-        return;
-
-    unsigned char lo = thiz[0x41c];
-    unsigned char hi = thiz[0x41d];
-    if (hi == lo)
-        return;
-    if (hi > lo) {
-        int v = lo + 0x14;
-        if (v >= 0xff) {
-            thiz[0x41c] = 0xff;
-            return;
-        }
-        thiz[0x41c] = (unsigned char)(thiz[0x41c] + 0x14);
-        return;
-    }
-    {
-        int v = lo - 0x14;
-        if (v <= 0)
-            thiz[0x41c] = 0;
-        else
-            thiz[0x41c] = (unsigned char)(thiz[0x41c] - 0x14);
-    }
-}
+/* ============ HOST COPY 1 IS RETIRED =====================================
+ * run linkfull lane SEATS3. func_ov060_02112434, BOWSER's per-frame target /
+ * flag pass (Bowser::Behavior calls it every frame of every fight), compiles
+ * from src/func_ov060_02112434.cpp now, on port/slice_w5e.txt. The copy that
+ * stood here was line for line with that source but for one statement, the
+ * dispatch, which it respelled as a cdecl call of the record's code word with
+ * `thiz + (adj >> 1)` because MSVC's pointer-to-member was not the ROM's eight
+ * bytes when it was written (see WHY FIVE DISPATCHERS above). Under the global
+ * /vmg /vmm pair the matched `(((C*)thiz)->*data_ov060_0211aeb4[i].pmf)()` IS
+ * the ROM's read: code word at the cell's +0, adjust at +4 added to the
+ * receiver in ECX, nothing pushed. So the four cells of data_ov060_0211aeb4
+ * hold __fastcall faces in THE SEAT below instead of the plain cdecl bodies
+ * this copy called, the same move lane PMFB5 made for the tail, the sky
+ * platform and the fire. All four source records read adj == 0, so the
+ * copy's `>> 1` and MSVC's raw adjust agree on every one.
+ */
 
 /* ============ HOST COPIES 2, 3 AND 4 ARE GONE ============================
  * Run link100 lane PMFB5. func_ov060_02115b84 (BOWSER TAIL),
@@ -577,80 +513,25 @@ extern "C" void func_ov060_02112434(unsigned char *thiz)
  * Run link100 lane FWD. src/_ZN10BowserFire8BehaviorEv.cpp dispatches
  * data_ov060_0211afb4 now and port/hal/fwd_forwarders.cpp defines the flat C
  * name the actor-class face calls. The w7a ov60_note("BOWSERFIRE", ...) trace
- * line went with the body; BOWSER's own trace in HOST COPY 6 is untouched, and
- * the matched TU is not the place to put a trace back.
+ * line went with the body, and the matched TU is not the place to put a trace
+ * back.
  */
 
-/* ============ HOST COPY 6: _ZN6Bowser8BehaviorEv ==========================
- * NOT a pointer-to-member fault -- src/_ZN6Bowser8BehaviorEv.cpp does not
- * COMPILE under MSVC at all. It declares six shadow-class members and then
- * re-declares each of them at namespace scope:
- *
- *     struct Actor { Actor *ClosestPlayer(); ... };
- *     Actor *Actor::ClosestPlayer();          <- C2761
- *
- * which mwcc accepts and MSVC rejects with C2761 "redeclaration of member is
- * not allowed", six times. Measured on this tree: the TU is the only compile
- * failure in the whole wave-6 landing. (The by-address decomp-side fix for
- * this shape is wave-6 cut item 9 and belongs to main, not to the port.)
- *
- * Transcribed line for line, offsets from include/Bowser.h. The
- * ClosestPlayer call site passes the actor, which is the value the ROM leaves
- * in r0 -- the receiver seam the closestplayer guard watches for does not open
- * here (the src spells it `((Actor *)this)->ClosestPlayer()`, a real receiver,
- * not the zero-arg reader shape). */
-extern "C" {
-int RandomIntInternal(int *seed);
-void *_ZN8dActor_c13ClosestPlayerEv(void *self);
-void *_ZN8dActor_c15FindWithActorIDEjPS_(unsigned id, void *prev);
-void _ZN9Animation7AdvanceEv(void *a);
-void _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(
-    void *self, const void *v);
-void func_ov060_02111a28(char *c);
-void func_ov060_0211577c(char *c);
-extern int data_0209e650;
-extern char *data_0209f318;
-}
-/* PORT_HOST_ABI: MSVC C2761 rejects the matched TU's out-of-class member
-   redeclarations; body is the matched source's line for line. */
-extern "C" int _ZN6Bowser8BehaviorEv(void *selfv)
-{
-    char *c = (char *)selfv;
-    ++g_ov60_frame;                                   /* w7a trace, stderr */
-    ov60_note("BOWSER", c, *(int *)(c + 0x40c));
-    RandomIntInternal(&data_0209e650);
-    *(int *)(c + 0x3a0) = (int)(size_t)_ZN8dActor_c13ClosestPlayerEv(c);
-    if (*(char **)(c + 0x3a0) != 0) {
-        char *t = *(char **)(c + 0x3a0);
-        *(short *)(c + 0x406) = Vec3_HorzAngle(c + 0x5c, t + 0x5c);
-        *(int *)(c + 0x3ec) = Vec3_HorzDist(c + 0x5c, t + 0x5c);
-    } else {
-        *(short *)(c + 0x406) = *(short *)(c + 0x8e);
-        *(int *)(c + 0x3ec) = ~0x80000000;
-    }
-    func_ov060_02112434((unsigned char *)c);
-    func_ov060_02111a28(c);
-    *(short *)(c + 0x94) = *(short *)(c + 0x8e);
-    *(int *)(c + 0x130) = *(int *)(c + 0x3f8);
-    _ZN9Animation7AdvanceEv(c + 0x124);
-    func_ov060_0211577c(c);
-    *(char **)(data_0209f318 + 0x114) = c;
-    _ZN5dCc_c5ClearEv(c + 0x360);
-    {
-        int v[3];
-        v[2] = 0x50000;
-        v[0] = 0;
-        v[1] = 0;
-        _ZN10dCcAcPos_c21SetPosRelativeToActorERK7Vector3(
-            c + 0x360, v);
-    }
-    _ZN5dCc_c6UpdateEv(c + 0x360);
-    if (*(unsigned char *)(c + 0x42b) != 0) {
-        if (_ZN8dActor_c15FindWithActorIDEjPS_(0x10d, 0) == 0)
-            *(unsigned char *)(c + 0x42b) = 0;
-    }
-    return 1;
-}
+/* ============ HOST COPY 6 IS RETIRED =====================================
+ * run linkfull wave 24, lane FACEFLIP1. The C2761 refusal this body stood in
+ * for is gone from the synced src: src/_ZN6Bowser8BehaviorEv.cpp now spells
+ * the real dActor_c / ModelAnim / dCcAcPos_c members and compiles clean under
+ * the port's own compile line (run linkfull lane HGFRONT1). What kept it out
+ * after that was port/faces_sync.txt's FORWARD row for
+ * ?Behavior@Bowser@@UAEHXZ, which defined the member and called this body.
+ * The row is a REVERSE row now: the generated face defines the flat
+ * _ZN6Bowser8BehaviorEv that hal/actor_classes_ov060.cpp's slot-6 shim calls
+ * and calls the matched member, which is on port/slice_w24_faceflip.txt. Its
+ * one host-copied callee, func_ov060_02112434 (HOST COPY 1 above), stayed a
+ * copy until run linkfull lane SEATS3 retired it too; the matched TU reaches
+ * the matched callee by the same C name. The w7a trace lines this body
+ * carried went with it.
+ */
 
 /* ============ THE SEAT ====================================================
  * Rewrites each SOURCE static's code word with its host body BEFORE the sinits
@@ -664,6 +545,16 @@ extern "C" int _ZN6Bowser8BehaviorEv(void *selfv)
         (void)dead_edx;                                                   \
         sym((char *)self);                                                \
     }
+
+/* data_ov060_0211aeb4 -- BOWSER, four. Run linkfull lane SEATS3: HOST COPY 1
+   is gone and src/func_ov060_02112434.cpp dispatches this table itself, a
+   /vmg /vmm pointer-to-member call with the receiver in ECX and nothing
+   pushed, so its four cells take faces like the tables below. ONE FACE PER
+   CELL: cells 2 and 3 carry the SAME code word (0x021125f0). */
+OV60_FACE(aeb4, 0, func_ov060_021128c0)
+OV60_FACE(aeb4, 1, func_ov060_02112724)
+OV60_FACE(aeb4, 2, func_ov060_021125f0)
+OV60_FACE(aeb4, 3, func_ov060_021125f0)
 
 /* data_ov060_0211ae9c -- BOWSER TAIL, three */
 OV60_FACE(ae9c, 0, func_ov060_02115d68)
@@ -700,17 +591,18 @@ OV60_FACE(afb4, 6, func_ov060_02116f90)
 OV60_FACE(afb4, 7, func_ov060_02116f90)
 
 namespace {
-/* the host column holds BOTH plain cdecl bodies (for the tables whose
-   dispatcher is still a host copy in this file, including BOWSER FIRE's
-   0211afb4) and the __fastcall faces above (for the three tables run
-   link100 lane PMFB5 seated), so it is a void* and each row casts. */
+/* the host column holds BOTH plain cdecl bodies (for the two tables whose
+   matched dispatchers decode the record by hand and push the receiver:
+   func_ov060_021128c0's 0211aed4 and SpikeBomb's 0211b1d8) and the __fastcall
+   faces above (for the five tables whose matched dispatchers make the
+   pointer-to-member call themselves), so it is a void* and each row casts. */
 struct Seat { PortPmf *slot; unsigned rom; void *host; const char *tab; };
 const Seat g_ov060_states[] = {
-    /* 0x0211aeb4 -- BOWSER, four */
-    {data_ov060_0211a578, 0x021128c0, (void *)func_ov060_021128c0, "aeb4[0]"},
-    {data_ov060_0211a510, 0x02112724, (void *)func_ov060_02112724, "aeb4[1]"},
-    {data_ov060_0211a518, 0x021125f0, (void *)func_ov060_021125f0, "aeb4[2]"},
-    {data_ov060_0211a520, 0x021125f0, (void *)func_ov060_021125f0, "aeb4[3]"},
+    /* 0x0211aeb4 -- BOWSER, four (faces, run linkfull SEATS3) */
+    {data_ov060_0211a578, 0x021128c0, (void *)ov60_aeb4_s0, "aeb4[0]"},
+    {data_ov060_0211a510, 0x02112724, (void *)ov60_aeb4_s1, "aeb4[1]"},
+    {data_ov060_0211a518, 0x021125f0, (void *)ov60_aeb4_s2, "aeb4[2]"},
+    {data_ov060_0211a520, 0x021125f0, (void *)ov60_aeb4_s3, "aeb4[3]"},
     /* 0x0211aed4 -- BOWSER, twenty */
     {data_ov060_0211a568, 0x02114f88, (void *)func_ov060_02114f88, "aed4[0]"},
     {data_ov060_0211a560, 0x02113b5c, (void *)func_ov060_02113b5c, "aed4[1]"},

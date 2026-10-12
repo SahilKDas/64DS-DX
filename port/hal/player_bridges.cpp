@@ -38,6 +38,9 @@ extern "C" unsigned g_port_unhosted_hits = 0;
 
 extern "C" unsigned int _ZNK6Player14GetBodyModelIDEjb(char *, unsigned int, char);
 extern "C" unsigned func_ov002_020becf4(char *self, unsigned j, int b);
+extern "C" int func_ov002_020d225c(char *o);   /* src/func_ov002_020d225c.c */
+extern "C" void func_ov002_020e3e00(void *obj, const void *vec,
+                                    unsigned opacity);  /* src/func_ov002_020e3e00.cpp */
 extern "C" int _ZN6Player13InitResourcesEv(void *);
 
 /* C++-linkage globals some slice TUs call under Itanium-style names */
@@ -205,21 +208,6 @@ extern int data_020a0e68;
    would re-run UpdateVerts, which is why Player::Render reaches past it to the
    base method and renders the head at the pose the anim system already left. */
 void _ZN5Model6RenderEPK7Vector3(void *self, const void *pos);
-}
-static void m43_mul(const int *a, const int *b, int *out)
-{
-    for (int r = 0; r < 3; ++r)
-        for (int c2 = 0; c2 < 3; ++c2)
-            out[r * 3 + c2] = (int)(((long long)a[r * 3] * b[c2] +
-                                     (long long)a[r * 3 + 1] * b[3 + c2] +
-                                     (long long)a[r * 3 + 2] * b[6 + c2]) >>
-                                    12);
-    for (int c2 = 0; c2 < 3; ++c2)
-        out[9 + c2] = (int)(((long long)a[9] * b[c2] +
-                             (long long)a[10] * b[3 + c2] +
-                             (long long)a[11] * b[6 + c2]) >>
-                            12) +
-                      b[9 + c2];
 }
 
 /* THE HEAD-MODEL GROUP, Player::Render's second draw. Player::Render walks one
@@ -1738,12 +1726,41 @@ void hal_render_player_world(void *player)
        either one alone is still not the ROM's statement; written as two
        independent switches, whichever flipped second would silently edit
        what the first one did. */
+    /* THE BALLOON IS THE OTHER ARM OF THE SAME STATEMENT. Player::Render
+       forks the body draw on mIsBalloon (+0x6fd, the live byte, not the +0x6fe
+       latch the head test reads), src/_ZN6Player6RenderEv.cpp:59-99:
+
+           if (mIsBalloon == 0) {
+               ... the body, its texture sequence, the wings ...
+           } else {
+               ModelBase::ApplyOpacity(this + 0xf0, mOpacity, 0);
+               mModelAnim3.m14(&mScaleX);          slot 5, ModelAnim::Render
+           }
+
+       mModelAnim3 is the balloon body func_ov002_020e5948 SetFiles at +0xf0
+       (src/func_ov002_020e5948.c:347), and the behaviour pass seats ITS matrix
+       while the balloon is up, not the body's (src/func_ov002_020e444c.c:52-58
+       writes +0x10c instead). This copy had only the first arm, so a Power
+       Flower left the normal body standing where the balloon started, frozen,
+       with the head skipped (hid 8 is the ROM's own balloon rule): the
+       headless Mario the forum report shows. */
+    const bool balloon = *(const unsigned char *)(c + 0x6fd) != 0;
     std::size_t hsink_t0 = 0;
-    if (hsink_on()) ntr::gx_polygons(hsink_t0);
-    ma->Model::Render((const Vector3 *)(c + 0x80));
-    std::size_t hsink_t1 = hsink_t0;
-    if (hsink_on()) ntr::gx_polygons(hsink_t1);
-    hal_player_texseq_body(c);
+    std::size_t hsink_t1 = 0;
+    if (balloon) {
+        ModelAnim *m3 = (ModelAnim *)(c + 0xf0);    /* mModelAnim3 */
+        _ZN9ModelBase12ApplyOpacityEj(m3, *(const unsigned char *)(c + 0x6f5));
+        if (ghost) ghost_opacity(m3);
+        m3->Render((const Vector3 *)(c + 0x80));    /* virtual, as the ROM's */
+    } else {
+        if (hsink_on()) ntr::gx_polygons(hsink_t0);
+        ma->Model::Render((const Vector3 *)(c + 0x80));
+        hsink_t1 = hsink_t0;
+        if (hsink_on()) ntr::gx_polygons(hsink_t1);
+        hal_player_texseq_body(c);
+        /* the mirror, src/_ZN6Player6RenderEv.cpp:81 (see the head's call) */
+        func_ov002_020e3e00(ma, c + 0x80, *(const unsigned char *)(c + 0x6f5));
+    }
 
     unsigned hid = func_ov002_020becf4(c, *(unsigned char *)(c + 0x6db), 1);
     if (hid != 8 && hid != 9) {
@@ -1758,6 +1775,42 @@ void hal_render_player_world(void *player)
             if (ghost) ghost_opacity(head);
             hal_render_head_group(c, head, hid, ma, scene);
             hal_player_texseq_head(c, hid);
+            /* THE MIRROR, once for the body (above) and once here for the
+               head, src/_ZN6Player6RenderEv.cpp:81 and :128:
+
+                   func_ov002_020e3e00(model, this + 0x80, mOpacity);
+
+               src/func_ov002_020e3e00.cpp draws the model a second time
+               reflected in X about the room's mirror plane (x = 0 in the
+               King Boo arena, level 0x2f, while its ov055 gate allows; x =
+               0x1086000 in the castle's mirror room, level 5 area 3), with
+               the material flags that flip its winding, and restores the
+               model's matrix after. It is linked (port/slice_hostgen4.txt)
+               and this copy never called it, so the player had no
+               reflection in either mirror. */
+            func_ov002_020e3e00(head, c + 0x80, *(const unsigned char *)(c + 0x6f5));
+            /* THE LAST STATEMENT OF THE ROM'S HEAD BLOCK,
+               src/_ZN6Player6RenderEv.cpp:129-131:
+
+                   if (func_ov002_020d225c(this))
+                       ((VObj*)unk_1d8)->m14(&unk_56c);
+
+               +0x1d8 is the Model func_ov002_020e5948 news and SetFiles
+               outside VS (src/func_ov002_020e5948.c:330-336), and
+               func_ov002_020d225c is Yoshi (param1 3) with +0x721 == 2 and
+               +0x6e6 == 0: the sleep func_ov002_020d228c puts him in (ST_WAIT,
+               anim 9, +0x56c..+0x574 cleared, +0x721 = 2), which the opening
+               does to him on the castle roof (src/func_ov085_0212df84.cpp).
+               func_ov002_020e444c seats that model's matrix in front of his
+               face each frame (src/func_ov002_020e444c.c:70-75) and +0x56c is
+               the scale that swells it. This copy never drew it. Slot 5 is
+               Model::Render, the same dispatch the head's own draw makes. */
+            if (func_ov002_020d225c(c)) {
+                char *m = *(char **)(c + 0x1d8);
+                if (m)
+                    ((void(__fastcall *)(void *, void *, const void *))(
+                        ((void ***)m)[0][5]))(m, 0, c + 0x56c);
+            }
         }
     }
 
@@ -1804,10 +1857,23 @@ void hal_render_player_world(void *player)
        Virtual18 -- which is host slot 6 (_ZTV9ModelAnim is D1 0, D0 1,
        Model::DoSetFile 2, UpdateVerts 3, Virtual10 4, Render 5, Virtual18 6,
        read out of the ROM's own table at 0x0208e980) and takes the matrix and
-       the scale, unlike Render. The bone matrix is composed through `scene`
-       the way the head at
-       +0x154 is, because this path renders in scene space, not the ROM's
-       world space. */
+       the scale, unlike Render.
+
+       THE BONE GOES IN AS IT IS, the ROM's statement word for word. This used
+       to compose it through `scene` first, the way the head at +0x154 once
+       was; the head path dropped that (hal_render_head_group: the neck is
+       copied into the head's bone 0 and the head's own mat4x3 is left as
+       func_ov002_020e444c seated it), and the wings were left behind.
+       func_ov002_020e444c seats the wing model's mat4x3 too (Player+0x190 =
+       +0x174 + 0x1c, src/func_ov002_020e444c.c:56), with the same player root
+       the body draws through, and Virtual18 is Virtual10 (the matrix into
+       transforms[0]) + Model::Render through that mat4x3
+       (src/_ZN9ModelAnim9Virtual18EjPK7Vector3.cpp). So the composed matrix
+       applied the root twice and the wings drew far off the player: the first
+       time a live Wing Cap reached this block (lane FEATHER1, a ? block's
+       feather in Bob-omb Battlefield) the gate opened and nothing showed on
+       the cap. ModelBase::ApplyOpacity is the statement's first line, as in
+       the balloon arm above. */
     {
         static int probe = -1;
         if (probe < 0) probe = std::getenv("SM64DS_WINGS_PROBE") ? 1 : 0;
@@ -1832,10 +1898,11 @@ void hal_render_player_world(void *player)
                 (void)n0; (void)n1;
             }
         }
-        if (gate != 0) {
+        /* inside the ROM's `mIsBalloon == 0` arm, like the body draw above */
+        if (gate != 0 && !balloon) {
             char *bones = *(char **)((char *)ma + 0x14);
-            int composed[12];
             const int *src;
+            _ZN9ModelBase12ApplyOpacityEj(m4, *(const unsigned char *)(c + 0x6f5));
             if (*(unsigned char *)(c + 0x6db) == 3) {
                 Matrix4x3_FromTranslation(&data_020a0e68, -0x1b33, -0x666, 0);
                 Matrix4x3_ApplyInPlaceToRotationZ(&data_020a0e68, 0x4000);
@@ -1844,7 +1911,6 @@ void hal_render_player_world(void *player)
             } else {
                 src = (const int *)(bones + 0x2d0);
             }
-            m43_mul(src, scene, composed);
             /* Slot 6, not 5. The ROM's _ZTV9ModelAnim at 0x0208e980 is seven slots
                -- D1 0, D0 1, Model::DoSetFile 2, UpdateVerts 3, Virtual10 4,
                Render 5, Virtual18 6 (0x0208e99c = 020167c4) -- and
@@ -1862,7 +1928,7 @@ void hal_render_player_world(void *player)
                epilogue pops edi, esi and ebx before it restores the frame
                pointer. */
             ((void(__fastcall *)(void *, void *, unsigned, const void *))(
-                ((void ***)m4)[0][6]))(m4, 0, (unsigned)(uintptr_t)composed,
+                ((void ***)m4)[0][6]))(m4, 0, (unsigned)(uintptr_t)src,
                                        c + 0x80);
         }
     }
@@ -2442,7 +2508,9 @@ int data_020a0f1c[4], data_020a4d54[4], data_020a6440[4], data_020a6444[4];
 int data_020a6484[4], data_020a6494[4], data_020a6498[4];
 int data_0209cdd0, data_0209cdd4, data_0209cdd8, data_0209cddc, data_0209cde0;
 int data_0209f220[8], data_0209f264[8], data_020a0d90[8], data_020a0f38[8];
-int data_020a4b58[4], data_020a4b68[4], data_020a60f4[4];
+int data_020a4b58[4], data_020a4b68[4];
+/* data_020a60f4 is not here: it is data_020a60c4 + 0x30 on the DS and
+   ntr/runtime.cpp hosts the two as one band (the timer callbacks). */
 /* DTCM, AND IT IS 16 KB AND NOT 64 BYTES. This used to read "DTCM scratch the
    timer list walker anchors at" and be sized for that one reader, which is the
    undersized-hosted-global shape: a span decided by the first caller found
@@ -2465,7 +2533,10 @@ int data_020a4b58[4], data_020a4b68[4], data_020a60f4[4];
    models timer interrupts, so the span has to be real before either.
    See port/irq2_map.txt section 8. */
 __declspec(align(8)) unsigned char data_023c0000[0x4000];
-int data_02099e94[4], data_02099ebc[4], data_02099ec4[4], data_02099fcc[4];
+/* data_02099e94 / ebc / ec4 are NOT here any more: they are three of the
+   twelve virtual member-pointer records fBase_c::Process is handed, hosted
+   as the ROM's {face, 0} pairs in hal/pmf3_cells.cpp (run linkfull, PMF3). */
+int data_02099fcc[4];
 /* data_020a6088 is NOT here any more. It is the head of the GX bank-state
    block, whose members the SetBankFor* family reaches by STRUCT OFFSET out to
    +0x18 and which func_02053d9c clears 26 bytes at a time, and the `int[2]`

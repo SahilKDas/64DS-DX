@@ -195,6 +195,69 @@ void port_rom_frame_begin(const char *loop)
                  g_loop, crosscheck_on() ? "ON" : "OFF");
 }
 
+/* THE ROM'S PHASE 5 (run linkfull, lane K2RENDER). src/func_020197b8.c:48:
+
+       data_0209d50c = 5; func_02019404();
+
+   func_02019404 is the frame's graphics-block word 1: `o = data_0209d4a8; if
+   (o) o->vt[1](o);`, a bare dispatch with its own null test and no other
+   logic. Both host loops call this once per frame, after the frame's render
+   walk (phase 4's list 5) and before phase 6, which is the ROM's order.
+
+   WHAT IT REACHES, per block (the stores to data_0209d4a8 in src/ and the
+   table each one points at):
+     the Stage (Stage::InitResources:284, data_0209f3c4 -> data_02092188):
+       word 1 is Stage::GraphCallback1, whose whole body is Particle::RenderAll
+       and `return 1`: the level's particle submission. The level loop used to
+       make that call by hand at this same point (hal/particle_bridges.cpp's
+       old port_particle_render); the ROM's own dispatch makes it now.
+     the title (dScDSMT_c), scene 360 (dScMB_c), scene 6 (dScEntry_c) and the
+       minigames' shared block: word 1 is a `return 1` body in each (hal/
+       scene_boot.cpp's RUNG G2 block has the minigame census: no ov006 scene
+       overrides its slot 22). Nothing is drawn.
+   The answer is discarded, as func_02019404 discards it.
+
+   THE EXIT LINE counts the calls, the ones that found a block, and every block
+   table seen with its word 1, so a run's log names each body phase 5 entered
+   (resolve the words against walk_window.map). */
+void func_02019404(void);
+extern unsigned char data_0209d4a8[4];   /* hal/w8a_stage_storage.cpp */
+
+static unsigned g_p5_calls, g_p5_block;
+static void    *g_p5_vt[8];
+static unsigned g_p5_vt_n[8];
+static unsigned g_p5_vt_seen;
+
+static void phase5_report(void)
+{
+    std::fprintf(stderr, "[k2render] phase 5 func_02019404: %u call(s), %u "
+                         "with a graphics block current, %u block table(s):",
+                 g_p5_calls, g_p5_block, g_p5_vt_seen);
+    for (unsigned i = 0; i < g_p5_vt_seen; ++i)
+        std::fprintf(stderr, " vt %p word1 %p x%u", g_p5_vt[i],
+                     ((void **)g_p5_vt[i])[1], g_p5_vt_n[i]);
+    std::fprintf(stderr, "\n");
+    std::fflush(stderr);
+}
+
+void port_frame_phase5(void)
+{
+    if (!g_p5_calls)
+        std::atexit(phase5_report);
+    ++g_p5_calls;
+    if (void *blk = *(void **)data_0209d4a8) {
+        ++g_p5_block;
+        void *vt = *(void **)blk;
+        unsigned i = 0;
+        while (i < g_p5_vt_seen && g_p5_vt[i] != vt) ++i;
+        if (i == g_p5_vt_seen && g_p5_vt_seen < 8)
+            g_p5_vt[g_p5_vt_seen++] = vt;
+        if (i < g_p5_vt_seen) ++g_p5_vt_n[i];
+    }
+    data_0209d50c = 5;
+    func_02019404();
+}
+
 /* THE ROM'S PHASE-6 BODY, at the host loop's frame boundary.
    func_020197b8.c:49-50 is `data_0209d50c = 6; data_020a0db0 += 1;`. The first
    statement is this port's for the first time. The second is already this

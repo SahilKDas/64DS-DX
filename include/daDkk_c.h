@@ -90,15 +90,22 @@ struct daDkk_c : daDsnBase_c {
        InitResources, the first declared virtual that is now neither inline nor
        pure. That is a member src/actors/daDkk_c.cpp defines, so that TU is the
        one that emits _ZTV7daDkk_c. */
-    virtual ~daDkk_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDkk_c() {}   /* no slot */
+#else
+    virtual ~daDkk_c() {}   /* D1 and D0 */
+#endif
 
     int InitResources();
     int Behavior();
     int OnAimedAtWithEgg();
-
-    int func_ov025_021119a4();
-    void func_ov025_021119f4();
-    void func_ov025_02111a84();
 
     /* Leaf operator new until #2570 merges fBase_c's own. unsigned long, not
        unsigned int: mwccarm 2004/b56 mangles the two differently and the

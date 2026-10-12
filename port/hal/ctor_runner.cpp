@@ -183,15 +183,17 @@
  * block sets out: a hand-built mangling that is one letter off is a directive
  * that never fires and never says so.
  *
- * NOTHING IN THIS BUILD DISPATCHES WHAT C1d WRITES. data_0209f3c4's first word
- * becomes &data_02092188 (the Stage's graph-callback table,
- * hal/arm9_tables_link100.cpp section 3, all four slots seated). The only
- * reader of that vptr is func_02019144, through data_0209d4a8 -- and
- * data_0209d4a8 is null in this port: hal/w8a_stage_storage.cpp hosts it and
- * says nothing seats it, src/func_02019144.c guards the dispatch with
- * `if (p != 0)`, and the two TUs that do write it (_ZN7dScMB_c13InitResourcesEv,
- * _ZN11dScMgBase_c9Virtual84Ev) write a DIFFERENT object. data_0209f43c gets the ROM's
- * own 4:3 seed (0x1555, 0xe38, 0x1000, 0x01388000) at Entry, which
+ * WHAT C1d WRITES IS DISPATCHED ON EVERY LEVEL FRAME NOW (run linkfull, lane
+ * K7GC2). data_0209f3c4's first word becomes &data_02092188 (the Stage's
+ * graph-callback table, hal/arm9_tables_link100.cpp section 3, all four slots
+ * seated and the table registered with the frame beat). Its readers go through
+ * data_0209d4a8, which hal/level_boot.cpp points at data_0209f3c4 on every Stage
+ * build, at Stage::InitResources:284's point, and clears at
+ * Stage::CleanupResources:77's: the beat at func_02019144's head calls slot 2,
+ * Stage::GraphCallback2 (the minimap's BG3 affine), and frame phase 2
+ * (func_02019390) calls slot 0. When this rung landed nothing seated that
+ * pointer, so the vptr stored here had no reader yet. data_0209f43c gets the
+ * ROM's own 4:3 seed (0x1555, 0xe38, 0x1000, 0x01388000) at Entry, which
  * Camera::Render re-seeds through the same Clipper::Func_020156DC on every
  * frame anyway -- so the seed is the ROM's own value at the ROM's own point,
  * not a new one.
@@ -290,10 +292,16 @@
  * without giving data_0209f5d0 a real vptr first." This rung is that. The vptr
  * is now data_0208eacc, whose slot 5 is hal/scene_boot.cpp's named l2_vt_trap
  * rather than address zero, so the worst case moved from an access violation
- * to a line of output. The branch itself is still unreachable for its own
- * separate reason -- every call site is behind `data_0209f1e0 != 0` and that
- * byte's only writer, src/func_02023498.c, is not in the link -- and that half
- * of the paragraph is kept where it stands.
+ * to a line of output. The branch itself was unreachable for its own separate
+ * reason -- every call site is behind `data_0209f1e0 != 0` and that byte's
+ * only writer, src/func_02023498.c, was not in the link. It is now (run
+ * linkfull, lane LOOPIN2: phase 0x17 of both host loops), so the soft-reset
+ * combo on a level enters the branch for two frames -- SetForwardTime on this
+ * object, then IsAtEnd -- before the level loop answers the reset by starting
+ * the game again at the title (hal/method_faces.cpp's face banner and
+ * tests/walk_window.cpp's phase-0x17 block carry the account). This object's
+ * constructed vptr is what makes those two calls land on bodies rather than
+ * on address zero.
  *
  * hal/fader_wipes.cpp is NOT this lane's file in the sense that its
  * placement-new is now the pre-Entry value rather than the final one. Lane
@@ -386,6 +394,7 @@ void __sinit_020750b8(void);   /* C1b */
 void __sinit_020750ec(void);   /* C1b */
 void __sinit_0207511c(void);   /* C1b */
 void __sinit_02075150(void);
+void __sinit_02075154(void);   /* K1LOOP: the five list heads */
 
 /* The two arm9 fader statics rung C1c's initialiser constructs, hosted by
    hal/auto_bss.cpp (data_0209f5d0, 12 bytes at the ROM span) and by
@@ -681,7 +690,14 @@ void ctor_face(const char *name, const char *why)
     }
 
 CTOR_FACE(02074e0c, "func_0201aa18 -> func_0201aad4 -> func_0201aac8 is an argument-dropping tail-call veneer chain into func_02059ba0; a PORT_HOST_ABI question, not a linkage one")
-CTOR_FACE(02075154, "data_02099f48..data_02099f70 are hosted nowhere -- five mwcc pointer-to-member pairs -- and hal/actor_registry.cpp:412 already seats the same five list callbacks with host wrappers, LATER in the boot, so linking this would write the heads at Entry and have every word overwritten")
+/* __sinit_02075154 IS TAKEN (run linkfull, lane K1LOOP). Its face read
+   "data_02099f48..data_02099f70 are hosted nowhere -- five mwcc
+   pointer-to-member pairs -- and hal/actor_registry.cpp already seats the same
+   five list callbacks with host wrappers, LATER in the boot". Both halves are
+   gone: unmatched/func_02043fdc_hostcopy.cpp hosts the five records (each
+   {the list's __fastcall face, 0}, the pair PMF3 proved), and
+   port_actor_lists_seat only checks the heads now. The ROM's body is the last
+   word of the table and fills the five list heads func_02044120 walks. */
 
 #undef CTOR_FACE
 
@@ -723,7 +739,7 @@ const CtorWord kCtorTable[] = {
     { 0x020750ec, __sinit_020750ec, "__sinit_020750ec", 1 },
     { 0x0207511c, __sinit_0207511c, "__sinit_0207511c", 1 },
     { 0x02075150, __sinit_02075150,   "__sinit_02075150", 1 },
-    { 0x02075154, ctor_face_02075154, "__sinit_02075154", 0 },
+    { 0x02075154, __sinit_02075154,   "__sinit_02075154", 1 },
 };
 const unsigned kCtorWords = sizeof kCtorTable / sizeof kCtorTable[0];
 

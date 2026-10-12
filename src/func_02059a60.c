@@ -1,5 +1,15 @@
 typedef unsigned long long u64;
 
+#ifdef _MSC_VER
+/* The alarm record is the ROM's: every 64-bit field sits on a 4-byte
+ * boundary (the fire time at +0x0c, the period at +0x1c, the start at +0x24).
+ * MSVC aligns a 64-bit member to eight, which moved the fire time to +0x10,
+ * so the insert wrote the tick's high word over +0x14, the prev link that
+ * func_02059950 (the cancel) reads: 0 until the tick passes 2^32 (8202 s of
+ * DS time), then 1, and the next cancel wrote through it. Packing to four
+ * keeps the ROM's layout; mwccarm never sees this arm. */
+#pragma pack(push, 4)
+#endif
 struct Node {
     char pad0[0xc];
     u64 key;        /* 0x0c */
@@ -8,6 +18,9 @@ struct Node {
     u64 step;       /* 0x1c */
     u64 base;       /* 0x24 */
 };
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 extern u64 func_02059650(void);
 extern void func_02059c18(struct Node *p);

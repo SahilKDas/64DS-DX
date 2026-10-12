@@ -999,8 +999,19 @@ static int __fastcall mpg_pdes(void *s, void *)
    store write -- MotherPenguin's D1/D0 never overwrite the vptr with a
    placeholder (D0 stores _ZTV10daPgMthr_c, its OWN table), so nothing to
    redo here that D0's real body does not already do itself. */
-/* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
-   the transcribed thunk that stood here (mpg_d1) spelled the same chain by hand. */
+/* SLOT 16 IS THIS CLASS'S OWN D1. The ROM word 16 of 0x021139bc is 0x02111848,
+   daPgMthr_c's D1: its own vptr, then dBgCh_Actr +0x1a8, dCcAc_c +0x174,
+   ShadowModel +0x14c, TextureSequence +0x138, ModelAnim +0xd4, then dActor_c's
+   D2 (read out of overlay_0018.bin). The slot used to seat hal_cppd1_SkiLift,
+   the ski lift's D1 at 0x021111a0 (dBgW_KcMbg +0x124, Model +0xd4), a leftover
+   of the ccm name shift: the mother penguin's collision entry, shadow and
+   texture sequence were never destroyed. The body is include/daPgMthr_c.h's
+   destructor (??1daPgMthr_c@@QAE@XZ, emitted by hal/dtor_forwarders_gen.cpp,
+   the same body slot 17's D0 runs), reached through the face
+   hal/actorport_dtor_bridge.cpp aliases onto it. */
+extern "C" void __fastcall actorport_d16t_daPgMthr_c(void *, void *);
+static int __fastcall mpg_d1(void *s, void *e)
+{ actorport_d16t_daPgMthr_c(s, e); return (int)(size_t)s; }
 static int __fastcall mpg_d0(void *s, void *)
 { return (int)(size_t)_ZN10daPgMthr_cD0Ev((int *)s); }
 
@@ -1023,7 +1034,7 @@ extern "C" void hal_fill_mother_penguin_vtable(void)
     vt[6]  = (void *)mpg_behavior;
     vt[9]  = (void *)mpg_render;
     vt[12] = (void *)mpg_pdes;   /* MotherPenguin's own OnPendingDestroy, NOT the shared default */
-    vt[16] = (void *)PORT_D16(hal_cppd1_SkiLift);
+    vt[16] = (void *)PORT_D16(mpg_d1);
     vt[17] = (void *)mpg_d0;
     /* no slot 31: MotherPenguin is Actor-derived, not Platform-derived -- 31 slots total */
 }

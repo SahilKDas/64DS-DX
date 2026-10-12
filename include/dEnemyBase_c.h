@@ -56,22 +56,16 @@ struct dEnemyBase_c : dActor_c {
     /* 0x100 -- 28 subclasses. Frames spent in the current mState: the state
        handlers zero it the instant they change mState, and some count it up
        while others count it down through DecIfAbove0_Short. Derived
-       independently by two passes over disjoint subclass sets (daMoray_c,
-       daSnowman_c, daShark_c, PiranhaPlant, FirePiranhaPlantBig, daKrb_c) and
-       (daBtn_c) -- see notes/enemy-provenance.md and
+       independently by two passes over disjoint subclass sets (Unagi,
+       MrBlizzard, Shark, PiranhaPlant, FirePiranhaPlantBig, daKrb_c) and
+       (Whomp) -- see notes/enemy-provenance.md and
        notes/enemy-leaf-provenance.md. Named mStateTimer, not mTimer, because
-       daJango_c already owns an unrelated mTimer and the shorter name silently
+       Klepto already owns an unrelated mTimer and the shorter name silently
        rebinds it. */
     s16 mStateTimer;              /* 0x100 */
     u16 mDeathTimer;              /* 0x102 */
     u16 unk_104;                  /* 0x104 -- 5 subclasses */
-    /* Written by IsGoingOffCliff. 0: on the ground and the downward probe
-       found an acceptable floor (also 0 when not on the ground; no probe
-       runs). 1: no floor within the probe, the hit is at least fix2 below
-       the actor, or (when a5 is false) the floor belongs to a collision
-       object. 2: the floor is steeper than angle a3 (normal.y < cos a3).
-       AngleAwayFromWallOrCliff treats any non-zero value as a cliff edge. */
-    u8 mCliffState;               /* 0x106 */
+    u8 unk_106;                   /* 0x106 */
     /* 0x107 -- set while Yoshi has this enemy in his mouth. Both matched
        OnYoshiTryEat overrides refuse the bite while it is non-zero (BobOmb
        returns mEatenByYoshi == 0; Rabbit returns 0 when it is set), Rabbit's
@@ -93,7 +87,18 @@ struct dEnemyBase_c : dActor_c {
        reasoning as the note on Model(); see include/Model.h. */
     dEnemyBase_c();
 
-    virtual ~dEnemyBase_c();                   /* slots 0 (D1), 1 (D0) */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dEnemyBase_c();   /* no slot */
+#else
+    virtual ~dEnemyBase_c();   /* D1 and D0 */
+#endif
 
     /* dEnemyBase_c's own copy of dActor_c's inline operator delete, and it MUST STAY even
        though dEnemyBase_c now derives from dActor_c. mwcc inlines the operator only when it

@@ -1252,6 +1252,15 @@ one-command reproducer instead:
 
     SM64DS_SCENE=374 SM64DS_SCENE_FRAMES=2 SM64DS_LOADFILE_TRACE=1
 
+RESOLVED SINCE (run linkfull, lanes S4FILE and FILEB). The host LoadFile, its
+per-handle table, SM64DS_LOADFILE_TRACE and port_loadfile_pin_persistent are
+retired: the game targets link the ROM's own LoadFile, which hands out a fresh
+block per call exactly as described above, and the ROM's own
+SharedFilePtr::Load. The KCL capture now reads the level collider's own
+kclFile, and nothing pins the message bank (nothing on the cartridge frees it).
+The reproducer above names a variable that no longer exists; the history is
+kept as it was written.
+
 13d. THE SPRITES: THE 1D/2D GAP IS REAL, LIVE, AND SMALL HERE
 
 DISPCNT_A bit 4 is CLEAR, which is 2D tile mapping, and both engine-A readers

@@ -176,86 +176,34 @@ MMBLK(".dsstate$mmblk0003", data_0209f3e8, 0x24);   /* 9 Obj* -- the star marker
 
 #undef MMBLK
 
-// ---- THE MINIMAP'S AFFINE, per frame ----------------------------------------
+// ---- THE MINIMAP'S AFFINE, per frame: THE ROM'S OWN BODY NOW ----------------
 //
 // BG3-sub in BG mode 3 is an EXTENDED AFFINE layer and the minimap is drawn on
 // it, so every one of its pixels goes through BG3PA..BG3PD and the BG3X/BG3Y
-// reference point before it picks a map entry. The port seeded those to the
-// identity once at boot (hal/sub_screen.cpp) because nothing was writing them
-// per frame, and the minimap drew at exactly 1:1 instead of the level's own
-// scale. That is the unscaled minimap.
+// reference point. Minimap::Behavior ends in UpdateMinimap(&self->f50, ...),
+// which copies the 2x2 matrix to data_0209f3c8 and the four scalars to
+// data_0209f3c4 + 0x14..0x20 (inside data_0209f3c8's bytes, which is why the
+// run above is contiguous): +0x00 the matrix, four 20.12 words; +0x10 x, y,
+// the map-space point to put under the reference; +0x18 cx, cy, that point
+// less (128, 96).
 //
-// The numbers were never missing. Minimap::Behavior ends in
+// THE BEAT THAT SPENDS THEM IS THE ROM'S. Stage::InitResources makes
+// &data_0209f3c4 the current graphics block (data_0209d4a8; the port's copy of
+// that statement is in hal/level_boot.cpp since lane K7GC2), whose vptr is
+// data_02092188 (__sinit_02074e84), and func_02019144's head calls that
+// block's slot 2: Stage::GraphCallback2, G2x::SetBGyAffine(REG_DB_BG3PA,
+// self + 4, the four scalars). The port stood a hand copy of that body in
+// here, port_minimap_affine_update, called from hal/sub_screen.cpp, because
+// the old src took the address of an extern register MSVC could not place at
+// 0x04001030. RETIRED (run linkfull lanes SEATS3, K7GC2): main spells it as
+// the literal pointer now, so the matched TU runs from the Stage table's slot
+// 2 (hal/arm9_tables_link100.cpp) through the port's frame beat, and the hand
+// copy, its call and its SM64DS_MINIMAP_TRACE instrument went together.
 //
-//     UpdateMinimap(&self->f50, self->f60, self->f64,
-//                   self->f60 - 0x80, self->f64 - 0x60)
-//
-// and UpdateMinimap (matched) copies that sixteen-byte descriptor to
-// data_0209f3c8 and the four scalars to data_0209f3c4 + 0x14..0x20, which land
-// inside data_0209f3c8's own bytes because the run above is contiguous:
-//
-//     +0x00  the 2x2 matrix, four 20.12 words
-//     +0x10  x, y     the map-space point to put under the reference
-//     +0x18  cx, cy   that point less (128, 96), the bottom screen's centre
-//
-// WHAT WAS MISSING IS THE BEAT. Stage::InitResources stores &data_0209f3c4 into
-// data_0209d4a8 -- the current scene's graphics block -- and func_02019144, the
-// per-frame graphics beat, opens by calling that block's vtable slot 2. For the
-// Stage that slot is Stage::GraphCallback2, whose entire body is
-//
-//     G2x::SetBGyAffine(&reg_G2S_DB_BG3PA, self + 4,
-//                       self->unk14, self->unk18, self->unk1c, self->unk20);
-//     return 1;
-//
-// Both of those are MATCHED and in src/. G2x::SetBGyAffine -- which is where
-// all the arithmetic is, the 8.8 narrowing and the reference point that solves
-// (x, y) onto the screen centre -- is already linked (slice gate 10) and is
-// what this calls. Stage::GraphCallback2 itself is NOT linked, and cannot be:
-// it takes the address of reg_G2S_DB_BG3PA, and a host build has no way to put
-// a global at the absolute address 0x04001030 where the sub engine's BG3PA is
-// mapped. So the six-argument forward is what the seam below stands in for,
-// and the forward is all Stage::GraphCallback2 is.
-//
-// Neither is the dispatch hosted: the port does not run func_02019144 (its tail
-// is the layer-mask publish and the OAM upload, which hal/sub_screen.cpp does
-// its own way) and nothing seats data_0209d4a8, so the ROM's "is the Stage's
-// block current" test has nothing to read. The block answers the same question
-// itself. It is zeroed storage until Minimap::Behavior calls UpdateMinimap, and
-// an all-zero matrix is degenerate anyway -- every screen pixel would map to
-// map pixel (0,0) and the layer would sample one tile -- so until the minimap
-// has spoken, leave the identity boot seeded.
-extern "C" {
-struct PortMtx2x2 { int m[4]; };
-void _ZN3G2x12SetBGyAffineEPVtP9Matrix2x2iiii(volatile unsigned short *reg,
-                                              PortMtx2x2 *m,
-                                              int a, int b, int c, int d);
-}
-
-extern "C" void port_minimap_affine_update(void)
-{
-    PortMtx2x2 *const m = (PortMtx2x2 *)data_0209f3c8;
-    const int *const s = (const int *)(data_0209f3c8 + 0x10);
-
-    if ((m->m[0] | m->m[1] | m->m[2] | m->m[3]) == 0)
-        return;
-
-    /* BG3PA of engine B. Stage::GraphCallback2 spells it &reg_G2S_DB_BG3PA. */
-    _ZN3G2x12SetBGyAffineEPVtP9Matrix2x2iiii(
-        (volatile unsigned short *)0x04001030, m, s[0], s[1], s[2], s[3]);
-
-    /* SM64DS_MINIMAP_TRACE=1: the matrix and the reference point it solved,
-       once a second, for checking the scale is the level's rather than 1:1. */
-    static int trace = -1, frame;
-    if (trace < 0) trace = std::getenv("SM64DS_MINIMAP_TRACE") != 0;
-    if (trace && (frame++ % 30) == 0)
-        std::fprintf(stderr, "[mmaf] m=(%d,%d,%d,%d) at=(%d,%d) centre=(%d,%d) "
-                     "PA|PB=%08x PC|PD=%08x X=%d Y=%d\n",
-                     m->m[0], m->m[1], m->m[2], m->m[3], s[0], s[1], s[2], s[3],
-                     *(volatile unsigned *)0x04001030,
-                     *(volatile unsigned *)0x04001034,
-                     *(volatile int *)0x04001038,
-                     *(volatile int *)0x0400103c);
-}
+// ONE THING THE HAND COPY DID THAT THE ROM DOES NOT: it skipped the write while
+// the matrix was still all zero, before the minimap's first UpdateMinimap, to
+// keep hal/sub_screen.cpp's identity seed on screen. The ROM's body writes
+// whatever the block holds, and so does the port now.
 
 extern "C" {
 DSSTATE_BEGIN
@@ -267,14 +215,26 @@ unsigned data_020a60a4;               /* GXS ext-palette: the saved VRAM bank */
 
 /* The stylus half of the Ctrl block. On the DS these are bytes 0x10 and 0x11
    of each 0x18-byte record and the readers index them [player * 0x18], which
-   is why they are sized for the whole four-record block rather than one byte.
+   is why they are sized for the whole record block rather than one byte.
    The port keeps them as separate storage the way hal/actor_vtables.cpp
-   already does for data_0209f4ac / data_0209f4ae. Nothing on the host writes
-   them: the host stylus goes to data_020a0de8, so the recentre-the-minimap
-   branch Minimap::Behavior gates on data_0209f4ac stays shut and these are
-   never read for a value that matters. */
-unsigned char data_0209f4a8[0x60];
-unsigned char data_0209f4a9[0x60];
+   already does for data_0209f4ac / data_0209f4ae.
+
+   THEY ARE WRITTEN NOW, and the paragraph that used to stand here said they
+   never were: "the recentre-the-minimap branch Minimap::Behavior gates on
+   data_0209f4ac stays shut and these are never read for a value that
+   matters". Both halves were wrong on a course. The branch is not shut --
+   data_0209f4ac is fanned out of the Ctrl block every frame, so a touch opens
+   it -- and what it reads these two for is where to put the touch marker:
+   `SetSubBg2Offset(0x100 - x, 0x80 - y)`. Stuck at zero they put the marker in
+   the map's top-left corner whatever point the player touched, which is the
+   defect the owner reported as "the target". The Ctrl fan-out in
+   hal/stage_frame.cpp and tests/walk_window.cpp fills them from +0x10 and
+   +0x11 now, beside the flag at +0x14 it always filled.
+
+   SIZED FOR EVERY SEAT, because that fan-out walks one record per player and
+   a sixteen-wide session would have run off a four-record array. */
+unsigned char data_0209f4a8[0x18 * 16];
+unsigned char data_0209f4a9[0x18 * 16];
 DSSTATE_END
 }
 
@@ -816,12 +776,140 @@ static void port_adv_coin_count_top(HUD *self, int dy)
                                              2 + dy, -1, 1, 0);
 }
 
+/* src/_ZN3HUD15RenderTimeTimerEv.cpp, verbatim except every y carries dy.
+ *
+ * THE COURSE TIMER MOVES DOWN WITH THE COINS. The cartridge draws the timer
+ * one row under the coin count: coin digits at y 2, timer digits at y 0x16 and
+ * its TIME / ' / " glyphs at y 0x1e, all on the top-right. This arm moved the
+ * coin count down by coin_dy to make room for the star count on the top row,
+ * which put the coins exactly on the timer's rows (digits at 2 + 18 = 20
+ * against the timer's 22), and the coins, drawn first, took the sprite
+ * priority tie: the timer sat behind them. Shifting the timer by the same
+ * coin_dy keeps the ROM's own coin-to-timer spacing (0x16 - 2 = 20 rows) under
+ * the moved coin row, so the three rows stack the way the cartridge stacks its
+ * two. The x positions, glyphs, digit split, language test and the 99'59"99
+ * cap are the ROM's; the one guard, data_ov002_02111184, is the ROM's "a timer
+ * is running on this course" byte that the player's floor check sets on the
+ * slide's start floor (src/actors/Player.cpp:2606-2616).
+ *
+ * SM64DS_TIMER_TRACE=1 prints the Timer's raw GetTime and the time the HUD
+ * shows, once every 30 calls (one second of ticks at the course divider), so
+ * the rate can be read against the cartridge's: 33514000 / 64 timer counts a
+ * second (the ROM's own divisor below). */
+extern "C" {
+extern unsigned char data_ov002_02111184;  /* a timer is on this course    */
+extern int data_0209d4c8;                  /* the course Timer object      */
+extern char data_ov002_0210ce80;           /* TIME glyph, languages 2/4/5  */
+extern char _ZN3OAM4TIMEE;                 /* TIME glyph                   */
+extern char _ZN3OAM7MINUTESE;              /* the ' glyph                  */
+extern char data_ov002_0210c6c0;           /* the " glyph                  */
+extern unsigned long long _ZN5Timer7GetTimeEv(void *);
+int GetOwnerLanguage(void);
+}
+static void port_adv_time_timer_top(int dy)
+{
+    if (data_ov002_02111184 == 0)
+        return;
+
+    const unsigned long long raw = _ZN5Timer7GetTimeEv(&data_0209d4c8);
+    const unsigned long long t = raw << 6;
+    unsigned long long sec = t / 33514000;
+    unsigned long long centi = t / 33514 % 1000 / 10;
+    unsigned long long min = sec / 60;
+    sec = sec % 60;
+    if (min >= 100) {
+        min = 99;
+        sec = 59;
+        centi = 99;
+    }
+
+    {
+        static int trace = -1, calls;
+        if (trace < 0) trace = std::getenv("SM64DS_TIMER_TRACE") != 0;
+        if (trace && (calls++ % 30) == 0) {
+            std::fprintf(stderr, "[timer] call %d GetTime %llu shows %02u'%02u\"%02u\n",
+                         calls - 1, raw, (unsigned)min, (unsigned)sec,
+                         (unsigned)centi);
+            std::fflush(stderr);
+        }
+    }
+
+    const int lang = GetOwnerLanguage();
+    void *label = (lang == 5 || lang == 4 || lang == 2)
+                      ? (void *)&data_ov002_0210ce80 : (void *)&_ZN3OAM4TIMEE;
+    if (min / 10 != 0) {
+        _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, label, 0xa4, 0x1e + dy, -1, 1,
+                                                    0x1000, 0x1000, 0, -1);
+        _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, func_020aba70[min / 10], 0xb8,
+                                                 0x16 + dy, -1, 1, 0);
+    } else {
+        _ZN3OAM6RenderEbP7OamAttriiii5Fix12IiES3_ii(0, label, 0xac, 0x1e + dy, -1, 1,
+                                                    0x1000, 0x1000, 0, -1);
+    }
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, func_020aba70[min % 10], 0xc0, 0x16 + dy, -1, 1, 0);
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, &_ZN3OAM7MINUTESE, 0xc4, 0x1e + dy, -1, 1, 0);
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, func_020aba70[sec / 10], 0xcf, 0x16 + dy, -1, 1, 0);
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, func_020aba70[sec % 10], 0xd7, 0x16 + dy, -1, 1, 0);
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, &data_ov002_0210c6c0, 0xdb, 0x1e + dy, -1, 1, 0);
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, func_020aba70[centi / 10], 0xe8, 0x16 + dy, -1, 1, 0);
+    _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, func_020aba70[centi % 10], 0xf0, 0x16 + dy, -1, 1, 0);
+}
+
+/* THE RED-COIN AND SILVER-STAR ROWS, MOVED TO THE BOTTOM-LEFT (Tango, forum
+ * thread "Red coin HUD icons and Silver Stars HUD icons overlap with the life
+ * counter", 0.5.0). A LAYOUT CHOICE OF THE PORT'S, NOT THE CARTRIDGE'S.
+ *
+ * The cartridge draws both rows at the top-left of the top screen, x = 0x10,
+ * y = 0xa, with the red coins dropping to y = 0x1c when silver stars hold the
+ * row (src/_ZN3HUD14RenderRedCoinsEv.cpp, src/_ZN3HUD17RenderSilverStarsEv.cpp),
+ * and it can, because its life counter is on the BOTTOM screen. This arm put
+ * the life counter on the top screen at that same corner (xBase 0x10, y 0xa,
+ * above), so both rows landed on it. Tango's placement: silver stars at the
+ * bottom-left, red coins above them, and the two swap so the kind collected
+ * FIRST is on the bottom row. The rows keep the ROM's own sprites, x start and
+ * x step (0xb red, 0x11 silver) and the ROM's row spacing (0x1c - 0xa = 0x12),
+ * mirrored to the bottom edge: the bottom row's top at 0xa6 leaves the same 10
+ * rows under a 16-row sprite that 0xa leaves above one. Counts are the ROM's
+ * (data_0209f30c red, data_0209f310 silver, per player).
+ *
+ * SM64DS_ADV_RS_BOTTOM=0 draws the two rows through the ROM's own leaves again
+ * (top-left, over the lives), on the same exe. */
+extern "C" {
+extern signed char data_0209f30c[];         /* per-player red-coin counts     */
+extern char data_ov002_0210c6b8;           /* the red-coin HUD sprite        */
+extern int data_ov001_020abac8[];          /* the silver-star HUD sprite     */
+}
+static void port_adv_red_silver_bottom(void)
+{
+    static int first;                /* 0 none yet, 1 red coins, 2 silver stars */
+    const int idx = data_0209f250;
+    const int red = (unsigned char)data_0209f30c[idx];
+    const int silver = (unsigned short)(short)data_0209f310[idx];
+    if (!red && !silver)
+        first = 0;
+    else if (!first)
+        first = silver ? 2 : 1;      /* both on one frame: silver below */
+    const int bottom = 0xa6, above = 0xa6 - 0x12;
+    const int red_y = (first == 1 || !silver) ? bottom : above;
+    const int silver_y = (first == 2 || !red) ? bottom : above;
+    for (int i = 0; i < red; i++)
+        _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, &data_ov002_0210c6b8,
+                                                 0x10 + i * 0xb, red_y, -1, 1, 0);
+    for (int i = 0; i < silver; i++)
+        _ZN3OAM6RenderEbP7OamAttriiiiP9Matrix2x2(0, data_ov001_020abac8,
+                                                 0x10 + i * 0x11, silver_y, -1, 1,
+                                                 0);
+}
+
 /* Returns 1 when it has drawn the whole adventure arm itself and the caller
    must NOT also run HUD::Render; 0 means "not my case, run the ROM's". */
 static int port_adv_hud_render_stars_lives_on_top(HUD *self)
 {
     static int want = -1, star_dy = 0, coin_dy = 18, life_dy = 0;
+    static int rs_bottom = 1;
     if (want < 0) {
+        const char *rs = std::getenv("SM64DS_ADV_RS_BOTTOM");
+        rs_bottom = (rs && rs[0] == '0') ? 0 : 1;
         const char *e = std::getenv("SM64DS_ADV_HUD_TOP");
         want = (e && e[0] == '0') ? 0 : 1;
         e = std::getenv("SM64DS_ADV_STAR_TOP_Y");
@@ -849,9 +937,32 @@ static int port_adv_hud_render_stars_lives_on_top(HUD *self)
         _ZN3HUD17RenderHealthMeterEv((void *)self);
         if (_ZN5Event6GetBitEj(0x1d) == 0) {
             port_adv_coin_count_top(self, coin_dy);
-            _ZN3HUD14RenderRedCoinsEv((void *)self);
-            _ZN3HUD17RenderSilverStarsEv((void *)self);
-            _ZN3HUD15RenderTimeTimerEv((void *)self);
+            if (rs_bottom) {
+                port_adv_red_silver_bottom();
+            } else {
+                _ZN3HUD14RenderRedCoinsEv((void *)self);
+                _ZN3HUD17RenderSilverStarsEv((void *)self);
+            }
+            port_adv_time_timer_top(coin_dy);
+        }
+        /* SM64DS_BOUNCE_ARROWS=1 RAISES THE ROM'S OWN CUE, and raises nothing
+           else. data_0209f284 is the word HUD::Render reads to decide whether
+           the "look at the other screen" arrows are drawn this frame; the game
+           sets it on a map event (a warp pipe, a sign, a boss gate: Player.cpp
+           and func_ov001_020aa6e4 among others) and clears it a few seconds
+           later. On a headless run nothing raises it, so the cue cannot be
+           MEASURED -- and the improved map moves those arrows, so it has to
+           be. Setting the game's own word is the cheapest honest way to put the
+           cue on screen: from here on it is the ROM's code that decides the
+           form, the position, the bounce and the sound, exactly as it does in
+           play. Unset, this is not compiled out but it does nothing at all. */
+        {
+            static int force = -1;
+            if (force < 0) {
+                const char *e = std::getenv("SM64DS_BOUNCE_ARROWS");
+                force = (e && *e && *e != '0') ? 1 : 0;
+            }
+            if (force) data_0209f284 = 1;
         }
         if (data_0209f284 != 0)
             _ZN5Stage20RenderBouncingArrowsEv();

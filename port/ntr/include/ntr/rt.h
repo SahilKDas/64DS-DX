@@ -80,12 +80,36 @@ bool rt_hblank_armed();
 // Call the registered mask-2 handler. Undefined unless rt_hblank_armed().
 void rt_hblank_dispatch();
 
+// DS TIMER 0 (run hunt2, lane HUD2). The ROM programs it once at boot
+// (src/func_02059788.c: TM0CNT_L = 0, TM0CNT_H = 0xc1 = run, IRQ on overflow,
+// prescaler F/64) and reads it as the OS tick (src/func_02059650.c: the
+// counter at 0x04000100 plus the overflow count its mask-8 handler keeps).
+// rt_timer0_advance moves it across `vblanks` DS frames of 560190 bus cycles
+// (263 lines x 2130) and raises the overflow interrupt the way the DS does.
+// The frame loops call it once per game tick with the ROM's own vblanks-per-
+// tick word (data_0208ee44), so a course timer counts DS time.
+// SM64DS_TIMER0_OFF=1 leaves the timer frozen (the pre-fix behaviour).
+void rt_timer0_advance(unsigned vblanks);
+bool rt_timer0_irq_gates_open();   // IE bit 3, IME, CPSR I (runtime.cpp)
+void rt_timer0_dispatch();         // the vector at bit 3 (runtime.cpp)
+
 // One frame of display scan-out: walk VCOUNT across all 263 lines and raise
 // the HBlank edge on each. rt_run does this itself between the game fiber
 // yielding and the frame hook; the walk_window level loop and the scene loop
 // run their own frame clocks and call this directly, at the same point in the
 // frame -- after the game's behaviour work, before the host rasterises.
 void rt_scanout_frame();
+
+// THE WINDOW REGISTERS, LINE BY LINE (run hunt1, lane HUNTHW). A mask-2 handler
+// (the ROM's dWipe_c, func_0202f2c4) rewrites WIN0H / WIN1H on every HBlank, so
+// the 192 visible lines each have their own horizontal window edges. The last
+// rt_scanout_frame recorded them: rows[y] is the WIN1H:WIN0H word the 2D unit
+// had while drawing line y (line 0 = the value when the scan began, line y + 1 =
+// the value after the HBlank at VCOUNT y). Returns false, leaving *rows alone,
+// on a frame on which no handler ran on lines 0..190: the registers were then
+// constant for the whole frame and the one-rectangle read is exact. engine 0 is
+// the main engine (0x04000040), 1 the sub engine (0x04001040).
+bool rt_window_rows(int engine, const uint32_t **rows);
 
 // The DS's power-on interrupt state (IME set, IE carrying VBlank). It stands
 // in for src/func_0201a054.c, the game's own IRQ init, which is in no slice.

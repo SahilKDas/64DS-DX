@@ -43,6 +43,36 @@
  *
  * C, NOT C++, ON PURPOSE: these are the flat Itanium-mangled names the ROM's
  * own tables hold, and a .c TU emits them with no decoration of its own.
+ *
+ * PARTIAL RETIREMENT (run linkfull wave 23, lane MODELDTOR1, batch W23-1).
+ * Six of the fourteen bodies below retired 2026-09-23: include/Model.h and
+ * its four siblings already carry the _MSC_VER Destructor1/Destructor0 pair
+ * item 6 above asks for, and six src/ TUs already define the ROM's flat name
+ * under a #ifdef _MSC_VER arm (thiz->~X() through the one host symbol, then
+ * the class's own operator delete) -- port/slice_w23_modeldtor.txt names
+ * them. ModelBase's D2 body stays here: every surviving body below still
+ * calls it from this same TU, and it is not this batch's row to move.
+ * ShadowModel's D0 stays host-copied too (no _MSC_VER arm written for it
+ * yet, so item 6 is still open for that one class). The remaining eight
+ * bodies keep this file alive until the rest of item 6 is answered the same
+ * way.
+ *
+ * AND SHADOWMODEL'S D0 (run linkfull wave 27, lane V3B). Item 6 is answered
+ * for that class the same way: include/ShadowModel.h carries the pair, and
+ * src/_ZN11ShadowModelD0Ev.cpp's _MSC_VER arm now defines the flat D0 as the
+ * one host destructor src/_ZN11ShadowModelD1Ev.cpp defines (the unlink, then
+ * ~ModelBase) followed by ModelBase's inline operator delete,
+ * Memory::operator_delete2 -- the ROM body's own steps (0x02015f80);
+ * port/slice_w27_v3b.txt enrols it. Its host copy below retires to a pointer.
+ * The difference from the copy is the transient vtable words, MSVC's
+ * ShadowModel and ModelBase tables where this file stores _ZTV11ShadowModel
+ * and data_0208e87c; the ROM body stores its table, unlinks through the
+ * neighbours' fields and calls ModelBase D2 with nothing dispatched between,
+ * and tools/dtor_store_guard.py's SRC_ARMS re-proves that on every build.
+ * Seven bodies remain.
+ *
+ * AND MODELBASE'S D2 (run linkfull wave 31, lane SMALLS2): retired below to
+ * a declaration; six bodies remain.
  */
 
 struct MdlBase {
@@ -100,14 +130,17 @@ extern void _ZN9ModelAnimD2Ev(void *thiz);              /* 0x0201689c */
 
 /* ---- ModelBase, 0x020170b8 (D2), 0x02017120 (D1), 0x020170e8 (D0) -------- */
 
-struct MdlBase *_ZN9ModelBaseD2Ev(struct MdlBase *thiz)
-{
-    thiz->vtable = (void *)_ZTV9ModelBase;
-    if (thiz->res != 0) {
-        Deallocate(thiz->res);
-    }
-    return thiz;
-}
+/* _ZN9ModelBaseD2Ev RETIRED (run linkfull wave 31, lane SMALLS2):
+   src/_ZN9ModelBaseD2Ev.cpp's _MSC_VER arm provides it now, and
+   port/slice_w31_smalls2.txt enrols it. The three D1 bodies below still
+   call it by its flat name, as the ROM's own Model, CommonModel and
+   ShadowModel D1s do (bl 0x020170b8 from 0x02016d44, 0x020161f0 and
+   0x02016050). The ROM body stores ModelBase's table, frees +4 through
+   Deallocate when it is set and returns this; the arm's ~ModelBase does the
+   same with MSVC's own ModelBase table in the transient vtable word, where
+   this copy stored data_0208e87c -- the difference V3B's note above names
+   for ShadowModel's D0. */
+struct MdlBase *_ZN9ModelBaseD2Ev(struct MdlBase *thiz);
 
 struct MdlBase *_ZN9ModelBaseD1Ev(struct MdlBase *thiz)
 {
@@ -118,25 +151,11 @@ struct MdlBase *_ZN9ModelBaseD1Ev(struct MdlBase *thiz)
     return thiz;
 }
 
-struct MdlBase *_ZN9ModelBaseD0Ev(struct MdlBase *thiz)
-{
-    thiz->vtable = (void *)_ZTV9ModelBase;
-    if (thiz->res)
-        Deallocate(thiz->res);
-    _ZN6Memory16operator_delete2EPv(thiz);
-    return thiz;
-}
+/* _ZN9ModelBaseD0Ev RETIRED (W23-1): src/_ZN9ModelBaseD0Ev.cpp's _MSC_VER arm provides it now. */
 
 /* ---- Model, 0x02016ca8 (D2), 0x02016d20 (D1), 0x02016ce0 (D0) ------------ */
 
-struct Mdl *_ZN5ModelD2Ev(struct Mdl *thiz)
-{
-    thiz->vtable = (void *)_ZTV5Model;
-    if (thiz->unk4c)
-        _ZdlPv(thiz->unk4c);
-    _ZN9ModelBaseD2Ev((struct MdlBase *)thiz);
-    return thiz;
-}
+/* _ZN5ModelD2Ev RETIRED (W23-1): src/_ZN5ModelD2Ev.cpp's _MSC_VER arm provides it now. */
 
 struct Mdl *_ZN5ModelD1Ev(struct Mdl *thiz)
 {
@@ -147,15 +166,7 @@ struct Mdl *_ZN5ModelD1Ev(struct Mdl *thiz)
     return thiz;
 }
 
-struct Mdl *_ZN5ModelD0Ev(struct Mdl *thiz)
-{
-    thiz->vtable = (void *)_ZTV5Model;
-    if (thiz->unk4c)
-        func_0203cbc0(thiz->unk4c);
-    _ZN9ModelBaseD2Ev((struct MdlBase *)thiz);
-    _ZN6Memory16operator_delete2EPv(thiz);
-    return thiz;
-}
+/* _ZN5ModelD0Ev RETIRED (W23-1): src/_ZN5ModelD0Ev.cpp's _MSC_VER arm provides it now. */
 
 /* ---- ModelAnim2 (D1, D0) ------------------------------------------------ */
 
@@ -168,15 +179,7 @@ struct MdlAnim2 *_ZN10ModelAnim2D1Ev(struct MdlAnim2 *thiz)
     return thiz;
 }
 
-struct MdlAnim2 *_ZN10ModelAnim2D0Ev(struct MdlAnim2 *thiz)
-{
-    thiz->vtable = (void *)_ZTV10ModelAnim2;
-    thiz->animVtable = (void *)VTable_Animation_ModelAnim2Thunk;
-    _ZN9AnimationD1Ev((char *)thiz + 0x68);
-    _ZN9ModelAnimD2Ev(thiz);
-    _ZN6Memory16operator_delete2EPv(thiz);
-    return thiz;
-}
+/* _ZN10ModelAnim2D0Ev RETIRED (W23-1): src/_ZN10ModelAnim2D0Ev.cpp's _MSC_VER arm provides it now. */
 
 /* ---- CommonModel, 0x020161e0 (D1) --------------------------------------- */
 
@@ -187,13 +190,7 @@ struct CommonMdl *_ZN11CommonModelD1Ev(struct CommonMdl *thiz)
     return thiz;
 }
 
-struct CommonMdl *_ZN11CommonModelD0Ev(struct CommonMdl *thiz)
-{
-    thiz->vtable = (void *)_ZTV11CommonModel;
-    _ZN9ModelBaseD2Ev((struct MdlBase *)thiz);
-    _ZN6Memory16operator_delete2EPv(thiz);
-    return thiz;
-}
+/* _ZN11CommonModelD0Ev RETIRED (W23-1): src/_ZN11CommonModelD0Ev.cpp's _MSC_VER arm provides it now. */
 
 /* ---- BlendModelAnim, 0x02016690 (D1), 0x02016644 (D0) ------------------- */
 
@@ -207,16 +204,7 @@ struct BlendMdlAnim *_ZN14BlendModelAnimD1Ev(struct BlendMdlAnim *thiz)
     return thiz;
 }
 
-struct BlendMdlAnim *_ZN14BlendModelAnimD0Ev(struct BlendMdlAnim *thiz)
-{
-    thiz->vtable = (void *)_ZTV14BlendModelAnim;
-    thiz->animVtable = (void *)VTable_Animation_BlendModelAnimThunk;
-    if (thiz->unk6c)
-        func_0203cbc0(thiz->unk6c);
-    _ZN9ModelAnimD2Ev(thiz);
-    _ZN6Memory16operator_delete2EPv(thiz);
-    return thiz;
-}
+/* _ZN14BlendModelAnimD0Ev RETIRED (W23-1): src/_ZN14BlendModelAnimD0Ev.cpp's _MSC_VER arm provides it now. */
 
 /* ---- ShadowModel, 0x02015ff8 (D1) --------------------------------------- */
 
@@ -246,22 +234,4 @@ struct ShadowMdl *_ZN11ShadowModelD1Ev(struct ShadowMdl *thiz)
     return thiz;
 }
 
-struct ShadowMdl *_ZN11ShadowModelD0Ev(struct ShadowMdl *thiz)
-{
-    thiz->vtable = (void *)_ZTV11ShadowModel;
-
-    if (thiz->prev)
-        thiz->prev->next = thiz->next;
-    else if (data_0209cef4 == thiz)
-        data_0209cef4 = thiz->next;
-
-    if (thiz->next)
-        thiz->next->prev = thiz->prev;
-
-    thiz->prev = 0;
-    thiz->next = 0;
-
-    _ZN9ModelBaseD2Ev((struct MdlBase *)thiz);
-    _ZN6Memory16operator_delete2EPv(thiz);
-    return thiz;
-}
+/* _ZN11ShadowModelD0Ev RETIRED (V3B, wave 27): src/_ZN11ShadowModelD0Ev.cpp's _MSC_VER arm provides it now. */

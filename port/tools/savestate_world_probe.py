@@ -52,8 +52,24 @@ FRAMES = "150"
 SAVE_AT = "90"
 LEVEL = "1"
 TIMEOUT = 600
-# where the entrance spawns them, every level, every boot (measured 20/20)
-CAMERA = 0x30039D80
+# where the entrance spawns them, every level, every boot (measured 20/20).
+# 0x60 higher than the 0x30039D80 / 0x30039F38 this file carried until run
+# linkfull wave 27 (lane SMALLS1): OS_InitAlloc (src/func_02059040.c) runs as
+# the ROM's now and writes its heap-info block at the arena base, so the root
+# heap and everything carved from its head start 0x60 in (the level-1 log
+# prints both: "camera at 30039DE0", "tree: PLAYER 30039F98").
+# And 0x1024 higher again since run linkfull wave 31 (lane S4OV0): ov000's
+# entry builds the ov0 handle table at boot, a permanent 0x80a * 2 = 4116-byte
+# block (plus its 16-byte header) off the root heap's head, before the game heap
+# is carved from it (the level-1 log: "camera at 3003AE04", "tree: PLAYER
+# 3003AFBC").
+# And 0xA804 (43012) LOWER since run linkfull wave 31 (lane S4ARC): the level
+# boot replays Stage::InitResources' archive lines, so on the castle grounds the
+# ROM's LoadArchive(7) mounts ar1 (42892 bytes plus its 0x60-byte archive
+# object) off the GAME heap's tail before the entrance spawns these two, as on
+# the DS (the level-1 log: "camera at 30030600", "tree: PLAYER 300307B8").
+CAMERA = 0x30030600
+PLAYER = 0x300307B8
 ARENA_BASE = 0x30000000
 
 
@@ -165,10 +181,10 @@ def main():
     # by a baked offset -- the clean state holds the Player pointer exactly once
     # at a 4-aligned slot inside the dsstate body, and ARM 1 proved that state
     # good. Locate it by searching the dsstate body for the Player address the
-    # census prints, which is the entrance-spawned Player, 30039F38.
+    # census prints, which is the entrance-spawned Player, PLAYER above.
     d0 = hdr + asz
     body = clean[d0:d0 + dsz]
-    player_le = struct.pack("<I", 0x30039F38)
+    player_le = struct.pack("<I", PLAYER)
     hits = [i for i in range(0, len(body) - 3, 4)
             if body[i:i + 4] == player_le]
     if not hits:

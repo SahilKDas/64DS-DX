@@ -3,11 +3,19 @@ extern long long func_02059650(void *obj);
 extern void func_02056e4c(u32 idx, u32 handler, u32 arg);
 extern void func_02059824(void);
 extern void _ZN3IRQ10EnableIRQsEj(unsigned int mask);
+#ifdef _MSC_VER
+/* The ROM's 4-byte layout for the 64-bit field(s) of the alarm record (see
+ * src/func_02059a60.c); mwccarm never sees this arm. */
+#pragma pack(push, 4)
+#endif
 typedef struct Obj
 {
   char pad0c[0xc];
   long long t;
 } Obj;
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 void func_02059c18(Obj *obj)
 {
   long long v;

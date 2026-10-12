@@ -16,11 +16,11 @@
  * reproduce D0 out of line. `delete p` asks for the deleting half by name
  * and brings it back.
  *
- * THIS TU NO LONGER DEFINES _ZTV13daObjSwdoor_c OR _ZTI13daObjSwdoor_c. It
- * did while the class had no out-of-line virtual anywhere -- see
- * src/_ZN13daObjSwdoor_cD1Ev.cpp. Render (slot 9) is now defined in
- * src/actors/daObjSwdoor_c.cpp, which is therefore the key-function TU and
- * carries that data; objisolate reduces this object to the declared D0
+ * UNLIKE ITS SEVEN SIBLINGS IN THIS SERIES, daObjSwdoor_c has no other
+ * out-of-line virtual and so no key function elsewhere either -- see
+ * src/_ZN13daObjSwdoor_cD1Ev.cpp. This TU is expected to define
+ * _ZTV13daObjSwdoor_c and _ZTI13daObjSwdoor_c too, alongside D1, as
+ * vague-linkage data; objisolate reduces the object to the declared D0
  * function before eligible.py and rombuild.py judge it.
  *
  * D0 is the deleting half: destroy through daObjSwdoor_c and dBgActor_c,
@@ -30,13 +30,18 @@
 #include "daObjSwdoor_c.h"
 
 #ifdef _MSC_VER
-/* MSVC needs this flat D0 entry. Call the actual class-body destructor
- * qualified so dispatch is direct, then use the class-specific deallocator.
- * The inline body includes member/base teardown; no separate flat D1 provider
- * is supplied by this branch. The mwccarm definition below is unchanged. */
+/* THE HOST NEEDS THE ROM'S FLAT D0 NAME, AND MSVC NEVER EMITS IT. ~daObjSwdoor_c()
+ * is defined in the class body, so a qualified call from here would inline
+ * a second copy of the whole destructor chain into this arm. The port's D1
+ * for this class is its flat ROM name, the name the class's vtable slot 16
+ * holds, so this arm makes the D0's two calls: the D1 body through that
+ * flat name, then the class-specific operator delete. Nothing here reaches
+ * mwccarm: it builds the `#else` arm and emits the ROM bytes it always
+ * emitted, and the object is byte-identical either way. */
+extern "C" void _ZN13daObjSwdoor_cD1Ev(void *self);
 extern "C" daObjSwdoor_c *_ZN13daObjSwdoor_cD0Ev(daObjSwdoor_c *thiz)
 {
-    thiz->daObjSwdoor_c::~daObjSwdoor_c();          /* direct member/base teardown */
+    _ZN13daObjSwdoor_cD1Ev(thiz);          /* the D1 body, through its flat ROM name */
     daObjSwdoor_c::operator delete(thiz);  /* the class-specific delete D0 ends with */
     return thiz;
 }

@@ -4,10 +4,9 @@
 // 1/128 of a tenth of a decibel, running from -92544 (= -723 * 128, i.e.
 // -72.3 dB, the DS's silence floor) up to 0. Attack is multiplicative in
 // that log domain, decay and release are linear in it, and the rate
-// conversion Cnv_Fall below is the ARM7's. The one place this departs from
-// hardware is the 0..127 -> decibel table (see sd_cnv_vol in sdat.cpp): the
-// ROM's table is in an ARM7 binary nobody has decompiled, so a log curve
-// stands in for it.
+// conversion Cnv_Fall below is the ARM7's. The 0..127 -> decibel table is the
+// ARM7's square-law one (sd_cnv_vol in sdat.cpp has the address and the
+// check against the cartridge).
 //
 // Resampling is linear interpolation. The DS does the same thing in
 // hardware, so this is not a shortcut.
@@ -65,6 +64,7 @@ struct Channel {
     const sd_s16 *pcm;
     sd_u32 total, loopStart;
     int loop;
+    int hold;           // PSG voice: steps its samples, no interpolation
     double pos, step;
 
     sd_s32 ampl;
@@ -75,6 +75,43 @@ struct Channel {
     int pan;            // 0..127
     int priority;
     unsigned seq;       // bumped on every start, so stale handles are inert
+
+    /* THE CHANNEL'S OWN PITCH, as SM64DS's ARM7 composes it every frame in its
+       channel update (0x037FC5F4..0x037FC668, called once per 192 Hz frame for
+       every active channel whether or not a track still owns it):
+
+           pitch = (key - root) * 64 + sweep + userPitch + lfo
+
+       baseStep is the (key - root) term as a playback rate, userPitch the
+       track's bend + ext pitch (ch+0x0E, written by the track update while the
+       track owns the channel), and the sweep is the channel's own countdown
+       (ch+0x32 sweepPitch, +0x18 sweepLength, +0x14 sweepCounter; 0x037FBC34):
+       sweepPitch * (length - counter) / length while counter < length, the
+       counter stepping once per frame. It is what portamento and the 0xE3
+       sweep play through, and it keeps moving after the track lets go of the
+       channel, which is why it lives here and not in the sequencer.
+
+       pitchUnits is the total last turned into `step`, so a voice whose pitch
+       did not move this frame costs no pow(). hasBase is 0 for a channel the
+       sequencer never described (nothing then retunes it). */
+    int hasBase;
+    double baseStep;
+    int userPitch;
+    int sweepPitch, sweepLength, sweepCounter;
+    int modPitch;       // the sweep (and modulation) share of pitchUnits
+    int pitchUnits;
+
+    /* THE CHANNEL'S LFO (ch+0x28: target, speed, depth, range, u16 delay;
+       +0x2e delay counter, +0x30 phase counter), copied from the owning
+       track's modulation fields every frame by the track update
+       (0x037FD710..0x037FD724) and run by the channel update: value
+       0x037FBEEC, step 0x037FBF3C, scaling 0x037FBB98. Target 0 bends the
+       pitch, 1 the volume, 2 the pan; depth 0 is off, which is every voice
+       that never asked for modulation. lfoDb10 / lfoPan are this frame's
+       volume and pan terms, added at the render. */
+    int lfoTarget, lfoSpeed, lfoDepth, lfoRange, lfoDelay;
+    int lfoDelayCounter, lfoCounter;
+    int lfoDb10, lfoPan;
 };
 
 Channel g_ch[SD_CHANNELS];
@@ -112,6 +149,8 @@ double db10_to_gain(int db10)
 
 }  // namespace
 
+namespace { void ct_open(void); }   // SM64DS_CHAN_TRACE, below sd_mix_frame
+
 // port/rollback: the output stage muted while a rewound window is re-run.
 // Voices still start and envelopes still advance, so a sound that began
 // inside the window is heard from where the replay leaves it; only the bytes
@@ -125,6 +164,7 @@ void sd_mix_reset(void)
     if (!latched) {
         latched = 1;
         g_voice_trace = getenv("SM64DS_VOICE_TRACE") != 0;
+        ct_open();
     }
     memset(g_ch, 0, sizeof g_ch);
     g_tickAcc = 0;
@@ -198,9 +238,21 @@ int chan_attenuation_db10(const Channel &c)
 
 int sd_mix_alloc(int priority)
 {
+    return sd_mix_alloc_mask(priority, 0xffffu);
+}
+
+/* THE CHANNEL SET A NOTE MAY TAKE. The allocator's first argument at
+ * 0x037FC26C is the player's channel mask AND the note type's set, chosen at
+ * the note-on (0x037FD49C): a sampled note any of the 16 (0xFFFF), a PSG
+ * pulse note channels 8..13 (0x3F00), a PSG noise note channels 14 and 15
+ * (0xC000). The scan below is the same one, skipping the channels outside the
+ * set; a mask of 0xFFFF is the plain allocator. */
+int sd_mix_alloc_mask(int priority, unsigned mask)
+{
     int best = -1;
     for (int k = 0; k < SD_CHANNELS; k++) {
         const int i = kScanOrder[k];
+        if (!(mask & (1u << i))) continue;
         if (best < 0) { best = i; continue; }   /* first candidate, outright */
         if (g_ch[i].priority > g_ch[best].priority) continue;
         if (g_ch[i].priority == g_ch[best].priority
@@ -274,6 +326,11 @@ void sd_mix_start(int ch, const SdatWave *w, const SdatNote *n,
     c.volDb10 = volume_db10;
     c.pan = pan < 0 ? 0 : (pan > 127 ? 127 : pan);
     c.priority = priority;
+    /* The LFO defaults the channel setup gives every new voice (0x037FBFBC:
+       target pitch, speed 16, depth 0, range 1, delay 0) and the counters the
+       start clears (0x037FBFAC). */
+    c.lfoSpeed = 16;
+    c.lfoRange = 1;
 
     c.ampl = AMPL_MIN;
     c.state = ENV_ATTACK;
@@ -281,6 +338,13 @@ void sd_mix_start(int ch, const SdatWave *w, const SdatNote *n,
     c.decayRate   = cnv_fall(n ? n->decay : 127);
     c.releaseRate = cnv_fall(n ? n->release : 127);
     c.sustainLevel = sd_cnv_vol(n ? n->sustain : 127) * 128;
+}
+
+/* A PSG voice (pulse or noise) is stepped, not interpolated: the hardware
+   channel holds one sample per timer period and the pulse's edges stay edges. */
+void sd_mix_set_hold(int ch)
+{
+    if (ch >= 0 && ch < SD_CHANNELS) g_ch[ch].hold = 1;
 }
 
 void sd_mix_set(int ch, int volume_db10, int pan, double rate)
@@ -313,6 +377,141 @@ void sd_mix_set_rate(int ch, double rate)
     if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
     if (rate > 0.0) g_ch[ch].step = rate;
 }
+
+namespace {
+
+/* 1/64 of a semitone as a playback-rate multiplier. The same expression the
+   sequencer has always used (sseq.cpp pitch_units_scale), so a voice whose
+   pitch terms are all zero apart from the track's comes out at the rate it
+   always did, to the last bit. */
+double units_scale(int units)
+{
+    return pow(2.0, (double)units / 64.0 / 12.0);
+}
+
+/* Turn the channel's total pitch into its playback rate, if it moved. The
+   same refusal the sequencer applies at the note-on: a rate outside (0, 64]
+   is left where it was rather than stopping a voice that is sounding. */
+void apply_pitch(Channel &c)
+{
+    if (!c.hasBase) return;
+    const int units = c.userPitch + c.modPitch;
+    if (units == c.pitchUnits) return;
+    c.pitchUnits = units;
+    const double rate = c.baseStep * units_scale(units);
+    if (rate > 0.0 && rate <= 64.0) c.step = rate;
+}
+
+}  // namespace
+
+/* The note-on half of the channel's pitch: its (key - root) rate and the
+   track pitch it starts under. The caller has already started the channel at
+   baseStep * scale(userPitch), so this records the parts without moving it. */
+void sd_mix_set_pitch_base(int ch, double baseStep, int userPitch)
+{
+    if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
+    Channel &c = g_ch[ch];
+    c.hasBase = 1;
+    c.baseStep = baseStep;
+    c.userPitch = userPitch;
+    c.modPitch = 0;             // the rate the caller set carries no sweep yet
+    c.pitchUnits = userPitch;
+}
+
+/* ch+0x0E, the track's bend + ext pitch. Applied at once, as the port's
+   TRACK_PARAM 0x0c path always has been. */
+void sd_mix_set_user_pitch(int ch, int units)
+{
+    if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
+    g_ch[ch].userPitch = units;
+    apply_pitch(g_ch[ch]);
+}
+
+/* The sweep a note starts with (the note-on at 0x037FD5B8..0x037FD61C):
+   sweepPitch in 1/64 semitones, sweepLength in 192 Hz frames, the counter
+   back to 0. The first frame plays the whole offset. */
+void sd_mix_set_sweep(int ch, int sweepPitch, int sweepLength)
+{
+    if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
+    Channel &c = g_ch[ch];
+    c.sweepPitch = sweepPitch;
+    c.sweepLength = sweepLength;
+    c.sweepCounter = 0;
+}
+
+/* The track's envelope override (-1 = keep the instrument's), converted the
+   way the ARM7's setters convert it: attack 0x037FC3FC (255 - a below 0x6d,
+   the 19-entry table above), decay 0x037FC3E0 and release 0x037FC3BC
+   (0x037FBDB4, cnv_fall here), sustain 0x037FC3D8 stored raw and turned into
+   a level where the decay reads it. The sustain level uses the same
+   conversion sd_mix_start gives the instrument's own sustain. */
+void sd_mix_set_env(int ch, int attack, int decay, int sustain, int release)
+{
+    if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
+    Channel &c = g_ch[ch];
+    if (attack >= 0) c.attackCoef = cnv_attack(attack);
+    if (decay >= 0) c.decayRate = cnv_fall(decay);
+    if (sustain >= 0) c.sustainLevel = sd_cnv_vol(sustain) * 128;
+    if (release >= 0) c.releaseRate = cnv_fall(release);
+}
+
+/* The track's modulation fields, as the track update copies them onto every
+   channel it owns each frame. The counters are the channel's and are left
+   alone. */
+void sd_mix_set_lfo(int ch, int target, int speed, int depth, int range,
+                    int delay)
+{
+    if (ch < 0 || ch >= SD_CHANNELS || !g_ch[ch].active) return;
+    Channel &c = g_ch[ch];
+    c.lfoTarget = target & 0xff;
+    c.lfoSpeed = speed & 0xff;
+    c.lfoDepth = depth & 0xff;
+    c.lfoRange = range & 0xff;
+    c.lfoDelay = delay & 0xffff;
+}
+
+namespace {
+
+/* The ARM7's LFO sine, a 33-entry quarter wave: round(127 * sin(pi/2 * i/32)).
+   The formula reproduces the cartridge's table (arm7.bin, just below the
+   decibel table at 0x03805860) entry for entry. 0x037FB6F4 folds the 0..0x7f
+   phase onto it. */
+int lfo_sin(int x)
+{
+    static signed char t[33];
+    static int built;
+    if (!built) {
+        built = 1;
+        for (int i = 0; i <= 32; i++)
+            t[i] = (signed char)floor(127.0 * sin(1.5707963267948966 * i / 32.0)
+                                      + 0.5);
+    }
+    if (x < 0x20) return t[x];
+    if (x < 0x40) return t[0x40 - x];
+    if (x < 0x60) return -t[x - 0x40];
+    return -t[0x20 - (x - 0x60)];
+}
+
+/* One frame of the channel's LFO: the value at the current phase, THEN the
+   step (0x037FBB98 reads before it advances). Returns the raw
+   sin * depth * range product; the caller scales it by target. */
+int lfo_frame(Channel &c)
+{
+    int v = 0;
+    if (c.lfoDepth != 0 && c.lfoDelayCounter >= c.lfoDelay)
+        v = lfo_sin(c.lfoCounter >> 8) * c.lfoDepth * c.lfoRange;
+    if (c.lfoDelayCounter < c.lfoDelay) {
+        c.lfoDelayCounter++;
+    } else {
+        const int inc = c.lfoSpeed << 6;
+        int hi = (c.lfoCounter + inc) >> 8;
+        while (hi >= 0x80) hi -= 0x80;
+        c.lfoCounter = ((c.lfoCounter + inc) & 0xff) | (hi << 8);
+    }
+    return v;
+}
+
+}  // namespace
 
 /* The release rate this channel fades at, in the envelope's own units per
    192 Hz tick, and how many ticks it needs to reach the -72.3 dB floor from
@@ -385,15 +584,108 @@ int sd_mix_active(int ch)
     return (ch >= 0 && ch < SD_CHANNELS) ? g_ch[ch].active : 0;
 }
 
+/* ---- SM64DS_CHAN_TRACE=<path> (or =1 for stderr): the per-frame channel trace --
+ *
+ * One line per sounding channel per 192 Hz frame IN WHICH ITS OUTPUT MOVED:
+ * the playback rate, the total attenuation the render applies (envelope plus
+ * external volume, tenths of a dB, floored at -723) and the pan. It is the
+ * port's side of the question "does this voice bend / fade / move the way the
+ * sequence data says", answered per frame rather than per note-on, which is
+ * the one thing SM64DS_PITCH_DUMP cannot show: a voice whose pitch never moves
+ * prints ONE line there whether or not the data asked it to move.
+ *
+ * Latched once, off by default, one predictable branch per frame when off. It
+ * reads the channel state and writes nothing back. */
+namespace {
+FILE *g_ctFile;
+int g_ctOn;
+unsigned g_ctFrame;
+struct CtLast { double rate; int vol, pan, state, on; };
+CtLast g_ctLast[SD_CHANNELS];
+
+void ct_open(void)
+{
+    static int latched;
+    if (latched) return;
+    latched = 1;
+    const char *p = getenv("SM64DS_CHAN_TRACE");
+    if (!p || !*p) return;
+    g_ctFile = (!strcmp(p, "1") || !strcmp(p, "-")) ? stderr : fopen(p, "w");
+    if (!g_ctFile) return;
+    g_ctOn = 1;
+    fprintf(g_ctFile, "[ct] f = 192 Hz frame; rate = sample frames per output "
+            "frame at %d Hz; vol = envelope + external volume in tenths of a "
+            "dB (-723 = silent); pan 0..127\n", (int)SD_MIX_RATE);
+}
+
+void ct_frame(void)
+{
+    g_ctFrame++;
+    static const char *st[] = { "off", "atk", "dec", "sus", "rel" };
+    for (int i = 0; i < SD_CHANNELS; i++) {
+        const Channel &c = g_ch[i];
+        CtLast &l = g_ctLast[i];
+        if (!c.active) {
+            if (l.on) fprintf(g_ctFile, "[ct] f=%u ch=%d end\n", g_ctFrame, i);
+            l.on = 0;
+            continue;
+        }
+        int vol = (c.ampl >> 7) + c.volDb10 + c.lfoDb10;
+        if (vol < -723) vol = -723;
+        int pan = c.pan + c.lfoPan;
+        pan = pan < 0 ? 0 : (pan > 127 ? 127 : pan);
+        if (l.on && l.rate == c.step && l.vol == vol && l.pan == pan
+            && l.state == c.state && c.seq == (unsigned)l.on)
+            continue;
+        fprintf(g_ctFile, "[ct] f=%u ch=%d %s rate=%.6f vol=%d pan=%d%s\n",
+                g_ctFrame, i, st[c.state >= 0 && c.state <= 4 ? c.state : 0],
+                c.step, vol, pan,
+                (!l.on || c.seq != (unsigned)l.on) ? " start" : "");
+        l.rate = c.step; l.vol = vol; l.pan = pan; l.state = c.state;
+        l.on = (int)c.seq;
+    }
+}
+}  // namespace
+
 void sd_mix_frame(void)
 {
     for (int i = 0; i < SD_CHANNELS; i++) {
         Channel &c = g_ch[i];
         if (!c.active) continue;
+        /* The sweep term, 0x037FBC34: read at the current counter, then the
+           counter steps. The division is the ROM's 64-bit signed one. */
+        int sweep = 0;
+        if (c.sweepPitch != 0 && c.sweepCounter < c.sweepLength) {
+            sweep = (int)((long long)c.sweepPitch
+                          * (c.sweepLength - c.sweepCounter) / c.sweepLength);
+            c.sweepCounter++;
+        }
+        /* The LFO term, scaled by its target the ARM7's way (0x037FBBC4..:
+           pitch and pan << 6, volume * 60, then >> 14 on the 64-bit value)
+           and routed where the channel update routes it (0x037FC630..). */
+        int lfoPitch = 0;
+        c.lfoDb10 = 0;
+        c.lfoPan = 0;
+        const int lv = lfo_frame(c);
+        if (lv != 0) {
+            switch (c.lfoTarget) {
+            case 0: lfoPitch = (int)(((long long)lv * 64) >> 14); break;
+            case 1: c.lfoDb10 = (int)(((long long)lv * 60) >> 14); break;
+            case 2: c.lfoPan = (int)(((long long)lv * 64) >> 14); break;
+            default: break;
+            }
+        }
+        c.modPitch = sweep + lfoPitch;
+        apply_pitch(c);
         switch (c.state) {
         case ENV_ATTACK:
-            // ampl is negative and climbs toward 0 multiplicatively.
-            c.ampl = (sd_s32)(((long long)c.attackCoef * c.ampl) / 255);
+            /* ampl is negative and climbs toward 0 multiplicatively, the
+               ARM7's way (0x037FBCC0..0x037FBCE8): -((-ampl * coef) >> 8),
+               decay once it reads exactly 0. This used to divide by 255,
+               which is a different curve -- slower for every attack
+               coefficient, and never reaching 0 at all for coefficient 255
+               (attack 0). */
+            c.ampl = -(sd_s32)(((long long)(-c.ampl) * c.attackCoef) >> 8);
             if (c.ampl >= 0) { c.ampl = 0; c.state = ENV_DECAY; }
             break;
         case ENV_DECAY:
@@ -419,6 +711,7 @@ void sd_mix_frame(void)
             break;
         }
     }
+    if (g_ctOn) ct_frame();
 }
 
 void sd_seq_frame(void);   // forward: the sequencer shares this clock
@@ -437,13 +730,16 @@ void sd_mix_render(sd_s16 *dst, int frames)
         for (int i = 0; i < SD_CHANNELS; i++) {
             Channel &c = g_ch[i];
             if (!c.active || !c.pcm) continue;
-            int envDb10 = c.ampl / 128;
-            int total = envDb10 + c.volDb10;
+            int envDb10 = c.ampl >> 7;   /* 0x037FBD48: asr 7, not a divide */
+            int total = envDb10 + c.volDb10 + c.lfoDb10;
             if (total < -723) total = -723;
             double g = db10_to_gain(total);
             if (g <= 0.0) continue;
-            double gl = g * (127 - c.pan) / 127.0;
-            double gr = g * c.pan / 127.0;
+            int pan = c.pan + c.lfoPan;
+            if (pan < 0) pan = 0;
+            if (pan > 127) pan = 127;
+            double gl = g * (127 - pan) / 127.0;
+            double gr = g * pan / 127.0;
 
             sd_s16 *o = dst + (done * 2);
             for (int k = 0; k < n; k++, o += 2) {
@@ -466,7 +762,7 @@ void sd_mix_render(sd_s16 *dst, int frames)
                 sd_s32 a = c.pcm[idx];
                 sd_s32 b = (idx + 1 < c.total) ? c.pcm[idx + 1]
                          : (c.loop ? c.pcm[c.loopStart] : a);
-                double s = a + (b - a) * frac;
+                double s = c.hold ? (double)a : a + (b - a) * frac;
                 sd_s32 l = (sd_s32)(o[0] + s * gl);
                 sd_s32 r = (sd_s32)(o[1] + s * gr);
                 o[0] = (sd_s16)(l < -32768 ? -32768 : (l > 32767 ? 32767 : l));

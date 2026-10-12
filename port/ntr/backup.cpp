@@ -160,11 +160,12 @@
 // ============================================================================
 //
 // NO ERASE, NO SECTOR MAP, NO WRITE ENDURANCE. A 64 Kbit EEPROM is byte
-// writable and the ROM never sends an erase command to one; the driver's erase
-// family (func_02060a64 and its neighbours) is the FLASH path and no call site
-// in this game reaches it. If a later lane links that family, its commands land
-// in the `default:` arm below and are refused honestly rather than silently
-// succeeding.
+// writable and the ROM never sends an erase command to one. (An older note here
+// named func_02060a64 and its neighbours as the FLASH erase family: they are the
+// card's CPU ROM read path, linked since run linkfull lane S4CARD over
+// ntr/card.cpp, and they never touch the backup chip.) If a later lane links a
+// real erase family, its commands land in the `default:` arm below and are
+// refused honestly rather than silently succeeding.
 //
 // NO SAVESTATE COUPLING FOR THE MEDIUM. g_image and its file are plain host
 // storage OUTSIDE every DSSTATE_BEGIN/END block, so the lk6/lk7 dev savestate
@@ -385,6 +386,107 @@ bool flush()
     return true;
 }
 
+// THE FILE IS THE CHIP, NOT THIS PROCESS'S COPY OF IT (run hunt2, lane
+// SAVELOSS1). g_image is loaded once, at the first card access -- for a
+// title boot that is the file select's read of all three files -- and
+// flush() writes all 8192 bytes of it. Two game processes on one save file
+// (a second window, or a copy left running) therefore undid each other:
+// whichever wrote LAST put back every slot as it stood when THAT process
+// started. Measured on the 0.5.1 exe: A opens file A, B opens file B and
+// saves a Lethal Lava Land star, then A saves file A -- and file B's star is
+// gone, although A never touched file B. A 64 Kbit EEPROM programs exactly
+// the bytes it is sent (command 8 carries an address and a length, section 3
+// above) and every other cell keeps what is in it.
+// So every command re-reads the file first: a program changes only its own
+// span of what is on disk now, and a read sees what is on disk now, the way
+// the chip would answer. A file that is not a whole image (absent, or not
+// exactly kSize bytes: open_once's foreign-file rule) is left alone and the
+// image in memory stands, as before. One named mutex per save path keeps a
+// read-modify-write from interleaving with another process's.
+void refresh_from_disk()
+{
+    std::FILE *f = std::fopen(g_path, "rb");
+    if (!f) return;
+    unsigned char buf[kSize];
+    size_t got = std::fread(buf, 1, sizeof buf, f);
+    int extra = (std::fgetc(f) != EOF);
+    std::fclose(f);
+    if (got != (size_t)kSize || extra) return;
+    if (std::memcmp(g_image, buf, sizeof g_image) != 0) {
+        std::memcpy(g_image, buf, sizeof g_image);
+        if (trace_on())
+            std::fprintf(stderr, "[backup] the file changed on disk since this "
+                                 "process last touched it; reading it again\n");
+    }
+    g_fresh = false;
+}
+
+#ifdef _WIN32
+/* the name is the save path, folded to a hash: one lock per file, whatever
+   spelling or case each process resolved it to */
+HANDLE open_medium_mutex()
+{
+    unsigned hsh = 2166136261u;
+    for (const char *p = g_path; *p; ++p) {
+        char c = *p;
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c == '\\') c = '/';
+        hsh = (hsh ^ (unsigned char)c) * 16777619u;
+    }
+    char name[64];
+    std::snprintf(name, sizeof name, "Local\\sm64ds-save-%08x", hsh);
+    HANDLE h = CreateMutexA(NULL, FALSE, name);
+    if (h) WaitForSingleObject(h, 5000);
+    return h;
+}
+
+struct MediumLock {
+    HANDLE h;
+    MediumLock() : h(open_medium_mutex()) {}
+    ~MediumLock() {
+        if (h) { ReleaseMutex(h); CloseHandle(h); }
+    }
+};
+
+// ONE TRANSFER, ONE HOLDER (run hunt3, lane POLISH2). The lock above covers one
+// card command, and one save is sixteen of them (SaveDataToCart for the file,
+// then for the minigame block: crc, tag and payload, primary then mirror). Every
+// SaveCurrentFile also rewrites the minigame block in slot 3, which every
+// window shares, so two windows saving in the same few milliseconds could land
+// one's crc under the other's payload in BOTH copies; ReadMinigameData then
+// finds no valid copy and writes the defaults, and every minigame record is
+// gone. The ROM brackets each transfer with a lock id of its own
+// (func_02057020 ... func_02057078) and takes the card only by that id
+// inside it, so the medium is held over the same span: from the first
+// read or program command of a transfer, by the id that owns the card,
+// until that id is released (hal/os_lockid.cpp calls
+// port_backup_transfer_end). The ids other callers take and never release
+// never reach a card command, so they never start a hold. Windows mutexes are
+// recursive per thread, so the per-command lock inside a transfer is free.
+HANDLE g_xfer = NULL;
+int    g_xfer_id = -1;
+
+void transfer_hold(int owner)
+{
+    if (owner < 0 || g_xfer_id >= 0) return;   /* no id owns the card, or held */
+    open_once();                                /* the name is the save path */
+    g_xfer = open_medium_mutex();
+    g_xfer_id = owner;
+}
+
+void transfer_end(int lock_id)
+{
+    if (g_xfer_id < 0 || g_xfer_id != lock_id) return;
+    if (g_xfer) { ReleaseMutex(g_xfer); CloseHandle(g_xfer); }
+    g_xfer = NULL;
+    g_xfer_id = -1;
+}
+#else
+struct MediumLock {};
+void transfer_hold(int) {}
+void transfer_end(int) {}
+#endif
+
 // A span the chip actually has. No clamping: a chip without those cells says
 // no, and the ROM's own retry-then-fail path is what handles the answer.
 bool span_ok(unsigned addr, unsigned len)
@@ -412,6 +514,8 @@ bool read(unsigned addr, void *dst, unsigned len)
 {
     open_once();
     if (!dst || !span_ok(addr, len)) return false;
+    MediumLock lock;
+    refresh_from_disk();
     std::memcpy(dst, g_image + addr, len);
     ++g_stats.reads;
     if (trace_on())
@@ -423,6 +527,8 @@ bool write(unsigned addr, const void *src, unsigned len)
 {
     open_once();
     if (!src || !span_ok(addr, len)) return false;
+    MediumLock lock;
+    refresh_from_disk();
     std::memcpy(g_image + addr, src, len);
     ++g_stats.writes;
     if (trace_on())
@@ -536,10 +642,19 @@ struct PortCardWork {
 //                    `while (owner != -3) OS_SleepThread(&waitq)` until it sees
 //                    that value, and a zeroed owner never becomes -3 because
 //                    nothing on the host is going to release a lock nobody took.
-//   state = 1        the driver's "initialised" bit. func_02060484 / 02060558
-//                    or in bit 2 for the duration of a transfer and
-//                    func_0206081c ands out bits 2 and 3 at the end; bit 0 is
-//                    what says the object below them is real.
+//   state = 0        NOT SEEDED ANY MORE (run linkfull, lane S4CARD). Bit 0 is
+//                    the driver's "initialised" bit and the ROM's own bring-up,
+//                    src/func_02060890.c, is what sets it: it now runs in the
+//                    ROM's order inside main (hal/boot_arms.cpp's R2c arm),
+//                    before any card read or save, and its first line returns
+//                    when the word is already set -- a seed of 1 made it skip
+//                    the card thread and the page reader
+//                    (`data_020a8780 = func_02060a64`), and the ROM's card reads
+//                    need both. func_02060484 / 02060558 or in bit 2 for the
+//                    duration of a transfer and func_0206081c ands out bits 2
+//                    and 3 at the end. The other seeds stay: they are the
+//                    values that body writes, and smoke_player, which has no
+//                    bring-up, keeps them.
 static const PortCardWork kCardWorkInit = {
     data_020a8160,  /* cmd    */
     0,              /* f04    */
@@ -551,7 +666,7 @@ static const PortCardWork kCardWorkInit = {
     -1,             /* f24    */
     0, 0,           /* cbfn, cbarg */
     0,              /* f30    */
-    1u,             /* state  */
+    0u,             /* state: set by src/func_02060890.c (see above) */
     4               /* prio   */
 };
 
@@ -580,21 +695,15 @@ PortBackupFill g_port_backup_fill;
 
 DSSTATE_END
 
-// ---- OS_GetLockID (ROM: func_02057020) lives in hal/boot_hw.cpp ---------
-// This file once carried a constant-id face for it (return 0x40). Lane BOOT
-// hosts the primitive faithfully in port/hal/boot_hw.cpp: the ROM's clz search
-// over the two lock words at 0x027fffb0, seeded by the boot spans. The two
-// definitions collided at integration (LNK2005), and the faithful one stays.
-// SaveDataToCart / ReadDataFromCart still refuse on -3, which that body returns
-// only when both lock words are exhausted.
-
-// ---- FACE: OS_ReleaseLockID (ROM: func_02057078) ---------------------------
-// PORT_HOST_ABI: the `asm` sibling of the above, clearing the same bit in the
-// same unmapped bitmask. Nothing to clear.
-void func_02057078(int lock_id)
-{
-    (void)lock_id;
-}
+// ---- OS_GetLockID / OS_ReleaseLockID (ROM: func_02057020 / func_02057078) ---
+// Both live in hal/os_lockid.cpp: the ROM's search over the two lock words at
+// 0x027fffb0 and its release, which sets the id's bit back. This file once
+// carried a constant-id face for the first (return 0x40) and a do-nothing face
+// for the second. The constant face went at integration; the do-nothing one
+// stayed after the words became real, so every SaveDataToCart and
+// ReadDataFromCart kept its id for good. Four go at the title and two per
+// save, so from the 23rd save of one process on, SaveDataToCart took its -3
+// arm and returned before writing anything, and nothing said so.
 
 // ---- FACE: the ARM7's card-backup server (ROM: func_02060f60) --------------
 // PORT_HOST_ABI: the ROM body pushes `cmd` down PXI channel 0xB with IPCSend
@@ -636,6 +745,7 @@ int func_02060f60(void *self, int cmd, int retries)
 
     case 6: {
         /* Read: source is a medium offset, destination an ARM9 pointer. */
+        ntr::backup::transfer_hold(w->owner);
         unsigned addr = (unsigned)blk[3];
         void *dst = (void *)(std::size_t)(unsigned)blk[4];
         unsigned len = (unsigned)blk[5];
@@ -645,6 +755,7 @@ int func_02060f60(void *self, int cmd, int retries)
 
     case 8: {
         /* Program: source is an ARM9 pointer, destination a medium offset. */
+        ntr::backup::transfer_hold(w->owner);
         const void *src = (const void *)(std::size_t)(unsigned)blk[3];
         unsigned addr = (unsigned)blk[4];
         unsigned len = (unsigned)blk[5];
@@ -671,6 +782,14 @@ int func_02060f60(void *self, int cmd, int retries)
         blk[0] = 1;
         return 0;
     }
+}
+
+/* The end of a transfer: hal/os_lockid.cpp's func_02057078 (OS_ReleaseLockID)
+   hands every released id here, and the one that owned the card's transfer
+   lets the medium go (ntr::backup::transfer_end, above). */
+void port_backup_transfer_end(int lock_id)
+{
+    ntr::backup::transfer_end(lock_id);
 }
 
 }  // extern "C"

@@ -33,6 +33,7 @@
  * - func_020393a4 / func_02039394 store clip ranges on mMeshCollider
  *   (no setter).
  * - func_ov002_020f0438 linked-actor helper (Behavior).
+ * - Sound::PlayLong has no header declaration.
  * - OnPushed fall-off-the-end return: adding `return 0;` emits mov r0,#0
  *   and DIFFs (measured 2026-08-22).
  */
@@ -42,7 +43,6 @@
 #include "Player.h"
 #include "SharedFilePtr.h"
 #include "decl_common.h"
-#include "daSCoin_c.h"
 #include "decl_Platform.h"
 #include "dBgCh_Gnd.h"
 
@@ -68,6 +68,10 @@ void _ZN10dBgCh_Actr4InitEP8dActor_c5Fix12IiES3_P10Vector3_16S5_(
     void *self, void *a, int b, int c, void *d, int e);
 extern SharedFilePtr data_ov002_0210df9c;
 extern SharedFilePtr data_ov002_0210df94;
+}
+
+namespace Sound {
+u32 PlayLong(u32 handle, u32 bank, u32 soundId, const Vector3 &pos, s16 pitch);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -202,7 +206,7 @@ int daObjPushblock_c::Behavior()
                 q->mPosX = homeX;
                 q->mPosY = pos.y;
                 q->mPosZ = pos.z;
-                ((daSCoin_c *)mLinkedActor)->func_ov002_020f0438();
+                func_ov002_020f0438(mLinkedActor);
             }
             mLinkedActor = 0;
         }
@@ -293,7 +297,7 @@ int daObjPushblock_c::OnPushed(dActor_c &other)
  * where _ZTV10dBgActor_c carries dActor_c's generic 0x02010124. Confirmed with
  * tools/mangle.py: _ZN16daObjPushblock_c15OnHitByMegaCharER6Player.
  *
- * Same idiom as daObjSlIceBlock_c::OnHitByMegaChar: Player::IncMegaKillCount is a real
+ * Same idiom as SlidingIce::OnHitByMegaChar: Player::IncMegaKillCount is a real
  * method, and the trailing unqualified Kill() dispatches virtually through slot
  * 31. daObjPushblock_c does override slot 31 (its own _ZN16daObjPushblock_c4KillEv), so this
  * reaches daObjPushblock_c::Kill through the vtable rather than the base. */

@@ -74,33 +74,41 @@
 // (`x[0] = (int)data_ov006_0213dbbc;`), so the resolution of VT here is
 // confirmed by a second matched TU as well as by the pool. That is also why
 // slot 16 is an ordinary slice line and slot 17 is this file.
+//
+// ---- WHY THIS COPY OUTLIVED ITS SIBLING (run linkfull wave 27, lane V3B) ---
+//
+// The first premise above is stale: src/_ZN16dScMgPachinko2_cD0Ev.cpp is a
+// real C++ destructor now, spelling neither VT nor HEAP, and
+// port/unmatched/MgPachinko_Dtor.cpp retired its copy the same night for an
+// arm in its src file. This one was measured the same way and KEPT, because it
+// is the last caller of the flat base destructor _ZN11dScMgBase_cD2Ev in the
+// whole port: the matched D0 arm reaches the base through MSVC's
+// ??1dScMgBase_c instead, so retiring both copies drops
+// src/_ZN11dScMgBase_cD2Ev.cpp out of the link (measured on that night's
+// build: +2 D0 rows, -1 D2 row). The base D2 needs a caller of its own before
+// this copy can go.
+
+// ---- RETIRED AS A HOST COPY (run linkfull wave 31, lane VARIANT4) ----------
+//
+// The base D2 keeps its caller: src/_ZN16dScMgPachinko2_cD0Ev.cpp now defines
+// the ROM's flat D0 name itself, in its `#ifdef _MSC_VER` arm, and that arm makes
+// the three calls this copy made, in the same order, with the same two words:
+// the store of data_ov006_0213dbbc into the vptr, the flat base destructor
+// _ZN11dScMgBase_cD2Ev, then Memory::Deallocate with the heap pointer read from
+// data_020a0eac (dScMgBase_c's inline operator delete). The MSVC object of that
+// arm and the object this file compiled to are the same instructions with the
+// same relocations (runs/linkfull/out/VARIANT4/ holds both listings). So the
+// name hal/scene_mg.cpp's slot-17 face calls only forwards to the ROM's body
+// now, and src/_ZN11dScMgBase_cD2Ev.cpp stays linked through the ROM's own call.
 
 extern "C" {
 
-/* the base's D1, called with the object still holding this class's table */
-void _ZN11dScMgBase_cD2Ev(void *t);
-
-/* Memory::Deallocate(void*, Heap*). Spelled in its Itanium form because that
-   is what the matched arm9 TU defines and what every other host copy in this
-   tree calls. */
-void _ZN6Memory10DeallocateEPvP4Heap(void *p, void *heap);
-
-/* the two words the ROM's literal pool names. Both are mounted: the vtable is
-   ov006 .data that port_scene_fill_pachinko2 has already filled with host
-   thunks by the time any object of this class exists, and data_020a0eac is the
-   arm9 game-heap pointer every D0 in the family dereferences. */
-extern int data_ov006_0213dbbc[];
-extern void *data_020a0eac;
+/* the ROM's own D0, src/_ZN16dScMgPachinko2_cD0Ev.cpp's _MSC_VER arm */
+void *_ZN16dScMgPachinko2_cD0Ev(void *self);
 
 void *port_mg_pachinko2_d0(void *self)
 {
-    int *t = (int *)self;
-    /* the vptr store the ROM makes with r1 = 0x0213dbbc */
-    t[0] = (int)(size_t)data_ov006_0213dbbc;
-    _ZN11dScMgBase_cD2Ev(t);
-    /* ldr r1,[r1] -- the heap POINTER, not the word's address */
-    _ZN6Memory10DeallocateEPvP4Heap(t, data_020a0eac);
-    return t;
+    return _ZN16dScMgPachinko2_cD0Ev(self);
 }
 
 }  /* extern "C" */

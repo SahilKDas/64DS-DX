@@ -63,7 +63,9 @@ void *data_020a0ea8;                  /* Memory::tmpHeapPtr */
    data_020a4b58 with the two neighbours its parent declares on the same
    line. player_bridges.cpp is not on this batch and is far too wide to take
    whole for one row. */
-int data_020a4b58[4], data_020a4b68[4], data_020a60f4[4];
+int data_020a4b58[4], data_020a4b68[4];
+/* data_020a60f4 is not here: it is data_020a60c4 + 0x30 on the DS and
+   ntr/runtime.cpp hosts the two as one band (the timer callbacks). */
 /* THIRD ORDER, same file, same bracket: fBase_c::Process's four constants
    (func_0204335c.c calls it) player_bridges.cpp:2416 declares on one line. */
 int data_02099e94[4], data_02099ebc[4], data_02099ec4[4], data_02099fcc[4];

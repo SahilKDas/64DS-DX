@@ -1,150 +1,87 @@
-// The src sound functions the host owns, each filtered out of
+// The src sound functions the host still owns, each filtered out of
 // SLICE10_CAM_SOURCES in port/CMakeLists.txt.
 //
-// Most of them are ARM argument ride-throughs. Five functions in the sound
-// stack are declared in src/ with fewer
-// parameters than their callers pass. That is not a decomp error -- on ARM
-// the extra arguments sit in r1..r3 across a call that never names them, and
-// the callee's own call passes them straight on. mwccarm reproduces the ROM
-// bytes exactly that way, so the src stays as it is and the host spells the
-// arguments out instead. Same pattern as the SharedFilePtr::Construct
-// veneers in hal/cxx_aliases.cpp and the gate-14 ride-throughs in
-// port/unmatched/.
+// THE FIVE SOUND COMMAND VENEERS LEFT THIS FILE (run linkfull, lane RS3PORT).
+// func_0204f600, func_0204f89c, func_0204f7cc, func_0204f86c and
+// func_0204fa2c were hosted here as ARM argument ride-throughs: their src
+// named fewer parameters than the callers pass, which only works while the
+// extra arguments sit in r1..r3 across the call. The src now spells each of
+// them with the arguments the ROM passes (main #3102 re-spelled
+// func_0204f600 and func_0204fa2c; the other three already were), the
+// matched TUs are byte-identical to the cartridge, and they compile here
+// unchanged, so their filter lines came out of port/CMakeLists.txt and the
+// game runs the ROM's own bodies.
 //
-// Each of these src files is filtered out of SLICE10_CAM_SOURCES in
-// port/CMakeLists.txt; the bodies below are the same code with the riders
-// named.
-//
-//   func_0204f600  (1 -> 4)  START: the sequence pointer, entry offset and
-//                            bank all ride into Snd_SendCommand(0, ...).
-//   func_0204f89c  (1 -> 2)  volume rides into Snd_SendCommand(3, ...).
-//   func_0204f7cc  (1 -> 3)  pan mode + value ride into Snd_SendCommand(4).
-//   func_0204f86c  (1 -> 3)  two riders into Snd_SendCommand(5, ...).
-//   func_0204fa2c  (1 -> 2)  the fade length rides into func_0204f5a0.
-//
-// The rest are not ride-throughs; each says why below.
+// What is left is not that class, and each body below says why. The one
+// ride-through still here is func_02009e70's call (3 -> 4): the stop fade
+// rides into Sound_PlayIfNotActive.
 #include "sdat.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef unsigned char u8;
-
 extern "C" {
 
-void func_0205adc4(void *a, int b, int c, int d);
-void func_0205ad24(int a, int b);
-int  func_0205acac(int a, int b, int c);
-void func_0205aaf4(void *a, int b, int c);
-void func_0204f4bc(void *obj);
-void *func_0205afb4(void);
-void func_0204f5a0(u8 *thiz, int arg1);
+int  Sound_PlayIfNotActive(int a, int b, int c, int d);
 
-// func_0204f600(thiz) on ARM; r1 = sequence data, r2 = entry offset,
-// r3 = resident bank, all of which ride into func_0205adc4.
-// PORT_HOST_ABI: ARM r1..r3 argument ride-through (1 named param -> 4).
-int func_0204f600(void *thiz, int seqData, int entryOff, int bank)
+// src/func_02009e70.cpp declares Sound_PlayIfNotActive with three
+// parameters and calls it with three; the definition takes four and
+// stores the fourth as the effect's stop fade (func_0201186c ->
+// func_02011b38 a5 -> entry+4 -> func_0204f5a0's arg1, where 0 stops
+// the effect at once and non-zero ramps it down). The cartridge's
+// fourth argument is the r3 = 0 it materialised two instructions
+// earlier for the data_0209b000 = 0 store, so the camera's rotate
+// effect is registered with fade 0. On the host the callee read an
+// unwritten stack slot, and the effect kept sounding for whatever
+// that word happened to say.
+// PORT_HOST_ABI: ARM r3 argument ride-through (stop fade, 0).
+int hal_Sound_PlayIfNotActive_ridethrough(int a, int b, int c)
 {
-    func_0205adc4((void *)(size_t)(unsigned)*(u8 *)((char *)thiz + 0x3c),
-                  seqData, entryOff, bank);
-    func_0204f4bc(thiz);
-    *(void **)((char *)thiz + 0x30) = func_0205afb4();
-    *(u8 *)((char *)thiz + 0x2c) = 1;
-    return 1;
+    return Sound_PlayIfNotActive(a, b, c, 0);
 }
 
-// func_0204f89c(c) on ARM; r1 = volume, riding into func_0205ad24's second
-// parameter (which the src file's own declaration does not name either).
-// PORT_HOST_ABI: ARM r1 argument ride-through (volume).
-void func_0204f89c(char **c, int volume)
-{
-    u8 *p = (u8 *)*c;
-    if (p) func_0205ad24(p[0x3c], volume);
-}
-
-// func_0204f7cc(c) on ARM; r1/r2 = the pan mode and value.
-// PORT_HOST_ABI: ARM r1/r2 argument ride-through (pan mode + value).
-void func_0204f7cc(char **c, int mode, int pan)
-{
-    u8 *p = (u8 *)*c;
-    if (p) func_0205acac(p[0x3c], mode, pan);
-}
-
-// func_0204f86c(c) on ARM; r1/r2 ride into func_0205aaf4.
-// PORT_HOST_ABI: ARM r1/r2 argument ride-through.
-void func_0204f86c(char **c, int b, int d)
-{
-    u8 *p = (u8 *)*c;
-    if (p) func_0205aaf4((void *)(size_t)(unsigned)p[0x3c], b, d);
-}
-
-// func_0204fa2c(p) on ARM; r1 = the fade length in frames, riding into
-// func_0204f5a0's second parameter. 0 means stop now, non-zero ramps down.
-// PORT_HOST_ABI: ARM r1 argument ride-through (fade length).
-int func_0204fa2c(int *p, int fade)
-{
-    func_0204f5a0((u8 *)(size_t)(unsigned)*p, fade);
-    return 0;
-}
-
-// Sound::Play. Its src declares the resolver as func_02050cdc(void) and
-// calls it with no arguments -- the kind and id are already in r0/r1 from
-// Play's own frame, so on ARM they ride straight through. On the host the
-// callee read whatever happened to be in the argument slots, returned 0, and
-// the very next line (*(u8 *)(s + 5)) faulted on address 5. That was the
-// first crash the unstubbed front door produced.
+// Sound::Play IS THE ROM'S OWN BODY NOW (run linkfull wave 31, lane RS5A).
+// This file carried a host copy of it. The copy's first reason was an ARM
+// argument ride-through: the pre-sync src declared the resolver
+// func_02050cdc(void) and let the kind and id ride in r0/r1. That spelling
+// went at the 09-14 sync (the src calls func_02050cdc(j1, j2)), and main
+// caca8949ed made the four Sound:: callers forward the kind and id, so
+// src/_ZN5Sound4PlayEjjRK7Vector3.cpp compiles here unchanged. It was on
+// port/slice_gate10.txt all along and /OPT:REF dropped it, because every
+// caller spells the flat name below and only the copy defined it.
 //
-// The null check is a host addition, not the ROM's behaviour: func_02050cdc
-// legitimately returns 0 for an id whose group was never loaded, and on
-// hardware the game is never in that state. Printing once and returning is
-// the honest answer instead of reproducing a crash the DS would not have.
+// What stays here is that FLAT NAME, as a bridge into the ROM body. It keeps
+// the two host duties the copy carried and none of the game's logic:
 //
-// STALE AS OF THE 09-14 SYNC (run link100 wave 10, lane SMOKELINK5). RULED
-// (w6-c item 3) read this as the ride-through class, the same one the five
-// functions at the top of this file are in: the PRE-SYNC src declared the
-// resolver `func_02050cdc(void)` and called it with no arguments, so kind and
-// id rode through in r0/r1 from Play's own frame and a cdecl host callee had
-// no spelling that reads them -- "the src is not wrong and there is nothing
-// to replace it with" was true of THAT declaration.
+//   1. sd_consumer_init, the idempotent self-seat. Not every harness has a
+//      frame loop calling sdat_host_tick before its first sound (smoke_player
+//      reaches Player::Behavior -> Sound::Play directly), and the resolver's
+//      table walk reads data_020a5bb8 + 0x84 unconditionally, so an unseated
+//      root is a null dereference rather than a quiet no-op. The same seat
+//      hal/reverse_bridges.cpp puts in front of PlaySub, Play2D and
+//      LoadAndSetMusic_Layer1.
+//   2. The null-resolver guard. func_02050cdc returns 0 for an id whose group
+//      was never loaded, and the ROM body's next line reads the entry's +5.
+//      On hardware the game is never in that state; on the host that read is
+//      a page fault inside whichever actor asked. The bridge asks the same
+//      lookup first (three table reads, no side effects), and on 0 skips the
+//      call with one line per id, exactly as the copy did. No measured run
+//      takes this branch.
 //
-// The synced src/_ZN5Sound4PlayEjjRK7Vector3.cpp no longer declares it that
-// way. It now spells `extern "C" char* func_02050cdc(int a, int idx);` and
-// calls `func_02050cdc(j1, j2)` with both arguments explicit, which is an
-// ordinary two-int cdecl call MSVC reproduces with no ride-through at all --
-// the (void) spelling this ruling turned on is simply gone from the source.
-// The declaration two lines below this comment, `void *func_02050cdc(int
-// kind, int idx);`, already matches the synced shape; only this prose still
-// described the pre-sync one. Nothing here argues the whole front door is
-// unride-through now (SetPlayableSeqCount's own w6-c note below is about a
-// different symbol and a different reason, and is untouched), only that this
-// one function's excuse for being a ride-through no longer holds against the
-// current source. The two host additions below (sd_consumer_init and the
-// null guard) are unaffected either way and are still argued in their own
-// comments.
+// SM64DS_SND_REQLOG=1 keeps its one line per request at the front door, with
+// the inputs the decision is made on (the listener-relative vector, its
+// distance, the limit, bank, group and the sound-effects switch). The copy
+// also printed a verdict for each request, and SM64DS_SND_TRACE /
+// SM64DS_VOICE_TRACE lit up its two culls; those were decided inside the
+// copy's own branches, and the ROM body decides them inside matched callees
+// (func_02048720, func_02048a1c) with no host function on the path, so they
+// retired with it. A request line now ends "sent to the ROM body" or, for
+// the guard, "DROPPED: no SEQARC entry".
 struct Vector3 { int x, y, z; };
 void *func_02050cdc(int kind, int idx);
-void *func_02048720(struct Vector3 *v, int kind, int id);
-void  func_02048908(void *obj, int *p);
-int   func_02048a1c(int *v, int kind, int id);
-void  func_02048d80(void *obj, int *p);
 int   func_02049018(int *v);          /* listener-relative distance */
-void  Player_PlaySoundEffect(int x, unsigned a, unsigned b);
-extern int data_0209b4a4[];
 extern int data_02099fac;             /* the 3D distance limit, romdata */
 
-// SM64DS_SND_REQLOG=1: ONE LINE PER REQUEST, WITH THE VERDICT ON THE SAME LINE.
-//
-// SM64DS_SND_TRACE already reports the two culls, but a cull report cannot
-// answer the question a missing sound actually asks first: did the request
-// HAPPEN. A level where a sound is absent because the game never asked for it
-// and a level where it was asked for and dropped produce the SAME quiet trace,
-// and telling those two apart is the whole opening move of a "sound X does not
-// play here" hunt -- it halves the search space before any deeper reading.
-//
-// So this logs every arrival at the front door together with the inputs the
-// decision is made on: the listener-relative vector the caller passed, the
-// distance that vector works out to, the limit it is about to be compared
-// against, and the bank and group in force. Off by default, latched once.
 int g_snd_reqlog = -1;
 extern signed char data_0208e428;        /* the bank every kind-3 sound rides */
 extern unsigned char data_0209b47c;      /* the loaded sound group */
@@ -164,19 +101,23 @@ static void snd_req(unsigned kind, unsigned id, int type,
             (int)data_0209b480, verdict);
 }
 
-// PORT_HOST_ABI: ARM r0/r1 argument ride-through into a (void)-declared
-// resolver, plus a host null guard where the DS could not reach the state.
+}  // extern "C"
+
+namespace Sound {
+/* src/_ZN5Sound4PlayEjjRK7Vector3.cpp: ?Play@Sound@@YAXIIABUVector3@@@Z */
+void Play(unsigned int j1, unsigned int j2, const Vector3 &v);
+}
+
+extern "C" {
+
+// PORT_HOST_ABI: the flat name every caller spells, with the self-seat and the
+// null-resolver guard in front of the ROM's own Sound::Play (see above).
 void _ZN5Sound4PlayEjjRK7Vector3(unsigned kind, unsigned id, struct Vector3 *v)
 {
     if (g_snd_reqlog < 0)
         g_snd_reqlog = getenv("SM64DS_SND_REQLOG") != 0;
-    // Self-initialise. Not every harness has a frame loop calling
-    // sdat_host_tick -- smoke_player reaches Player::Behavior -> Sound::Play
-    // directly -- and the table walkers below read data_020a5bb8 + 0x84
-    // unconditionally, so an unseated root is a null dereference rather than
-    // a quiet no-op. Idempotent and cheap after the first call.
     sd_consumer_init();
-    unsigned char *s = (unsigned char *)func_02050cdc((int)kind, (int)id);
+    const unsigned char *s = (const unsigned char *)func_02050cdc((int)kind, (int)id);
     if (s == 0) {
         static unsigned char seen[8][32];
         unsigned k = kind & 7, b = (id >> 3) & 31, m = 1u << (id & 7);
@@ -188,105 +129,24 @@ void _ZN5Sound4PlayEjjRK7Vector3(unsigned kind, unsigned id, struct Vector3 *v)
         snd_req(kind, id, -1, v, "DROPPED: no SEQARC entry");
         return;
     }
-    // SM64DS_SND_TRACE also lights up the TWO SILENT RETURNS below. Both are
-    // the ROM's own 3D culls -- func_02048720 answers "no free positional
-    // voice for this priority", func_02048a1c answers "further away than this
-    // sound's distance limit" -- and on the ROM they are ordinary. On the
-    // port they were the shape of a whole class of bug: data_02099fac, the
-    // default distance limit, was zeroed HAL storage rather than the ROM's
-    // 550, so func_02048a1c culled EVERY positional sound in the game and
-    // Sound::Play returned without a word. A cull that cannot be told apart
-    // from silence is the one thing this path is not allowed to be.
-    int t = s[5];
-    if (t == 9 || t == 2) {
-        void *r = func_02048720(v, (int)kind, (int)id);
-        if (r == 0) {
-            if (g_snd_trace_play)
-                fprintf(stderr, "[snd] Play(%u, %u) type %d: no positional "
-                        "voice free -- culled\n", kind, id, t);
-            // func_02048720 is matched src and refuses for two reasons it
-            // does not distinguish to its caller: the sound is further than
-            // its limit, or every slot in its pool is held by something it
-            // may not take. Print both inputs rather than guess -- the
-            // census line right after says which pool is full.
-            SD_VT("play REFUSED Sound::Play(%u, %u) type %d: no 3D slot "
-                  "(distance %d, limit %d)\n", kind, id, t,
-                  func_02049018((int *)v), data_02099fac);
-            sd_vtrace_arm9_census("at the refusal");
-            snd_req(kind, id, t, v, "DROPPED: no 3D slot (range or pool full)");
-            return;
-        }
-        snd_req(kind, id, t, v, "accepted (positional)");
-        Player_PlaySoundEffect((int)(size_t)r, kind, id);
-        // func_0204f63c writes the voice it took back into the owner slot and
-        // leaves it null if it could not get one (func_0204f934 has already
-        // cleared whatever was there). That null is the only place the ARM9's
-        // "no voice for you" answer is visible -- Sound::Play never looks at
-        // a return value -- so it is the one worth naming.
-        if (g_voice_trace && *(void **)r == 0) {
-            sd_vtrace("play REFUSED Sound::Play(%u, %u) type %d: the ARM9 "
-                      "voice pool gave out no voice\n", kind, id, t);
-            sd_vtrace_arm9_census("at the refusal");
-        }
-        func_02048908(r, (int *)v);
-        return;
-    }
-    if (func_02048a1c((int *)v, (int)kind, (int)id) == 0) {
-        if (g_snd_trace_play)
-            fprintf(stderr, "[snd] Play(%u, %u) type %d: out of range "
-                    "-- culled\n", kind, id, t);
-        SD_VT("play REFUSED Sound::Play(%u, %u) type %d: out of range\n",
-              kind, id, t);
-        snd_req(kind, id, t, v, "DROPPED: out of range");
-        return;
-    }
-    snd_req(kind, id, t, v, "accepted");
-    Player_PlaySoundEffect((int)(size_t)data_0209b4a4, kind, id);
-    if (g_voice_trace && data_0209b4a4[0] == 0) {
-        sd_vtrace("play REFUSED Sound::Play(%u, %u) type %d: the ARM9 voice "
-                  "pool gave out no voice\n", kind, id, t);
-        sd_vtrace_arm9_census("at the refusal");
-    }
-    func_02048d80(data_0209b4a4, (int *)v);
+    snd_req(kind, id, s[5], v, "sent to the ROM body");
+    Sound::Play(kind, id, *v);
 }
 
 // Set from the consumer's own SM64DS_SND_TRACE read, so one variable arms
 // both halves of the trace.
 int g_snd_trace_play;
 
-// Sound::Player::SetPlayableSeqCount. Not a ride-through -- an ALIAS. The
-// src writes *(u32 *)(data_020a4d84 + id * 0x1c), and on the DS
-// data_020a4d84 is data_020a4d6c + 0x18, i.e. field +0x18 of the same
-// 32-entry player array. Host symbols are separate objects, so the src
-// version would drop the write into a different block from the one
-// func_0204f63c reads it back out of -- and func_0204f63c uses that field as
-// "how many sequences may this player run", so a lost write means it thinks
-// the limit is 0 and evicts a voice on every single sound. Writing through
-// data_020a4d6c keeps the two views aliased.
-//
-// RULED (w6-c item 3), and the comment above is right that it is not a
-// ride-through, so the reason is spelled for what it is: two ROM symbols
-// naming ONE array at a fixed 0x18 offset, which separate host objects
-// cannot express. The src is correct about the ROM and unlinkable on a host
-// for a reason that has nothing to do with argument passing.
-//
-// THE RETIREMENT RECIPE, since this one has a real one and the port already
-// owns the machinery: give data_020a4d6c and data_020a4d84 adjacent grouped
-// sections the way hal/level_boot.cpp's SAVEBLK macro puts the five-way
-// split of data_0209caa0 back in ROM order, sized so data_020a4d84 lands at
-// data_020a4d6c + 0x18. tools/ovdata.py --pack does the same thing per
-// overlay symbol. With the two symbols genuinely overlapping, the matched TU
-// links and this host body retires. It is a seat, not a ruling, so it wants
-// its own lane rather than a line in this one.
-extern unsigned char data_020a4d6c[];
-// PORT_HOST_ABI: two ROM symbols over one array (data_020a4d84 IS
-// data_020a4d6c + 0x18); separate host objects cannot alias.
-void _ZN5Sound6Player19SetPlayableSeqCountEii(int playerId, int maxSeq)
-{
-    if (playerId < 0 || playerId >= 32) return;
-    *(unsigned int *)(data_020a4d6c + playerId * 0x1c + 0x18) =
-        (unsigned short)maxSeq;
-}
+// Sound::Player::SetPlayableSeqCount LEFT THIS FILE (run linkfull, lane
+// RS3PORT). Its host copy wrote through data_020a4d6c + id * 0x1c + 0x18
+// because the src wrote through data_020a4d84, a second ROM name for the
+// same word that separate host objects cannot alias. Main (#3102) spells
+// the store as data_020a4d6c[index].mPlayableSeqCount over the recovered
+// record in include/SoundPlayerRecord.h, one object on both machines, so the
+// matched TU links through its row in hal/cxx_aliases.cpp instead. The host
+// copy's index check went with it: every caller passes 2, 3, 9, a loop
+// index below 0x20, or an id from data_0208e448's ten ROM records (all
+// below 32), so it never fired.
 
 // func_0203d974: "does anything still need loading off the card?" Every
 // group-load seam in the sound stack asks it first. Two independent reasons

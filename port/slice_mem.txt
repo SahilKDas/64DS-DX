@@ -163,11 +163,31 @@ src/actors/unit020bfec0.cpp
 #   `ret 4`s four bytes the caller never pushed. The stack imbalance shifted
 #   every frame above it and func_ov006_020c07a0's own ret jumped into the DS
 #   heap. See port/unmatched/MgMemory2_ShadowSlot_020c06dc.cpp.
-# HOST-COPIED (mg6 lane MEM): src/actors/unit020bfec0.cpp -- its three
-#   SharedFilePtr file ids are spelled `extern int g0[], g1[], g2[]`, three
-#   globals that exist in no config. The ROM loads 0x205, 0x206 and 0x207 out
-#   of its own literal pool. See port/unmatched/MgMemory2_SubObjCtor.cpp.
-# HOST-COPIED (mg6 lane MEM): src/actors/unit020bfec0.cpp -- TWO defects in
+src/func_ov006_020c07a0.c
+src/func_ov006_020c092c.cpp
+src/func_ov006_020c09f8.c
+# func_ov006_020c0a48 is back (run linkfull, lane RS4PORT). It was host-copied
+#   (mg6 lane MEM) because its three SharedFilePtr file ids were spelled as
+#   placeholder globals g0/g1/g2; main #3107 passes the pool's 0x205, 0x206 and
+#   0x207, so this is main's blob and port/unmatched/MgMemory2_SubObjCtor.cpp
+#   is retired.
+src/func_ov006_020c0a48.c
+src/func_ov006_020c0aa8.c
+src/func_ov006_020c0af8.c
+src/func_ov006_020c0b74.c
+src/func_ov006_020c0c80.cpp
+src/func_ov006_020c0ce8.c
+src/func_ov006_020c0d68.cpp
+src/func_ov006_020c0df0.cpp
+src/func_ov006_020c0f9c.cpp
+src/func_ov006_020c11c0.cpp
+src/func_ov006_020c1420.cpp
+src/func_ov006_020c14bc.cpp
+src/func_ov006_020c1604.c
+src/func_ov006_020c1718.c
+src/func_ov006_020c1760.c
+src/func_ov006_020c1764.cpp
+# HOST-COPIED (mg6 lane MEM): src/func_ov006_020c1804.cpp -- TWO defects in
 #   one TU, both the host's rather than the decomp's. It draws the model
 #   sub-object through a LOCAL SHADOW CLASS at two call sites, so its `f5(0)`
 #   counts in the ROM's vtable numbering (byte +0x14 = the sixth word =

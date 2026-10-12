@@ -66,12 +66,70 @@ port/hal/actor_classes_ov060.cpp
 # Actor::ClosestPlayer reader (the receiver-dropping r0 seam); hosted as a
 # receiver-passing copy in port/unmatched/Actor_ClosestPlayer_OverlayReaders
 # .cpp per the closestplayer guard's remedy; the byte-locked src stays out.
-# src/actors/daKpa_c.cpp -- HELD OUT by lane w6-A: BOWSER's flag pass dispatches its state
-#   table through an MSVC pointer-to-member whose stride is not the ROM's 8
-#   (measured 16 -- re-measured at the wave-6 close; the lane banked 4).
-#   Host copy in port/unmatched/Ov060_StateDispatch.cpp.
-# src/actors/daKpa_c.cpp
-# src/actors/daKpa_c.cpp -- HELD OUT by lane w6-A: BOWSER TAIL's frame pass dispatches its state
+src/func_ov060_02112350.c
+src/func_ov060_021123a0.c
+src/func_ov060_021123c8.c
+src/func_ov060_021123dc.c
+# src/func_ov060_02112434.cpp, BOWSER's flag pass, was HELD OUT by lane w6-A:
+#   it dispatches its state table through an MSVC pointer-to-member whose
+#   stride was not the ROM's 8 then (measured 16). The global /vmg /vmm pair in
+#   port/CMakeLists.txt has made every pointer-to-member the ROM's eight-byte
+#   {code, adjust} since, so run linkfull lane SEATS3 armed the row: HOST COPY 1
+#   in port/unmatched/Ov060_StateDispatch.cpp is retired and the table's four
+#   cells (data_ov060_0211aeb4) hold __fastcall faces, receiver in ECX.
+src/func_ov060_02112434.cpp
+src/func_ov060_021125f0.c
+src/func_ov060_02112724.c
+src/func_ov060_021128c0.cpp
+src/func_ov060_02112ba8.cpp
+src/func_ov060_02112bfc.c
+src/func_ov060_02112d48.c
+src/func_ov060_02112ddc.cpp
+src/func_ov060_02112ee0.cpp
+src/func_ov060_021130c0.c
+src/func_ov060_02113260.c
+src/func_ov060_021132a4.c
+src/func_ov060_02113404.c
+src/func_ov060_021134ac.c
+src/func_ov060_02113564.c
+src/func_ov060_021135fc.c
+src/func_ov060_02113710.c
+src/func_ov060_02113740.c
+src/func_ov060_02113a94.c
+src/func_ov060_02113b5c.cpp
+src/func_ov060_02113d20.cpp
+src/func_ov060_02113d8c.cpp
+src/func_ov060_02113fcc.c
+src/func_ov060_02113ff4.c
+src/func_ov060_021142b4.c
+src/func_ov060_02114300.c
+src/func_ov060_021143b8.c
+src/func_ov060_021145a8.c
+src/func_ov060_021145d4.c
+src/func_ov060_0211469c.cpp
+src/func_ov060_021146d0.c
+src/func_ov060_02114858.c
+src/func_ov060_02114b60.c
+src/func_ov060_02114d08.c
+src/func_ov060_02114e9c.cpp
+src/func_ov060_02114f88.c
+src/func_ov060_02114ff8.c
+src/func_ov060_02115018.c
+src/func_ov060_02115060.c
+src/func_ov060_021150c4.c
+src/func_ov060_021150d0.cpp
+src/func_ov060_021151d4.c
+src/func_ov060_02115314.c
+src/func_ov060_021153f8.c
+src/func_ov060_021154e8.c
+src/func_ov060_02115518.c
+src/func_ov060_021156ec.c
+src/func_ov060_02115718.c
+src/func_ov060_02115744.c
+src/func_ov060_0211577c.c
+src/func_ov060_02115a84.cpp
+src/func_ov060_02115b0c.c
+# src/func_ov060_02115b84.cpp -- HELD OUT by lane w6-A: BOWSER TAIL's frame pass dispatches its state
 #   table through an MSVC pointer-to-member whose stride is not the ROM's 8
 #   (measured 16 -- re-measured at the wave-6 close; the lane banked 4).
 #   Host copy in port/unmatched/Ov060_StateDispatch.cpp.

@@ -11,6 +11,10 @@
 
 #include "ntr/ppu.h"
 
+/* for ntr::gx_aa_preimage: the display capture reads the frame as it was
+   before the edge-smoothing pass, never the smoothed one. */
+#include "ntr/gx.h"
+
 #include "ntr/mmio.h"
 
 #include <cstdio>
@@ -591,6 +595,9 @@ bool ppu_write_bmp_px(const char *path, const uint32_t *px, int w, int h) {
 }
 
 bool ppu_write_bmp(const char *path, const Framebuffer &fb) {
+    // A frame held on the graphics card (run cardfull, lane CARD2) is only its
+    // 2D in the framebuffer: read the 3D back first, so a dump is the picture.
+    gx_card_settle_fb(const_cast<Framebuffer &>(fb), "a picture dump");
     // The framebuffer's live image is active_w x active_h. On every fixed tier
     // (and on NTR_WIDE_RT with the toggle on) that equals the row stride, so the
     // buffer is already tight and this is the byte-identical old call.
@@ -681,7 +688,77 @@ uint32_t bank_home(unsigned block, uint8_t cnt) {
 
 }  // namespace
 
+/* ---- WHAT A BANK'S CONTENT IS, WHEN THE WINDOWS ARE FLAT (run hunt8, MGFLASH1)
+ *
+ * This port keeps ONE flat copy of each engine's VRAM window (0x06200000 for
+ * engine B BG, 0x06600000 for engine B OBJ) and the bank mapping only decides
+ * which captured block is carried into it. On the DS the windows are views of
+ * banks, and the dual-screen 3D minigames (Trampoline Time 384, Trampoline
+ * Terror 385, Bounce and Pounce 373, and 372) depend on two things that a
+ * single flat window cannot hold at once:
+ *
+ *   1. BANK I IS THE PAUSE MENU'S OWN STORAGE. src/actors/dScMgD3DBase_c.cpp
+ *      Virtual7C (slot 31) maps bank I as engine B OBJ (GX::SetBankForSubOBJ
+ *      (0x100) writes VRAMCNT_I = 0x82), loads the language's menu picture at
+ *      0x06600000 and 0x06602000, and maps the previous owner back. Bank I
+ *      keeps that picture while it is unmapped. OnAimedAtWithEgg (slot 29) maps
+ *      it again when the player pauses and the three buttons are drawn from it.
+ *      The capture publish below used to carry the last captured frame over the
+ *      same 0x06600000 window every other frame (bank D's home), so by the time
+ *      the player paused the window held a captured picture read as tiles: the
+ *      striped garbage where CONTINUE / QUIT / OPTIONS belong.
+ *   2. A CAPTURED BLOCK ONLY MATTERS TO THE SCENE THAT CAPTURED IT. Every scene
+ *      starts with Scene::ResetHardwareRegisters, which writes DISPCAPCNT =
+ *      0x80000000 (the enable bit, every field zero) and nothing else in the game
+ *      writes that exact word. The bookkeeping below was never cleared, so the
+ *      Rec Room reached from such a minigame mapped banks C and D to its own
+ *      engine B BG and OBJ (VRAMCNT 0x84 / 0x84) and the first publish after
+ *      that carried the minigame's last two captured frames over its tiles.
+ *
+ * So: the first 0x4000 bytes of the OBJ window are saved before the first
+ * capture is carried over them (that is the menu picture Virtual7C wrote, and
+ * the only thing the ROM puts there that this publish does not), and put back
+ * while bank I owns the window; and the bookkeeping is dropped at a scene
+ * boot. Neither changes a scene that never programs the capture unit. */
+namespace {
+constexpr uint32_t kObjWindow = 0x06600000u;
+constexpr uint32_t kBankIBytes = 0x4000u;   // bank I is 16 KB
+constexpr unsigned kVramCntI = 9;           // VRAMCNT_H is +8, VRAMCNT_I +9
+uint8_t g_bank_i[kBankIBytes];
+int g_bank_i_have;                          // g_bank_i holds bank I's content
+int g_bank_i_home;                          // bank I is engine B OBJ right now
+
+void capture_forget(void) {
+    for (unsigned b = 0; b < 4; ++b) {
+        g_cap[b].len = 0;
+        g_home_have[b] = 0;
+        g_home[b] = 0;
+    }
+    g_bank_i_have = 0;
+    g_bank_i_home = 0;
+}
+}  // namespace
+
 void ppu_vram_publish(void) {
+    /* A SCENE BOOT (see 2 above): drop what the last scene captured. Read
+       before anything else because this is the frame the new scene's banks are
+       mapped on, and ppu_display_capture clears the enable bit at the end of
+       this same frame. */
+    if (*reinterpret_cast<volatile uint32_t *>(kDispCapCnt) == 0x80000000u)
+        capture_forget();
+
+    /* BANK I OWNS THE OBJ WINDOW (VRAMCNT_I = 0x82, engine B OBJ at 0x06600000):
+       put its content back. Only once the menu picture has been saved. */
+    const uint8_t ci = *reinterpret_cast<volatile uint8_t *>(kVramCnt + kVramCntI);
+    const int i_home = (ci == 0x82) ? 1 : 0;
+    if (i_home != g_bank_i_home) {
+        if (i_home && g_bank_i_have)
+            std::memcpy(reinterpret_cast<void *>(kObjWindow), g_bank_i, kBankIBytes);
+        else if (!i_home && g_bank_i_have)
+            std::memcpy(g_bank_i, reinterpret_cast<const void *>(kObjWindow), kBankIBytes);
+        g_bank_i_home = i_home;
+    }
+
     for (unsigned b = 0; b < 4; ++b) {
         if (!g_cap[b].len) continue;         // never captured into
         const uint8_t cnt = *reinterpret_cast<volatile uint8_t *>(kVramCnt + b);
@@ -699,10 +776,62 @@ void ppu_vram_publish(void) {
         g_home[b] = home;
         if (!home) continue;                 // nowhere this program reads
         if (home == lcdc_addr(b)) continue;  // the bytes are already there
+        /* the window is about to be overwritten with a captured frame: what
+           the ROM put in bank I's first 16 KB is the one thing in it worth
+           keeping, and it is saved once, here, the first time */
+        if (home == kObjWindow && !g_bank_i_have && !g_bank_i_home) {
+            std::memcpy(g_bank_i, reinterpret_cast<const void *>(kObjWindow), kBankIBytes);
+            g_bank_i_have = 1;
+        }
         std::memcpy(reinterpret_cast<void *>(home + g_cap[b].off),
                     reinterpret_cast<const void *>(lcdc_addr(b) + g_cap[b].off),
                     g_cap[b].len);
     }
+}
+
+/* ---- WHAT THE CAPTURE UNIT ACTUALLY DID (run hd2, lane PIC) --------------
+ * Four numbers, so the edge-smoothing pass's promise can be CHECKED rather
+ * than believed. The promise is that the picture this game reads back off its
+ * own top screen is the same with the AntiAliasing setting on as with it off,
+ * and it is kept by capturing the PRE-SMOOTHING copy of the frame (ntr/gx.h,
+ * gx_aa_preimage) -- never by deciding when the pass is allowed to run.
+ *
+ * SO THE TWO TO READ TOGETHER ARE `performed` AND `from_preimage`: with the
+ * setting on they must be EQUAL. A capture that read the live framebuffer
+ * instead is, exactly, a frame on which the game saw the setting. `refused`
+ * is the frames the unit was armed on and turned away for one of its own
+ * reasons, which in this game is almost always
+ * Scene::ResetHardwareRegisters' write naming a block that is not in LCDC.
+ *
+ * THE HASH IS THE OTHER HALF. The counts say the right buffer was read;
+ * hashing every captured buffer, in capture order, says the bytes in it are
+ * the same bytes either way. It is FNV-1a over exactly the halfwords written
+ * into VRAM, so two runs agree only if every captured pixel of every captured
+ * frame agrees.
+ *
+ * They cost three increments and one multiply per captured pixel on the
+ * capture path only, which is at most 49152 pixels on the frames this game
+ * actually captures, and nothing at all on a frame that captures nothing. */
+unsigned long long g_cap_performed;   /* frames a capture was written on */
+unsigned long long g_cap_refused;     /* frames armed but not written */
+/* Of the captures performed, how many read the pre-smoothing copy of the frame
+   rather than the live framebuffer. With AntiAliasing on this has to equal
+   g_cap_performed exactly: a capture that read the live framebuffer is a frame
+   the game saw the setting on. With the setting off it is 0. */
+unsigned long long g_cap_from_preimage;
+/* FNV-1a's 64-bit offset basis, 0xcbf29ce484222325. A run that captures
+   nothing prints exactly this, which is how a reader tells "no capture
+   happened" from "a capture happened and hashed to something". */
+unsigned long long g_cap_hash = 14695981039346656037ull;
+
+void ppu_capture_counters(unsigned long long &performed,
+                          unsigned long long &refused,
+                          unsigned long long &hash,
+                          unsigned long long &from_preimage) {
+    performed = g_cap_performed;
+    refused = g_cap_refused;
+    hash = g_cap_hash;
+    from_preimage = g_cap_from_preimage;
 }
 
 void ppu_display_capture(const uint32_t *src, int w, int h) {
@@ -729,9 +858,10 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
                          "captured this frame.\n", cap, source);
             std::fflush(stderr);
         }
+        ++g_cap_refused;
         return;
     }
-    if (!src || w <= 0 || h <= 0) return;
+    if (!src || w <= 0 || h <= 0) { ++g_cap_refused; return; }
 
     const unsigned block = (cap >> 16) & 3;
 
@@ -779,6 +909,7 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
                          cap, block, dcnt);
             std::fflush(stderr);
         }
+        ++g_cap_refused;
         return;
     }
 
@@ -790,7 +921,10 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
 
     const uint32_t off = ((cap >> 18) & 3) * 0x8000u;
     const uint32_t need = (uint32_t)cw * (uint32_t)ch * 2u;
-    if (off + need > kBankSize) return;      // would run off the end of the bank
+    if (off + need > kBankSize) {            // would run off the end of the bank
+        ++g_cap_refused;
+        return;
+    }
 
     /* NEAREST, not averaged; see the note in ntr/ppu.h. The ratio is a whole
        number at every 4:3 extent the port can be configured at, because
@@ -825,6 +959,38 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
         }
     }
     uint16_t *dst = reinterpret_cast<uint16_t *>(lcdc_addr(block) + off);
+    /* ---- WHAT THE GAME IS ALLOWED TO READ BACK ------------------------------
+     * `src` is the live framebuffer, which may carry the AntiAliasing pass's
+     * edge smoothing. The game must not see a host picture setting, so when
+     * that pass has run this frame it also left the frame AS IT WAS BEFORE IT,
+     * finished by the 2D compositor, and THAT is what is captured. Null at
+     * every other time, which is every run with the setting off, and then this
+     * is the framebuffer it always was.
+     *
+     * DO NOT REPLACE THIS WITH AN ORDER-BASED SHORTCUT. That is what was here
+     * first: the pass asked whether DISPCAPCNT was already armed and refused
+     * to smooth that frame. It is true on a course and FALSE on a running
+     * dual-screen minigame, which arms the unit AFTER gx_render -- measured on
+     * scene 372 driven past its menu, where 669 of 1200 frames captured and
+     * the armed test caught only 169 of them, so five hundred captured frames
+     * carried the smoothing. Reading the copy assumes nothing about when the
+     * game arms the unit, which is the only reason it holds. */
+    if (const uint32_t *held = gx_card_capture_picture()) {
+        /* THE FRAME IS HELD ON THE GRAPHICS CARD (run cardfull, CARD2): the
+           framebuffer is only the 2D overlay of it, so the picture is built
+           here from the card's copy of the 3D as it was BEFORE the smoothing,
+           under that overlay. It is the same frame the copy below is, so with
+           the setting on it counts as having read the pre-smoothing frame. */
+        src = held;
+        if (gx_anti_aliasing()) ++g_cap_from_preimage;
+    } else if (const uint32_t *pre = gx_aa_preimage()) {
+        src = pre;
+        ++g_cap_from_preimage;
+    }
+    /* The running hash is kept in a local across the two loops and stored once
+       at the end: a global read-modify-write per pixel would be the only thing
+       in this loop the compiler cannot keep in a register. */
+    unsigned long long h1 = g_cap_hash;
     for (int y = 0; y < ch; ++y) {
         const int sy = ry > 0 ? y * ry : (y * h) / SUB_H;
         /* w/h are the LIVE image extent; the framebuffer's row stride is always
@@ -841,11 +1007,20 @@ void ppu_display_capture(const uint32_t *src, int w, int h) {
                own clear colour -- so the bit is 1 for every captured pixel
                rather than derived from a channel the host framebuffer does not
                carry a meaning for. */
-            dst[(size_t)y * cw + x] =
+            const uint16_t v =
                 (uint16_t)(0x8000u | (((p >> 3) & 0x1Fu) << 10) |
                            (((p >> 11) & 0x1Fu) << 5) | ((p >> 19) & 0x1Fu));
+            dst[(size_t)y * cw + x] = v;
+            /* FNV-1a over the halfword actually written, low byte first, in
+               capture order. Two runs of the same rows agree on this number
+               only if every captured pixel of every captured frame agrees, so
+               it is the whole of "the game read back the same picture". */
+            h1 = (h1 ^ (unsigned long long)(v & 0xFFu)) * 1099511628211ull;
+            h1 = (h1 ^ (unsigned long long)((v >> 8) & 0xFFu)) * 1099511628211ull;
         }
     }
+    g_cap_hash = h1;
+    ++g_cap_performed;
     g_cap[block].off = off;
     g_cap[block].len = need;
 }

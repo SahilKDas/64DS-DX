@@ -4,15 +4,16 @@
  * RTTI ov002:0x0210b000 names daSCoin_c; the debug table names SECRET_COIN.
  * overlay_actors.md lists the same slot as INVISIBLE_SECRET(329). SILVER_STAR
  * (179) is daStar_c, not this class. ov002 also carries POWER_STAR(178) and
- * STAR_MARKER(180), which 020f05f4 matches and spawns (symbols/actor_debug_names.tsv
- * spells those two ids STAR and STARBASE).
+ * STAR_MARKER(180), which 020f05f4 matches and spawns.
  *
  * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S. mwccarm 2004/b56
  * emits one `.text` section per function in the reverse of source order.
  *
- * Known limits:
+ * deslop leftovers:
  * - dCcAc_c::Init 6az: InitResources passes Fix12<int> by value; the header
  *   method form size-DIFFs (notes/mwccarm-codegen.md 6az).
+ * - dActor_c::Spawn as a real method size-DIFFs in 020f05f4 (s8/s16
+ *   areaID/deathTableID vs the scalar ABI the ROM calls with).
  * - Named mPosX/Y/Z on the STAR_MARKER in 020f05f4 size-DIFFs; keep the
  *   int* +0x5c copy.
  * - data_ov002_0210d9a8 is the ov002 SharedFilePtr handle; symbols.txt has
@@ -23,17 +24,23 @@
 #include "daSCoin_c.h"
 #include "SharedFilePtr.h"
 #include "Model.h"
-#include "daStar_c.h"
 
 extern "C" {
 int Vec3_Dist(const Vector3 *a, const Vector3 *b);
 unsigned char DecIfAbove0_Byte(unsigned char *p);
 void func_02012790(int);
+void _ZN9PowerStar13AddStarMarkerEv(void *thiz);
+char *_ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(unsigned int a,
+        unsigned int b, void *v, void *w, int e, int f);
 void _ZN7dCcAc_c4InitEP8dActor_c5Fix12IiES3_jj(void *self, void *actor,
                                               int radius, int height,
                                               unsigned int flags,
                                               unsigned int vulnFlags);
-extern SharedFilePtr data_ov002_0210d9a8;
+void func_ov002_020f0438(void *self);
+void func_ov002_020f051c(void *self);
+void func_ov002_020f05f4(void *self);
+
+extern char data_ov002_0210d9a8;
 }
 
 /* The typed 0x1c actor profile: fBase_c reads the halfwords at +4/+6 as
@@ -52,6 +59,8 @@ struct SCoinSpawnInfo {
 typedef char SCoinSpawnInfo_size_must_be_0x1c[
     sizeof(SCoinSpawnInfo) == 0x1c ? 1 : -1];
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 // @symbol daSCoin_c_classInit
 extern "C" daSCoin_c *daSCoin_c_classInit()
 {
@@ -64,6 +73,8 @@ extern "C" SCoinSpawnInfo g_profile_SECRET_COIN = {
     0x00000000, 0x00320000, 0x01f40000, 0x00050000
 };
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 // @symbol _ZN9daSCoin_c13InitResourcesEv
 s32 daSCoin_c::InitResources()
 {
@@ -75,16 +86,18 @@ s32 daSCoin_c::InitResources()
     mLeaderUniqueID = 0;
     mCollectedCount = 0;
     mDeathTimer = 0;
-    Model::LoadFile(data_ov002_0210d9a8);
+    Model::LoadFile(*(SharedFilePtr *)&data_ov002_0210d9a8);
     return 1;
 }
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 // @symbol _ZN9daSCoin_c8BehaviorEv
 s32 daSCoin_c::Behavior()
 {
     if (mDeathTimer) {
         if (DecIfAbove0_Byte(&mDeathTimer) == 0) {
-            func_ov002_020f05f4();
+            func_ov002_020f05f4(this);
             MarkForDestruction();
         }
         return 1;
@@ -111,9 +124,9 @@ s32 daSCoin_c::Behavior()
         MarkForDestruction();
         return 1;
     }
-    func_ov002_020f051c();
+    func_ov002_020f051c(this);
     if (mdCcAc_c.otherOwner) {
-        func_ov002_020f0438();
+        func_ov002_020f0438(this);
     }
     mdCcAc_c.Clear();
     if (mClsnDisabled == 0) {
@@ -122,38 +135,39 @@ s32 daSCoin_c::Behavior()
     return 1;
 }
 
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 // @symbol _ZN9daSCoin_c16CleanupResourcesEv
 s32 daSCoin_c::CleanupResources()
 {
-    data_ov002_0210d9a8.Release();
+    (*(SharedFilePtr *)&data_ov002_0210d9a8).Release();
     return 1;
 }
 
-// @symbol _ZN9daSCoin_c19func_ov002_020f05f4Ev
-/* Finds the STAR_MARKER whose byte at +0x1d9 equals unk_10d and spawns actor
- * 0xb2 (POWER_STAR) 0x12c000 above its position, then calls AddStarMarker on it.
- * Returns without spawning when there is no such marker. */
-void daSCoin_c::func_ov002_020f05f4()
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+extern "C" void func_ov002_020f05f4(void *self)
 {
     /* MATCH form: dActor_c::Spawn as a real method size-DIFFs (s8/s16
      * areaID/deathTableID vs the scalar ABI). Named mPosX/Y/Z on the
      * STAR_MARKER also size-DIFFs; keep the int* +0x5c copy. */
-    char *marker = 0;
+    daSCoin_c *c = (daSCoin_c *)self;
+    char *a = 0;
     for (;;) {
-        marker = (char *)dActor_c::FindWithActorID(0xb4, (dActor_c *)marker);
-        if (marker == 0) return;
-        if (unk_10d == *(unsigned char *)(marker + 0x1d9)) {
-            int *base = (int *)(marker + 0x5c);
+        a = (char *)dActor_c::FindWithActorID(0xb4, (dActor_c *)a);
+        if (a == 0) return;
+        if (c->unk_10d == *(unsigned char *)(a + 0x1d9)) {
+            int *base = (int *)(a + 0x5c);
             Vector3 pos;
             pos.x = base[0];
             pos.y = base[1];
             pos.z = base[2];
             pos.y += 0x12c000;
             {
-                char *star = (char *)dActor_c::Spawn(
-                    0xb2, unk_10d | 0x40, pos, 0, mAreaId, -1);
-                if (star != 0) {
-                    ((daStar_c *)star)->AddStarMarker();
+                char *p = _ZN8dActor_c5SpawnEjjRK7Vector3PK10Vector3_16as(
+                    0xb2, c->unk_10d | 0x40, &pos, 0, c->mAreaId, -1);
+                if (p != 0) {
+                    _ZN9PowerStar13AddStarMarkerEv(p);
                 }
             }
             return;
@@ -161,76 +175,73 @@ void daSCoin_c::func_ov002_020f05f4()
     }
 }
 
-// @symbol _ZN9daSCoin_c19func_ov002_020f051cEv
-/* Runs once (unk_112 guards it). Looks through the actor list for actor 0x14
- * (HATENA_BLOCK), 0x15 (ITEM_BLOCK) or 0xc0 (PUSHBLOCK) closer than 0xc8000
- * to this coin; on a hit it sets mClsnDisabled and stores this coin in the
- * other actor at +0x3f4 (+0x4f0 for 0xc0). */
-void daSCoin_c::func_ov002_020f051c()
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+extern "C" void func_ov002_020f051c(void *self)
 {
-    dActor_c *other;
-    u32 otherID;
-    int isMatch;
-    if (unk_112 != 0) return;
-    other = dActor_c::Next(0);
-    if (other == 0) goto done;
+    daSCoin_c *c = (daSCoin_c *)self;
+    dActor_c *a;
+    u32 t;
+    int b;
+    if (c->unk_112 != 0) return;
+    a = dActor_c::Next(0);
+    if (a == 0) goto done;
     do {
-        otherID = other->actorID;
-        isMatch = (otherID == 0x14);
-        if (isMatch == 0) {
-            isMatch = (otherID == 0x15);
-            if (isMatch == 0) goto chk2;
+        t = a->actorID;
+        b = (t == 0x14);
+        if (b == 0) {
+            b = (t == 0x15);
+            if (b == 0) goto chk2;
         }
-        if (Vec3_Dist((Vector3 *)&mPosX, (Vector3 *)&other->mPosX) < 0xc8000) {
-            mClsnDisabled = 1;
-            *(int *)((char *)other + 0x3f4) = (int)this;
+        if (Vec3_Dist((Vector3 *)&c->mPosX, (Vector3 *)&a->mPosX) < 0xc8000) {
+            c->mClsnDisabled = 1;
+            *(int *)((char *)a + 0x3f4) = (int)c;
             goto done;
         }
         goto next;
       chk2:
-        isMatch = (otherID == 0xc0);
-        if (isMatch == 0) goto next;
-        if (Vec3_Dist((Vector3 *)&mPosX, (Vector3 *)&other->mPosX) < 0xc8000) {
-            mClsnDisabled = 1;
-            *(int *)((char *)other + 0x4f0) = (int)this;
+        b = (t == 0xc0);
+        if (b == 0) goto next;
+        if (Vec3_Dist((Vector3 *)&c->mPosX, (Vector3 *)&a->mPosX) < 0xc8000) {
+            c->mClsnDisabled = 1;
+            *(int *)((char *)a + 0x4f0) = (int)c;
             goto done;
         }
       next:
-        other = dActor_c::Next(other);
-    } while (other != 0);
+        a = dActor_c::Next(a);
+    } while (a != 0);
   done:
-    unk_112 = 1;
+    c->unk_112 = 1;
 }
 
-// @symbol _ZN9daSCoin_c19func_ov002_020f0438Ev
-/* Collection handler. Finds the group leader by mLeaderUniqueID; unless this
- * coin is mGroupId 0xf, its mGroupId must equal the leader's mCollectedCount.
- * Plays func_02012790(0x25), bumps the leader's count, spawns the count as a
- * number, and marks the collider flags. The fifth collection starts this
- * coin's mDeathTimer at 0x1e frames; otherwise a mGroupRole 2 coin destroys
- * itself. */
-void daSCoin_c::func_ov002_020f0438()
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+// @symbol func_ov002_020f0438
+extern "C" void func_ov002_020f0438(void *self)
 {
-    daSCoin_c *o = (daSCoin_c *)dActor_c::FindWithID(mLeaderUniqueID);
+    daSCoin_c *thiz = (daSCoin_c *)self;
+    daSCoin_c *o = (daSCoin_c *)dActor_c::FindWithID(thiz->mLeaderUniqueID);
     if (!o) return;
-    if (mGroupId != 0xf && mGroupId != o->mCollectedCount) return;
+    if (thiz->mGroupId != 0xf && thiz->mGroupId != o->mCollectedCount) return;
     func_02012790(0x25);
     o->mCollectedCount++;
     {
         Vector3 v;
-        v.x = mPosX;
-        v.y = mPosY;
-        v.z = mPosZ;
-        SpawnNumber(v, o->mCollectedCount, false, 0, 0);
+        v.x = thiz->mPosX;
+        v.y = thiz->mPosY;
+        v.z = thiz->mPosZ;
+        thiz->SpawnNumber(v, o->mCollectedCount, false, 0, 0);
     }
-    mdCcAc_c.flags |= 1;
-    if (o->mCollectedCount == 5) { mDeathTimer = 0x1e; return; }
-    if (mGroupRole != 2) return;
-    MarkForDestruction();
+    thiz->mdCcAc_c.flags |= 1;
+    if (o->mCollectedCount == 5) { thiz->mDeathTimer = 0x1e; return; }
+    if (thiz->mGroupRole != 2) return;
+    thiz->MarkForDestruction();
 }
 
+/* -------------------------------------------------------------------------- */
 /*   _ZN9daSCoin_cD1Ev  0x020f03c4  size 0x30  (complete-object destructor)   */
 /*   _ZN9daSCoin_cD0Ev  0x020f03f4  size 0x44  (deleting destructor)          */
+/* -------------------------------------------------------------------------- */
 
 // @symbol _ZN9daSCoin_cD0Ev
 // @symbol _ZN9daSCoin_cD1Ev

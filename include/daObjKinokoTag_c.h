@@ -25,7 +25,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
  * InitResources (0), CleanupResources (3), Behavior (6), and the D1/D0
  * pair (16/17). Behavior establishes the five bytes after the collider.
  * The backlink consumer at ov091 0x02133498 is the independent witness
- * for mLinkedPileGone: PILE (daObjPile_c, actor 0x1b) writes that byte when its
+ * for mLinkedPileGone: PILE (Stump, actor 0x1b) writes that byte when its
  * linked actor is KINOKO_TAG (0x140), before the tag respawns the mushroom.
  *
  * Both factories belong to this TU. A single daObjKinokoTag_c_classInit
@@ -43,7 +43,18 @@ struct daObjKinokoTag_c : dActor_c {
     /* InitResources is the first out-of-line virtual/key function. Together
      * with this inline destructor, mwccarm owns the retail D1/D0 pair and the
      * complete class RTTI/vtable group without retaining a D2 body. */
-    virtual ~daObjKinokoTag_c() {}    /* slots 16, 17 */
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKinokoTag_c() {}   /* no slot */
+#else
+    virtual ~daObjKinokoTag_c() {}   /* D1 and D0 */
+#endif
 
     virtual s32 InitResources();      /* slot 0 */
     virtual s32 CleanupResources();   /* slot 3 */

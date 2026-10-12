@@ -1,5 +1,4 @@
 //cpp
-#include "Sound.h"
 // @symbol _ZN10dScEntry_c16CleanupResourcesEv
 /* recovered: real C++ method */
 /* dScEntry_c::CleanupResources() -- vtable slot 3. Releases the level-entry
@@ -10,6 +9,7 @@
 
 extern "C" {
 void func_020308b4(void *self);
+void _ZN5Sound21UnsetPlayerVoiceGroupEv(void);
 extern void *data_0209d4a8;
 }
 
@@ -21,7 +21,7 @@ s32 dScEntry_c::CleanupResources()
         data_0209b2e8 = (void *)0;
     }
     data_0209d4a8 = (void *)0;
-    Sound::UnsetPlayerVoiceGroup();
+    _ZN5Sound21UnsetPlayerVoiceGroupEv();
     CleanCommonModelDataArr();
     return 1;
 }

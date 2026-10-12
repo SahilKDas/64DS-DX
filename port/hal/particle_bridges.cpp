@@ -193,9 +193,13 @@ void Particle::SimpleCallback::SpawnParticles(System &sys)
 //   0x0202b930  Stage::Render           -> Particle::SysTracker::Update
 //   0x02029840  Stage::GraphCallback1   -> Particle::RenderAll
 //
-// The port drives the frame by hand, so the two per-frame calls are made
-// where those two Stage methods would have run: both inside the render pass,
-// Update before RenderAll. Initialise goes at the end of port_stage_a_boot,
+// Both per-frame calls are the ROM's own now: Update from Stage::Render's body
+// (the slot-9 seat), RenderAll from Stage::GraphCallback1, which the frame's
+// phase 5 (func_02019404, run linkfull lane K2RENDER) dispatches as the Stage
+// block's word 1. Update runs before RenderAll, inside the render pass, as on
+// the DS. port_particle_frame below survives for the slot-9 A/B only, and
+// port_particle_phase5_begin / _end bracket phase 5 for the two particle
+// knobs. Initialise goes at the end of port_stage_a_boot,
 // which is where Stage::InitResources calls it -- after the level's model,
 // collision, objects, fog and skybox are all loaded, because the particle
 // archive's textures are uploaded into VRAM the level has already banked.
@@ -575,23 +579,38 @@ extern "C" void port_particle_frame(void)
     }
 }
 
-/* Stage::GraphCallback1's call, and it has to run WHERE GraphCallback1 runs:
-   after Stage::Render has drawn the level. Particles are translucent and the
+/* Stage::GraphCallback1's call runs WHERE GraphCallback1 runs: after
+   Stage::Render has drawn the level. Particles are translucent and the
    dust sits on the ground at Mario's feet, so submitting them ahead of the
    opaque level pass loses every pixel to the ground drawn over them. Measured
    both ways on the same frame: with the level suppressed the pass paints 5006
    pixels, with it drawn afterwards it paints none.
 
-   Nothing in here depends on the GX position matrix, which is why it is free to
-   move: func_0204be40 puts the particle through data_0209b3ec itself and then
-   loads the billboard absolutely (MTX_IDENTITY, then MTX_MULT_4x3), so the only
-   state it reads is the scene-unit view matrix the whole frame already renders
-   in. */
-extern "C" void port_particle_render(void)
+   Nothing in it depends on the GX position matrix: func_0204be40 puts the
+   particle through data_0209b3ec itself and then loads the billboard
+   absolutely (MTX_IDENTITY, then MTX_MULT_4x3), so the only state it reads is
+   the scene-unit view matrix the whole frame already renders in.
+
+   THE CALL IS THE ROM'S NOW (run linkfull, lane K2RENDER). This file used to
+   make it (port_particle_render: a tracker test, then Particle::RenderAll);
+   the level loop's phase 5 runs func_02019404, which dispatches the Stage
+   block's word 1, Stage::GraphCallback1, whose body is that call. What is
+   left here is the two knobs around it: _begin answers 0 for
+   SM64DS_NO_FX_RENDER (the whole of word 1 on a level is the submission) and
+   takes SM64DS_FX_TRACE=3's before-count; _end prints what the submission
+   added. The old tracker test is not the ROM's (Particle::RenderAll makes its
+   own, on data_0209ee74), so it is a measurement now: a frame that reaches
+   phase 5 with the Stage's tracker up and no manager says so, once. */
+static size_t   g_p5_tris_before;
+static unsigned g_p5_no_manager;
+
+extern "C" int port_particle_phase5_begin(void)
 {
     char *t = tracker();
-    if (!t || !*(char **)(t + 4))
-        return;                       /* subsystem down; say nothing per frame */
+    if (t && !*(char **)(t + 4) && g_p5_no_manager++ == 0)
+        std::fprintf(stderr, "[k2render] phase 5 reached with the Stage's "
+                     "particle tracker up and no manager (the old host "
+                     "copy skipped this frame)\n");
 
     /* SM64DS_NO_FX_RENDER=1 keeps the simulation and drops the submission,
        for A/B-ing what the particles actually put on the screen */
@@ -604,7 +623,10 @@ extern "C" void port_particle_render(void)
        billboard, an off-screen transform, a zero alpha, or a texture that
        decoded to nothing. Print the triangles it added so the answer is read
        off the numbers instead of guessed. */
-    size_t tris_before = 0;
+    if (no_render)
+        return 0;
+    size_t &tris_before = g_p5_tris_before;
+    tris_before = 0;
     if (fx_trace() >= 3) {
         ntr::gx_polygons(tris_before);
         /* The particle billboard is already in VIEW space: func_0204be40 sends
@@ -633,8 +655,12 @@ extern "C" void port_particle_render(void)
        was that the only systems with anything to emit were distant ones -- the
        particle definition blob was truncated, so Mario's dust carried a record
        of zeros and never spawned. See port/tools/romdata.py. */
-    if (!no_render)
-        _ZN8Particle9RenderAllEv();
+    return 1;
+}
+
+extern "C" void port_particle_phase5_end(void)
+{
+    const size_t tris_before = g_p5_tris_before;
     if (fx_trace() >= 3) {
         /* AFTER the draw: if the identity-then-multiply worked, the position
            matrix now holds the billboard alone, whose translation is the

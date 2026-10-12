@@ -39,6 +39,7 @@ if not exist "%KIT%\build\assets\handles.tsv" goto unpack
 if not exist "%KIT%\build\assets\nitrofs.tsv" goto unpack
 if not exist "%KIT%\build\assets\nitrofs_fnt.bin" goto unpack
 if not exist "%KIT%\build\assets\nitrofs_fat.bin" goto unpack
+if not exist "%KIT%\build\assets\nitrofs_ovt9.bin" goto unpack
 if not exist "%KIT%\build\assets\romdata.bin" goto unpack
 if not exist "%KIT%\build\assets\romdata.manifest" goto unpack
 if not exist "%KIT%\extracted\dsd\files\data\sound_data.sdat" goto unpack

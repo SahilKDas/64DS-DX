@@ -37,6 +37,7 @@
 #ifndef NTR_SMOOTH_H
 #define NTR_SMOOTH_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace ntr {
@@ -123,6 +124,162 @@ int smooth_subdivide(const SmoothVertex &p1, const SmoothVertex &p2,
 inline int smooth_tri_count(int tf) { return tf <= 1 ? 1 : tf * tf; }
 
 // ---------------------------------------------------------------------------
+// THE GRID, EXPOSED. smooth_subdivide above hands the caller one SUB-TRIANGLE
+// at a time, and an interior grid point belongs to up to six of them, so the
+// caller projects the same invented point up to six times. At level 3 a
+// triangle has 45 distinct grid points and emits 64 sub-triangles: 192 vertex
+// projections to draw 45 distinct vertices.
+//
+// These entry points hand over the grid itself. The caller evaluates and
+// projects each point ONCE and then walks an index list to emit the
+// sub-triangles. Same points, same order, same arithmetic -- the vertices that
+// reach the polygon list are bit for bit the ones smooth_subdivide produced
+// (smooth_subdivide is implemented on top of these, so that is not a claim,
+// it is the same code) -- each one just computed once instead of up to six
+// times.
+// ---------------------------------------------------------------------------
+
+// (tf+1)(tf+2)/2 grid points; 1 for tf <= 1.
+int smooth_grid_points(int tf);
+// tf*tf sub-triangles; 1 for tf <= 1.
+int smooth_grid_tris(int tf);
+// 3 * smooth_grid_tris(tf) grid indices, in exactly smooth_subdivide's
+// emission order, into a table with one row per (ia, ib) in the fill order
+// `for ia 0..tf { for ib 0..tf-ia }`. The pointer is to a static table built
+// on first use; there are only three tessellation factors (2, 4, 8).
+const uint16_t *smooth_grid_tri_index(int tf);
+// The grid POSITIONS for corners p1..p3, in whatever space those corners were
+// given in. `out` holds smooth_grid_points(tf) * 3 floats, filled in the same
+// (ia, ib) order the index table is written against. Returns the point count.
+int smooth_grid_positions(const SmoothVertex &p1, const SmoothVertex &p2,
+                          const SmoothVertex &p3, int tf, float *out);
+// THE GRID TABLE. For each tessellation factor (2, 4, 8) the barycentric
+// weights of every grid point (a, b, c) and its ten Bernstein weights, as
+// smooth_eval_patch computes them, built once and kept. A patch evaluation is
+// then ten multiply-adds per coordinate per point with nothing recomputed,
+// the same floats in the same order as smooth_eval_patch.
+struct SmoothGridTable {
+    int n;
+    float a[SMOOTH_MAX_GRID], b[SMOOTH_MAX_GRID], c[SMOOTH_MAX_GRID];
+    float w[SMOOTH_MAX_GRID][10];
+};
+// Null for tf that is not 2, 4 or 8.
+const SmoothGridTable *smooth_grid_table(int tf);
+// Everything about a grid point that is NOT its position: texel coordinates
+// and colour linear in the barycentric weights, and the normal carried for a
+// future relighting pass. Writes u, v, color, nx, ny, nz and nothing else.
+// smooth_subdivide calls this too, so the two paths cannot drift apart.
+void smooth_grid_attrs(const SmoothVertex &p1, const SmoothVertex &p2,
+                       const SmoothVertex &p3, float a, float b, float c,
+                       SmoothVertex &out);
+
+// THE ATTRIBUTE ARITHMETIC, inline. smooth_grid_attrs (smooth.cpp) is this
+// function behind a call, so the engine's per-vertex loop (gx.cpp,
+// smooth_emit_grid) can run the very same expressions without a call per grid
+// vertex and the two cannot drift apart.
+inline uint32_t smooth_bary_color(uint32_t c0, uint32_t c1, uint32_t c2,
+                                  float a, float b, float c) {
+    uint32_t out = 0;
+    for (int s = 0; s < 32; s += 8) {
+        const float ch = (float)((c0 >> s) & 0xFF) * a
+                       + (float)((c1 >> s) & 0xFF) * b
+                       + (float)((c2 >> s) & 0xFF) * c;
+        const int i = (int)(ch + 0.5f);
+        out |= (uint32_t)(i < 0 ? 0 : (i > 255 ? 255 : i)) << s;
+    }
+    return out;
+}
+inline void smooth_grid_attrs_inline(const SmoothVertex &p1, const SmoothVertex &p2,
+                                     const SmoothVertex &p3, float a, float b,
+                                     float c, SmoothVertex &o) {
+    o.u = p1.u * a + p2.u * b + p3.u * c;
+    o.v = p1.v * a + p2.v * b + p3.v * c;
+    o.color = smooth_bary_color(p1.color, p2.color, p3.color, a, b, c);
+    o.nx = p1.nx * a + p2.nx * b + p3.nx * c;
+    o.ny = p1.ny * a + p2.ny * b + p3.ny * c;
+    o.nz = p1.nz * a + p2.nz * b + p3.nz * c;
+}
+
+// ---------------------------------------------------------------------------
+// THE POLICY, SPLIT. smooth_tess_factor answers two different questions at
+// once: is this triangle CURVED (a property of its own shape, the same in any
+// space a similarity transform can reach) and is it TOO BIG (a property of how
+// large it is once the position matrix has scaled it). Splitting them is what
+// lets the first half be measured once per triangle shape and remembered,
+// while the second half stays a per-frame compare against the caps.
+//
+// smooth_tess_factor is smooth_shape() followed by smooth_shape_factor() at
+// scale 1, so the shipped verdict is one piece of code with one meaning.
+// ---------------------------------------------------------------------------
+struct SmoothShape {
+    int no_normal;    // a corner carried a zero normal: unlit, nothing to curve
+    int curved;       // some corner pair disagrees by more than flat_cos
+    float longest;    // longest edge, in the units the corners were given in
+    float tightest;   // tightest implied curvature radius, same units
+};
+// Measure the shape. Cheap for the common refusals: a corner with no normal
+// costs three compares, and a flat triangle costs three dot products, both
+// without touching a square root.
+void smooth_shape(const SmoothVertex &p1, const SmoothVertex &p2,
+                  const SmoothVertex &p3, const SmoothPolicy &pol,
+                  SmoothShape &out);
+// The verdict for a shape measured in a space `scale` times smaller than the
+// space the caps are written in. scale 1 is "the shape was measured where the
+// caps live", and multiplying by an exact 1.0f leaves the comparison the one
+// smooth_tess_factor has always made.
+int smooth_shape_factor(const SmoothShape &sh, const SmoothPolicy &pol,
+                        float scale, int *why);
+
+// ---------------------------------------------------------------------------
+// THE TOPOLOGY BOOK (SMOOTHBULGE1B). The per-triangle policy above cannot tell
+// a treasure chest from a character: both are low-poly meshes whose authored
+// corner normals lean far off their own faces, and the PN patch pillows both.
+// What tells them apart is the SHAPE OF THE WHOLE MESH, which one triangle
+// cannot see. So every triangle that reaches the smoother is entered once in
+// a book keyed on its raw model-space corners, triangles that share an edge
+// are joined into a mesh, and a mesh that has stopped growing is classified:
+//   BOX    flat faces meeting at hard edges whose authored normals lie (a
+//          chest, a cannon block). Flat faces stay exactly flat, the edges
+//          between faces and the curved parts stay sharp, curved parts (the
+//          chest lid, the cannon barrel) are smoothed from the GEOMETRY'S own
+//          welded normals instead of the lying authored ones.
+//   FACET  a small faceted solid whose every authored normal lies (the Power
+//          Star's body). It is left as the DS drew it.
+//   FAN    a small flat polygon fan (the Power Star's eyes). Its outline is
+//          rounded inside its own plane, so it never leaves the surface.
+// Everything else (every character, enemy and round prop) is NONE and is
+// smoothed exactly as before. A mesh that is not yet known to be complete is
+// NONE too. SM64DS_SMOOTH_TOPO=0 turns the whole book off.
+// ---------------------------------------------------------------------------
+enum {
+    SMOOTH_CLASS_NONE  = 0,
+    SMOOTH_CLASS_BOX   = 1,
+    SMOOTH_CLASS_FACET = 2,
+    SMOOTH_CLASS_FAN   = 3
+};
+struct SmoothOverride {
+    int cls;            // SMOOTH_CLASS_*
+    int flat;           // every edge is straight: the patch is the flat triangle
+    // The six edge normals in the model's own space, in the order of the
+    // corners the caller passed: b210, b120, b021, b012, b201, b102.
+    float en[6][3];
+};
+int smooth_topo_on();
+// Enter the triangle (once) and say what its mesh is. Returns 0 for NONE.
+int smooth_topo_lookup(const int16_t p[3][3], const uint32_t nrm[3],
+                       uint32_t group, SmoothOverride *out);
+// The grid positions of a patch whose six edge normals are given (model
+// space or any space the corners are in), same layout as smooth_grid_positions.
+int smooth_grid_positions_edges(const SmoothVertex &p1, const SmoothVertex &p2,
+                                const SmoothVertex &p3, const float en[6][3],
+                                int tf, float *out);
+// A triangle whose corners rode three different matrices: 1 when it is a seam
+// of a BOX model and should be drawn as the DS drew it.
+int smooth_topo_cross(const int16_t p[3][3], uint32_t g0, uint32_t g1, uint32_t g2);
+void smooth_topo_count(int what);
+enum { SMOOTH_TOPO_BOX = 0, SMOOTH_TOPO_FACET, SMOOTH_TOPO_FAN, SMOOTH_TOPO_FLATKEEP };
+
+// ---------------------------------------------------------------------------
 // THE ENGINE-FACING HALF. Everything above is pure geometry and is what the
 // standalone selftest exercises; everything below is the switch the port
 // turns on and the counters it is measured by. None of it allocates, none of
@@ -178,13 +335,255 @@ enum {
     SMOOTH_COUNT_EDGE,
     SMOOTH_COUNT_W,
     SMOOTH_COUNT_MODE3,
-    SMOOTH_COUNT_ORTHO
+    SMOOTH_COUNT_ORTHO,
+    // A curved triangle the TICK'S OWN picture asked to subdivide (a
+    // SmoothMotion replay of the same tick does not count again). This is the
+    // budget's demand, see THE BUDGET below.
+    SMOOTH_COUNT_DEMAND
 };
 void smooth_count(int which, uint64_t n);
+
+// ---------------------------------------------------------------------------
+// THE BUDGET (SM64DS_SMOOTH_BUDGET, in sub-triangles per picture; 0 is off).
+//
+// WHY. The level is a flat multiplier: every curved triangle becomes
+// 4^level sub-triangles, whatever the scene. Ordinary courses at level 3 ask
+// for 450 to 950 curved triangles a picture (29k to 61k sub-triangles) and
+// hold full speed. The castle basement's goo painting is a 25 x 25 wave grid
+// whose 1,150 triangles are ALL curved every frame, and Picture Poker's top
+// screen is the same shape of thing: 1,280 to 1,590 curved triangles, 82k to
+// 102k sub-triangles, 11 to 15 ms of patch maths on one processor thread, and
+// the game slows down (that is where the "slow motion at the goo" reports
+// come from).
+//
+// WHAT IT DOES. Each picture is drawn at ONE level for all of it: the set
+// level, or the highest lower level whose demand (curved triangles x 4^level)
+// fits the budget. The demand is what the previous tick's picture asked for,
+// counted live, so the decision costs one compare per picture and the whole
+// scene steps down together (a goo scene at level 3 looks like level 2, which
+// is what it would look like had the player picked 2) instead of the models
+// drawn last in a picture going flat. It steps down at once and back up one
+// level at a time only after a second of fitting with an eighth of the
+// budget to spare, so a scene on the border does not flicker. The floor is
+// level 1, never 0, so the demand stays a property of the scene and not of
+// the level it is being drawn at (a flat picture would ask for nothing and
+// the next one would jump back up). The first picture after a level change
+// or at boot is drawn at the set level; the count it produces decides the
+// next.
+//
+// WHAT IT DOES NOT TOUCH. The game: the demand is read from the smoother's
+// own verdicts and nothing game-visible is fed from it. Levels whose demand
+// fits: a scene under the budget is drawn exactly as it was, every
+// triangle, every vertex, so the ordinary courses are pixel-identical. The
+// store: the level is part of the key, so grids built at two levels sit
+// side by side and a level change never evicts anything.
+// ---------------------------------------------------------------------------
+int smooth_budget();          // the cap in sub-triangles per picture, 0 off
+int smooth_level_drawn();     // the level this picture is drawn at (<= set)
 
 // Called once per frame from gx_reset. Advances the frame counter and, when
 // the crack census is on, closes the frame's edge book and prints it.
 void smooth_frame_mark();
+
+// ---------------------------------------------------------------------------
+// THE SCOPED PROFILER (SM64DS_SMOOTH_PROF=1). Off by default and then costs
+// one compare on a cached file-scope int inside a path that only runs when
+// SmoothModels is already on, so a shipped run never touches it.
+//
+// It exists to answer one question with numbers instead of intuition: of the
+// time a smoothed frame spends above an unsmoothed one, how much is the
+// PATCH MATHS (which a cache can remove), how much is PROJECTING the invented
+// vertices (which a cache cannot), and how much is the raster handling more
+// triangles (which a cache cannot either). The three buckets below are the
+// first two; the third is the frame time left over once they are subtracted,
+// which is why there is no bucket for it.
+//
+// The clock is std::chrono::steady_clock, which on this toolchain IS
+// QueryPerformanceCounter -- MSVC's steady_clock calls it directly and
+// divides by the frequency it queried once. Reading it costs roughly 20 to 30
+// nanoseconds, so the profiler perturbs what it measures; the SINK bucket is
+// read once per SUB-triangle and is the one to distrust first. Every reading
+// taken with it is reported as instrumented, never as the shipped cost.
+enum {
+    SMOOTH_PROF_POLICY = 0,   // smooth_tess_factor: accept/refuse + the factor
+    SMOOTH_PROF_SUBDIV,       // smooth_subdivide as a whole, sink calls included
+    SMOOTH_PROF_SINK,         // one sub-triangle: project, near-clip, push
+    SMOOTH_PROF_TOPO,         // run hunt8 SMOOTHCPU2: the topology book's lookup / seam test
+    SMOOTH_PROF_TRY,          // the whole of smooth_try, whatever it decided
+    SMOOTH_PROF_NEAR,         // emit_tri_near for a triangle smooth_try left alone
+    SMOOTH_PROF_PRE,          // smooth_try's entry checks and the corner copy, up to the policy
+    SMOOTH_PROF_FIND,         // the shape store's lookup (key build and probe)
+    SMOOTH_PROF_EMIT,         // smooth_emit_grid: the grid record, or the sub-triangles
+    SMOOTH_PROF_BUCKETS
+};
+// 1 times the policy and the tessellation, which is the pair an A/B between
+// the stored path and the live one has to compare. 2 also times each
+// SUB-TRIANGLE, which is the finer split step 0 needed -- and which reads the
+// clock thousands of times a frame, so it makes the live path look worse than
+// it is and must never be the arm a comparison is drawn from.
+int smooth_prof_on();
+// Nanoseconds on a monotonic clock. Only meaningful as a difference.
+long long smooth_prof_ticks();
+void smooth_prof_add(int bucket, long long dt_ns, unsigned n);
+
+// ---------------------------------------------------------------------------
+// THE SHAPE STORE: computed once, replayed every frame.
+//
+// WHAT IS STORED AND WHY IT IS THE RIGHT THING. A patch's shape in the space
+// its corners were AUTHORED in does not change from frame to frame: the model
+// is the same model. What changes is the matrix the game pushes it through.
+// So the tessellation is built ONCE, in LOCAL space, out of the display
+// list's own raw VTX coordinates and raw NORMAL payloads, and every later
+// frame pushes those stored local points through the current position matrix
+// exactly as the game's own vertices are pushed through it.
+//
+// THE KEY IS THE TRIANGLE'S RAW INPUT, AND NOTHING ELSE: three raw positions,
+// three raw normal payloads, and the subdivision level. No address, no model
+// id, no frame number. Two instances of the same goomba share one entry, a
+// model loaded at a different address next boot still hits, and a triangle
+// whose vertices happen to coincide with another's cannot collide with it
+// because the lookup compares the WHOLE key, not its hash.
+//
+// WHAT IS NOT STORED: texel coordinates and colours. Those are live state --
+// a texture matrix moves, lighting changes -- so the replay interpolates the
+// CURRENT corner values at the same barycentric weights the grid was built
+// at, which is what the live path does too.
+//
+// THE CALLER OWES THE INVARIANT. The stored grid is only replayable under a
+// matrix that is a SIMILARITY (rotation, uniform scale, translation), because
+// only then does transforming the patch equal building the patch from the
+// transformed corners; and all three corners must have come from the SAME
+// matrix, because two bones have no shared local space. The geometry stage
+// checks both before it ever forms a key, and counts what it refuses.
+// ---------------------------------------------------------------------------
+
+struct SmoothKey {
+    int16_t p[3][3];     // the three VTX commands' own coordinates
+    uint32_t n[3];       // the three NORMAL commands' 30-bit payloads
+    uint32_t level;      // the subdivision level the grid was built at
+};
+
+struct SmoothEntry {
+    SmoothKey key;
+    int32_t tf;          // the factor the grid was built at; 0 = seen once, no grid yet
+    uint32_t off;        // first float of this entry's grid in the pool
+    uint32_t pic;        // the picture that first saw it (smooth_store_miss)
+    float box[6];        // run hunt8 SMOOTHCPU2: model-space min xyz then max xyz of the grid
+};
+
+// A SHAPE IS KEPT ON ITS SECOND SIGHTING, NOT ITS FIRST. The castle
+// basement's goo painting moves its 625 vertices every frame, so every one
+// of its 1,150 triangles is a new key every picture: 32,000 misses in 37
+// frames, each one a 45-point grid into the pool, 19 MB of the 32 MB cap,
+// then a clear that threw away every static model's grid along with them,
+// so those were rebuilt too. A grid that will never be asked for again is
+// not worth keeping; a grid that will be is asked for again on the very
+// next picture. So on a miss the caller builds the grid, draws from it (the
+// SAME floats the pool would have held, so the picture does not depend on
+// whether the grid was kept) and calls smooth_store_miss: the first time a
+// key is seen it is noted in a grid-less entry stamped with the picture and
+// the answer is 0, keep nothing; seen again in one of the next two pictures
+// the answer is 1 and the caller adds the grid for real (further apart than
+// that it is noted afresh: the wave's keys do come round again, seconds
+// later). The painting's keys are never seen twice in a row; a goomba's are
+// seen on its second frame. The price of the
+// rule is one extra live build per static shape, once, and the grid-less
+// notes are what the cap purges first (SmoothStoreStats::purges) before it
+// ever empties a grid.
+int smooth_store_miss(const SmoothKey &k);
+
+// WHAT IS DELIBERATELY NOT IN HERE: the policy verdict. An earlier version of
+// this store remembered all of it, including whether the three corner normals
+// agreed, and measured a DIFFERENT set of smoothed triangles from 0.4.0 --
+// 742 a frame against 721 on Bob-omb Battlefield. The reason is worth keeping
+// written down. The flat test compares corner normals at about one degree,
+// and a position matrix is only a similarity to within the DS's own 1.19.12
+// quantisation, so the angle between two nearly-equal normals is not quite
+// the same before and after it. Asking in the model's space and asking in
+// view space are therefore two slightly different questions near that
+// threshold, and the picture may only change if nothing does.
+// So the policy runs LIVE, on the view-space corners, every frame, through
+// the same smooth_tess_factor 0.4.0 called. It is also the cheap half: the
+// step-0 profiler measured it at 64 ms of 1206 ms on castle grounds against
+// 415 ms for the patch maths this store does remove.
+
+// Null on a miss. The returned pointer is valid until the next add.
+const SmoothEntry *smooth_store_find(const SmoothKey &k);
+// Insert. `grid` is smooth_grid_points(tf)*3 floats. Null only when the
+// store refused the insert outright.
+const SmoothEntry *smooth_store_add(const SmoothKey &k, int tf,
+                                    const float *grid);
+const float *smooth_store_grid(const SmoothEntry *e);
+// run hunt8, lane SMOOTHGPU1: the pool the grids live in, for the card to
+// mirror. The pool only ever grows by appending until smooth_store_clear, which
+// bumps the generation; a mirror therefore uploads the tail it has not seen and
+// starts again when the generation moves. `n` receives the float count.
+const float *smooth_store_pool(size_t *n);
+uint32_t smooth_store_generation();
+uint32_t smooth_store_entry_off(const SmoothEntry *e);
+// The six floats (min xyz, max xyz) of the grid points of `e`, kept with the
+// entry so the card path does not re-scan up to 45 points per grid per picture.
+const float *smooth_store_entry_box(const SmoothEntry *e);
+// Called at the head of smooth_store_clear while the old pool is still intact,
+// so the engine can turn any grid it has deferred and that points into the pool
+// into ordinary triangles before the pool is thrown away.
+void smooth_store_set_clear_hook(void (*fn)());
+// Drop everything. Called when the level changes, since a level is the
+// natural end of a set of models, and by the cap when the pool is full.
+void smooth_store_clear();
+
+struct SmoothStoreStats {
+    uint64_t hits, misses, inserts, clears;
+    uint64_t skip_crossmtx;   // corners from different matrices
+    uint64_t skip_nonsim;     // position matrix is not a similarity
+    uint64_t skip_zeronrm;    // a raw NORMAL payload was zero
+    uint64_t live_calls;      // triangles that took the 0.4.0 path instead
+    /* The two refusals above, broken down. Each one is a different thing to
+       fix, and lumping them together hid which was costing the hit rate. */
+    uint64_t cross_corner;    // two corners genuinely under different matrices
+    uint64_t cross_normal;    // a NORMAL latched under a different matrix
+    uint64_t cross_stale;     // the matrix moved between the last vertex and here
+    uint64_t nonsim_len;      // the three basis images are not the same length
+    uint64_t nonsim_ortho;    // they are not mutually perpendicular
+    uint64_t nonsim_vec;      // the vector matrix carries a different rotation
+    uint64_t entries;
+    uint64_t bytes, cap_bytes;
+    uint64_t held;            // first sightings drawn but not kept (smooth_store_miss)
+    uint64_t purges;          // cap reached: the grid-less notes were dropped, grids kept
+    uint64_t sweeps;          // old grid-less notes dropped early (too old to become a grid)
+};
+void smooth_store_stats(SmoothStoreStats &out);
+// The geometry stage bumps the four skip rows through this, so gx.cpp holds
+// no copy of the layout.
+enum {
+    SMOOTH_STORE_CROSSMTX = 0,
+    SMOOTH_STORE_NONSIM,
+    SMOOTH_STORE_ZERONRM,
+    SMOOTH_STORE_LIVE,
+    SMOOTH_STORE_CROSS_CORNER,
+    SMOOTH_STORE_CROSS_NORMAL,
+    SMOOTH_STORE_CROSS_STALE,
+    SMOOTH_STORE_NONSIM_LEN,
+    SMOOTH_STORE_NONSIM_ORTHO,
+    SMOOTH_STORE_NONSIM_VEC
+};
+void smooth_store_count(int which, uint64_t n);
+
+// SM64DS_SMOOTH_LIVE=1 puts 0.4.0's behaviour back: every accepted triangle
+// rebuilds its patch from its view-space corners every frame, through
+// smooth_subdivide and a per-sub-triangle sink. It exists for the A/B and for
+// nothing else; read once, like every other knob here.
+int smooth_live_mode();
+
+// SM64DS_SMOOTH_ABDIFF=1: for every triangle the store answers, build the
+// patch the OLD way as well, from the transformed corners, and book the two
+// against each other. It is how the claim "the stored patch is the same patch,
+// to a rounding order" stops being a claim: a verdict that disagrees is
+// counted, and the worst positional separation is reported in view units and
+// as a fraction of the triangle's own longest edge. Slower than either path
+// alone, obviously, and never on in a shipped run.
+int smooth_abdiff_on();
+void smooth_abdiff_add(int verdict_differs, float worst_dev, float longest);
 
 // THE CRACK CENSUS (constraint 5 of the brief). Off unless
 // SM64DS_SMOOTH_CENSUS is set, and it is the only thing here that allocates.

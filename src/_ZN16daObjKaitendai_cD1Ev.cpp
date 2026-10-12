@@ -4,7 +4,7 @@
  *
  * ~daObjKaitendai_c is defined in the class body, not here, and that is
  * load-bearing: this class's five descendants (daObjBk_Ukisima_c,
- * daObjFl_Koma_D_c, daObjWc_Obj07_c, daObjRc_Kaitendai_c,
+ * RotatingPlatformLll, daObjWc_Obj07_c, daObjRc_Kaitendai_c,
  * daObjKm3_Kaitendai_c) inline this destructor's vptr store rather than
  * calling it, which the compiler can only do from a visible body.
  * include/daObjKaitendai_c.h records the measurement.
@@ -21,7 +21,7 @@
  * _ZN10dBgActor_cD1Ev.
  *
  * This class's key function is Behavior (already out of line, in
- * src/actors/daObjKaitendai_c.cpp -- see
+ * src/_ZN16daObjKaitendai_c8BehaviorEv.cpp -- see
  * include/daObjKaitendai_c.h), so this file does not carry
  * _ZTV16daObjKaitendai_c / _ZTI16daObjKaitendai_c.
  */

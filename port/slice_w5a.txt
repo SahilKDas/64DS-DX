@@ -113,7 +113,16 @@ src/func_02048ed4.c
 # (src:17, `(self)`), so Boo_Teleport.c had nothing left to work around. The src row
 # is on port/slice_l15cp.txt and the host copy is deleted.
 #port/unmatched/Boo_Teleport.c
-port/unmatched/Boo_CrossNamedDispatch.c
+# RETIRED at run linkfull, lane RS2PORT: port/unmatched/Boo_CrossNamedDispatch.c
+# hosted these three because their sources spelled ov063 callees by ov065 or
+# ov066 names (the shared-window naming race). The sources call the ov063
+# functions by address-first names now (0d0c4e9b03 for the two dispatchers;
+# 02116f48 calls func_ov063_0211ad00), identical on main, so the host reason is
+# stale and the matched TUs take their seats.
+#port/unmatched/Boo_CrossNamedDispatch.c
+src/unnamed/ov063/func_ov063_02116d38.c
+src/unnamed/ov063/func_ov063_021192d4.c
+src/unnamed/ov063/func_ov063_02116f48.cpp
 # RETIRED with them: MansionSteps_InitResources.c stood in for
 # _ZN11daTrsTrap_c13InitResourcesEv ("NOT matched in src/ (the other six
 # slots all are)"); it is matched now and on port/slice_shadows3.txt. Because
@@ -177,8 +186,20 @@ src/actors/daBttBk_c.cpp
 
 # RETIRED at SLICE1: body now in src/_ZN11CrazedCrateD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN11CrazedCrateD0Ev.cpp
-# func_ov080_02124e60.c: same dropped second argument (ROM r1=0):
-port/unmatched/CrazedCrate_State2Tick.c
+src/_ZN11CrazedCrate13OnYoshiTryEatEv.cpp
+src/func_ov080_02124acc.cpp
+# func_ov080_02124e60.c: its host mirror (port/unmatched/CrazedCrate_State2Tick.c)
+# passed the second argument the ROM leaves in r1 (0); main #3106 spells it, so
+# this is main's blob (run linkfull, lane RS4PORT) and the mirror is retired.
+src/func_ov080_02124e60.c
+src/func_ov080_02124eb0.c
+src/func_ov080_02124edc.cpp
+src/func_ov080_02124fec.c
+src/func_ov080_0212500c.cpp
+src/func_ov080_0212509c.c
+src/func_ov080_0212513c.c
+src/func_ov080_02124c3c.cpp
+src/_ZN11CrazedCrate13OnTurnIntoEggER6Player.cpp
 
 # COFFIN (64, ov071): fill + slice only (mount and sinit already live).
 # The two PMF dispatchers (func_ov071_021223c8/02122414) are host copies in

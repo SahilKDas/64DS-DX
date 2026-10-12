@@ -8,9 +8,7 @@ extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 /* ROM-proven class identity: _ZTI16daObjFm_Battan_c and
  * _ZTS16daObjFm_Battan_c at ov023:0x02111fa0/0x02111fac. ov023 is
- * SQUASHER(84), not a BoB/WF/BitDW actor. Fm is the fire_mt stage (the ROM
- * file table's data/stage/fire_mt, beside fire_land = Lethal Lava Land), not
- * Shifting Sand Land, whose stage dir is desert_land. */
+ * SQUASHER(84) -- Shifting Sand Land's squasher, not a BoB/WF/BitDW actor. */
 struct daObjFm_Battan_c : dBgActor_c {
     s16 mAngVelX;                 /* 0x31e */
     u16 mStateTimer;              /* 0x320 */
@@ -21,7 +19,18 @@ struct daObjFm_Battan_c : dBgActor_c {
     /* InitResources is deliberately the first out-of-line virtual/key
      * function. mwccarm then owns this class's RTTI/vtable and emits the
      * retail D1/D0 pair from this inline destructor, with no retained D2. */
-    virtual ~daObjFm_Battan_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjFm_Battan_c() {}   /* no slot */
+#else
+    virtual ~daObjFm_Battan_c() {}   /* D1 and D0 */
+#endif
     virtual int InitResources();
     virtual int CleanupResources();
     virtual int Behavior();

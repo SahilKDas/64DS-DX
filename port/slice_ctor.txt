@@ -85,10 +85,11 @@
 #        hal/clsn_vtable.cpp hosts data_020a0d0c 0x10, data_020a0d1c 0x44 and
 #        data_020a0d60 0x24 contiguously, and hal/mmc_vtable.cpp:148 asserts
 #        the spacing every boot. +0x64 is inside it.
-#   C1c  __sinit_02075154 stays faced -- see out/CTOR/c1c_audit.txt: its five
-#        source records are hosted nowhere and hal/actor_registry.cpp:412 seats
-#        the same five list callbacks LATER in the boot, so linking it today
-#        would write the heads at Entry and have every word overwritten.
+#   C1c  __sinit_02075154 was faced here (out/CTOR/c1c_audit.txt: its five
+#        source records hosted nowhere, the list callbacks seated by hand
+#        later in the boot). TAKEN by run linkfull lane K1LOOP: the records
+#        are hosted in unmatched/func_02043fdc_hostcopy.cpp, the table binds
+#        the ROM body, and the source rides port/slice_w32_k1loop.txt.
 #        __sinit_02074edc is TAKEN below -- by lane CTOR2, backed out by lane
 #        CTOR3 rung 0, re-landed by lane CTOR3 rung 1 on a seat that holds; the
 #        block below is the account. __sinit_02075054, called a conflict

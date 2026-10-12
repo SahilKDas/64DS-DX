@@ -22,7 +22,7 @@
 // delegation note after the slot table. AdvanceFade keeps one deliberate
 // divergence: an UNDRIVEN advance snaps currInterp to its target rather than
 // stepping, because a fade nobody is driving must not hold a scene transition
-// open for 30 frames, while port_fader_advance's driven advance steps for real
+// open for 30 frames, while the frame loop's phase 2 (port_frame_phase2) steps for real
 // so the fade renders.
 //
 // ---- SLOT ORDER: the ROM's, not MSVC's ------------------------------------
@@ -127,12 +127,49 @@
 extern "C" void _ZN3G2x18SetBlendBrightnessEPVtts(volatile unsigned short *p,
                                                   unsigned short val, short amt);
 
+/* cstd::fdiv by its flat name, declared exactly as the matched FaderBrightness
+   setters declare it. On the three targets that compile this file the name is
+   the ROM's own body (src/_ZN4cstd4fdivEii.cpp over the divider model; see
+   hal/cstd_div.c's header for where it is seated and where it is not). */
+extern "C" Fix12i _ZN4cstd4fdivEii(Fix12i a, Fix12i b);
+
+/* The step a fade of `frames` frames takes each frame, computed the way
+   FaderBrightness::SetForwardTime / SetBackwardTime compute it
+   (src/engine/fader/): +-0x1000 for no frames, else
+   cstd::fdiv(+-0x1000, frames << 12). fdiv ROUNDS: fdiv_result (arm9
+   0x020530cc) reads the divider's 64/32 quotient back as (q + 0x80000) >> 20.
+   The plain 0x1000 / frames this file used before truncates, which is not the
+   same number whenever 0x1000 / frames has a fraction of a half or more: 30
+   frames stepped 136 here against the cartridge's 137, so 0 -> 0x1000 took 31
+   steps instead of 30. */
+static Fix12i hal_fade_speed(unsigned frames, int backward)
+{
+    const Fix12i one = backward ? -(Fix12i)0x1000 : (Fix12i)0x1000;
+    if (frames == 0)
+        return one;
+    return _ZN4cstd4fdivEii(one, (Fix12i)(frames << 12));
+}
+
+/* the wipe picture's ROM callees and tables (THE WIPE'S PICTURE, below) */
+extern "C" {
+void _ZN5ModelC1Ev(void *thiz);
+void _ZN5ModelD1Ev(void *thiz);
+void Matrix4x3_FromTranslation(void *m, int x, int y, int z);
+void Matrix4x3_ApplyInPlaceToScale(void *m, int x, int y, int z);
+void Matrix4x3_ApplyInPlaceToRotationX(void *m, short ang);
+void _ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3(void *thiz, void *mtx,
+                                                      void *vec);
+void _ZN9FaderWipe14LoadAndSetFileEt(void *thiz, unsigned short fileID);
+extern unsigned short data_020755e0[], data_020755f0[], data_02075600[];
+extern signed char data_0209f2f8;       /* the level being built */
+}
+
 namespace {
 
 /* Snap vs step: the historical stub snapped the interpolator to its target so
    an invisible fade could not hold a transition open. Now the fade renders, so
    it has to STEP -- but only when the frame loop is actually driving the
-   advance (port_fader_advance). A direct SetToStart/SetToEnd still snaps. The
+   advance (port_frame_phase2). A direct SetToStart/SetToEnd still snaps. The
    flag is set for the duration of one driven advance. */
 int g_hal_fader_stepping;
 
@@ -142,6 +179,13 @@ int hal_wipe_index(const void *self);
    caller left behind? Both defined beside hal_wipe_index, under the array. */
 int hal_wipe_receiver_ok(const void *self);
 void hal_wipe_shape_trap(const char *slot, const void *self);
+
+/* THE WIPE'S PICTURE (see the block under the array): does this object carry
+   the wipe mesh this level's boot loaded, and the ROM's own
+   FaderWipe::AdvanceFade statements with the mesh draw handed to the render
+   phase. */
+int hal_wipe_mesh_ready(void *self);
+int hal_wipe_advance_rom(void *self);
 
 /* Loud, but not per-frame: the first few calls say what the host is
    skipping, then it goes quiet. */
@@ -273,7 +317,7 @@ struct HalFaderWipe {
     }
     virtual int AdvanceFade()                        /* 0x08 */
     {
-        /* Driven advance (the frame loop's port_fader_advance) STEPS the
+        /* Driven advance (the frame loop's port_frame_phase2) STEPS the
            interpolator one frame and writes the 2D master-blend register the
            way FaderColor::AdvanceFade does, so the fade renders. Any other
            caller keeps the old snap: a fade nobody is driving must not stall a
@@ -283,6 +327,13 @@ struct HalFaderWipe {
             currInterp = speed >= 0 ? 0x1000 : 0;
             return 1;
         }
+        /* ONE OF THE SEVEN WIPES WITH ITS MESH: FaderWipe::AdvanceFade's own
+           statements, the iris the cartridge draws (the block under the array).
+           The colour fader placement-new'd at data_0209f5e8 shares this class
+           and keeps the FaderColor arm below, as does a wipe whose mesh could
+           not be loaded. */
+        if (hal_wipe_mesh_ready(this))
+            return hal_wipe_advance_rom(this);
         Fix12i old = currInterp;
         Fix12i target = speed >= 0 ? 0x1000 : 0;
         /* the step itself is the matched body: it picks target and |step| from
@@ -309,8 +360,14 @@ struct HalFaderWipe {
     }
     /* 0x0c / 0x10 -- NOT delegated: the matched bodies end in a virtual
        IsAtStart()/IsAtEnd() that would land one slot off here. See the dtor-fold
-       note in the header. The arithmetic below is the matched arithmetic:
-       cstd::fdiv(+-0x1000, frames << 12) is +-0x1000 / frames.
+       note in the header. The arithmetic IS the matched bodies' own:
+       hal_fade_speed above makes their cstd::fdiv call, rounding included.
+       This comment used to say fdiv(+-0x1000, frames << 12) equals
+       +-0x1000 / frames; it does not, and the difference was one frame on
+       every 30-frame wipe (the arrival fade after a star took 31 frames at
+       -136 per frame here, and takes 30 at -137, as the opening's fades already
+       did through the matched setters on hal/scene_boot.cpp's FaderColor
+       table).
 
        AND __cdecl, WITH THE RECEIVER ON THE STACK. These two slots are the
        fifth class of the shape 0ec379b94 and 19a71216e retired on the sibling
@@ -350,7 +407,7 @@ struct HalFaderWipe {
             hal_wipe_shape_trap("SetBackwardTime (ROM slot 0x0c)", this);
             return 0;
         }
-        speed = frames ? -(Fix12i)(0x1000 / frames) : -0x1000;
+        speed = hal_fade_speed((unsigned)frames, 1);
         return HalFaderWipe::IsAtStart();
     }
     virtual int __cdecl SetForwardTime(int frames, int)      /* 0x10 */
@@ -359,7 +416,7 @@ struct HalFaderWipe {
             hal_wipe_shape_trap("SetForwardTime (ROM slot 0x10)", this);
             return 0;
         }
-        speed = frames ? (Fix12i)(0x1000 / frames) : 0x1000;
+        speed = hal_fade_speed((unsigned)frames, 0);
         return HalFaderWipe::IsAtEnd();
     }
     /* 0x14 / 0x18 -- the matched predicates, reached qualified */
@@ -388,8 +445,20 @@ struct HalFaderWipe {
 
 namespace {
 
-/* Seven, the count Stage::InitResources passes. */
+/* Seven, the count Stage::InitResources passes.
+
+   INSIDE THE SAVE STATE'S SPAN. On the cartridge the seven wipes are heap
+   objects (Stage::InitResources builds them with func_02073470), so a snapshot
+   of the heap carries them, meshes and interpolators alike. Here each wipe's
+   Model words point at blocks the level boot carves out of the heap arena
+   (port_fader_wipes_load, below), and hal/lk6_savestate.cpp rolls that arena
+   back on a restore: the words have to roll back with it, or a restore hands
+   the next level change's release a pointer into a block the restored arena
+   never handed out. data_0209f5e8, the eighth object of this class, has been
+   in the span since gate 31 for the same reason. */
+DSSTATE_BEGIN
 HalFaderWipe hal_wipes[7];
+DSSTATE_END
 
 int hal_wipe_index(const void *self)
 {
@@ -420,6 +489,230 @@ void hal_wipe_shape_trap(const char *slot, const void *self)
                  "__cdecl slot; see the block above SetBackwardTime.\n",
                  slot, self);
     std::fflush(stderr);
+}
+
+/* ---- THE WIPE'S PICTURE -----------------------------------------------------
+ *
+ * WHAT THE CARTRIDGE DRAWS. A level exit, a death and a level entrance run one
+ * of these seven wipes for 0x1e frames (dScene_c::BeforeBehavior's
+ * SetForwardTime(0x1e) / SetBackwardTime(0x1e)), and FaderWipe::AdvanceFade
+ * (src/engine/fader/_ZN9FaderWipe11AdvanceFadeEv.cpp) draws the wipe's MESH
+ * over the scene: a flat model with a shaped hole (data/wipe/wipe_mario.bmd,
+ * _luigi, _wario, _yoshi, _star, _koopa), placed at (0, 0, -1) in camera space,
+ * turned 0x4000 about X and scaled by (0x1000 - interp) * 0x20, so the hole
+ * closes on the player as interp runs to 0x1000. The top screen's colour
+ * effects are switched off while it moves and set to EVY 16 black once it is
+ * closed; the bottom screen darkens with interp (BLDY on engine B).
+ *
+ * WHAT THE PORT DREW. Nothing: the meshes were never loaded (Stage::
+ * InitResources loads them with FaderWipe::LoadAndSetFile from data_020755e0 /
+ * _5f0 / _600, and the port boots levels without that loop), and this class's
+ * AdvanceFade was FaderColor's whole-screen EVY fade on both engines.
+ *
+ * WHAT RUNS NOW, per wipe, in two halves:
+ *   LOAD. At every level boot, where Stage::InitResources runs its wipe
+ *   loop (port_fader_wipes_load, called from hal/level_boot.cpp), Model's
+ *   constructor and then FaderWipe::LoadAndSetFile run on each wipe's own
+ *   +0x10 Model with the file id Stage::InitResources passes for this level:
+ *   data_02075600 in VS off archive 0xbf, data_020755f0 on level 5,
+ *   data_020755e0 otherwise. The level change frees them again
+ *   (port_fader_wipes_reset), as Stage::CleanupResources does.
+ *   STEP. FaderWipe::AdvanceFade's statements in its order (the step is the
+ *   matched Fader::AdvanceInterp, the brightness writes are the matched
+ *   SetBlendBrightness), except that the mesh's ModelComponents::Render is
+ *   HANDED TO THE RENDER PHASE: the DS submits it into the geometry FIFO at
+ *   phase 2 and it is drawn with the frame, while the port opens its geometry
+ *   frame after phase 2 (tests/walk_window.cpp, the phase-4 gx_reset), which
+ *   would drop it. port_fader_wipe_render submits the same call with the same
+ *   matrix just before the frame is rasterised.
+ *
+ * SM64DS_WIPE_MESH_OFF=1 keeps the old whole-screen fade on the same exe. */
+
+void *g_wipe_draw;                      /* the wipe whose mesh draws this frame */
+int g_wipe_draw_scale;
+
+int hal_wipe_mesh_off(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_WIPE_MESH_OFF");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v;
+}
+
+/* FaderWipe's destructor, its Model half: Model::~Model frees the transform
+   buffer DoSetFile allocated and ModelBase::~ModelBase frees the file
+   (src/_ZN5ModelD1Ev.cpp, src/_ZN9ModelBaseD2Ev.cpp), which is all
+   Stage::CleanupResources' func_02073244(WIPES, 0x60, 8, ~FaderWipe) frees per
+   wipe. The rest of that destructor chain only stores vtable pointers, which
+   these host objects must keep (their table is ??_7HalFaderWipe@@6B@), so the
+   Model's words go back to zero, the state the pool starts in. Returns how
+   many wipes held a mesh. */
+int hal_wipes_release(void)
+{
+    int n = 0;
+    for (int i = 0; i < 7; ++i) {
+        unsigned char *model = hal_wipes[i].model;
+        if (*(void **)model) {
+            if (*(void **)(model + 4))
+                ++n;
+            _ZN5ModelD1Ev(model);
+        }
+        for (int b = 0; b < 0x50; ++b)
+            model[b] = 0;
+    }
+    return n;
+}
+
+/* SM64DS_WIPE_TRACE=1: what each wipe's mesh reads out of texture VRAM. At the
+   load, every texture and palette span the file was given (texture slots at
+   0x06800000 + (flags & 0xffff) << 3, palette slots at 0x06880000 +
+   vramOffset: the offsets LoadTexAndPal wrote) and an FNV-1a hash of their
+   bytes; at the wipe's first draw after that load, the same spans hashed
+   again, and the PREVIOUS load's spans hashed now -- which is exactly what a
+   mesh kept from the previous level would read. Inert unset. */
+struct HalWipeSpans {
+    int n;
+    unsigned addr[8], size[8];
+    unsigned hash;
+    int level;
+};
+HalWipeSpans hal_wipe_spans_cur[7], hal_wipe_spans_prev[7];
+int hal_wipe_drawn_since_load[7];
+
+int hal_wipe_trace_on(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = std::getenv("SM64DS_WIPE_TRACE");
+        v = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return v;
+}
+
+unsigned hal_wipe_spans_hash(const HalWipeSpans &r)
+{
+    unsigned h = 2166136261u;
+    for (int k = 0; k < r.n; ++k) {
+        const unsigned char *p = (const unsigned char *)(std::size_t)r.addr[k];
+        for (unsigned b = 0; b < r.size[k]; ++b)
+            h = (h ^ p[b]) * 16777619u;
+    }
+    return h;
+}
+
+void hal_wipe_tex_note(int i)
+{
+    if (!hal_wipe_trace_on())
+        return;
+    const unsigned char *f = *(const unsigned char *const *)(hal_wipes[i].model + 4);
+    HalWipeSpans r = {};
+    const unsigned ntex = *(const unsigned *)(f + 0x14);
+    const unsigned char *tex = *(const unsigned char *const *)(f + 0x18);
+    for (unsigned t = 0; t < ntex && r.n < 8; ++t, tex += 0x14) {
+        r.addr[r.n] = 0x06800000u + ((*(const unsigned *)(tex + 0x10) & 0xffffu) << 3);
+        r.size[r.n] = *(const unsigned *)(tex + 8);
+        ++r.n;
+    }
+    const unsigned npal = *(const unsigned *)(f + 0x1c);
+    const unsigned char *pal = *(const unsigned char *const *)(f + 0x20);
+    for (unsigned t = 0; t < npal && r.n < 8; ++t, pal += 0x10) {
+        r.addr[r.n] = 0x06880000u + *(const unsigned *)(pal + 0xc);
+        r.size[r.n] = *(const unsigned *)(pal + 8);
+        ++r.n;
+    }
+    r.hash = hal_wipe_spans_hash(r);
+    r.level = (int)data_0209f2f8;
+    if (hal_wipe_spans_cur[i].n)
+        hal_wipe_spans_prev[i] = hal_wipe_spans_cur[i];
+    hal_wipe_spans_cur[i] = r;
+    hal_wipe_drawn_since_load[i] = 0;
+    std::fprintf(stderr, "  [wipe-trace] load wipe %d level %d: %d span(s), "
+                 "first 0x%08x+0x%x, vram fnv %08x\n", i, r.level, r.n,
+                 r.n ? r.addr[0] : 0, r.n ? r.size[0] : 0, r.hash);
+}
+
+void hal_wipe_tex_draw_note(int i)
+{
+    if (!hal_wipe_trace_on() || i < 0 || i >= 7 || hal_wipe_drawn_since_load[i])
+        return;
+    hal_wipe_drawn_since_load[i] = 1;
+    const HalWipeSpans &c = hal_wipe_spans_cur[i];
+    const HalWipeSpans &p = hal_wipe_spans_prev[i];
+    const unsigned now = hal_wipe_spans_hash(c);
+    std::fprintf(stderr, "  [wipe-trace] draw wipe %d level %d: its spans "
+                 "(first 0x%08x) fnv %08x at load, %08x now (%s)",
+                 i, (int)data_0209f2f8, c.n ? c.addr[0] : 0, c.hash, now,
+                 now == c.hash ? "same" : "CHANGED");
+    if (p.n) {
+        const unsigned pnow = hal_wipe_spans_hash(p);
+        std::fprintf(stderr, "; level %d's spans (first 0x%08x) fnv %08x at "
+                     "their load, %08x now (%s)", p.level, p.addr[0], p.hash,
+                     pnow, pnow == p.hash ? "same" : "CHANGED");
+    }
+    std::fprintf(stderr, "\n");
+}
+
+int hal_wipe_mesh_ready(void *self)
+{
+    const int i = hal_wipe_index(self);
+    if (i < 0 || i >= 7 || self != (void *)&hal_wipes[i] ||
+        hal_wipe_mesh_off())
+        return 0;
+    /* The mesh is the level boot's (port_fader_wipes_load, the line
+       Stage::InitResources runs between the twelve preloads and
+       Stage::LoadModel), loaded into this level's texture VRAM and freed at
+       the level change with the wipe (port_fader_wipes_reset). Nothing loads
+       here any more: a wipe whose file did not load keeps the whole-screen
+       fade, and a boot that never ran the load (SM64DS_LEGACY_BOOT) says so
+       once. */
+    if (*(void **)(hal_wipes[i].model + 4))     /* Model::modelFile */
+        return 1;
+    static int said;
+    if (!said) {
+        said = 1;
+        std::fprintf(stderr, "  [wipe] wipe %d has no mesh on level %d (the "
+                     "level boot did not load it): the whole-screen fade "
+                     "stays\n", i, (int)data_0209f2f8);
+    }
+    return 0;
+}
+
+int hal_wipe_advance_rom(void *self)
+{
+    Fix12i &cur = *(Fix12i *)((char *)self + 4);
+    Fix12i &spd = *(Fix12i *)((char *)self + 8);
+    const unsigned short color = *(unsigned short *)((char *)self + 0xc);
+    const Fix12i target = spd >= 0 ? 0x1000 : 0;
+    const Fix12i old = cur;
+    ((Fader *)self)->Fader::AdvanceInterp();
+    if (cur == 0 && cur == old)
+        return cur == target;
+    if (cur == 0x1000) {
+        _ZN3G2x18SetBlendBrightnessEPVtts((volatile unsigned short *)0x4000050,
+                                          0x3f, -0x10);
+    } else {
+        if (spd != 0 && old != 0x1000)
+            *(volatile unsigned short *)0x4000050 = 0;
+        if (cur != 0) {
+            g_wipe_draw = self;
+            g_wipe_draw_scale = (Fix12i)(((long long)(0x1000 - cur) * 0x20000
+                                          + 0x800) >> 12);
+        }
+    }
+    if (cur == old)
+        return cur == target;
+    const int m = color ? 0x10 : -0x10;
+    const int r = (cur * m) >> 12;
+    if (r != 0) {
+        _ZN3G2x18SetBlendBrightnessEPVtts((volatile unsigned short *)0x4001050,
+                                          0x3f, (short)r);
+    } else {
+        *(volatile unsigned short *)0x4000050 = 0;
+        *(volatile unsigned short *)0x4001050 = 0;
+    }
+    return cur == target;
 }
 
 }  /* anonymous namespace */
@@ -530,115 +823,262 @@ DSSTATE_END
 extern "C" void _ZN9FaderWipe14LoadAndSetFileEt(void *thiz, unsigned short fileID)
 { ((FaderWipe *)thiz)->FaderWipe::LoadAndSetFile(fileID); }
 
-/* ---- the per-frame fade driver -------------------------------------------
-   func_02018ec0 is the ROM's own per-frame fade advance: it reads
-   data_0209d4b0 -- the fader CURRENTLY IN MOTION, distinct from data_0209f5bc
-   the installed one -- and calls its AdvanceFade (vtable slot 0x08). The port
-   does not run func_02018ec0 (the port has its own frame loop, not
-   func_020197b8), so nothing advanced a fade. This is that driver, called from
-   walk_window.cpp's frame loop right where phase 2 (func_02019390) sits.
+/* ---- THE ROM'S FRAME PHASE 2, AND THE ONE HOST STEP LEFT BESIDE IT --------
+   run linkfull, lane RESET2.
 
-   data_0209d4b0 is an int[8] in hal/cxx_aliases.cpp; its first word holds the
-   animating-fader pointer. When a fade reaches its resting end the driver
-   clears it, exactly as FUN_02029934 / FUN_02029a68 do, so the Stage::Behavior
-   gates that test `data_0209d4b0 == 0` come back true. */
+   src/func_020197b8.c, the cartridge's frame loop, runs
+       data_0209d50c = 2;   func_02019390();
+   between the lid machine (0xb) and the input steps (0x16 / 0x17), so before
+   phase 3 spawns and phase 4 ticks. src/func_02019390.c is
+
+       if (data_0209d4a8 && data_0209d4a8->vt[0](data_0209d4a8) == 0) {
+           func_0202345c(); func_02018efc(); return;         the EARLY arm
+       }
+       OAM::Reset();
+       if (func_02019018()) func_0200f4b4();                 the GX reset
+       func_0200f468();
+       func_0202345c(); func_02018efc(); func_02018ec0();    the three fader steps
+
+   THIS PORT RAN IT IN PIECES, AND LATE. The graphics block's word 0 was
+   hal/scene_boot.cpp's port_graph_block_word0 (answer discarded), the two fade
+   advances were this file's port_fader_advance -- func_02018efc, then a host
+   stand-in for func_02018ec0 -- and OAM::Reset was hal/sub_screen.cpp's
+   hal_sub_screen_frame_begin; both loops called the first two AFTER the actor
+   tick. func_0200f4b4 and func_0202345c ran nowhere. All of it is the ROM's
+   body now, called by the two loops at the ROM's point (tests/walk_window.cpp's
+   level loop, hal/scene_boot.cpp's port_scene_tick), and the pieces are gone.
+
+   WHAT THE ROM'S BODY DECIDES THAT THE PIECES DID NOT. Word 0's answer is used:
+   the title's block (dScDSMT_c::graphCallback_c::GraphCallback0) and dScMB_c's
+   answer 0, so on those scenes the cartridge skips OAM::Reset, the GX reset and
+   the in-motion fader step every frame, exactly as src/func_02019390.c says;
+   every other block this port can hold answers 1 (the thirty-two minigame
+   blocks through dScMgBase_c's forwarder, scene 6's func_ov102_0214d1b0, the
+   Stage's dGraph_c body), and on a level the block is the Stage's own
+   (hal/level_boot.cpp makes it current at Stage::InitResources:284's point
+   and clears it at Stage::CleanupResources:77's, run linkfull lane K7GC2),
+   whose word 0 is that `return 1`, so a level takes the full arm every frame,
+   as the DS does with the Stage's block. func_0202345c steps data_0209f1e4, which only the soft-reset
+   branch of dScene_c::BeforeBehavior ever sets; that latch never rises on this
+   port (func_02023498 is not linked), so it is the ROM's null test here.
+
+   THE STEPPING BRACKET STAYS, because HalFaderWipe is still the host stand-in
+   for FaderWipe: its AdvanceFade steps only while the frame loop drives it and
+   snaps otherwise (see the class). func_02018efc and func_02018ec0 are the
+   frame loop's two driven advances, so the whole phase runs inside it. Both
+   dispatch vt[2] with the receiver pushed and in ecx (func_02018efc's compiled
+   body: mov ecx,[blk] / push ecx / call [eax+8] / pop ecx), which is right for
+   the colour faders' __cdecl l2_eb2c_s08 (hal/scene_boot.cpp) and for this
+   class's __thiscall AdvanceFade alike; the old stand-in's qualified call ran
+   HalFaderWipe's body on a FaderColor, which is the same arithmetic
+   (src/engine/fader/_ZN10FaderColor11AdvanceFadeEv.cpp).
+
+   THE SETTLE-CLEAR IS THE ONE HOST STEP KEPT, and it is not the ROM's. The
+   cartridge never clears data_0209d4b0 because a fade finished: it clears it at
+   named points -- Stage::CleanupResources (src/_ZN5Stage16CleanupResourcesEv.cpp
+   `data_0209d4b0 = 0`), the Kuppa script's level command, Player's wipe
+   routines (FUN_02029934 / FUN_02029a68), Stage::Behavior's VS end and
+   func_02019440. This port does not run Stage::CleanupResources (the Stage's
+   slot 3 is not hosted; hal/level_change.cpp), so a fade still pointed at when a
+   level is torn down would stay pointed at into the next level and hold
+   Stage::Behavior's pause gate (`data_0209d4b0 == 0`) shut. Until the teardown
+   is the ROM's, a fader that has reached its target is dropped out of motion
+   here, after the ROM's phase, as the stand-in always did, with the same blend
+   register clear when it lands fully open. */
 extern "C" {
 extern int data_0209d4b0[8];
+extern unsigned char data_0209d4a8[4];   /* hal/w8a_stage_storage.cpp */
+extern unsigned char data_0208ee00;      /* func_02019018's word: the GX reset arm */
+void func_02019390(void);
 
-/* PHASE 2 ADVANCES TWO FADERS, NOT ONE, and this port only ever ran the
-   second. Run link60 Stage 5 lane SEAT8.
-
-   The ROM's func_02019390 is
-
-       ... func_0202345c(); func_02018efc(); func_02018ec0();
-
-   and the two advances read different globals: func_02018efc dispatches
-   vtable byte 0x08 on data_0209d4ac, the INSTALLED fader, and func_02018ec0
-   does the same on data_0209d4b0, the fader in motion. Both run every frame,
-   and func_02018efc runs on the early-return path too.
-
-   data_0209d4ac is written by _ZN8dScene_c9SetFadersEP15FaderBrightness, which
-   ends `data_0209f5bc = thiz; data_0209d4ac = thiz;`. That TU is in the link
-   already (slice_gate10), so on a minigame boot dScMgBase_c slot 1 arms the
-   arm9 dWipe_c at data_0209f61c into d4ac with the ROM's own store, and the
-   only thing the port was missing was the six-line reader.
-
-   SO THE ROM BODY IS SEATED RATHER THAN STOOD IN FOR. src/func_02018efc.c is
-   on port/slice_fdr.txt beside the fader table it dispatches through, and it
-   is called here, first, in the ROM's own order. This function stays the
-   stand-in for the OTHER half (func_02018ec0), which cannot be seated as it
-   stands because the port also has to clear data_0209d4b0 when a fade
-   settles -- the ROM does that from the Scene actor machinery this port does
-   not run. */
-void func_02018efc(void);
-
-/* The animating fader, spelled through the same int[8] Stage::Behavior reads.
-   Nonzero while a fade is stepping. */
-static HalFaderWipe *port_fader_animating(void)
+/* THE PHASE'S OWN ACCOUNT, the [r3e] / [b5input] pattern: one line per distinct
+   graphics block phase 2 was handed (its vtable's word 0 is what decides the
+   arm, resolvable through walk_window.map), and one line at exit with the call
+   and settle-clear counts. Eight blocks at most; a process meets two or three. */
+static unsigned g_p2_calls, g_p2_clears;
+static void *g_p2_seen[8];
+static unsigned g_p2_seen_n;
+static void p2_report(void)
 {
-    return (HalFaderWipe *)(size_t)data_0209d4b0[0];
+    std::fprintf(stderr, "[reset2] phase 2 (func_02019390): %u call(s), %u "
+                 "settle-clear(s) of data_0209d4b0, %u distinct block(s)\n",
+                 g_p2_calls, g_p2_clears, g_p2_seen_n);
+}
+static void p2_census(void)
+{
+    if (g_p2_calls++ == 0) {
+        std::atexit(p2_report);
+        std::fprintf(stderr, "[reset2] phase 2 first call: data_0208ee00=%u "
+                     "(the GX reset arm)\n", (unsigned)data_0208ee00);
+    }
+    void *blk = *(void **)data_0209d4a8;
+    for (unsigned i = 0; i < g_p2_seen_n; ++i)
+        if (g_p2_seen[i] == blk) return;
+    if (g_p2_seen_n >= sizeof g_p2_seen / sizeof g_p2_seen[0]) return;
+    g_p2_seen[g_p2_seen_n++] = blk;
+    void **vt = blk ? *(void ***)blk : 0;
+    std::fprintf(stderr, "[reset2] phase 2 call %u: block %p vptr %p word0 %p "
+                 "(%s)\n", g_p2_calls, blk, (void *)vt,
+                 vt ? vt[0] : (void *)0,
+                 blk ? "the block's word 0 decides the arm" : "no block: the full arm");
 }
 
-void port_fader_advance(void)
+void port_frame_phase2(void)
 {
-    /* Phase 2's FIRST advance, the ROM's own body, on the INSTALLED fader.
-       INSIDE the stepping bracket, and the bracket is not decoration here.
-       HalFaderWipe::AdvanceFade has two paths: driven, which steps the
-       interpolator, and undriven, which SNAPS currInterp to the target so an
-       invisible fade cannot hold a transition open. func_02018efc IS the
-       frame loop's driven advance -- it is the very function
-       port_fader_advance was written to stand in half of -- so calling it
-       outside the bracket makes every level snap the installed fader to its
-       target once a frame. That was measured, not reasoned: the first cut of
-       this line sat above the bracket and level 1's selftest started printing
-       the host stub's AdvanceFade note. */
+    p2_census();
     g_hal_fader_stepping = 1;
-    func_02018efc();
+    func_02019390();
     g_hal_fader_stepping = 0;
 
-    HalFaderWipe *f = port_fader_animating();
+    /* The settle-clear: currInterp at +4 and speed at +8 in every fader class
+       (HalFaderWipe, FaderColor, FaderBrightness), and the target is the one
+       Fader::AdvanceInterp picks from the sign of speed. */
+    HalFaderWipe *f = (HalFaderWipe *)(size_t)data_0209d4b0[0];
     if (!f)
         return;
-    g_hal_fader_stepping = 1;
-    /* QUALIFIED, NOT VIRTUAL, run link100 lane CTOR3 rung 2, and it is a
-       calling-convention fix rather than a style choice.
-
-       f is either one of the seven hal_wipes -- host C++ objects carrying this
-       class's own MSVC vtable -- or data_0209f5e8, the colour fader, which
-       port_fader_start_color installs into data_0209d4b0[0]. Since rung C1c the
-       ROM's own __sinit_02074edc is the last writer of THAT object's vptr, so
-       it points at hal/scene_boot.cpp's data_0208eb2c and not at this class's
-       table any more.
-
-       A virtual call here compiles to __thiscall: `mov ecx,f / mov eax,[ecx] /
-       call [eax+8]`, read out of this lane's own binary at
-       _port_fader_advance+0x22, with NOTHING pushed. Byte +0x08 of
-       data_0208eb2c is hal/scene_boot.cpp's l2_eb2c_s08, which is __cdecl on
-       purpose -- the ROM's one dispatch site for that slot, src/func_02018efc.c,
-       passes the receiver as a STACK argument -- so it would read its receiver
-       off this function's frame, dereference it in its own guard, and hand back
-       a void EAX where the line below wants an int. Nothing in the gates
-       reaches it (port_fader_start_color has one caller in
-       hal/level_change.cpp, the title row that warps to a level, and one in the
-       harness), which is exactly why it had to be read out of the binary rather
-       than waited for.
-
-       A qualified call takes no vtable at all. For the seven wipes it is the
-       same body the virtual call resolved to -- no class derives from this one
-       -- and for the colour fader it is what ran before C1c. So this restores
-       one behaviour and changes none. */
-    int at_target = f->HalFaderWipe::AdvanceFade();
-    g_hal_fader_stepping = 0;
-    /* Settled: drop it out of motion so the next transition's gates open, and
-       leave the blend register at 0 when the fade landed fully OPEN (interp 0),
-       the way FUN_02029934 clears 0x4000050 at the end of a fade-in. */
-    if (at_target && f->currInterp == 0) {
-        data_0209d4b0[0] = 0;
+    const Fix12i target = f->speed >= 0 ? 0x1000 : 0;
+    if (f->currInterp != target)
+        return;
+    data_0209d4b0[0] = 0;
+    ++g_p2_clears;
+    if (f->currInterp == 0) {
         *(volatile unsigned short *)0x4000050 = 0;
         *(volatile unsigned short *)0x4001050 = 0;
-    } else if (at_target) {
-        data_0209d4b0[0] = 0;
     }
+}
+
+/* ---- THE WIPE POOL'S CONSTRUCTED STATE, given back at every level boot ----
+ *
+ * On the cartridge the seven wipes do not survive a level. Stage::InitResources
+ * BUILDS them every time a level is opened -- the array note at the top of this
+ * file has the line, func_02073470(7, 0x60, 8, FaderWipe::FaderWipe, ...) -- so
+ * a level always starts with seven fresh FaderWipes holding the constructor's
+ * two words, `currInterp = 0x1000; speed = 0` (include/FaderBrightness.h says
+ * why those two belong to the constructor and what they mean: a fade starts
+ * fully opaque and stationary). The port's stand-ins are the static objects in
+ * this file, and Stage slot 3 (CleanupResources) is not hosted, so with nothing
+ * to hand them back their state they carried one transition's interpolator into
+ * the next one.
+ *
+ * WHAT THAT COST, measured rather than reasoned. The return from a course after
+ * a star installs hal_wipes[0] and then, one frame later, hal_wipes[5], both
+ * through dScene_c::SetFaders (src/_ZN8dScene_c9SetFadersEP15FaderBrightness.cpp),
+ * whose whole job is to carry the outgoing fader's end state onto the incoming
+ * one -- start onto start, end onto end, and NOTHING when the outgoing one is
+ * mid-fade.
+ *   FIRST star of a session: both wipes are still at 0x1000 with speed 0, so
+ *   the outgoing one reads exactly at the start, the incoming one is snapped to
+ *   the start, and the arrival fades in over thirty frames.
+ *   SECOND star: hal_wipes[0] still carries the first transition's speed, so it
+ *   steps on the very frame it is installed (0x1000 -> 0xf78) and writes EVY 16
+ *   into 0x4000050 / 0x4000054. SetFaders then reads it as between start and
+ *   end and leaves hal_wipes[5] alone -- and hal_wipes[5] is at 0 from the first
+ *   fade-in, already at its target, so AdvanceFade's own `if (currInterp == old)
+ *   return` means nobody writes those two registers again. The picture stays
+ *   fully black, every pixel of it, until some other writer of the blend
+ *   registers happens along: the level-clear menu's own dim, or a message box.
+ *
+ * The vptr is left alone on purpose: these are live host C++ objects whose table
+ * is the one the constructor would store anyway, and a placement-new over an
+ * object other code holds a pointer to is a bigger claim than this fix makes.
+ * Every other word the constructor writes is written here. */
+void port_fader_wipes_reset(void)
+{
+    g_wipe_draw = 0;        /* a mesh queued by the outgoing level's last advance */
+    const int freed = hal_wipes_release();
+    if (freed)
+        std::fprintf(stderr, "  [wipe] level %d's %d wipe mesh(es) freed with "
+                     "the level (Stage::CleanupResources' FaderWipe "
+                     "destructors)\n", (int)data_0209f2f8, freed);
+    for (int i = 0; i < 7; ++i) {
+        hal_wipes[i].currInterp = 0x1000;
+        hal_wipes[i].speed = 0;
+        hal_wipes[i].color = 0;
+        hal_wipes[i].unk0e = 0;
+    }
+}
+
+/* ---- THE SEVEN WIPE MESHES, LOADED AT EVERY LEVEL BOOT --------------------
+ *
+ * Stage::InitResources :360-377, after the twelve shared preloads and before
+ * Stage::LoadModel:
+ *
+ *     faderTbl = VS ? data_02075600 : level 5 ? data_020755f0 : data_020755e0;
+ *     WIPES = func_02073470(7, 0x60, 8, FaderWipe::FaderWipe, ~FaderWipe);
+ *     for (i = 0; i < 7; i++) FaderWipe::LoadAndSetFile(&WIPES[i], faderTbl[i]);
+ *
+ * and Stage::CleanupResources :102 destroys the array again, so each wipe's
+ * file, its texture upload and its transform buffer belong to one level. The
+ * port boots every level through hal/level_boot.cpp's copy of that body,
+ * which calls this at the same point; the teardown half is
+ * port_fader_wipes_reset above, in the level change's teardown beside
+ * CleanCommonModelDataArr and port_model_vram_reset.
+ *
+ * WHY PER LEVEL AND NOT ONCE. Model::LoadTexAndPal uploads the file's
+ * textures and palettes at the level's VRAM cursors and writes those offsets
+ * INTO THE FILE (src/_ZN5Model13LoadTexAndPalER8BMD_File.cpp :38, :55, :60),
+ * and every level boot rewinds the cursors (port_model_vram_reset, the ROM's
+ * InitialiseVramGlobals) and uploads its own textures from the bottom again.
+ * 0.5.1 loaded each file once per process and gave later levels the kept
+ * Model back: the mesh then read whatever the NEW level had put at the first
+ * level's offsets, which is the iris "with a face in it" players saw on a
+ * death, a level exit and the cannon. The ROM never keeps one: the load here
+ * uploads into this level's VRAM, and the release frees it with the level.
+ *
+ * The VS arm of the table choice (data_02075600) is left out, as 0.5.1 did. The
+ * pool is this file's static array rather than a heap array (see
+ * hal/stage_bridges.cpp's st_wipes_withdraw for why), so the constructor half
+ * is the embedded Model's own, which is the only part of FaderWipe's
+ * constructor a load reads; the interpolator words are port_fader_wipes_reset's.
+ *
+ * A mesh still held here means the boot came by a path whose teardown did not
+ * release it (the title route after a Save and Quit, a level-to-scene
+ * crossing): it is released first, as the ROM's teardown would have. */
+extern "C" void port_fader_wipes_load(void)
+{
+    if (hal_wipe_mesh_off())
+        return;
+    const int stale = hal_wipes_release();
+    const unsigned short *tbl = (data_0209f2f8 == 5) ? data_020755f0
+                                                     : data_020755e0;
+    int loaded = 0;
+    for (int i = 0; i < 7; ++i) {
+        _ZN5ModelC1Ev(hal_wipes[i].model);
+        _ZN9FaderWipe14LoadAndSetFileEt(&hal_wipes[i], tbl[i]);
+        if (*(void **)(hal_wipes[i].model + 4)) {
+            ++loaded;
+            hal_wipe_tex_note(i);
+        } else {
+            std::fprintf(stderr, "  [wipe] mesh for wipe %d (ov0 file 0x%04x, "
+                         "level %d) NOT loaded: that wipe keeps the "
+                         "whole-screen fade\n", i, tbl[i], (int)data_0209f2f8);
+        }
+    }
+    std::fprintf(stderr, "  [wipe] level %d boot: %d/7 wipe meshes loaded "
+                 "(Stage::InitResources' FaderWipe::LoadAndSetFile loop)%s\n",
+                 (int)data_0209f2f8, loaded,
+                 stale ? "; the previous level's were still held and were "
+                         "freed first" : "");
+}
+
+/* THE WIPE MESH'S DRAW, for the render phase (THE WIPE'S PICTURE, above):
+   FaderWipe::AdvanceFade's own ModelComponents::Render with its own matrix --
+   (0, 0, -1) in camera space, scaled by the queued (0x1000 - interp) * 0x20,
+   turned 0x4000 about X -- submitted into this frame's geometry just before it
+   is rasterised (tests/walk_window.cpp). Nothing queued, nothing drawn. */
+extern "C" void port_fader_wipe_render(void)
+{
+    if (!g_wipe_draw)
+        return;
+    static int mtx[12];
+    const int sc = g_wipe_draw_scale;
+    hal_wipe_tex_draw_note(hal_wipe_index(g_wipe_draw));
+    Matrix4x3_FromTranslation(mtx, 0, 0, -0x1000);
+    Matrix4x3_ApplyInPlaceToScale(mtx, sc, sc, sc);
+    Matrix4x3_ApplyInPlaceToRotationX(mtx, 0x4000);
+    _ZN15ModelComponents6RenderEP9Matrix4x3P7Vector3(
+        (char *)g_wipe_draw + 0x18, mtx, 0);
+    g_wipe_draw = 0;
 }
 
 /* Start a COLOR fade on the installed color fader (data_0209f5e8) and put it in
@@ -651,12 +1091,14 @@ void port_fader_start_color(int frames, int toEnd, unsigned short color)
 {
     HalFaderWipe *f = (HalFaderWipe *)(void *)data_0209f5e8;
     f->color = color;
+    /* the same step the ROM's setters take (hal_fade_speed); both callers
+       pass 16 frames, which fdiv and a plain divide agree on (256) */
     if (toEnd) {
         f->currInterp = 0;
-        f->speed = frames > 0 ? (Fix12i)(0x1000 / frames) : 0x1000;
+        f->speed = frames > 0 ? hal_fade_speed((unsigned)frames, 0) : 0x1000;
     } else {
         f->currInterp = 0x1000;
-        f->speed = frames > 0 ? -(Fix12i)(0x1000 / frames) : -0x1000;
+        f->speed = frames > 0 ? hal_fade_speed((unsigned)frames, 1) : -0x1000;
     }
     /* install it as the scene's fader and arm it as the animating one */
     data_0209f5bc = f;
@@ -664,6 +1106,31 @@ void port_fader_start_color(int frames, int toEnd, unsigned short color)
     std::fprintf(stderr, "[fade] color start: frames=%d dir=%s color=%s "
                  "interp=%d speed=%d\n", frames, toEnd ? "out" : "in",
                  color ? "white" : "black", f->currInterp, f->speed);
+}
+
+/* Has the ROM armed a level-entrance wipe during this level's boot?
+   LoadEntranceObjects ends in StartEntranceFaderWipe (src/engine/fader/
+   StartEntranceFaderWipe.cpp) for every entrance whose row in data_ov002_
+   0210cb5c is not negative -- the castle rooms, sub-areas, secret courses and
+   the Bowser stages and arenas, i.e. the places reached without a star select.
+   It installs wipe N through Scene::SetFaders (data_0209f5bc AND data_0209d4ac,
+   the one func_02018efc advances every frame) and parks it at the end of its
+   travel; dScene_c::BeforeBehavior reverses it once the scene request is gone.
+   port_title_select's cover has just put the COLOUR fader in data_0209f5bc, so
+   a wipe sitting there now can only be the ROM's own, and the colour fader
+   sitting there means no wipe was armed (a stale data_0209d4ac from the level
+   before does not count).
+   A caller that wants to lay its own colour fade over the level opening must
+   not take over data_0209f5bc while this is true, because
+   port_fader_start_color does not move data_0209d4ac: the wipe would stay the
+   thing that is advanced, never be reversed, and leave the master brightness at
+   full black (the black screen, black dialogue box and black arena after a
+   debug level select into those areas). */
+int port_fader_entrance_wipe_armed(void)
+{
+    const unsigned char *p = (const unsigned char *)data_0209f5bc;
+    const unsigned char *w = (const unsigned char *)&hal_wipes[0];
+    return p >= w && p < w + sizeof hal_wipes;
 }
 
 /* Is a fade in motion right now, and how far along is it? Returns 1 and fills
@@ -791,8 +1258,8 @@ int port_fader_blend_state_sub(int *evy, int *toWhite)
  * does not run it -- both host loops (tests/walk_window.cpp's level loop and
  * hal/scene_boot.cpp's port_scene_tick) are their own frame. So the counter
  * sat at its BSS zero for the life of every process. Same shape and same cause
- * as port_fader_advance above, which is phase 2 of the same loop and needed the
- * same six lines -- which is why the two drivers share a file.
+ * as phase 2 above, which the host loops did not run either until they called
+ * port_frame_phase2 -- which is why the two drivers share a file.
  *
  * WHICH DIRECTION THE RISK RUNS, and this is the half that is easy to get
  * backwards. With the counter frozen at zero, `& n` is FALSE for every mask in
@@ -846,10 +1313,10 @@ int port_fader_blend_state_sub(int *evy, int *toWhite)
  *
  * WHERE IT IS CALLED, and it sits ONE PHASE EARLY -- said plainly rather than
  * claimed to be exact. The ROM increments at phase 6, AFTER phase 5
- * (func_02019404) and therefore after its phase 2 fade advance. This port calls
- * it from both loops immediately BEFORE port_fader_advance, which is the stand-
- * in for phase 2, so by the ROM's own numbering the step happens earlier in the
- * frame than the ROM puts it.
+ * (func_02019404). This port calls it from both loops after the actor tick and
+ * BEFORE the render, so by the ROM's own numbering the step happens one phase
+ * earlier in the frame than the ROM puts it. (Phase 2 itself runs before the
+ * tick on both loops since run linkfull lane RESET2, in the ROM's order.)
  *
  * State the consequence exactly, because an earlier wording of this paragraph
  * got it wrong. It said the render "follows the step in both orders". It does
@@ -864,7 +1331,7 @@ int port_fader_blend_state_sub(int *evy, int *toWhite)
  * of the thirteen couples a behaviour-phase read to a render-phase read in the
  * same frame, so none of them can observe the two values disagreeing, and a
  * uniform one-frame offset in a blink is invisible by construction. Nothing
- * between the step and the fade advance touches the word. The residue is where
+ * between the step and the render touches the word. The residue is where
  * the phase sits in the frame, not what any reader sees.
  *
  * Gated on the game tick rather than free-running -- with the debug menu open

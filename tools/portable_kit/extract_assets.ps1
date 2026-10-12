@@ -9,9 +9,11 @@
         extracted\dsd\files\<path>     every file, byte for byte as the card has it
         build\assets\files.tsv         file id -> path index, rebuilt from the dump
         build\assets\handles.tsv       game handle -> file id, read out of overlay 0
-        build\assets\nitrofs.tsv       where the card's own FNT and FAT live in it
+        build\assets\nitrofs.tsv       where the card's own FNT, FAT and overlay
+                                       tables live in it
         build\assets\nitrofs_fnt.bin   the card's file name table, copied verbatim
         build\assets\nitrofs_fat.bin   the card's file allocation table, verbatim
+        build\assets\nitrofs_ovt9.bin  the card's ARM9 overlay table, verbatim
         build\assets\romdata.bin       code-side data tables, rebuilt from the dump
                                        (the kit's romdata.recipe.tsv says where each
                                        piece lives; the file is hash-checked before
@@ -311,6 +313,8 @@ $fatOffset = [BitConverter]::ToUInt32($romBytes, 0x48)
 $fatSize   = [BitConverter]::ToUInt32($romBytes, 0x4C)
 $ovtOffset = [BitConverter]::ToUInt32($romBytes, 0x50)
 $ovtSize   = [BitConverter]::ToUInt32($romBytes, 0x54)
+$ovt7Offset = [BitConverter]::ToUInt32($romBytes, 0x58)
+$ovt7Size   = [BitConverter]::ToUInt32($romBytes, 0x5C)
 $usedSize  = [BitConverter]::ToUInt32($romBytes, 0x80)
 
 foreach ($span in @(@('file name table', $fntOffset, $fntSize),
@@ -318,6 +322,16 @@ foreach ($span in @(@('file name table', $fntOffset, $fntSize),
                     @('overlay table', $ovtOffset, $ovtSize))) {
     if ($span[1] -eq 0 -or ($span[1] + $span[2]) -gt $romBytes.Length) {
         Stop-Politely ("This dump is truncated: its $($span[0]) runs past the end of the file. " +
+                       "Re-dump the cartridge.")
+    }
+}
+# The ARM7 overlay table takes the same check with one difference: an EMPTY
+# pair is legal and means "no ARM7 overlays", which is what this cartridge
+# really has. tools\asset_catalog.py makes the same exception.
+if (-not ($ovt7Offset -eq 0 -and $ovt7Size -eq 0)) {
+    if ($ovt7Offset -eq 0 -or $ovt7Size -eq 0 -or
+        ($ovt7Offset + $ovt7Size) -gt $romBytes.Length) {
+        Stop-Politely ("This dump is truncated: its ARM7 overlay table runs past the end of the file. " +
                        "Re-dump the cartridge.")
     }
 }
@@ -636,10 +650,18 @@ Write-Step "    $($paths.Count) files and $handleCount handles catalogued"
 #
 # The bytes have to match what tools\asset_catalog.py generate writes, because
 # that is what every check in the repo is run against. nitrofs.tsv is a plain
-# two-column table with the four header words in ROM-header order, LF line
-# endings, UTF-8 with no byte-order mark. The two .bin files are straight cuts
-# out of the dump.
-$script:Doing = 'writing the NitroFS name and allocation tables'
+# two-column table with the eight header words in ROM-header order, LF line
+# endings, UTF-8 with no byte-order mark. The .bin files are straight cuts out
+# of the dump.
+#
+# THE OVERLAY HALF was missing here until 0.5.0. The game's virtual cartridge
+# (port\hal\fs_names.cpp) serves the ARM9 overlay table out of
+# nitrofs_ovt9.bin, and port\hal\nitrofs_boot.cpp copies the four overlay words
+# into the header mirror at 0x027FFE50..0x027FFE5C, where the cartridge's own
+# overlay readers look for them. Without these rows the mirror reads 0 and
+# the table reads 0xFF. The ARM7 pair is 0 + 0 on this cartridge, so there is
+# no nitrofs_ovt7.bin to write; tools\asset_catalog.py skips it the same way.
+$script:Doing = 'writing the NitroFS name, allocation and overlay tables'
 $script:DoingPath = $assetsDir
 foreach ($span in @(@('file name table', $fntOffset, $fntSize),
                     @('file allocation table', $fatOffset, $fatSize))) {
@@ -658,14 +680,27 @@ $fntBytes = New-Object 'byte[]' ([int]$fntSize)
 $fatBytes = New-Object 'byte[]' ([int]$fatSize)
 [Array]::Copy($romBytes, [int]$fatOffset, $fatBytes, 0, [int]$fatSize)
 [IO.File]::WriteAllBytes((Join-Path $assetsDir 'nitrofs_fat.bin'), $fatBytes)
+foreach ($ovt in @(@('nitrofs_ovt9.bin', $ovtOffset, $ovtSize),
+                   @('nitrofs_ovt7.bin', $ovt7Offset, $ovt7Size))) {
+    # An empty pair writes no file: there is nothing to copy.
+    if ($ovt[2] -ne 0) {
+        $ovtBytes = New-Object 'byte[]' ([int]$ovt[2])
+        [Array]::Copy($romBytes, [int]$ovt[1], $ovtBytes, 0, [int]$ovt[2])
+        [IO.File]::WriteAllBytes((Join-Path $assetsDir $ovt[0]), $ovtBytes)
+    }
+}
 $nitroRows = New-Object Text.StringBuilder
 [void]$nitroRows.Append("key`tvalue`n")
 [void]$nitroRows.Append("fnt_offset`t$fntOffset`n")
 [void]$nitroRows.Append("fnt_size`t$fntSize`n")
 [void]$nitroRows.Append("fat_offset`t$fatOffset`n")
 [void]$nitroRows.Append("fat_size`t$fatSize`n")
+[void]$nitroRows.Append("ovt9_offset`t$ovtOffset`n")
+[void]$nitroRows.Append("ovt9_size`t$ovtSize`n")
+[void]$nitroRows.Append("ovt7_offset`t$ovt7Offset`n")
+[void]$nitroRows.Append("ovt7_size`t$ovt7Size`n")
 [IO.File]::WriteAllText((Join-Path $assetsDir 'nitrofs.tsv'), $nitroRows.ToString(), $utf8)
-Write-Step "    name table $fntSize bytes, allocation table $fatSize bytes"
+Write-Step "    name table $fntSize bytes, allocation table $fatSize bytes, overlay table $ovtSize bytes"
 Write-Prog 80 "Rebuilding romdata.bin"
 
 # ------------------------------------------------------------ romdata.bin

@@ -1,4 +1,5 @@
-// The ROM's OS lock-id allocator, in one file every binary links.
+// The ROM's OS lock-id allocator and its release, in one file every binary
+// links.
 //
 // src/func_02057020.c (OS_GetLockID) is a `clz` search over the two 32-bit
 // words at 0x027fffb0, clearing the highest free bit and returning 0x40+index
@@ -64,6 +65,32 @@ int func_02057020(void) {
     while ((v & 0x80000000u) == 0) { v <<= 1; ++lz; }
     w[idx] &= ~(0x80000000u >> lz);
     return (int)(base + lz);
+}
+
+/* The host's save file is held against other game windows for as long as a
+   transfer's id owns the card; the release of that id ends the hold
+   (port/ntr/backup.cpp, "ONE TRANSFER, ONE HOLDER"). */
+void port_backup_transfer_end(int lock_id);
+
+// PORT_HOST_ABI: ARM asm primitive (func_02057078, OS_ReleaseLockID): the ROM
+//   body is an `asm` block, so it is written here as the same steps. An id
+//   from 0x60 up is in the second word, the rest in the first, and the id's
+//   bit is set again so func_02057020 can hand it out next time. The shift is
+//   ARM's `lsr` by register: an amount of 32 or more gives 0 (x86 would wrap
+//   it), which only an id outside 0x40..0x7f could reach. Every return path of
+//   SaveDataToCart and ReadDataFromCart (src/) releases its id through this.
+void func_02057078(int lock_id) {
+    volatile unsigned int *w = lock_words();
+    int idx = lock_id & 0xffff;   /* every caller passes the id as a u16 */
+    port_backup_transfer_end(idx);
+    if (idx - 0x60 >= 0) {
+        w += 1;
+        idx -= 0x60;
+    } else {
+        idx -= 0x40;
+    }
+    const unsigned int sh = (unsigned int)idx & 0xffu;
+    w[0] |= sh < 32u ? (0x80000000u >> sh) : 0u;
 }
 
 }

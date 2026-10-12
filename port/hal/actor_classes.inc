@@ -169,11 +169,15 @@ void hal_fill_switch_pillar_vtable(void);
 extern unsigned char g_profile_C0_WATER[];         /* ov012 0x021123e4 */
 void *daObjC0Water_c_classInit(void);                        /* ov012 0x02111730 */
 void hal_fill_basement_water_vtable(void);
-/* ---- gate 200: PUSH_BLOCK (306) + MUGEN_BGM (351), ov002 (already
+/* ---- gate 200: POWER_FLOWER (306) + MUGEN_BGM (351), ov002 (already
    mounted; the SpawnInfo/vtable symbols joined ov002_syms.txt for this
-   gate). id 306's records are dsd's "PowerFlower" names -- a naming-race
-   decoy; daObjPowerUpItem_c_classInit installs _ZTV9PushBlock itself (no SpawnInfo
-   +0x24 vtable word for this id). Both fills are in
+   gate). daObjPowerUpItem_c_classInit installs the table at 0x02109800
+   itself (no SpawnInfo +0x24 vtable word for this id); the port hosts it
+   under the name _ZTV9PushBlock, but config names it _ZTV11PowerFlower /
+   _ZTV18daObjPowerUpItem_c and its InitResources loads the flower's open and
+   closed models (gPFlowerOpenModelFile / gPFlowerCloseModelFile): id 306 is
+   the Power Flower. The row used to be labelled PUSH_BLOCK; the label is only
+   what logs and the census print. Both fills are in
    hal/actor_classes_ov002g200.cpp. */
 extern unsigned char g_profile_POWER_UP_ITEM[];           /* ov002 0x021097a0, +4 reads 306 */
 void *daObjPowerUpItem_c_classInit(void);                          /* ov002 0x020b9e0c */
@@ -183,7 +187,7 @@ void *daMugenBGM_c_classInit(void);                             /* ov002 0x020f1
 void hal_fill_mugen_bgm_vtable(void);
 /* ---- link100 SEAT3, gate 230: PUSHABLE_BLOCK (192), ov002 (already mounted;
    the SpawnInfo record joined ov002_syms.txt for this gate). A DIFFERENT class
-   from the PUSH_BLOCK row above, which is id 306: this one's factory really is
+   from the POWER_FLOWER row above, which is id 306: this one's factory really is
    called daObjPushblock_c_classInit and its table is the unnamed _ZTV16daObjPushblock_c,
    RTTI daObjPushblock_c. Keyed on the id and the addresses, not the names. Its
    vtable is filled by hal/actor_base_tables_ov002.cpp (gate 226, nine own
@@ -1825,13 +1829,13 @@ void hal_fill_bubba_vtable(void);                    /* _ZTV12daBakubaku_c, 31 *
    DEMOWAIT. Derivation in port/ov034_syms.txt, fill in
    hal/actor_classes_ov034.cpp, slice in port/slice_sweep2_ov034.txt. */
 extern unsigned char g_profile_HANACHAN[];            /* ov034 0x02114498, +4 = 248 */
-void *port_factory_wiggler(void);                    /* ov034 0x021136a4, 380 B */
+void *daHanachan_c_classInit(void);                  /* ov034 0x021136a4, 380 B */
 void hal_fill_wiggler_vtable(void);                  /* _ZTV7Wiggler, 31 */
-/* src/actors/daHanachan_c.cpp is HELD OUT of the slice and the factory is spelled by
-   hand: the ROM leaves the object operator new returned in r0 when Enemy::C2 is
-   entered, so the matched TU calls it with NO argument -- the ChiefChilly r0
-   ride-through (port/slice_w12.txt) -- and the name it spells, func_020aed98,
-   is an arm9-style spelling of ov002's _ZN12dEnemyBase_cC2Ev. */
+/* The factory is the matched src/d_a_hanachan.c (run linkfull lane SMALLS2),
+   the word the ROM's own profile holds (ov034 relocs.txt from:0x02114498).
+   The ChiefChilly r0 ride-through that held it out is gone from the synced
+   src, which passes the receiver to _ZN12dEnemyBase_cC2Ev; the hand-spelled
+   port_factory_wiggler that stood in for it is retired. */
 /* run rel0215 wave 2 (lane cast-sweep2): OV047'S OWN CAST, Bowser in the Sky --
    seven of level 39's nine skipped instances. THE CAMPAIGN PLAN LISTS THREE
    CLASSES HERE AND THE ROM HAS FOUR: id 156 (RTTI 20daObjKm3_Kaitendai_c, the
@@ -2328,34 +2332,47 @@ void hal_fill_cloud_vtable(void);               /* _ZTV5Cloud 0x02111858, 31 */
         and play to an empty stage. Seat in hal/actor_classes_intro.cpp. */ \
      {0x160, "CUTSCENE_OBJECT", g_profile_DEMO, daDemo_c_classInit, \
       hal_fill_cutscene_object_vtable}, \
-     /* ---- gate 192: ICE_BLOCK (18) + SPINDRIFT (312), ov081 ---- */ \
-     /* MR_BLIZZARD (223) is NOT registered here. The ORIGINAL exclusion
-        reason (a func_0204488c "unvalidated raw-DMA source" fear) is
-        RESOLVED -- the dma verdict established Part.fc/f8 are rebased at
-        load and the synchronous forward is safe. Registration was then
-        attempted (babypenguin-crash lane, 2026-08-10) and found a
-        DIFFERENT, REAL blocker, measured not reasoned: a deterministic
-        frame-0 corruption in MrBlizzard::Behavior's callee chain. The
-        register MSVC keeps `this` in comes back from one of Behavior's
-        callees skewed to this+0x150 (the mWithMeshClsn member), after
-        which Behavior's tail stores (anim speed 0x1000 at +0x368) land
-        0x4b8 past its own base -- on the NEXT MrBlizzard's render-list
-        node next pointer -- and the render walk then follows 0x1000 and
-        dies (or, per-actor caught, quarantines both instances and
-        latches the class off). Proven by DR0 write-watch (writer EIP =
-        the +0x368 store in ?Behavior@MrBlizzard, register capture
-        esi=instance+0x150), an entry log showing the face only ever
-        receives correct `this` (so the skew happens MID-body), and the
-        bug SHAPE-SHIFTING when per-callee probes change codegen (the
-        same binary then faults at self+0xc inside the behavior dispatch
-        instead) -- a codegen-sensitive ABI/register-state violation in
-        one of: the seated tick handler, Actor::UpdatePos,
-        Enemy::UpdateWMClsn, func_ov081_021254d8, func_ov081_021243cc,
-        CylinderClsn::Clear/Update. The instrument that settles it:
-        single-step the callee list at the machine level (or a
-        frame-pointer-preserving wrapper around each callee) watching the
-        callee-saved register set across each boundary. Until that lands,
-        223 stays out: it cannot meet the zero-quarantine bar. */ \
+     /* ---- gate 192: the ov081 trio -- ICE_BLOCK (18), MR_BLIZZARD (223),
+        SPINDRIFT (312) ---- */ \
+     /* MR_BLIZZARD (223) WAS unregistered here for six weeks, and is not any
+        more. Two exclusion reasons were recorded and both are closed.
+        (1) The ORIGINAL one, a func_0204488c "unvalidated raw-DMA source"
+        fear, was resolved by the dma verdict: Part.fc/f8 are rebased at load
+        and the synchronous forward is safe.
+        (2) The SECOND one (registration attempted 2026-08-10) was written up
+        as "a codegen-sensitive callee-saved register violation": the register
+        holding `this` was seen coming back from one of Behavior's callees
+        skewed to this+0x150 (mWithMeshClsn), after which Behavior's tail
+        store of the 0x1000 anim speed at +0x368 landed 0x4b8 past the base,
+        on the next instance's render-list node. The list of suspect callees
+        was Actor::UpdatePos, Enemy::UpdateWMClsn, func_ov081_021254d8,
+        func_ov081_021243cc and CylinderClsn::Clear/Update.
+        THAT DIAGNOSIS WAS WRONG IN ITS MECHANISM AND RIGHT IN ITS SYMPTOM.
+        No callee violated anything. The seam was the class's own POINTER-TO-
+        MEMBER STATE DISPATCH, the family pmf_guard was later built for. The
+        ROM's own tick dispatch (MrBlizzard::Behavior 0x0212588c, at
+        0x02125a98) reads `ldr r1,[r4,#0x3f8] / ldr r0,[r1,#8] / add r3,r1,#8 /
+        ldr r1,[r3,#4] / add r0,r4,r1,asr #1 / blx r1`: the receiver is
+        computed into r0, the FIRST ARGUMENT REGISTER, and nothing is placed
+        on the stack. MSVC compiles the matched source's equivalent as a
+        __thiscall dispatch with the receiver in ecx and an empty stack, while
+        the ten seated cells are flat f(self) bodies that read the receiver
+        from [esp+4]. Each cell therefore ran on whatever stale word was
+        there; one of those words was a spilled &this->mWithMeshClsn, which is
+        exactly this+0x150, and 0x150 + 0x368 = 0x4b8, the reported stomp.
+        Nothing "came back skewed": the callee was handed the wrong receiver
+        going in.
+        The cure already exists and predates this registration. The state
+        installer func_ov081_02125488 and Behavior's own tick dispatch are
+        host-copied in port/unmatched/MrBlizzard_StateDispatch.cpp and
+        port/unmatched/MrBlizzard_Behavior.cpp, which call the cell as a plain
+        function pointer through the seat's own PortMrBlizzardPair layout, so
+        the receiver goes where the flat bodies read it. With those two in the
+        image the class boots and ticks clean: levels 10, 19 and 48 carry 3, 4
+        and 5 of them, 0 skipped and 0 quarantined over 600-frame idle and
+        moving runs, three runs each. Registered here on that measurement. */ \
+     {223, "MR_BLIZZARD", g_profile_SNOWMAN, daSnowman_c_classInit, \
+      hal_fill_mr_blizzard_vtable}, \
      {18, "ICE_BLOCK", g_profile_ICE_BLOCK_LL, daObjIceBlock_c_classInit, \
       hal_fill_ice_block_vtable}, \
      {312, "SPINDRIFT", g_profile_HUWAHUWA, daHuwa_c_classInit, \
@@ -2407,9 +2424,9 @@ void hal_fill_cloud_vtable(void);               /* _ZTV5Cloud 0x02111858, 31 */
       hal_fill_switch_pillar_vtable}, \
      {35, "BASEMENT_WATER", g_profile_C0_WATER, daObjC0Water_c_classInit, \
       hal_fill_basement_water_vtable}, \
-     /* ---- gate 200: PUSH_BLOCK (306, the "PowerFlower" decoy) + MUGEN_BGM
+     /* ---- gate 200: POWER_FLOWER (306, labelled PUSH_BLOCK until FEATHER1) + MUGEN_BGM
         (351), ov002 ---- */ \
-     {306, "PUSH_BLOCK", g_profile_POWER_UP_ITEM, daObjPowerUpItem_c_classInit, \
+     {306, "POWER_FLOWER", g_profile_POWER_UP_ITEM, daObjPowerUpItem_c_classInit, \
       hal_fill_pushblock_vtable}, \
      {351, "MUGEN_BGM", g_profile_MUGEN_BGM, daMugenBGM_c_classInit, \
       hal_fill_mugen_bgm_vtable}, \
@@ -3001,7 +3018,7 @@ void hal_fill_cloud_vtable(void);               /* _ZTV5Cloud 0x02111858, 31 */
      hal_fill_bubba_vtable}, \
     /* ---- run rel0215 wave 2 (lane cast-sweep2): ov034, Tiny-Huge Island's \
        CAVE. Level 26's whole skip list in one row. ---- */ \
-    {248, "WIGGLER", g_profile_HANACHAN, port_factory_wiggler, \
+    {248, "WIGGLER", g_profile_HANACHAN, daHanachan_c_classInit, \
      hal_fill_wiggler_vtable}, \
     /* ---- run rel0215 wave 2 (lane cast-sweep2): ov047, Bowser in the Sky. \
        dsd's two vtable names are each attached ONE TABLE LATE, so the rows go \

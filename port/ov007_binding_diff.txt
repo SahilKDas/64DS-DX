@@ -294,6 +294,19 @@ F3  a misaligned symbol makes the emitter AND the sweep blind to real
     behaviour change to working mounts and it needs its own lane and its own
     battery run, not a rider on a mount lane.
 
+    UPDATE (run hunt4, lane BOOT1). The inert premise stopped holding once the
+    title scene booted out of ov007: scene_fill_title() calls
+    port_ov007_syms_patch(), and func_ov007_020ade58 reads the word at +4 of a
+    data_ov007_020ccb7d row while the title scene comes up. A normal machine
+    read zeros out of the reserved DS main RAM there; a machine that lost the
+    0x02000000 reservation faulted on 0x020ccb54 before the first frame (the
+    0.5.2 reports). ovdata.py's in-mount pass and its reloc_blob now take their
+    sites from relocs.txt, so the nine in-mount words above and ov003's 53 are
+    rebased; every other generated mount file is byte-identical. The CROSS
+    candidates (the fourth ov002 edge here, ov085's 33, ov002's 1) still use the
+    stride and are still unpatched: that is a behaviour change to other mounts
+    and is left for its own lane.
+
 
 5. WHAT DID NOT MOVE, AND WAS NOT EXPECTED TO
 ---------------------------------------------

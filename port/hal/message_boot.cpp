@@ -49,15 +49,12 @@
 
 extern "C" {
 
-/* The port's file loader (hal/level_boot.cpp): LoadFile(handle) -> decompressed
-   bytes on a freshly allocated block, which is the ROM's contract; the table
-   there records the last block per handle, it does not serve one twice. This
-   is the same entry the matched LoadMessageBankForLanguage calls, and the bank
-   is loaded exactly once (port_message_archive_seat gates on
-   data_0209d70c[0]). */
+/* The ROM's own LoadFile (src/LoadFile.c, func_0201818c(handle, 1); run
+   linkfull lane S4FILE): decompressed bytes on a freshly allocated block, the
+   caller keeps or frees it. This is the same entry the matched
+   LoadMessageBankForLanguage calls, and the bank is loaded exactly once
+   (port_message_archive_seat gates on data_0209d70c[0]). */
 void *LoadFile(int handle);
-/* hal/level_boot.cpp: keep this handle's image across level teardowns */
-void port_loadfile_pin_persistent(int handle);
 int GetOwnerLanguage(void);
 
 /* The bank globals. All five are hal/auto_bss int[8] except the two the parser
@@ -94,8 +91,35 @@ static int port_message_asset_for_language(void)
 /* HOST COPY of LoadMessageBankForLanguage (func_0201fe08) +
    ParseMessageBankSections (func_0201cb2c). Loads the real bank and pins the
    section pointers. Returns 1 on success, 0 if the file did not load. */
+/* SM64DS_LANGUAGE=<eng|frn|gmn|itl|spn> (or the ROM's own number 0, 2..5): writes the owner-language byte the ROM
+   reads (GetOwnerLanguage -> data_020a0f00, host memory, zero by default) BEFORE the bank is chosen, so every later
+   language-dependent read (the message bank, the title and menu BG maps) comes from that language. A test and
+   support knob for the menu overhaul (hit boxes and strings change width per language); unset it changes nothing. */
+extern "C" unsigned char data_020a0f00[4];
+static void port_language_knob(void)
+{
+    static int done;
+    if (done) return;
+    done = 1;
+    const char *e = std::getenv("SM64DS_LANGUAGE");
+    if (!e || !*e) return;
+    int v = -1;
+    if (!strcmp(e, "eng") || !strcmp(e, "0")) v = 0;
+    else if (!strcmp(e, "frn") || !strcmp(e, "2")) v = 2;
+    else if (!strcmp(e, "gmn") || !strcmp(e, "3")) v = 3;
+    else if (!strcmp(e, "itl") || !strcmp(e, "4")) v = 4;
+    else if (!strcmp(e, "spn") || !strcmp(e, "5")) v = 5;
+    if (v < 0) {
+        std::fprintf(stderr, "[msg] SM64DS_LANGUAGE=%s is not eng, frn, gmn, itl or spn; ignored\n", e);
+        return;
+    }
+    data_020a0f00[0] = (unsigned char)v;
+    std::fprintf(stderr, "[msg] SM64DS_LANGUAGE=%s: owner language byte set to %d\n", e, v);
+}
+
 extern "C" int port_message_bank_load(void)
 {
+    port_language_knob();
     int asset = port_message_asset_for_language();
     char *base = (char *)LoadFile(asset);
     if (!base) {
@@ -104,11 +128,11 @@ extern "C" int port_message_bank_load(void)
         return 0;
     }
     /* The bank is a global, not a level's file: it is loaded once here and its
-       section pointers stay pinned in the globals below for the whole run. Pin
-       its LoadFile slot so the per-level teardown (port_level_release_files)
-       does not free it on the first level change and leave the message system
-       on a freed block. */
-    port_loadfile_pin_persistent(asset);
+       section pointers stay pinned in the globals below for the whole run.
+       Nothing frees it: the port's per-level teardown frees only the level
+       collider's KCL (hal/level_boot.cpp), and the host LoadFile table this
+       used to pin a row in is gone with the host LoadFile. The DS keeps the
+       bank the same way. */
 
     /* Parse: the exact arithmetic ParseMessageBankSections does. */
     char *info = base + 0x20;

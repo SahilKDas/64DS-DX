@@ -47,6 +47,7 @@ void func_020393c4(int *p, int v);
 extern SharedFilePtr data_ov029_02114250;
 extern SharedFilePtr data_ov029_02114248;
 extern CLPS_Block data_ov029_0211302c;
+extern int _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
 /* (RESOLVED): CONFLICT -- alternate declaration of
  * _ZN10dBgActor_c21UpdateModelPosAndRotYEv / 19UpdateClsnPosAndRotEv from
  * Behavior vs InitResources; both are now the real dBgActor_c methods. */
@@ -75,7 +76,6 @@ namespace tail_6c4 { extern "C" int func_ov029_021116c4(void *a, void *b); }
  * address through that view); the function definition lives in a namespace so both
  * spellings of the one C symbol can coexist. */
 namespace fndef_e4 {
-// @symbol func_ov029_021116e4
 extern "C" int func_ov029_021116e4(void *a, void *b, void *c)
 {
     return tail_6c4::func_ov029_021116c4(b, c);
@@ -87,7 +87,6 @@ extern "C" int func_ov029_021116e4(void *a, void *b, void *c)
 /* -------------------------------------------------------------------------- */
 /* BeforeClsn helper: if the other actor's actorID (dActor_c+0x0c) is PLAYER
  * (0xbf), arm mTriggered. The unsigned char temporary is load-bearing. */
-// @symbol func_ov029_021116c4
 extern "C" void func_ov029_021116c4(char *a, char *b)
 {
     unsigned char ok = *(unsigned short *)(b + 0xc) == 0xbf;
@@ -116,7 +115,7 @@ int daObjWc_Obj02_c::InitResources()
         short *p = (short *)((unsigned long long)((int)this + 0x94));
         short val = *p;
         int *arg0_1 = (int *)&mMeshCollider;
-        int arg1_1 = (int)&dBgW::UpdatePosWithTransform;
+        int arg1_1 = (int)&_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
         *p = (short)(val + 0x4000);
         func_020393d4(arg0_1, arg1_1);
     }
@@ -217,7 +216,6 @@ int daObjWc_Obj02_c::CleanupResources()
     data_ov029_02114248.Release();
     return 1;
 }
-// @symbol _ZN15daObjWc_Obj02_cD1Ev
-// @symbol _ZN15daObjWc_Obj02_cD0Ev
+
 /* daObjWc_Obj02_c's inline class-body destructor is instantiated by the
  * definitions above. mwccarm emits D1 and D0 into this object. */

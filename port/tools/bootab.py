@@ -1,8 +1,10 @@
 """Headless, silent boot sweep, same knobs for every binary, so builds compare.
 usage: python bootab.py <walk_window.exe> <outdir> [frames] [budget_s]
        [levels=2,4,5 | scenes=4,5 | levels=all | scenes=all] [idle=1] [aspect=<ratio>]
-       [smooth=<0..3>]
-       [workers=<n>]
+       [smooth=<0..3>] [texfilter=<0..2>] [aa=<0..1>] [scale=<0..4>]
+       [present=<0|1>] [presentfilter=<0..2>] [vsync=<0|1>]
+       [presentdev=warp|hw] [presentoff=<0|1>] [renderer=<0|1>]
+       [rendererdev=warp|hw] [workers=<n>]
 workers=<n> (run link100, lane SWEEPPAR1) runs up to n rows at a time instead of one
 after another. Default 1 is this tool's whole history, byte for byte: nobody who does
 not name workers= (or export SM64DS_SWEEP_WORKERS, an equivalent default) sees any
@@ -34,6 +36,35 @@ smooth=<0..3> sets SM64DS_SMOOTH_MODELS on EVERY row, level and scene alike, whi
 is the "SmoothModels" setting (run hd1, lane MDL). Same shape and same reason as
 aspect= below: the environment scrub drops an inherited one, so a sweep that does
 not name it is byte-identical to one from before this argument existed.
+texfilter=<0..2> and aa=<0..1> set SM64DS_TEXTURE_FILTER and SM64DS_ANTI_ALIASING the
+same way on every row (run hd2, lane PIC): the "TextureFilter" and "AntiAliasing"
+settings. Same shape and same reason as smooth= above; unnamed, a sweep is byte for
+byte the one this tool ran before they existed. scale=<0..4> is the same again
+for SM64DS_RENDER_SCALE ("RenderScale", run hd1).
+present=<0|1>, presentfilter=<0..2> and vsync=<0|1> are the same shape once more,
+for SM64DS_PRESENT_BACKEND, SM64DS_PRESENT_FILTER_D3D and SM64DS_VSYNC (the
+"PresentBackend", "PresentFilter" and "VSync" settings, run hd2 lane GPU1): which
+path hands the finished picture to the screen. presentdev=warp|hw pins the device
+(SM64DS_PRESENT_DEVICE) and presentoff=1 puts the backend in its offscreen proof
+mode (SM64DS_PRESENT_OFFSCREEN), which draws the identical upload, quad and filter
+into a target of its own and needs no window -- which is what makes it usable from
+a headless sweep at all. All five are inert unless named.
+savemenutop=<0|1> turns the level-clear save menu's screen swap on or off on every
+row ("SaveMenuOnTop"). Same shape and same reason as minimap= below: unnamed, a
+sweep is byte-identical to one from before it existed.
+minimap=<size> turns the improved minimap ON at that size on every row (the
+"ImprovedMinimap" and "MinimapScale" settings), and minimapdir=<folder> points its
+panel artwork at a folder. Same shape and same reason as smooth= above, with one
+extra: the option's getter is pinned off under SM64DS_WINDOW_SELFTEST so a stray
+settings.json can never move a recorded baseline, which makes the environment the
+only channel a sweep has to it.
+renderer=<0|1> is the same shape again for SM64DS_RENDERER (the "Renderer"
+setting, run hd2 lane GPU2): which rasteriser draws the 3D picture. It needs no
+window at all -- the card draws into offscreen targets and the picture is read
+straight back into the software buffers -- so a headless sweep reaches it as it
+reaches every other key here. rendererdev=warp|hw pins the device
+(SM64DS_RENDERER_DEVICE), which is how a sweep runs on WARP, the software device
+Windows ships, on a box with no usable card. Both are inert unless named.
 aspect=<ratio> sets SM64DS_ASPECT to that ratio on EVERY row, level and scene alike,
 so one sweep boots the whole table at one presentation width. It is the only way to
 reach the wide path from here: the environment scrub above drops an inherited
@@ -73,21 +104,24 @@ they prove a course's boot after a change, and every one of them ends with the
 course still standing. Nothing else in this run has ever run a course's exit.
   exit=void   SM64DS_VOID_DROP=200 -- below the death plane, so the cartridge's
               own func_ov002_020c5d60 -> ST_DEAD_PIT -> HitDeathPlane -> the
-              level change back to the hub with the death reason (2)
+              level change back to the hub with the death reason (2). Also
+              drives HOST_PAD (DPAD_LEFT) after the arrival.
   exit=star   SM64DS_STAR_DROP=#0,200 plus A presses -- stand on the level's
               first PowerStar, let its collision run the star-get sequence and
               the course-clear exit (reason 1). Also drives HOST_PAD (A then
-              DPAD_LEFT) after the arrival and fails the row if [exitpos]
-              shows the player never moved.
+              DPAD_LEFT) after the arrival.
   exit=pause  START then the fourth pause button on the touch screen -- exit
-              course (reason 0)
+              course (reason 0). Also drives HOST_PAD (DPAD_LEFT) after the
+              arrival.
 All three set selftest 1200 and SM64DS_EXIT_WATCH=1, and a row is FAIL unless
 the run carries a "[lvl] change:" line WITH THE REASON THAT ARM ASKED FOR (void
 2, star 1, pause 0), which is printed in the note. Both halves are needed: an
 exit that quietly does nothing exits 0 with the level still up, and a selftest
 that walks a course for 1200 frames falls off plenty of them on its own, so a
-change with the wrong reason measured the fall and not the arm. Scene rows are
-untouched.
+change with the wrong reason measured the fall and not the arm. All three arms
+also drive the host input layer after their own arrival and fail the row if
+[exitpos] shows the player never moved, so a change that completes and leaves
+the world frozen reads as a FAIL, not a silent PASS. Scene rows are untouched.
 
 entrance=<n|all> changes WHICH ENTRANCE RECORD a LEVEL row is entered at, which
 no other arm of this tool has ever moved: every row above enters at record 0.
@@ -129,6 +163,49 @@ for a in sys.argv[5:]:
 SMOOTH = ""
 for a in sys.argv[5:]:
     if a.startswith("smooth="): SMOOTH = a[7:]
+TEXFILTER = ""
+for a in sys.argv[5:]:
+    if a.startswith("texfilter="): TEXFILTER = a[10:]
+AA = ""
+for a in sys.argv[5:]:
+    if a.startswith("aa="): AA = a[3:]
+SCALE = ""
+for a in sys.argv[5:]:
+    if a.startswith("scale="): SCALE = a[6:]
+# run hd2, lane GPU1: the present backend, its two settings and the two test
+# knobs a headless sweep needs to reach the graphics-card path with no window.
+PRESENT = ""
+for a in sys.argv[5:]:
+    if a.startswith("present="): PRESENT = a[8:]
+PRESENTFILTER = ""
+for a in sys.argv[5:]:
+    if a.startswith("presentfilter="): PRESENTFILTER = a[14:]
+VSYNC = ""
+for a in sys.argv[5:]:
+    if a.startswith("vsync="): VSYNC = a[6:]
+PRESENTDEV = ""
+for a in sys.argv[5:]:
+    if a.startswith("presentdev="): PRESENTDEV = a[11:]
+PRESENTOFF = ""
+for a in sys.argv[5:]:
+    if a.startswith("presentoff="): PRESENTOFF = a[11:]
+MINIMAP = ""
+for a in sys.argv[5:]:
+    if a.startswith("minimap="): MINIMAP = a[8:]
+MINIMAPDIR = ""
+SAVEMENUTOP = ""
+for a in sys.argv[5:]:
+    if a.startswith("savemenutop="): SAVEMENUTOP = a[12:]
+for a in sys.argv[5:]:
+    if a.startswith("minimapdir="): MINIMAPDIR = a[11:]
+# run hd2, lane GPU2: the optional renderer and the one knob a headless proof
+# needs to pin the device it draws on. Same shape as every argument above.
+RENDERER = ""
+for a in sys.argv[5:]:
+    if a.startswith("renderer="): RENDERER = a[9:]
+RENDERERDEV = ""
+for a in sys.argv[5:]:
+    if a.startswith("rendererdev="): RENDERERDEV = a[12:]
 WARPIN = any(a == "warpin=1" for a in sys.argv[5:])
 REENTRY = any(a == "reentry=1" for a in sys.argv[5:])
 PRESS = "200:A"
@@ -170,7 +247,7 @@ WORKERS = max(1, min(WORKERS, MAX_SWEEP_WORKERS))
 # the row filter is positional but the flags are not, so a run that passes only a
 # flag must not have that flag read as a filter (it would then match no prefix and
 # sweep everything by accident)
-if FILTER in ("idle=1", "warpin=1", "reentry=1") or FILTER.startswith(("aspect=", "press=", "exit=", "entrance=", "smooth=", "workers=")): FILTER = ""
+if FILTER in ("idle=1", "warpin=1", "reentry=1") or FILTER.startswith(("aspect=", "press=", "exit=", "entrance=", "smooth=", "texfilter=", "aa=", "scale=", "present=", "presentfilter=", "vsync=", "presentdev=", "presentoff=", "renderer=", "rendererdev=", "workers=", "minimap=", "minimapdir=", "savemenutop=")): FILTER = ""
 if FILTER.startswith("levels="):
     sel = FILTER[7:]; SCENES = ()
     if sel != "all": LEVELS = tuple(i for i in LEVELS if str(i) in sel.split(","))
@@ -373,6 +450,36 @@ def run(kind, ident, label, ent=None, wdir=None):
                 # the death plane: drop below it at 200 and let
                 # func_ov002_020c5d60 -> ST_DEAD_PIT -> HitDeathPlane run
                 env["SM64DS_VOID_DROP"] = "200"
+                # THE LEVEL-CLEAR SAVE MENU can open on this arm too: a level
+                # booted directly at an entrance the game never sends a
+                # player to can end its arrival animation in the one that
+                # sets the star-get flag data_0209f20c, with no star
+                # anywhere in the row, and the menu then freezes the world
+                # before the death drop completes. The level-clear menu's
+                # third row (Continue, Don't Save, which writes no save
+                # file) is x 8..247, y 0x78..0x97 in
+                # src/_ZN5Stage9LC_UpdateEv.cpp case 3; the pause menu's
+                # four buttons are y 32-63, 72-103, 112-143 and 152-183, so
+                # y=148 is inside the level-clear row and inside no pause
+                # button, which is why every exit arm can carry the same
+                # tap. The probe's frame numbers are POLL indices rather
+                # than game frames, which is why the train is wide instead
+                # of one tap.
+                env["SM64DS_TOUCH_PROBE"] = ",".join(
+                    "%d-%d:128:148" % (f, f + 1) for f in range(100, 3000, 40))
+                # AFTER THE ARRIVAL, through the HOST INPUT LAYER, same
+                # spelling as the star arm below. 4 is DPAD_LEFT, not
+                # DPAD_UP: the walking selftest already holds the stick
+                # forward, so a script that adds DPAD_UP proves nothing --
+                # only a direction the selftest is NOT already holding shows
+                # the movement is the PLAYER'S and not the harness's own
+                # held-forward walk. The void drop fires at f200 and the
+                # level change lands within about 60 frames of it, so the
+                # window opens at f400, well after the change.
+                env["SM64DS_HOST_PAD"] = (
+                    ",".join("1000@%d-%d" % (f, f + 3)
+                             for f in range(400, 1160, 60))
+                    + ",4@400-1150")
             elif EXIT == "star":
                 # stand on the level's first PowerStar and press A through the
                 # star-get prompts
@@ -393,13 +500,29 @@ def run(kind, ident, label, ent=None, wdir=None):
                     ",".join("1000@%d-%d" % (f, f + 3)
                              for f in range(500, 1160, 60))
                     + ",4@600-1150")
+                # THE LEVEL-CLEAR SAVE MENU now opens after a star (the
+                # star-get flag data_0209f20c drives Stage::LC_Update) and
+                # freezes the world until it is answered, so this arm's own
+                # "moved N after arrival" check fails every row unless
+                # something answers it. Row three of the menu's own three
+                # touch boxes (src/_ZN5Stage9LC_UpdateEv.cpp case 3: x
+                # 8..247, y 0x78..0x97) is Continue, Don't Save, chosen over
+                # row one (Save and Quit) because that row writes no file,
+                # so a sweep leaves no saves behind in a worker's directory.
+                # The probe's frame numbers are POLL indices, not game
+                # frames, which is why this is a wide train rather than one
+                # tap: a single poll index can land off-frame and miss the
+                # menu entirely.
+                env["SM64DS_TOUCH_PROBE"] = ",".join(
+                    "%d-%d:128:148" % (f, f + 1) for f in range(300, 4000, 40))
             elif EXIT == "pause":
                 # START, then the fourth pause button (exit course). The four
                 # buttons are touch boxes x 8..247, y 0x20/0x48/0x70/0x98 each
                 # 0x20 tall; the tap has to carry a press EDGE, so it is a
                 # short range, not a hold.
                 #
-                # SEVEN STARTS, NOT ONE, and that is the cartridge's doing.
+                # FOUR STARTS, NOT SEVEN, and that is run link100 lane
+                # PAUSEEXIT1's finding (09-21, out/PAUSEEXIT1/index.md).
                 # Stage::PS_Update case 2 (src/_ZN5Stage9PS_UpdateEv.cpp:404)
                 # forks on Player::CanPause (0x020bd828 through
                 # src/func_02029408.c), which returns 0 while the player is
@@ -408,10 +531,51 @@ def run(kind, ident, label, ent=None, wdir=None):
                 # buttons at all, and the run then reads as "the pause menu
                 # ignores every tap" -- measured on 14, 15, 28, 33, 34 and
                 # thirteen more. Retrying every 60 frames finds a grounded one.
+                #
+                # THE RETRY TRAIN USED TO RUN ALL THE WAY TO f560. PAUSEEXIT1
+                # measured that once an early retry already grounds the
+                # player, the whole exit closes within about 30 frames of its
+                # own START (level 8: f200 opens, f229 the confirm tap fires
+                # PS_Update's case 0x13, f230 the change lands) -- and every
+                # LATER scheduled START is then pressed fresh IN THE
+                # DESTINATION LEVEL, where it is a perfectly legitimate "open
+                # the menu" press the cartridge has no reason to refuse. 41 of
+                # 51 levels measured that exact shape: the change lands, the
+                # player walks, and only then does the arm's own f440 or f560
+                # retry re-pause him in the new level; the ever-running
+                # 128:148 level-clear-dismiss train (below) then walks that
+                # SECOND, unwanted menu into an unanswered "quit without
+                # saving?" confirm, so the row ends frozen under a menu the
+                # cartridge would freeze under too -- a harness artifact, not
+                # a game defect. PAUSEEXIT1's own manual repro proved the
+                # fix: level 8 truncated to a single "200:START" plus a
+                # shortened tap train opened no second menu and the player
+                # walked the whole pad window. Retries here stop at f380
+                # (four attempts, 180 frames of "is he grounded yet" margin)
+                # rather than cutting to one, so a course that needs a second
+                # or third try still gets it; f440/f500/f560, the three
+                # retries PAUSEEXIT1's own examples named as the reopeners,
+                # are simply not scheduled.
                 env["SM64DS_PROBE_INPUT"] = ",".join(
-                    "%d:START" % f for f in range(200, 620, 60))
+                    "%d:START" % f for f in range(200, 440, 60))
                 env["SM64DS_TOUCH_PROBE"] = ",".join(
-                    "%d-%d:128:168" % (f, f + 1) for f in range(230, 650, 60))
+                    "%d-%d:128:168" % (f, f + 1) for f in range(230, 470, 60)
+                ) + "," + ",".join(
+                    "%d-%d:128:148" % (f, f + 1) for f in range(100, 3000, 40))
+                # AFTER THE ARRIVAL, through the HOST INPUT LAYER, same
+                # spelling as the star and void arms. 4 is DPAD_LEFT, not
+                # DPAD_UP: the walking selftest already holds the stick
+                # forward, so a script that adds DPAD_UP proves nothing. The
+                # retry train above now ends at f380 and a successful exit
+                # settles within about 30 frames of its own START (measured),
+                # so the window opens at f500 -- comfortably clear of the
+                # last retry -- instead of f800: a passing row now shows
+                # movement over most of the selftest instead of only its
+                # last 400 frames.
+                env["SM64DS_HOST_PAD"] = (
+                    ",".join("1000@%d-%d" % (f, f + 3)
+                             for f in range(500, 1160, 60))
+                    + ",4@500-1150")
             else:
                 sys.exit("unknown exit=%s (void, star, pause)" % EXIT)
     else: env["SM64DS_SCENE_FRAMES"] = FRAMES
@@ -425,6 +589,57 @@ def run(kind, ident, label, ent=None, wdir=None):
     # to one from before this argument existed, and naming it is the only way
     # to reach the model smoother from here.
     if SMOOTH: env["SM64DS_SMOOTH_MODELS"] = SMOOTH
+    # texfilter=N and aa=N (run hd2, lane PIC), the same shape and the same
+    # reason as smooth= and aspect= above: the scrub drops an inherited
+    # SM64DS_TEXTURE_FILTER / SM64DS_ANTI_ALIASING with the rest of the
+    # SM64DS_* block, so a sweep that does not name either is byte-identical to
+    # one from before these arguments existed, and naming one is the only way
+    # to sweep the whole table with the sampler or the edge pass switched on.
+    if TEXFILTER: env["SM64DS_TEXTURE_FILTER"] = TEXFILTER
+    if AA: env["SM64DS_ANTI_ALIASING"] = AA
+    # scale=N is the same again for "RenderScale" (run hd1, lane RES).
+    # That lane had to put a settings.json beside the exe to sweep at a
+    # scale, because the scrub drops the variable; this is the one line
+    # that makes it an argument like the three above, and it is inert
+    # unless it is named.
+    if SCALE: env["SM64DS_RENDER_SCALE"] = SCALE
+    # present=N and its four companions (run hd2, lane GPU1), the same shape
+    # and the same reason as scale= above: the scrub drops an inherited
+    # SM64DS_PRESENT_* / SM64DS_VSYNC with the rest of the SM64DS_* block, so a
+    # sweep that names none of them is byte-identical to one from before these
+    # arguments existed, and naming them is the only way to sweep the whole
+    # table with the graphics-card present path switched on.
+    if PRESENT: env["SM64DS_PRESENT_BACKEND"] = PRESENT
+    if PRESENTFILTER: env["SM64DS_PRESENT_FILTER_D3D"] = PRESENTFILTER
+    if VSYNC: env["SM64DS_VSYNC"] = VSYNC
+    if PRESENTDEV: env["SM64DS_PRESENT_DEVICE"] = PRESENTDEV
+    if PRESENTOFF: env["SM64DS_PRESENT_OFFSCREEN"] = PRESENTOFF
+    # minimap=<size>, minimapdir=<folder>: the improved minimap's keys, the
+    # same shape and the same reason as smooth= and aspect= above. They cannot
+    # come from a settings.json here, for two reasons that are both about this
+    # tool rather than about the option: at workers>1 only the exe is copied
+    # into a worker directory, so a settings file beside the real exe is not
+    # what a row reads; and the option's own getter is pinned OFF under
+    # SM64DS_WINDOW_SELFTEST precisely so that a settings file cannot move a
+    # recorded baseline, which leaves the environment as the only channel a
+    # sweep has. Unset, both lines do nothing and a sweep is byte-identical to
+    # one from before this argument existed.
+    if MINIMAP:
+        env["SM64DS_IMPROVED_MINIMAP"] = "1"
+        env["SM64DS_MINIMAP_SCALE"] = MINIMAP
+    if MINIMAPDIR: env["SM64DS_MINIMAP_DIR"] = MINIMAPDIR
+    # renderer=N and rendererdev= (run hd2, lane GPU2), the same shape and the
+    # same reason once more: which rasteriser draws the 3D picture. Unnamed,
+    # a sweep is byte for byte the one this tool ran before they existed.
+    if RENDERER: env["SM64DS_RENDERER"] = RENDERER
+    if RENDERERDEV: env["SM64DS_RENDERER_DEVICE"] = RENDERERDEV
+    # savemenutop=<0|1>: the level-clear save menu's screen swap, the same
+    # shape and the same reason as minimap= above. SaveMenuOnTop is pinned OFF
+    # under SM64DS_WINDOW_SELFTEST for exactly the reason the improved minimap
+    # is, so the environment is the only channel a sweep has. Unset, the line
+    # does nothing and a sweep is byte-identical to one from before this
+    # argument existed.
+    if SAVEMENUTOP: env["SM64DS_SAVE_MENU_ON_TOP"] = SAVEMENUTOP
     exe_path = os.path.join(wdir, os.path.basename(EXE))
     t0 = time.time()
     rc, out = _run_proc([exe_path], wdir, env, BUDGET)
@@ -448,6 +663,14 @@ def run(kind, ident, label, ent=None, wdir=None):
         # back with reason 2 measured a fall, not the pause menu -- eleven of
         # the first star sweep's twenty-six "passes" were that.
         want = {"void": 2, "star": 1, "pause": 0}.get(EXIT)
+        # the first [exitpos] sample frame that counts as taken AFTER this
+        # arm's own arrival, not before it: the three arms' changes land at
+        # very different times (void's HOST_PAD window opens at f400, star's
+        # at f500, pause's at f500 too now that its retry train stops at
+        # f380 instead of f560), so one shared cutoff would read a
+        # pre-arrival sample as an arrival sample on the earlier arms or
+        # discard real arrival samples on the later one.
+        first = {"void": 500, "star": 700, "pause": 500}.get(EXIT, 700)
         chg = ""
         for line in out.splitlines():
             if line.startswith("[lvl] change:"): chg = line.strip(); break
@@ -459,7 +682,7 @@ def run(kind, ident, label, ent=None, wdir=None):
         note = (note + " | " if note else "") + (chg or "NO LEVEL CHANGE")
         # MOVES AFTER THE ARRIVAL. A change that completes and
         # leaves the player unable to move is the softlock Tango
-        # reported, and until now this arm could not see it: the
+        # reported, and until now only the star arm could see it: the
         # [exitwatch] stream prints only on change, so a frozen
         # player prints nothing and a row that ends rc 0 reads as
         # a pass. [exitpos] is the position on a fixed cadence.
@@ -468,8 +691,10 @@ def run(kind, ident, label, ent=None, wdir=None):
         # player to have moved more than a quarter of a walking
         # stride in some axis over them. A frozen player's
         # samples are byte-identical, so the threshold is not
-        # near anything.
-        if EXIT == "star" and ok:
+        # near anything. All three arms now drive the host input
+        # layer after their own arrival and fail a row whose player
+        # never moved, not only the star arm.
+        if EXIT in ("void", "star", "pause") and ok:
             dest = None
             m = re.search(r"-> (-?\d+), entrance", chg)
             if m: dest = int(m.group(1))
@@ -479,7 +704,7 @@ def run(kind, ident, label, ent=None, wdir=None):
                               r"pos=\((-?\d+),(-?\d+),(-?\d+)\)",
                               line.strip())
                 if not mm: continue
-                if int(mm.group(1)) < 700: continue
+                if int(mm.group(1)) < first: continue
                 if dest is not None and int(mm.group(2)) != dest: continue
                 pts.append(tuple(int(mm.group(i)) for i in (3, 4, 5)))
             if len(pts) < 4:

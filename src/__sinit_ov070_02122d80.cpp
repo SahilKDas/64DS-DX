@@ -1,7 +1,7 @@
 //cpp
 extern "C" {
 int func_02017acc(void*, unsigned int);
-void func_020731dc(void*, void*, void*);
+int func_020731dc(void*, void*, void*);
 int SharedFilePtr_Construct_TexSeq(void*, unsigned int);
 int _ZN13SharedFilePtr9ConstructEj(void*, unsigned int);
 

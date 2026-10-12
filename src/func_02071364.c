@@ -1,4 +1,13 @@
-#include "Decimal.h"
+typedef struct Decimal {
+    unsigned char sign;
+    char unused;
+    short exp;
+    struct {
+        unsigned char length;
+        unsigned char text[32];
+        unsigned char unused;
+    } sig;
+} Decimal;
 
 extern void func_02071644(Decimal *result, int length);
 

@@ -410,6 +410,76 @@ static void *fdr_msvc_order_vt[6] = {
     (void *)fdr_view_is_at_end,       /* 0x14  IsAtEnd */
 };
 
+/* THE SETTER VIEW, run hunt4 lane RECROOM1: the same one-slot skew, in the
+   body this file forwards for slot 0x0c's `type == 1` branch.
+
+   The matched FaderBrightness::SetBackwardTime stores `speed` and ends in an
+   UNQUALIFIED `return IsAtStart();`. Read out of the INT68 binary,
+   ?SetBackwardTime@FaderBrightness@@UAEHI@Z is
+
+       +0x2d  mov  dword ptr [esi + 8], eax     speed (frames != 0 arm)
+       +0x33  mov  eax, dword ptr [esi]
+       +0x35  mov  ecx, esi
+       +0x37  call dword ptr [eax + 0x10]       nothing pushed
+
+   and on a dWipe_c, whose vptr is the ROM-ordered data_020926f0, byte 0x10 is
+   SetForwardTime: fdr_s10 below. That trampoline sees the OBJECT in ECX, takes
+   the call for its __thiscall shape, runs SetForwardTime with a word off the
+   caller's frame as its duration and returns with `ret 8` for eight bytes
+   nobody pushed. The epilogues that follow pop the wrong words and return
+   into the stack. Measured on the INT68 copy and on the shipped 0.5.3 kit
+   exe: quit a minigame from its pause menu (which sets the wipe's type to 1),
+   start another from the Rec Room, quit that one the same way, and the Rec
+   Room's own dScene_c::BeforeBehavior fade-in faults with eip 001aef2c on its
+   first frame -- the players' crash, the same eip and return word.
+
+   hal/scene_boot.cpp's L2Eb2cView already runs the same two setters for the
+   FaderColor table this way. This is that view for the dWipe_c: the ROM
+   object's three leading words, so the body reads and writes the fields it
+   expects, plus the real receiver past them. On the cartridge 0x020176d8
+   stores speed and then asks the RECEIVER's slot 5 (byte 0x14), which on a
+   dWipe_c is dWipe_c::IsAtStart; the thunk below commits the stored speed to
+   the real object first and then makes exactly that dispatch, so the order of
+   the two effects is the ROM's too. */
+struct FdrSetterView {
+    void **vt;        /* +0x00  the MSVC-ordered table below */
+    int currInterp;   /* +0x04 */
+    int speed;        /* +0x08  the one field the setters write */
+    void *real;       /* +0x0c  past the ROM object, invisible to the body */
+};
+
+static int fdr_setter_dispatch(FdrSetterView *v, unsigned rom_byte)
+{
+    ((int *)v->real)[2] = v->speed;
+    void **vt = *(void ***)v->real;
+    return ((FdrPredicate)vt[rom_byte / 4])(v->real, 0);
+}
+
+static int __fastcall fdr_setter_is_at_start(FdrSetterView *v, void *)
+{ return fdr_setter_dispatch(v, 0x14); }
+static int __fastcall fdr_setter_is_at_end(FdrSetterView *v, void *)
+{ return fdr_setter_dispatch(v, 0x18); }
+
+static int __fastcall fdr_setter_unreached(void *, void *)
+{
+    std::fprintf(stderr, "  [fdr] the MSVC-ordered view built for "
+                 "FaderBrightness::SetBackwardTime was dispatched below byte "
+                 "0x10. That body is supposed to reach 0x10 and nothing else, "
+                 "so its codegen has changed and the view no longer describes "
+                 "it.\n");
+    std::fflush(stderr);
+    return 0;
+}
+
+static void *fdr_setter_msvc_vt[6] = {
+    (void *)fdr_setter_unreached,     /* 0x00  dtor, folded */
+    (void *)fdr_setter_unreached,     /* 0x04  AdvanceFade */
+    (void *)fdr_setter_unreached,     /* 0x08  SetBackwardTime */
+    (void *)fdr_setter_unreached,     /* 0x0c  SetForwardTime */
+    (void *)fdr_setter_is_at_start,   /* 0x10  IsAtStart */
+    (void *)fdr_setter_is_at_end,     /* 0x14  IsAtEnd */
+};
+
 }  /* extern "C" -- the view's internals are C++ and not ROM names */
 
 extern "C" int _ZN15FaderBrightness20IsBetweenStartAndEndEv(void *self)
@@ -445,9 +515,23 @@ void func_02017610(void *self)
    src/_ZN7dWipe_c15SetBackwardTimeEj.c forwards it and its own comment explains that keeping it
    is what makes the register allocation match. Both sides are cdecl here and
    the caller cleans its own arguments, so the extra word costs nothing and is
-   carried rather than silently dropped. */
+   carried rather than silently dropped.
+
+   THE MATCHED BODY RUNS AGAINST FdrSetterView, run hunt4 lane RECROOM1: its
+   closing IsAtStart() is one MSVC slot low against this object's ROM-ordered
+   table, and the view is what lands it on the ROM's byte 0x14. See the view. */
 int _ZN15FaderBrightness15SetBackwardTimeEj(void *self, u32 frames, u32)
-{ return ((FaderBrightness *)self)->FaderBrightness::SetBackwardTime(frames); }
+{
+    FdrSetterView v;
+    v.vt = fdr_setter_msvc_vt;
+    v.currInterp = ((int *)self)[1];
+    v.speed = ((int *)self)[2];
+    v.real = self;
+    const int r = ((FaderBrightness *)(void *)&v)->
+        FaderBrightness::SetBackwardTime(frames);
+    ((int *)self)[2] = v.speed;
+    return r;
+}
 
 }  /* extern "C" */
 
@@ -633,27 +717,104 @@ void __cdecl fdr_s08(void *s)
  * shape ever comes back, it says so on stderr and counts into
  * port_fdr_fader_report instead of running on a garbage object.
  */
-int __cdecl fdr_s0c(void *s, int frames, int c)
+/* 0x0c AND 0x10 SERVE SHAPE B AND SHAPE C BOTH NOW. Run linkfull, lane PSYCHE1.
+
+   LEVELBOOT's paragraph above is right about dScene_c::BeforeBehavior and
+   wrong about the table having one caller shape. The minigame framework
+   reaches the same two slots as __thiscall members of a file-local C++
+   struct, receiver in ECX, two words pushed and nothing cleaned after the
+   call. src/func_ov004_020b72d4.cpp is the site measured, its exit fade
+   `data_0209f5bc->m_10(0x1e, 0)`:
+
+       ecx = the fader (data_0209f61c), [esp+4] = 0x1e, [esp+8] = 0
+
+   so the __cdecl body read 0x1e as its receiver and faulted dereferencing it.
+   Measured on the INT48 build, scenes 380, 361 and 386 under a scripted
+   stylus: FAULT at this stub +0xa accessing 0x0000001e, returning into
+   func_ov004_020b72d4+0x2e. Refusing instead of faulting would not have been
+   enough: the caller expects eight bytes cleaned, and a __cdecl return leaves
+   them on its frame.
+
+   hal/scene_boot.cpp's FaderColor table carries the same two callers on the
+   same two slots and was fixed the same way (run link100, card card_fader8):
+   each body keeps its code, renamed with C linkage, and a __declspec(naked)
+   trampoline in front of it reads the discriminator the two shapes leave
+   behind. Shape C leaves the VTABLE in ECX (`mov ecx,[eax]` loads it one
+   instruction before the call) and has pushed the receiver itself, so the
+   trampoline tail-jumps and the caller cleans twelve. Shape B leaves the
+   OBJECT in ECX, so the trampoline rebuilds the __cdecl frame, calls the body
+   and returns with `ret 8`.
+
+   A THIRD SHAPE WOULD BREAK THIS, AND THE ONE THERE WAS IS GONE. A
+   no-argument call with the object in ECX looks like shape B from here and
+   would get eight bytes it never pushed taken off its frame. The matched
+   dWipe_c::IsBetweenStartAndEnd was exactly that: it asks IsAtStart and
+   IsAtEnd one MSVC slot low against this ROM-ordered table, so its first
+   question landed here (1329 such calls in a census of 38 scenes and 51
+   levels on the INT48 build, and nothing else of that shape). fdr_s1c below
+   no longer reaches it; see the note there.
+
+   The receiver check keeps fdr_s08's job and gains the alignment test
+   scene_boot.cpp's bodies make, so a stray word is refused without being
+   dereferenced. */
+}  /* anonymous namespace; the two bodies below need C linkage */
+
+extern "C" int __cdecl port_fdr_s0c_body(void *s, int frames, int c)
 {
-    if (s == 0 || *(void **)s != (void *)data_020926f0) {
+    if (s == 0 || ((std::size_t)s & 3) != 0 || *(void **)s != (void *)data_020926f0) {
         fdr_trap("slot 0x0c SetBackwardTime, WRONG RECEIVER",
-                 "_ZN7dWipe_c15SetBackwardTimeEj -- the caller did not pass the object on "
-                 "the stack, so it is not the cdecl shape this stub is "
-                 "declared for");
+                 "_ZN7dWipe_c15SetBackwardTimeEj -- neither the stack word nor ECX "
+                 "was the object");
         return 0;
     }
     return _ZN7dWipe_c15SetBackwardTimeEj(s, (unsigned)frames, (unsigned)c);
 }
-int __cdecl fdr_s10(void *s, int frames, int)
+extern "C" int __cdecl port_fdr_s10_body(void *s, int frames, int)
 {
-    if (s == 0 || *(void **)s != (void *)data_020926f0) {
+    if (s == 0 || ((std::size_t)s & 3) != 0 || *(void **)s != (void *)data_020926f0) {
         fdr_trap("slot 0x10 SetForwardTime, WRONG RECEIVER",
-                 "_ZN7dWipe_c14SetForwardTimeEj -- the caller did not pass the object on "
-                 "the stack, so it is not the cdecl shape this stub is "
-                 "declared for");
+                 "_ZN7dWipe_c14SetForwardTimeEj -- neither the stack word nor ECX "
+                 "was the object");
         return 0;
     }
     return _ZN7dWipe_c14SetForwardTimeEj(s, (unsigned)frames);
+}
+
+namespace {
+
+__declspec(naked) void fdr_s0c(void)
+{
+    __asm {
+        /* shape C (__cdecl, dScene_c::BeforeBehavior) leaves the VTABLE in ecx;
+           shape B (__thiscall, the minigame framework) leaves the OBJECT. */
+        cmp  ecx, offset data_020926f0
+        je   shape_cdecl
+        /* __thiscall: receiver in ecx, [esp+4] frames, [esp+8] arg2, callee cleans 8 */
+        push dword ptr [esp+8]          /* arg2 */
+        push dword ptr [esp+8]          /* frames, now one push higher */
+        push ecx                        /* the receiver */
+        call port_fdr_s0c_body
+        add  esp, 12
+        ret  8
+    shape_cdecl:
+        /* the arguments are already the body's own __cdecl frame */
+        jmp  port_fdr_s0c_body
+    }
+}
+__declspec(naked) void fdr_s10(void)
+{
+    __asm {
+        cmp  ecx, offset data_020926f0
+        je   shape_cdecl
+        push dword ptr [esp+8]
+        push dword ptr [esp+8]
+        push ecx
+        call port_fdr_s10_body
+        add  esp, 12
+        ret  8
+    shape_cdecl:
+        jmp  port_fdr_s10_body
+    }
 }
 int __fastcall fdr_s28(void *, void *)
 { fdr_trap("overhang slot 0x28", "nothing, this slot is not the ROM's"); return 0; }
@@ -666,7 +827,19 @@ void *__fastcall fdr_s00(void *s, void *) { return _ZN7dWipe_cD1Ev(s); }
 void *__fastcall fdr_s04(void *s, void *) { return _ZN7dWipe_cD0Ev(s); }
 int   __fastcall fdr_s14(void *s, void *) { return _ZN7dWipe_c9IsAtStartEv(s); }
 int   __fastcall fdr_s18(void *s, void *) { return _ZN7dWipe_c7IsAtEndEv(s); }
-int   __fastcall fdr_s1c(void *s, void *) { return _ZN7dWipe_c20IsBetweenStartAndEndEv(s); }
+/* 0x1c, run linkfull lane PSYCHE1: section 9e's ruling, applied to the one
+   table that had not taken it. The ROM's dWipe_c::IsBetweenStartAndEnd
+   (0x0202ed7c) answers `!IsAtStart() && !IsAtEnd()` through the receiver's own
+   slots 0x14 and 0x18 on BOTH branches: type != 1 asks them itself, type == 1
+   hands off to FaderBrightness::IsBetweenStartAndEnd (0x02017628), which asks
+   the same two. The matched dWipe_c body asks them one MSVC slot low (its
+   first call was SetForwardTime, above), and its type == 1 branch would run
+   FaderBrightness's body on this ROM-ordered table the same way.
+   _ZN15FaderBrightness20IsBetweenStartAndEndEv above runs that matched
+   FaderBrightness body through the view that lands its two calls on this
+   object's ROM 0x14 and 0x18, which is the cartridge's answer on both
+   branches. The dWipe_c TU stays in the link: ??_7dWipe_c@@6B@ names it. */
+int   __fastcall fdr_s1c(void *s, void *) { return _ZN15FaderBrightness20IsBetweenStartAndEndEv(s); }
 /* 0x20: the target the ROM's veneer at 0x0202ed08 tail-calls. See the header
    for why src/_ZN7dWipe_c8SetToEndEv.cpp is not in the link. */
 void  __fastcall fdr_s20(void *s, void *)

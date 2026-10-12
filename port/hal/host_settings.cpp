@@ -470,9 +470,15 @@ int write_text(const char *path, const char *text)
         if (fclose(f) != 0) { remove(tmp); return 0; }
     }
 #ifdef _WIN32
-    if (!MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING)) {
-        remove(tmp);
-        return 0;
+    /* a short retry: the launcher (or a second copy of the game) may have
+       the old file open for a moment, and a sharing violation on the rename
+       is gone a few milliseconds later */
+    {
+        int tries = 0;
+        while (!MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING)) {
+            if (++tries >= 5) { remove(tmp); return 0; }
+            Sleep(20);
+        }
     }
 #else
     if (rename(tmp, path) != 0) { remove(tmp); return 0; }
@@ -538,7 +544,7 @@ const char *const CAMERA_MODE_KEY[3] = { "analog", "freecam", "ds" };
    That is the whole of the alias, and it lives in the two lines that read the
    run entry rather than in a rule anywhere else. */
 struct BindKey { const char *name; int dflt; };
-const BindKey KEY_BIND[14] = {
+const BindKey KEY_BIND[HOST_KEY_COUNT] = {
     { "KeyUp",       0x57 },      /* W */
     { "KeyDown",     0x53 },      /* S */
     { "KeyLeft",     0x41 },      /* A */
@@ -553,17 +559,81 @@ const BindKey KEY_BIND[14] = {
     { "KeyRun",      0x10 },      /* VK_SHIFT; alias RunButtonKey */
     { "KeyStart",    0x0d },      /* VK_RETURN */
     { "KeySelect",   0x08 },      /* VK_BACK */
+    { "KeyLook",     0x5a },      /* Z: the DS X button; see header */
+    { "KeyCamCenter", 0x43 },     /* C: centre camera; see header */
+    { "KeyCamLeft",  0x51 },      /* Q: rotate camera left */
+    { "KeyCamRight", 0x45 },      /* E: rotate camera right */
+    { "KeyCamMode",  0x70 },      /* F1: cycle the camera mode */
 };
-const BindKey PAD_BIND[6] = {
+const BindKey PAD_BIND[HOST_PAD_COUNT] = {
     { "PadJump",   0x1000 },      /* A */
     { "PadAttack", 0x2000 },      /* B */
     { "PadCrouch", 0x20000 },     /* RT, the trigger pseudo-button; see header */
     { "PadRun",    0x4000 },      /* X; alias RunButtonPad */
     { "PadStart",  0x0010 },      /* START */
     { "PadSelect", 0      },      /* BACK opens the debug menu; see header */
+    { "PadLook",   0x8000 },      /* Y: the DS X button; see header */
+    { "PadCamCenter", 0x10000 },  /* LT: centre camera; see header */
+    { "PadCamLeft",  0x0100 },    /* LB: rotate camera left */
+    { "PadCamRight", 0x0200 },    /* RB: rotate camera right */
+    { "PadCamMode",  0x0080 },    /* right stick click: cycle the camera mode */
 };
-int g_key[14];
-int g_pad[6];
+int g_key[HOST_KEY_COUNT];
+int g_pad[HOST_PAD_COUNT];
+/* Which action already held the Look default's key / pad button in a file
+   that did not name KeyLook / PadLook (index + 1; 0 = none). Set by load_once,
+   said once by its log block. */
+int g_look_key_taken;
+int g_look_pad_taken;
+/* The same for the centre-camera default (KeyCamCenter / PadCamCenter): the
+   action that already held it in a file that never named the key. */
+int g_cc_key_taken;
+int g_cc_pad_taken;
+
+/* ---- THE LIVE CONTROL KEYS (run menu1, lane SETLIVE1) ---------------------
+   Six numbers the in-game settings page changes while the game runs, all
+   plain integers in settings.json (the launcher keeps unknown keys, and ints
+   survive its round trip as ints):
+
+     StickDeadzone      percent of the left stick's travel that reads as
+                        centred, 0..50. Default = today's floor, 7849 of
+                        32767 (24 percent): an absent key AND the value 24
+                        both mean exactly 7849, so the default feel is the
+                        shipped feel to the bit.
+     RunThreshold       percent of the usable travel (past the dead zone)
+                        where Mario starts to run, 30..100. The cartridge
+                        starts a run at 0xe47 of 0x1000 (89.2 percent); an
+                        absent key AND the value 89 mean no remap at all.
+     InvertCameraY      true/false, the analog and free camera's up/down.
+     CameraSensitivity  percent of the right stick's (and Q/E's) turn rate,
+                        10..400, 100 = today. The DS camera steps a fixed
+                        0x400 per tick in the ROM, so it does not apply there.
+     MouseSensitivity   percent of the mouse look, 10..400, 100 = today.
+   g_ctl_gen moves whenever any control or camera value changes (a set or a
+   file reload), so the frame loop refreshes its copies on a counter compare. */
+int g_stick_dead = 7849;             /* raw units of 32767 */
+int g_run_thresh_pct = -1;           /* -1 = the ROM's own point, no remap */
+int g_invert_camera_y;               /* default 0 */
+int g_camera_sens = 100;
+int g_mouse_sens = 100;
+int g_ctl_gen = 1;
+int g_cam_gen = 1;                   /* moves when CameraMode is SET or reloaded */
+int g_poll_flag;                     /* an API set wants the next poll to say 1 */
+
+const int STICK_DEAD_DEFAULT = 7849;
+const int RUN_THRESH_ROM_PCT = 89;   /* 0xe47 / 0x1000 = 89.2 percent */
+
+int stick_dead_from_pct(int pct)
+{
+    if (pct < 0) pct = 0;
+    if (pct > 50) pct = 50;
+    if (pct == 24) return STICK_DEAD_DEFAULT;
+    return (int)((long long)pct * 32767 / 100);
+}
+int stick_dead_to_pct(int raw)
+{
+    return (int)(((long long)raw * 100 + 16383) / 32767);
+}
 
 /* ---- THE DS SCREEN GAP -------------------------------------------------
    The four keys behind the launcher's "remove minigame gap" checkbox and
@@ -1137,6 +1207,15 @@ int display_refresh_hz(void)
    and a mid-run change would be a second code path nobody tests. The only
    reader is walk_window's pacer. See the header for the whole contract. */
 int g_frame_rate = 0;
+/* run hunt8, lane FPSLIVE1: FrameRate follows a change while the game runs.
+   g_frame_rate_gen steps whenever the answer host_setting_frame_rate gives
+   moves (the pacer re-reads its cached copy when it sees the step), and
+   g_frame_rate_touched says a live change (the settings page's save, or the
+   launcher rewriting settings.json) has happened, after which the
+   SM64DS_FRAME_RATE override no longer sits in front: the override is the
+   boot value, a choice made in game replaces it. */
+int g_frame_rate_gen = 0;
+int g_frame_rate_touched = 0;
 
 /* ---- THE THREE PICTURE-QUALITY KEYS' BANDS (run hd1) ---------------------
    One sanitiser each, and both readers of every key -- settings.json and the
@@ -1168,6 +1247,89 @@ int smooth_models_sanitise(int n)
     return n;
 }
 
+/* ---- THE TWO PICTURE-SMOOTHING KEYS' BANDS (run hd2) --------------------
+   The same shape again, one sanitiser each, both readers through it.
+
+     TextureFilter  0 nearest (the sampler the port has always used), 1
+                    bilinear, 2 trilinear. Absent, unparseable, 0 itself and
+                    negative all land on 0; above 2 clamps to 2 rather than
+                    being refused, the Aspect rule. The ceiling is 2 because
+                    trilinear is the last mode the raster has a chain for:
+                    anisotropic filtering would need a per-pixel footprint
+                    the sampler does not compute.
+     AntiAliasing   0 off, 1 edge smoothing. Same band, ceiling 1, because 1
+                    is the only mode measured on this renderer. */
+int texture_filter_sanitise(int n)
+{
+    if (n <= 0) return 0;
+    if (n > 2) return 2;
+    return n;
+}
+
+int anti_aliasing_sanitise(int n)
+{
+    if (n <= 0) return 0;
+    if (n > 1) return 1;
+    return n;
+}
+
+/* ---- THE THREE PRESENT KEYS' BANDS (run hd2, lane GPU1) -----------------
+   The same shape once more, one sanitiser each, both readers through it.
+
+     PresentBackend  0 the ordinary Windows path the port has always used
+                     (StretchDIBits), 1 Direct3D 11. Absent, unparseable, 0
+                     itself and negative all land on 0; above 1 clamps to 1
+                     rather than being refused, the Aspect rule. The ceiling
+                     is 1 because Direct3D 11 is the only other path that
+                     exists.
+     PresentFilter   0 nearest (the whole-pixel drop-and-duplicate the port
+                     has always presented with), 1 smooth, 2 sharp. Ceiling 2
+                     because sharp is the last mode the present shader has.
+                     READ ONLY WHEN THE BACKEND IS 1; the Windows path has
+                     its own filter knob.
+     AntiAliasing's band shape exactly for VSync: 0 off, 1 on, ceiling 1.
+     READ ONLY WHEN THE BACKEND IS 1, because the Windows path has no vsync
+     of any kind to switch on. */
+int present_backend_sanitise(int n)
+{
+    if (n <= 0) return 0;
+    if (n > 1) return 1;
+    return n;
+}
+
+int present_filter_sanitise(int n)
+{
+    if (n <= 0) return 0;
+    if (n > 2) return 2;
+    return n;
+}
+
+int vsync_sanitise(int n)
+{
+    if (n <= 0) return 0;
+    if (n > 1) return 1;
+    return n;
+}
+
+/* ---- THE RENDERER KEY'S BAND (run hd2, lane GPU2) -----------------------
+     Renderer   0 the software rasteriser the port has always drawn the 3D
+                picture with, which is the default and the only byte-exact
+                reference; 1 Direct3D 11, which draws the whole 3D picture on
+                the graphics card (the see-through polygons, the shadows and
+                the edge smoothing too, run cardfull) and, with PresentBackend
+                1, shows it straight from the card. Absent, unparseable, 0
+                itself and negative all land on 0; above 1 clamps to 1 rather
+                than being refused, the Aspect rule. The ceiling is 1 because
+                Direct3D 11 is the only other renderer that exists.
+     It is INDEPENDENT of PresentBackend: either can be on without the other,
+     and with both on the process still makes exactly one device. */
+int renderer_sanitise(int n)
+{
+    if (n <= 0) return 0;
+    if (n > 1) return 1;
+    return n;
+}
+
 /* The three keys' stored values. BOOT-LATCHED like g_aspect and g_frame_rate
    and for the same kind of reason: the render size is threaded into the
    framebuffer, the pack is opened once and the subdivision level sizes
@@ -1176,6 +1338,99 @@ int smooth_models_sanitise(int n)
 int g_render_scale = 0;
 int g_hd_textures = 0;
 int g_smooth_models = 0;
+/* SmoothMotion (run interp1): 0 off, 1 on. Boot-latched like FrameRate. */
+int g_smooth_motion = 0;
+
+/* run hd2's two, latched beside them and for the same kind of reason: the
+   filter mode decides whether the texture cache builds a mip chain at the
+   first bind of each texture, and the smoothing pass sizes a scratch buffer
+   the width of the picture, so both are settled before the first frame. */
+int g_texture_filter = 0;
+int g_anti_aliasing = 0;
+
+/* run hd2 lane GPU1's three, latched beside them and for the same kind of
+   reason: which backend presents the picture decides which library is loaded
+   and which device exists, and the filter sizes nothing but is read at the
+   same moment, so all three are settled before the first picture is handed
+   over and a mid-run change would be a second code path nobody tests. */
+int g_present_backend = 0;
+int g_present_filter = 0;
+int g_vsync = 0;
+
+/* ---- THE IMPROVED MINIMAP'S TWO KEYS ---------------------------------------
+
+   MinimapScale is a multiplier on the panel the port draws TODAY (half a DS
+   screen, so 128x96), which is what "scaled from how it is" means: 1 is the
+   current picture, byte for byte.
+
+   IT IS A FREE NUMBER NOW, not one of six rows, because the owner asked to
+   drag the map's corner and scale it against the window by hand. The launcher
+   keeps its 1 / 1.25 / 1.5 / 2 / 3 / 4 picker and every one of those six is
+   still exact; a number between them is just as legal, and the picker's own
+   round trip shows the nearest row for one the player dragged to.
+
+   THE ONE THING A SIZE HAS TO BE is a whole number of pixels in both axes.
+   The map is drawn from a 256x192 source and keeps its 4:3 shape, so its
+   drawn width k must be a multiple of four for 3k/4 to be whole. Every size
+   is therefore quantised onto that grid -- steps of four pixels of width,
+   three of height, one thirty-second of a multiplier -- and the six picker
+   rows land on it exactly: 128, 160, 192, 256, 384 and 512.
+
+   The ratio handed to the compose and to the stylus inverse is k/256, which
+   for those six reduces to the 1/2, 5/8, 3/4, 1/1, 3/2 and 2/1 they used
+   before and draws the identical picture. */
+int g_improved_minimap = 1;   /* ABSENT MEANS ON: the owner's order */
+
+/* SaveMenuOnTop: while the level-clear save menu is up, the two DS screens
+   trade places -- the menu becomes the big picture and the course-clear tally
+   drops into the corner. ABSENT MEANS ON, the second key in this file with
+   that default and for the same reason the improved minimap has it: it is a
+   mod the owner asked for and recommended on. 0 is the picture the port drew
+   before it existed. */
+int g_save_menu_on_top = 1;   /* ABSENT MEANS ON: the owner's recommendation */
+/* OneScreenMenus (run menu1): the title, star select, Rec Room, VS lobby and game over
+   scenes use the one-screen compose layer instead of two stacked DS screens. ABSENT MEANS
+   ON (the owner's decision for 0.5.7); an explicit false or 0 gives the DS screens.
+   HudLayout: 0 = the DS row, 1 = the N64 row; absent means the N64 row, same rule. */
+int g_one_screen_menus = 1;
+int g_hud_layout = 1;
+double g_minimap_scale = 1.0; /* the multiplier, 1 or more */
+/* A HAND HAS MOVED THE SIZE THIS RUN. Set by the drag's own write and by
+   nothing else; read in host_setting_minimap_scale_value, where the block
+   above that function says what it is for. */
+int g_minimap_scale_dragged;
+
+/* THE MAP'S DRAWN WIDTH for a multiplier, on the grid above. Absent, zero,
+   negative and unparseable all read as 1, the Aspect rule: a number that is a
+   picture beats an error. The ceiling is a sanity bound only -- the real
+   limit is "the whole panel still fits in the picture" and only the drawing
+   layer knows the picture. */
+int minimap_scale_k(double v)
+{
+    if (!(v > 0.0)) v = 1.0;
+    int k = (int)(v * 128.0 + 0.5);
+    k = (k + 2) & ~3;
+    if (k < 128) k = 128;
+    if (k > 4096) k = 4096;
+    return k;
+}
+
+/* Put a multiplier on the grid, and say through `snapped` whether it had to
+   move, so the one caller that wants to say so can say it once rather than
+   every reader printing a line. */
+double minimap_scale_sanitise(double v, int *snapped)
+{
+    const double q = minimap_scale_k(v) / 128.0;
+    if (snapped) *snapped = (v != q) ? 1 : 0;
+    return q;
+}
+
+/* run hd2 lane GPU2's one, latched beside them and for the same kind of
+   reason: which rasteriser draws the frame decides which library is loaded,
+   which device exists and which buffers are allocated on the card, so it is
+   settled before the first frame and a mid-run change would be a second code
+   path nobody tests. */
+int g_renderer = 0;
 
 void load_once(void)
 {
@@ -1186,8 +1441,17 @@ void load_once(void)
     g_run_key = 0x10;
     g_run_pad = 0x4000;
     g_camera_mode = 2;   /* CameraMode ds, on Tango's order */
-    for (int i = 0; i < 14; ++i) g_key[i] = KEY_BIND[i].dflt;
-    for (int i = 0; i < 6; ++i) g_pad[i] = PAD_BIND[i].dflt;
+    g_stick_dead = STICK_DEAD_DEFAULT;
+    g_run_thresh_pct = -1;
+    g_invert_camera_y = 0;
+    g_camera_sens = 100;
+    g_mouse_sens = 100;
+    for (int i = 0; i < HOST_KEY_COUNT; ++i) g_key[i] = KEY_BIND[i].dflt;
+    for (int i = 0; i < HOST_PAD_COUNT; ++i) g_pad[i] = PAD_BIND[i].dflt;
+    g_look_key_taken = 0;
+    g_look_pad_taken = 0;
+    g_cc_key_taken = 0;
+    g_cc_pad_taken = 0;
     g_gap_on = 1;
     g_gap_fill = 1;
     g_gap_color = 0xFF000000u;
@@ -1230,6 +1494,20 @@ void load_once(void)
     g_render_scale = 0;
     g_hd_textures = 0;
     g_smooth_models = 0;
+    g_smooth_motion = 0;
+    /* run hd2's two, here for the same reason: nearest sampling and no
+       smoothing pass are the picture the port shipped with, so a missing file
+       and a file that will not parse both have to land on them. */
+    g_texture_filter = 0;
+    g_anti_aliasing = 0;
+    /* run hd2 lane GPU1's three, here for the same reason: the ordinary
+       Windows present path, its own nearest scaler and no vsync are what the
+       port has always shipped, so a missing file and a file that will not
+       parse both have to land on them. */
+    g_present_backend = 0;
+    g_renderer = 0;
+    g_present_filter = 0;
+    g_vsync = 0;
 
     char path[1024];
     if (!find_settings(path, sizeof path)) return;
@@ -1237,6 +1515,17 @@ void load_once(void)
     if (!text) return;
     if (looks_like_json_object(text)) {
         g_swap_camera_turn = json_bool(text, "SwapCameraTurnDirection", 0);
+        g_invert_camera_y = json_bool(text, "InvertCameraY", 0);
+        {
+            const int sd = json_int(text, "StickDeadzone", 24);
+            g_stick_dead = stick_dead_from_pct(sd);
+            const int rt = json_int(text, "RunThreshold", RUN_THRESH_ROM_PCT);
+            g_run_thresh_pct = (rt >= 30 && rt <= 100 && rt != RUN_THRESH_ROM_PCT) ? rt : -1;
+            int cs = json_int(text, "CameraSensitivity", 100);
+            g_camera_sens = cs < 10 ? 10 : cs > 400 ? 400 : cs;
+            int ms = json_int(text, "MouseSensitivity", 100);
+            g_mouse_sens = ms < 10 ? 10 : ms > 400 ? 400 : ms;
+        }
         /* the mode by NAME, and by number as well: the launcher serializes a
            C# enum as an integer unless it is told otherwise, and a player
            editing by hand will write the word */
@@ -1282,14 +1571,14 @@ void load_once(void)
            moves jump and says nothing about the rest is honoured for jump.
            Out of the code space is a typo, not a choice, like the run pair. */
         int keyrun_ok = 0, padrun_ok = 0;   /* KeyRun / PadRun parsed IN RANGE */
-        for (int i = 0; i < 14; ++i) {
+        for (int i = 0; i < HOST_KEY_COUNT; ++i) {
             const int k = json_int(text, KEY_BIND[i].name, KEY_BIND[i].dflt);
             if (k >= 0 && k <= 0xff) {
                 g_key[i] = k;
                 if (i == 11 && json_value(text, KEY_BIND[i].name)) keyrun_ok = 1;
             }
         }
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < HOST_PAD_COUNT; ++i) {
             const int p = json_int(text, PAD_BIND[i].name, PAD_BIND[i].dflt);
             if (p >= 0 && p <= HOST_PAD_MASK_MAX) {
                 g_pad[i] = p;
@@ -1307,6 +1596,47 @@ void load_once(void)
         else g_key[11] = g_run_key;
         if (padrun_ok) g_run_pad = g_pad[3];
         else g_pad[3] = g_run_pad;
+        /* LOOK, THE BINDING NEWER THAN THE FILE (the header's "CAME AFTER
+           0.4.2" rule). A file that does not name KeyLook / PadLook holds the
+           default from the table above, unless another action in that same
+           file already has the default's key or button; then that half stays
+           unbound instead of doubling up a choice the player made. After the
+           alias lines, so a run moved by its old spelling counts. */
+        if (!json_value(text, KEY_BIND[HOST_KEY_LOOK].name))
+            for (int i = 0; i < HOST_KEY_COUNT; ++i)
+                if (i != HOST_KEY_LOOK && g_key[i] == g_key[HOST_KEY_LOOK]) {
+                    g_look_key_taken = i + 1;
+                    g_key[HOST_KEY_LOOK] = 0;
+                    break;
+                }
+        if (!json_value(text, PAD_BIND[HOST_PAD_LOOK].name))
+            for (int i = 0; i < HOST_PAD_COUNT; ++i)
+                if (i != HOST_PAD_LOOK && (g_pad[i] & g_pad[HOST_PAD_LOOK])) {
+                    g_look_pad_taken = i + 1;
+                    g_pad[HOST_PAD_LOOK] = 0;
+                    break;
+                }
+        /* CENTRE CAMERA, newer than the file like Look: the same rule. The
+           other three camera actions are NOT held to it, because each names a
+           button the program has always read for the camera (Q / E / LB / RB /
+           F1 / the stick click), so a file that moved something onto one of
+           them has always had both happen and keeps it. */
+        if (!json_value(text, KEY_BIND[HOST_KEY_CAM_CENTER].name))
+            for (int i = 0; i < HOST_KEY_COUNT; ++i)
+                if (i != HOST_KEY_CAM_CENTER &&
+                    g_key[i] == g_key[HOST_KEY_CAM_CENTER]) {
+                    g_cc_key_taken = i + 1;
+                    g_key[HOST_KEY_CAM_CENTER] = 0;
+                    break;
+                }
+        if (!json_value(text, PAD_BIND[HOST_PAD_CAM_CENTER].name))
+            for (int i = 0; i < HOST_PAD_COUNT; ++i)
+                if (i != HOST_PAD_CAM_CENTER &&
+                    (g_pad[i] & g_pad[HOST_PAD_CAM_CENTER])) {
+                    g_cc_pad_taken = i + 1;
+                    g_pad[HOST_PAD_CAM_CENTER] = 0;
+                    break;
+                }
         /* the screen gap. Each key is read against its OWN default, so a file
            that sets one of the four and none of the others is honoured for
            the one it set. */
@@ -1469,6 +1799,35 @@ void load_once(void)
            from. A file written before these keys existed reads as one that
            left all three off, which is the shipped picture. */
         g_render_scale = render_scale_sanitise(json_int(text, "RenderScale", 0));
+        /* THE IMPROVED MINIMAP, and the default is the odd one in this file:
+           ABSENT IS ON. Every other feature key here defaults off so a file
+           written before the key existed reads as the shipped picture; this
+           one is on by the owner's explicit order, so a file with no
+           ImprovedMinimap line gets the improved map. Both spellings of the
+           toggle, the RunMode rule: the launcher serialises a C# bool and a
+           player editing by hand may write 1. */
+        g_improved_minimap = (json_int(text, "ImprovedMinimap", 1) != 0 &&
+                              json_bool(text, "ImprovedMinimap", 1) != 0) ? 1 : 0;
+        /* THE SAVE MENU ON THE TOP SCREEN, the same absent-is-on shape and
+           both spellings of the toggle, because the launcher serialises a C#
+           bool and a player editing by hand may write 1. */
+        g_save_menu_on_top = (json_int(text, "SaveMenuOnTop", 1) != 0 &&
+                              json_bool(text, "SaveMenuOnTop", 1) != 0) ? 1 : 0;
+        /* ONE SCREEN MENUS and HUD LAYOUT: absent is ON, an explicit false or 0 is OFF,
+           both spellings of the toggle (the ImprovedMinimap shape) */
+        g_one_screen_menus = (json_int(text, "OneScreenMenus", 1) != 0 &&
+                              json_bool(text, "OneScreenMenus", 1) != 0) ? 1 : 0;
+        g_hud_layout = (json_int(text, "HudLayout", 1) == 1 &&
+                        json_bool(text, "HudLayout", 1) != 0) ? 1 : 0;
+        {
+            int snapped = 0;
+            const double want = json_num(text, "MinimapScale", 1.0);
+            g_minimap_scale = minimap_scale_sanitise(want, &snapped);
+            if (snapped)
+                fprintf(stderr, "[settings] MinimapScale %g is not a whole "
+                        "number of pixels in both axes -- using %g, the "
+                        "nearest that is\n", want, g_minimap_scale);
+        }
         /* Both spellings of a toggle, the RunMode rule: the launcher
            serialises a C# bool as true/false and a player editing by hand may
            write 1. Either says on; absent and anything else say off. */
@@ -1476,6 +1835,40 @@ void load_once(void)
                          json_bool(text, "HdTextures", 0) != 0) ? 1 : 0;
         g_smooth_models =
             smooth_models_sanitise(json_int(text, "SmoothModels", 0));
+        /* SmoothMotion: both spellings of a toggle, HdTextures' rule. */
+        g_smooth_motion = (json_int(text, "SmoothMotion", 0) != 0 ||
+                           json_bool(text, "SmoothMotion", 0) != 0) ? 1 : 0;
+        /* run hd2's two, read the same way and sanitised here rather than at
+           the accessor, so the stored value is always one the sampler can
+           choose a tap count from and the smoothing pass can size itself
+           against. A file written before these keys existed reads as one that
+           left both off, which is the shipped picture. */
+        g_texture_filter =
+            texture_filter_sanitise(json_int(text, "TextureFilter", 0));
+        g_anti_aliasing =
+            anti_aliasing_sanitise(json_int(text, "AntiAliasing", 0));
+        /* run hd2 lane GPU1's three, read the same way and sanitised here
+           rather than at the accessor, so the stored value is always one the
+           present path can pick a backend, a sampler and a wait from. A file
+           written before these keys existed reads as one that left all three
+           off, which is the present path the port shipped with. Both
+           spellings of the two toggles, the RunMode rule: the launcher
+           serialises a C# bool as true/false and a player editing by hand may
+           write 1. */
+        g_present_backend = present_backend_sanitise(
+            (json_int(text, "PresentBackend", 0) != 0 ||
+             json_bool(text, "PresentBackend", 0) != 0) ? 1 : 0);
+        g_present_filter =
+            present_filter_sanitise(json_int(text, "PresentFilter", 0));
+        g_vsync = vsync_sanitise((json_int(text, "VSync", 0) != 0 ||
+                                  json_bool(text, "VSync", 0) != 0) ? 1 : 0);
+        /* run hd2 lane GPU2's one, read the same way and sanitised here for
+           the same reason. A file written before this key existed reads as one
+           that left it off, which is the software rasteriser the port has
+           always drawn with. Both spellings, the RunMode rule. */
+        g_renderer = renderer_sanitise(
+            (json_int(text, "Renderer", 0) != 0 ||
+             json_bool(text, "Renderer", 0) != 0) ? 1 : 0);
     }
     free(text);
 
@@ -1484,6 +1877,12 @@ void load_once(void)
        non-default choices were in force. */
     if (g_swap_camera_turn)
         fprintf(stderr, "[settings] SwapCameraTurnDirection on (%s)\n", path);
+    /* Off its default, so it is said once: this copy keeps the level-clear
+       save menu on the corner panel instead of composing it onto the big
+       picture. */
+    if (!g_save_menu_on_top)
+        fprintf(stderr, "[settings] SaveMenuOnTop off -- the save menu "
+                "after a star stays on the corner panel (%s)\n", path);
     /* Off its default (rollback again as of 0.3.7), so it is said, and said
        in plain words: a support log for "online play feels laggy" should
        carry on one line that this copy opted back into lockstep, which waits
@@ -1506,16 +1905,36 @@ void load_once(void)
                 (unsigned)g_padlayouts[i].pid, g_padlayouts[i].name, path);
     /* one line per binding the player moved, so a support log answers "what
        was jump bound to" without anyone opening the file */
-    for (int i = 0; i < 14; ++i)
+    for (int i = 0; i < HOST_KEY_COUNT; ++i)
         if (g_key[i] != KEY_BIND[i].dflt)
             fprintf(stderr, "[settings] %s 0x%02x (default 0x%02x) (%s)\n",
                     KEY_BIND[i].name, (unsigned)g_key[i],
                     (unsigned)KEY_BIND[i].dflt, path);
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < HOST_PAD_COUNT; ++i)
         if (g_pad[i] != PAD_BIND[i].dflt)
             fprintf(stderr, "[settings] %s 0x%04x (default 0x%04x) (%s)\n",
                     PAD_BIND[i].name, (unsigned)g_pad[i],
                     (unsigned)PAD_BIND[i].dflt, path);
+    if (g_look_key_taken)
+        fprintf(stderr, "[settings] KeyLook left unbound: its default key "
+                        "0x%02x is already %s (%s)\n",
+                (unsigned)KEY_BIND[HOST_KEY_LOOK].dflt,
+                KEY_BIND[g_look_key_taken - 1].name, path);
+    if (g_look_pad_taken)
+        fprintf(stderr, "[settings] PadLook left unbound: its default button "
+                        "0x%04x is already %s (%s)\n",
+                (unsigned)PAD_BIND[HOST_PAD_LOOK].dflt,
+                PAD_BIND[g_look_pad_taken - 1].name, path);
+    if (g_cc_key_taken)
+        fprintf(stderr, "[settings] KeyCamCenter left unbound: its default key "
+                        "0x%02x is already %s (%s)\n",
+                (unsigned)KEY_BIND[HOST_KEY_CAM_CENTER].dflt,
+                KEY_BIND[g_cc_key_taken - 1].name, path);
+    if (g_cc_pad_taken)
+        fprintf(stderr, "[settings] PadCamCenter left unbound: its default "
+                        "button 0x%04x is already %s (%s)\n",
+                (unsigned)PAD_BIND[HOST_PAD_CAM_CENTER].dflt,
+                PAD_BIND[g_cc_pad_taken - 1].name, path);
     if (!g_gap_on || g_gap_fill != 1 || g_gap_color != 0xFF000000u ||
         g_gap_peek)
         fprintf(stderr, "[settings] MinigameGap %s, fill %s #%06x, peek %s "
@@ -1621,12 +2040,71 @@ void load_once(void)
                         "the ROM's own texture is used everywhere else. This "
                         "is a mod, not the game. (%s)\n",
                 host_setting_hd_textures_dir(), path);
+    if (g_smooth_motion)
+        fprintf(stderr, "[settings] SmoothMotion on -- with FrameRate above "
+                        "the game's tick rate, the pictures between two ticks "
+                        "are drawn with the moving 3D blended between them "
+                        "(%s)\n", path);
     if (g_smooth_models)
         fprintf(stderr, "[settings] SmoothModels %d -- the game's models are "
                         "subdivided %d level(s) before they are drawn, so the "
                         "silhouettes are rounder than the ROM's. This is a "
                         "mod, not the game. (%s)\n",
                 g_smooth_models, g_smooth_models, path);
+    /* run hd2's two, one plain line each and only off their default, the rule
+       every key above follows. */
+    if (g_texture_filter)
+        fprintf(stderr, "[settings] TextureFilter %d -- textures are sampled "
+                        "%s instead of one texel per pixel, so surfaces read "
+                        "smoother and the texel grid stops showing up close. "
+                        "This is a mod, not the game. (%s)\n",
+                g_texture_filter,
+                g_texture_filter >= 2
+                    ? "trilinear (four texels blended, at the two texture "
+                      "sizes nearest the surface's distance)"
+                    : "bilinear (the four texels around the sample point, "
+                      "blended)",
+                path);
+    if (g_anti_aliasing)
+        fprintf(stderr, "[settings] AntiAliasing %d -- the edges of the 3D "
+                        "picture are smoothed after it is drawn and before "
+                        "anything 2D is put over it, so text and the HUD are "
+                        "untouched. This is a mod, not the game. (%s)\n",
+                g_anti_aliasing, path);
+    /* run hd2 lane GPU1's three, one plain line each and only off their
+       default, the rule every key above follows. The filter and the wait are
+       said on the backend's line rather than on lines of their own, because
+       with the backend off they are settings nothing reads and a support log
+       that listed them as if they were in force would be lying. */
+    if (g_present_backend)
+        fprintf(stderr, "[settings] PresentBackend 1 -- the finished picture is "
+                        "handed to the screen through the graphics card "
+                        "(Direct3D 11) instead of the ordinary Windows drawing "
+                        "call. Scaling %s, VSync %s. The picture itself is "
+                        "drawn exactly as before; this is only how it reaches "
+                        "the screen, and it falls back to the old way if the "
+                        "card will not have it. (%s)\n",
+                g_present_filter >= 2 ? "sharp"
+                                      : (g_present_filter == 1 ? "smooth"
+                                                               : "nearest"),
+                g_vsync ? "on" : "off", path);
+    else if (g_present_filter || g_vsync)
+        fprintf(stderr, "[settings] PresentFilter %d and VSync %d are set but "
+                        "PresentBackend is 0, so nothing reads them: the "
+                        "ordinary Windows present path has its own scaler and "
+                        "no vsync. (%s)\n", g_present_filter, g_vsync, path);
+    /* run hd2 lane GPU2's one, one plain line and only off its default. It is
+       a line of its own rather than a clause on the backend's, because the two
+       settings are independent: either can be on without the other. */
+    if (g_renderer)
+        fprintf(stderr, "[settings] Renderer 1 -- the whole 3D picture (the "
+                        "solid part, the see-through polygons, the shadows and "
+                        "the edge smoothing) is drawn by the graphics card "
+                        "instead of by the processor, and with PresentBackend "
+                        "1 it is shown straight from the card. The game itself "
+                        "runs exactly as before. It is not pixel for pixel the "
+                        "same picture as the ordinary renderer, and it falls "
+                        "back to it if the card will not have it. (%s)\n", path);
 }
 
 /* ---- the live re-read -----------------------------------------------------
@@ -1636,6 +2114,80 @@ void load_once(void)
 unsigned long long g_watch_time;
 unsigned long long g_watch_size;
 #endif
+
+/* One mode word by NAME or by number, the way load_once reads RunMode and
+   CameraMode, landing on `cur` when the key is absent or unreadable. */
+int read_mode(const char *text, const char *key, const char *const *names,
+              int n, int cur)
+{
+    char mode[16];
+    if (!json_value(text, key)) return cur;
+    if (json_str(text, key, mode, sizeof mode)) {
+        for (int i = 0; i < n; ++i)
+            if (strlen(mode) == strlen(names[i]) &&
+                ieq(mode, names[i], strlen(mode)))
+                return i;
+    }
+    const int v = json_int(text, key, cur);
+    return (v >= 0 && v < n) ? v : cur;
+}
+
+/* The control and camera keys a launcher edit can change while the game runs
+   (run menu1 SETLIVE1): bindings, run mode, camera mode and the new numbers.
+   Each lands on the value it already has when the file stops naming it.
+   Returns 1 when anything moved, which bumps g_ctl_gen so the frame loop
+   re-copies its working values. */
+int reload_controls(const char *text)
+{
+    int changed = 0;
+#define CTL_SET(var, expr) do { const int nv_ = (expr); if (nv_ != (var)) { (var) = nv_; changed = 1; } } while (0)
+    CTL_SET(g_swap_camera_turn, json_bool(text, "SwapCameraTurnDirection", g_swap_camera_turn));
+    CTL_SET(g_invert_camera_y, json_bool(text, "InvertCameraY", g_invert_camera_y));
+    CTL_SET(g_run_mode, read_mode(text, "RunMode", RUN_MODE_KEY, 3, g_run_mode));
+    {
+        const int was_cam = g_camera_mode;
+        CTL_SET(g_camera_mode, read_mode(text, "CameraMode", CAMERA_MODE_KEY, 3, g_camera_mode));
+        if (g_camera_mode != was_cam) ++g_cam_gen;
+    }
+    CTL_SET(g_stick_dead, stick_dead_from_pct(
+        json_int(text, "StickDeadzone", stick_dead_to_pct(g_stick_dead))));
+    {
+        const int cur = g_run_thresh_pct < 0 ? RUN_THRESH_ROM_PCT : g_run_thresh_pct;
+        int rt = json_int(text, "RunThreshold", cur);
+        if (rt < 30 || rt > 100 || rt == RUN_THRESH_ROM_PCT) rt = (rt == RUN_THRESH_ROM_PCT) ? -1 : g_run_thresh_pct;
+        CTL_SET(g_run_thresh_pct, rt);
+    }
+    {
+        int cs = json_int(text, "CameraSensitivity", g_camera_sens);
+        CTL_SET(g_camera_sens, cs < 10 ? 10 : cs > 400 ? 400 : cs);
+        int ms = json_int(text, "MouseSensitivity", g_mouse_sens);
+        CTL_SET(g_mouse_sens, ms < 10 ? 10 : ms > 400 ? 400 : ms);
+    }
+    for (int i = 0; i < HOST_KEY_COUNT; ++i) {
+        int k = json_int(text, KEY_BIND[i].name, g_key[i]);
+        if (i == HOST_KEY_RUN && !json_value(text, KEY_BIND[i].name))
+            k = json_int(text, "RunButtonKey", g_key[i]);
+        if (k >= 0 && k <= 0xff) CTL_SET(g_key[i], k);
+    }
+    for (int i = 0; i < HOST_PAD_COUNT; ++i) {
+        int k = json_int(text, PAD_BIND[i].name, g_pad[i]);
+        if (i == HOST_PAD_RUN && !json_value(text, PAD_BIND[i].name))
+            k = json_int(text, "RunButtonPad", g_pad[i]);
+        if (k >= 0 && k <= HOST_PAD_MASK_MAX) CTL_SET(g_pad[i], k);
+    }
+#undef CTL_SET
+    g_run_key = g_key[HOST_KEY_RUN];
+    g_run_pad = g_pad[HOST_PAD_RUN];
+    if (changed) {
+        ++g_ctl_gen;
+        fprintf(stderr, "[settings] live re-read: controls/camera changed "
+                "(run %d camera %d swap %d invertY %d dead %d runthr %d "
+                "camsens %d mousesens %d)\n", g_run_mode, g_camera_mode,
+                g_swap_camera_turn, g_invert_camera_y, g_stick_dead,
+                g_run_thresh_pct, g_camera_sens, g_mouse_sens);
+    }
+    return changed;
+}
 
 /* Re-read ONLY the keys the header promises reload live: the four screen-gap
    keys, Volume, MouseCapture and lane VOICE's five. Returns 1 when an answer
@@ -1679,6 +2231,28 @@ int reload_live(const char *text)
        its keys own their own change detection. Folding them into the gap
        comparison would have meant a voice-only edit either changing nothing
        (if the read were inside the if) or being announced as a gap change. */
+    if (reload_controls(text)) changed = 1;
+    /* FrameRate (run hunt8, lane FPSLIVE1): live. Read the way load_once reads
+       it, through the same sanitiser, and compared with the value the FILE
+       last gave (g_frame_rate), so a launcher edit that leaves the key alone
+       cannot knock an SM64DS_FRAME_RATE override off its value. */
+    {
+        char fr[16];
+        int n;
+        if (json_str(text, "FrameRate", fr, sizeof fr) &&
+            strlen(fr) == 7 && ieq(fr, "display", 7))
+            n = display_refresh_hz();
+        else
+            n = json_int(text, "FrameRate", g_frame_rate);
+        n = frame_rate_sanitise(n);
+        if (n != g_frame_rate) {
+            g_frame_rate = n;
+            g_frame_rate_touched = 1;
+            ++g_frame_rate_gen;
+            changed = 1;
+            fprintf(stderr, "[settings] live re-read: FrameRate %d\n", n);
+        }
+    }
     const int voice_changed = read_voice_keys(text);
     if (voice_changed) {
         changed = 1;
@@ -1761,26 +2335,26 @@ extern "C" int host_setting_camera_mode(void)
 extern "C" int host_setting_key(int action)
 {
     load_once();
-    if (action < 0 || action >= 14) return 0;
+    if (action < 0 || action >= HOST_KEY_COUNT) return 0;
     return g_key[action];
 }
 
 extern "C" int host_setting_pad(int action)
 {
     load_once();
-    if (action < 0 || action >= 6) return 0;
+    if (action < 0 || action >= HOST_PAD_COUNT) return 0;
     return g_pad[action];
 }
 
 extern "C" const char *host_setting_key_name(int action)
 {
-    if (action < 0 || action >= 14) return "";
+    if (action < 0 || action >= HOST_KEY_COUNT) return "";
     return KEY_BIND[action].name;
 }
 
 extern "C" const char *host_setting_pad_name(int action)
 {
-    if (action < 0 || action >= 6) return "";
+    if (action < 0 || action >= HOST_PAD_COUNT) return "";
     return PAD_BIND[action].name;
 }
 
@@ -2064,7 +2638,15 @@ extern "C" int host_settings_poll(void)
 {
 #ifdef _WIN32
     static int tick;
+    /* SETLIVE1: a debounced save waiting out its half second goes first, and
+       a set made through the API says 1 on the very next call so the caller
+       pushes the volume and the mouse capture without the 30-frame wait. */
+    host_settings_save_tick();
+    if (g_poll_flag) { g_poll_flag = 0; return 1; }
     if (++tick < 30) return 0;
+    /* A save is still queued: the file is behind memory right now, and a
+       reload would put a half-dragged slider back where it started. */
+    if (host_settings_save_pending()) return 0;
     tick = 0;
     load_once();
 
@@ -2120,6 +2702,71 @@ extern "C" int host_settings_poll(void)
    write is carried across untouched (see json_set). Says why on stderr when
    the write fails; the in-memory values are the caller's to have moved
    already. */
+/* SETFIX1 (L1): the settings file's cross-process lock. The launcher and the
+   game both read-modify-write the same settings.json; without a lock a launcher
+   save landing between the game's read and its rename is overwritten (and the
+   game then re-reads the stale value). A NAMED mutex, shared with the launcher,
+   held around the whole read-modify-write-rename. The name is derived from the
+   file's full path so two installs do not share it:
+
+     "Local\\SM64DSPort.settings." + 8 hex digits of FNV-1a (32 bit) over the
+     UTF-16 code units of the full path, A-Z lowered and '/' turned into '\\'.
+
+   The launcher (Settings.cs) computes the same name. A short timeout (500 ms)
+   then proceed: a stuck holder can never hang a frame; the game takes the
+   lock only when it saves (the debounced tick), never per frame. */
+#ifdef _WIN32
+namespace {
+void settings_lock_name(const char *path, char *out, size_t cap)
+{
+    wchar_t wide[1100], full[1100];
+    unsigned h = 2166136261u;
+    full[0] = 0;
+    if (MultiByteToWideChar(CP_ACP, 0, path, -1, wide, 1100) &&
+        GetFullPathNameW(wide, 1100, full, 0)) {
+        for (const wchar_t *c = full; *c; ++c) {
+            unsigned ch = *c;
+            if (ch >= 'A' && ch <= 'Z') ch += 32;
+            if (ch == '/') ch = '\\';
+            h = (h ^ ch) * 16777619u;
+        }
+    }
+    snprintf(out, cap, "Local\\SM64DSPort.settings.%08x", h);
+}
+struct SettingsLock {
+    HANDLE m;
+    explicit SettingsLock(const char *path) : m(0)
+    {
+        char name[96];
+        settings_lock_name(path, name, sizeof name);
+        m = CreateMutexA(0, FALSE, name);
+        if (m && WaitForSingleObject(m, 500) == WAIT_TIMEOUT) {
+            CloseHandle(m);   /* proceed without it: never hang a frame */
+            m = 0;
+        }
+    }
+    ~SettingsLock()
+    {
+        if (m) { ReleaseMutex(m); CloseHandle(m); }
+    }
+    int held() const { return m != 0; }
+};
+}  /* namespace */
+#else
+namespace {
+struct SettingsLock { explicit SettingsLock(const char *) {} int held() const { return 0; } };
+}
+#endif
+/* test seam for the smoke program: the lock name for a path */
+extern "C" void host_settings_lock_name(const char *path, char *out, int cap)
+{
+#ifdef _WIN32
+    settings_lock_name(path, out, (size_t)cap);
+#else
+    snprintf(out, (size_t)cap, "%s", path);
+#endif
+}
+
 namespace {
 int save_keys(const char *const *keys, const char *const *vals, int n,
               const char *what)
@@ -2127,10 +2774,19 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
     char path[1024];
     if (!settings_write_path(path, sizeof path)) return 0;
 
+    SettingsLock lock(path);   /* held to the end: read, edit, rename, last-good */
     char *doc = slurp(path);
     if (doc && !looks_like_json_object(doc)) {
         /* a file that will not parse is one the loader is already ignoring,
-           so replacing it loses nothing a reader was going to honour */
+           so replacing it loses nothing a reader was going to honour. SETFIX1:
+           but keep what it held once, beside it, so nothing is lost for good. */
+#ifdef _WIN32
+        {
+            char bad[1100];
+            snprintf(bad, sizeof bad, "%s.bad", path);
+            CopyFileA(path, bad, TRUE);   /* keeps an earlier .bad */
+        }
+#endif
         free(doc);
         doc = 0;
     }
@@ -2147,6 +2803,13 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
         if (!doc) ok = 0;
     }
     if (ok) ok = write_text(path, doc);
+#ifdef _WIN32
+    if (ok) {   /* SETFIX1 (L2): the last good file, for the launcher's cold start */
+        char lg[1100];
+        snprintf(lg, sizeof lg, "%s.lastgood", path);
+        CopyFileA(path, lg, FALSE);
+    }
+#endif
     free(doc);
     if (!ok)
         fprintf(stderr, "[settings] could not write %s -- the %s is set for "
@@ -2154,6 +2817,338 @@ int save_keys(const char *const *keys, const char *const *vals, int n,
     return ok;
 }
 }  /* namespace */
+
+/* ---- SETLIVE1: the live setters and the debounced save -------------------
+   Every set* below moves the working value NOW (the frame loop sees it on its
+   next counter compare) and queues the settings.json key. A queued key is
+   written at once when the file has been quiet for half a second, otherwise
+   by host_settings_save_tick once the half second is up, so a slider dragged
+   for two seconds writes about four times, with the last value always
+   landing. The last write is also forced by host_settings_save_flush (the
+   page calls it on mouse-up and at close). Values are written typed: bools
+   as true/false, numbers as numbers, the two mode words quoted lowercase. */
+namespace {
+struct Pend { char key[40]; char val[40]; };
+Pend g_pend[24];
+int g_npend;
+unsigned long long g_last_write_ms;
+
+unsigned long long now_ms(void)
+{
+#ifdef _WIN32
+    return GetTickCount64();
+#else
+    return 0;
+#endif
+}
+
+int pending_flush(void)
+{
+    if (!g_npend) return 1;
+    const char *keys[24];
+    const char *vals[24];
+    for (int i = 0; i < g_npend; ++i) { keys[i] = g_pend[i].key; vals[i] = g_pend[i].val; }
+    const int ok = save_keys(keys, vals, g_npend, "live settings");
+    /* SETFIX1 (G2): a failed write keeps the queue, retried on the next tick */
+    if (ok) g_npend = 0;
+    g_last_write_ms = now_ms();
+    return ok;
+}
+
+void queue_save(const char *key, const char *val)
+{
+    int i;
+    for (i = 0; i < g_npend; ++i)
+        if (strcmp(g_pend[i].key, key) == 0) break;
+    if (i == g_npend) {
+        if (g_npend >= 24 && !pending_flush()) {
+            /* still full after a failed write: drop the oldest */
+            memmove(&g_pend[0], &g_pend[1], sizeof(Pend) * (24 - 1));
+            --g_npend;
+        }
+        i = g_npend++;
+    }
+    snprintf(g_pend[i].key, sizeof g_pend[i].key, "%s", key);
+    snprintf(g_pend[i].val, sizeof g_pend[i].val, "%s", val);
+    if (now_ms() - g_last_write_ms >= 500) pending_flush();
+}
+void queue_int(const char *key, int v)
+{
+    char b[24]; snprintf(b, sizeof b, "%d", v); queue_save(key, b);
+}
+void queue_bool(const char *key, int v) { queue_save(key, v ? "true" : "false"); }
+void queue_word(const char *key, const char *w)
+{
+    char b[32]; snprintf(b, sizeof b, "\"%s\"", w); queue_save(key, b);
+}
+}  /* namespace */
+
+extern "C" void host_settings_save_tick(void)
+{
+    if (g_npend && now_ms() - g_last_write_ms >= 500) pending_flush();
+}
+extern "C" int host_settings_save_pending(void) { return g_npend; }
+extern "C" int host_settings_save_flush(void) { return pending_flush(); }
+extern "C" int host_settings_ctl_gen(void) { return g_ctl_gen; }
+extern "C" int host_settings_cam_gen(void) { return g_cam_gen; }
+
+/* SETFIX1 (G4): the pause must stay reachable, so Start cannot be unbound on
+   the keyboard and the pad at the same time. The reason is kept for the page. */
+namespace { char g_refusal[96]; }
+extern "C" const char *host_setting_refusal(void) { return g_refusal; }
+
+extern "C" int host_setting_set_key(int action, int vk)
+{
+    load_once();
+    g_refusal[0] = 0;
+    if (action < 0 || action >= HOST_KEY_COUNT || vk < 0 || vk > 0xff) return 0;
+    if (action == HOST_KEY_START && vk == 0 && g_pad[HOST_PAD_START] == 0) {
+        snprintf(g_refusal, sizeof g_refusal, "%s",
+                 "Start needs a key or a button, or the pause cannot open");
+        return 0;
+    }
+    if (g_key[action] == vk) return 1;
+    g_key[action] = vk;
+    if (action == HOST_KEY_RUN) {
+        g_run_key = vk;
+        queue_int("RunButtonKey", vk);
+    }
+    queue_int(KEY_BIND[action].name, vk);
+    ++g_ctl_gen;
+    return 1;
+}
+
+extern "C" int host_setting_set_pad(int action, int mask)
+{
+    load_once();
+    g_refusal[0] = 0;
+    if (action < 0 || action >= HOST_PAD_COUNT || mask < 0 || mask > HOST_PAD_MASK_MAX) return 0;
+    if (action == HOST_PAD_START && mask == 0 && g_key[HOST_KEY_START] == 0) {
+        snprintf(g_refusal, sizeof g_refusal, "%s",
+                 "Start needs a key or a button, or the pause cannot open");
+        return 0;
+    }
+    if (g_pad[action] == mask) return 1;
+    g_pad[action] = mask;
+    if (action == HOST_PAD_RUN) {
+        g_run_pad = mask;
+        queue_int("RunButtonPad", mask);
+    }
+    queue_int(PAD_BIND[action].name, mask);
+    ++g_ctl_gen;
+    return 1;
+}
+
+extern "C" int host_setting_set_run_mode(int mode)
+{
+    load_once();
+    if (mode < 0 || mode > 2) return 0;
+    if (g_run_mode != mode) { g_run_mode = mode; ++g_ctl_gen; }
+    queue_word("RunMode", RUN_MODE_KEY[mode]);
+    return 1;
+}
+
+extern "C" int host_setting_set_camera_mode(int mode)
+{
+    load_once();
+    if (mode < 0 || mode > 2) return 0;
+    /* always bumps: the page's pick wins over an F1 cycle done in play */
+    g_camera_mode = mode;
+    ++g_ctl_gen;
+    ++g_cam_gen;
+    queue_word("CameraMode", CAMERA_MODE_KEY[mode]);
+    return 1;
+}
+
+extern "C" int host_setting_set_swap_camera_turn(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_swap_camera_turn != on) { g_swap_camera_turn = on; ++g_ctl_gen; }
+    queue_bool("SwapCameraTurnDirection", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_invert_camera_y(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_invert_camera_y != on) { g_invert_camera_y = on; ++g_ctl_gen; }
+    queue_bool("InvertCameraY", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_stick_deadzone(int pct)
+{
+    load_once();
+    if (pct < 0 || pct > 50) return 0;
+    const int raw = stick_dead_from_pct(pct);
+    if (g_stick_dead != raw) { g_stick_dead = raw; ++g_ctl_gen; }
+    queue_int("StickDeadzone", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_run_threshold(int pct)
+{
+    load_once();
+    if (pct < 30 || pct > 100) return 0;
+    const int v = (pct == RUN_THRESH_ROM_PCT) ? -1 : pct;
+    if (g_run_thresh_pct != v) { g_run_thresh_pct = v; ++g_ctl_gen; }
+    queue_int("RunThreshold", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_camera_sensitivity(int pct)
+{
+    load_once();
+    if (pct < 10 || pct > 400) return 0;
+    if (g_camera_sens != pct) { g_camera_sens = pct; ++g_ctl_gen; }
+    queue_int("CameraSensitivity", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_mouse_sensitivity(int pct)
+{
+    load_once();
+    if (pct < 10 || pct > 400) return 0;
+    if (g_mouse_sens != pct) { g_mouse_sens = pct; ++g_ctl_gen; }
+    queue_int("MouseSensitivity", pct);
+    return 1;
+}
+
+extern "C" int host_setting_set_mouse_capture(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    g_mouse_capture = on;
+    g_poll_flag = 1;
+    queue_bool("MouseCapture", on);
+    return 1;
+}
+
+extern "C" int host_setting_set_volume(int pct)
+{
+    load_once();
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    g_volume = pct;
+    g_poll_flag = 1;
+    queue_int("Volume", pct);
+    return 1;
+}
+
+/* PAUSE3: the screen gap's setters (see host_settings.h). The same variables reload_live writes from the file. */
+extern "C" int host_setting_set_minigame_gap(int on)
+{
+    load_once();
+    on = on ? 1 : 0;
+    if (g_gap_on != on) { g_gap_on = on; ++g_setgen; }
+    queue_bool("MinigameGap", on);
+    return 1;
+}
+
+extern "C" int host_setting_gap_look(void)
+{
+    load_once();
+    return g_gap_peek ? 2 : (g_gap_fill == 0 ? 0 : 1);
+}
+
+extern "C" int host_setting_set_gap_look(int look)
+{
+    load_once();
+    if (look < 0 || look > 2) return 0;
+    const int peek = look == 2 ? 1 : 0;
+    int fill = g_gap_fill;
+    if (look == 0) fill = 0;
+    else if (look == 1 && fill == 0) fill = 1;
+    if (peek != g_gap_peek || fill != g_gap_fill) { g_gap_peek = peek; g_gap_fill = fill; ++g_setgen; }
+    queue_bool("GapPeek", peek);
+    queue_word("GapFillMode", fill == 0 ? "solid" : (fill == 2 ? "custom" : "ambient"));
+    return 1;
+}
+
+extern "C" int host_setting_set_gap_color(unsigned rgb)
+{
+    load_once();
+    const unsigned c = 0xFF000000u | (rgb & 0xffffffu);
+    if (g_gap_color != c) { g_gap_color = c; ++g_setgen; }
+    char b[24];
+    snprintf(b, sizeof b, "\"#%06X\"", rgb & 0xffffffu);
+    queue_save("GapColor", b);
+    return 1;
+}
+
+extern "C" int host_setting_stick_deadzone_raw(void)
+{
+    load_once();
+    return g_stick_dead;
+}
+extern "C" int host_setting_stick_deadzone_pct(void)
+{
+    load_once();
+    return stick_dead_to_pct(g_stick_dead);
+}
+/* the digital walk threshold the left stick uses beside the d-pad: 12000 at
+   the default dead zone, scaled with the dead zone so the two stay in the
+   same proportion */
+extern "C" int host_setting_stick_digital(void)
+{
+    load_once();
+    if (g_stick_dead == STICK_DEAD_DEFAULT) return 12000;
+    const long long v = (long long)12000 * g_stick_dead / STICK_DEAD_DEFAULT;
+    /* SETFIX1: never below 4000 of 32767, so stick drift cannot walk Mario in
+       button / auto run mode at Deadzone 0 (the analog injection may still
+       use the raw zero dead zone) */
+    return v < 4000 ? 4000 : v > 30000 ? 30000 : (int)v;
+}
+extern "C" int host_setting_run_threshold_pct(void)
+{
+    load_once();
+    return g_run_thresh_pct < 0 ? RUN_THRESH_ROM_PCT : g_run_thresh_pct;
+}
+extern "C" int host_setting_run_threshold_is_default(void)
+{
+    load_once();
+    return g_run_thresh_pct < 0;
+}
+/* magnitude (0..0x1000 of usable travel) -> the magnitude the ROM is given.
+   Default: unchanged, exactly. Otherwise the player's point T maps to the
+   ROM's start-running point 0xe47: 0..T -> 0..0xe46 linear (walk speed is
+   linear in the magnitude, so walking is stretched or squeezed to fill the
+   same walk range), T..1 -> 0xe47..0x1000 linear. */
+extern "C" int host_setting_run_remap(int mag)
+{
+    load_once();
+    if (mag <= 0) return 0;
+    if (mag > 0x1000) mag = 0x1000;
+    if (g_run_thresh_pct < 0) return mag;
+    const int tm = (int)((long long)g_run_thresh_pct * 4096 / 100);
+    if (tm >= 4096) return (int)((long long)mag * 0xe46 / 4096);
+    if (mag < tm) return (int)((long long)mag * 0xe47 / tm);
+    return 0xe47 + (int)((long long)(mag - tm) * (0x1000 - 0xe47) / (4096 - tm));
+}
+/* the multiplayer fold's run point as a fraction of usable travel: 0.87 at
+   the default (the ROM split), the player's point otherwise */
+extern "C" double host_setting_run_norm(void)
+{
+    load_once();
+    return g_run_thresh_pct < 0 ? 0.87 : g_run_thresh_pct / 100.0;
+}
+extern "C" int host_setting_invert_camera_y(void)
+{
+    load_once();
+    return g_invert_camera_y;
+}
+extern "C" int host_setting_camera_sensitivity(void)
+{
+    load_once();
+    return g_camera_sens;
+}
+extern "C" int host_setting_mouse_sensitivity(void)
+{
+    load_once();
+    return g_mouse_sens;
+}
 
 extern "C" int host_setting_save_run(int mode, int key, int pad)
 {
@@ -2174,10 +3169,14 @@ extern "C" int host_setting_save_run(int mode, int key, int pad)
     snprintf(vmode, sizeof vmode, "\"%s\"", RUN_MODE_KEY[mode]);
     snprintf(vkey, sizeof vkey, "%d", key);
     snprintf(vpad, sizeof vpad, "%d", pad);
-    const char *const keys[5] = { "RunMode", "RunButtonKey", "KeyRun",
-                                  "RunButtonPad", "PadRun" };
-    const char *const vals[5] = { vmode, vkey, vkey, vpad, vpad };
-    return save_keys(keys, vals, 5, "run mode");
+    /* SETFIX1 (G3): through the queue, so an older page value still pending
+       cannot be flushed over this one afterwards */
+    queue_save("RunMode", vmode);
+    queue_save("RunButtonKey", vkey);
+    queue_save("KeyRun", vkey);
+    queue_save("RunButtonPad", vpad);
+    queue_save("PadRun", vpad);
+    return pending_flush();   /* a menu row persists on the spot, behind anything queued */
 }
 
 /* The camera row's twin of the above: the live mode moves whether or not the
@@ -2189,9 +3188,8 @@ extern "C" int host_setting_save_camera_mode(int mode)
     g_camera_mode = mode;
     char v[24];
     snprintf(v, sizeof v, "\"%s\"", CAMERA_MODE_KEY[mode]);
-    const char *const keys[1] = { "CameraMode" };
-    const char *const vals[1] = { v };
-    return save_keys(keys, vals, 1, "camera mode");
+    queue_save("CameraMode", v);   /* SETFIX1 (G3): through the queue, then on the spot */
+    return pending_flush();
 }
 
 /* ---- PadLayouts -----------------------------------------------------------
@@ -2297,9 +3295,38 @@ extern "C" int host_setting_frame_rate(void)
             }
         }
     }
-    if (env >= 0) return env;
+    if (env >= 0 && !g_frame_rate_touched) return env;
     load_once();
     return g_frame_rate;
+}
+
+/* run hunt8, lane FPSLIVE1: steps each time the answer above changes while
+   the game runs, so the pacer can keep its cached copy and re-read it on a
+   step only. */
+extern "C" int host_setting_frame_rate_gen(void)
+{
+    return g_frame_rate_gen;
+}
+
+/* run hunt8, lane FPSLIVE1: the settings page's call. The rate takes effect
+   at the pacer's next turn and is written to settings.json for the next boot.
+   rate is the key's own grammar: 0 native, 60..240 pictures a second; anything
+   else is brought into the band by the same sanitiser the file goes through
+   (under 60 reads as native, above 240 as 240). Returns 1 when the file on
+   disk now says so; the running game has the new rate either way. */
+extern "C" int host_setting_save_frame_rate(int rate)
+{
+    load_once();
+    const int before = host_setting_frame_rate();
+    const int n = frame_rate_sanitise(rate);
+    g_frame_rate = n;
+    g_frame_rate_touched = 1;
+    if (n != before) ++g_frame_rate_gen;
+    char v[24];
+    snprintf(v, sizeof v, "%d", n);
+    const char *const keys[1] = { "FrameRate" };
+    const char *const vals[1] = { v };
+    return save_keys(keys, vals, 1, "frame rate");
 }
 
 /* ---- THE THREE PICTURE-QUALITY KEYS' ACCESSORS (run hd1) ----------------
@@ -2330,6 +3357,214 @@ extern "C" int host_setting_render_scale(void)
     load_once();
     return g_render_scale;
 }
+
+/* ---- THE IMPROVED MINIMAP'S TWO GETTERS ------------------------------------
+
+   THE PIN IS HERE, IN THE GETTER, rather than in the frame loop, and that is
+   the whole reason this pair is not two more lines of boilerplate. The option
+   changes what the bottom-screen panel DRAWS. Every recorded baseline in this
+   tree -- the five level-1 capture hashes, hd1's six key-absent captures, the
+   opening gate, every sweep row -- is a picture taken on one of exactly two
+   routes: a window selftest (SM64DS_WINDOW_SELFTEST) or a scene run
+   (SM64DS_SCENE_FRAMES). A feature that moved those hashes would look like a
+   hundred regressions and be none of them. Both frame loops and every proof
+   tool in port/tools go through this one function, so pinning it once here
+   covers all of them, and tests/walk_window.cpp needs no line of its own.
+
+   THE ENVIRONMENT STILL DISPOSES, in both directions and ahead of the pin: a
+   run that means to look at the improved map sets SM64DS_IMPROVED_MINIMAP=1
+   and gets it, selftest or not, which is how this lane's own captures were
+   taken. That is the same precedence SM64DS_DUAL_SCREEN has over the layout
+   proposal in hal/sub_screen.cpp. */
+extern "C" int host_setting_improved_minimap(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_IMPROVED_MINIMAP");
+        env = e ? ((e[0] == 0 || (e[0] == '0' && e[1] == 0)) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES"))
+        return 0;
+    load_once();
+    return g_improved_minimap;
+}
+
+/* THE PIN IS A STARTING SIZE, NOT A LOCK ON THE PLAYER'S HAND.
+ *
+ * SM64DS_MINIMAP_SCALE still outranks the file and still holds for a whole run
+ * that never touches the map, which is every scripted run there is: a sweep, a
+ * capture, a proof and a gate all ask for a size and none of them has a mouse.
+ * That is the reason the override exists and it does not change.
+ *
+ * What changes is what happens after a HAND has moved it. This getter used to
+ * answer the pin ahead of g_minimap_scale unconditionally, and the drag's only
+ * write is to g_minimap_scale -- so with the pin set the grab worked, the hold
+ * worked, the release worked, and every one of them moved a number that
+ * nothing read. The owner's own preview shortcut exports the pin, so on his
+ * screen the yellow square took the press, printed that it had, printed a size
+ * on release and never once resized the map. Both scripted drags that proved
+ * this feature passed the size in settings.json instead, where the pin is not
+ * in play, which is the whole of why they were green.
+ *
+ * So: the pin answers until a drag happens, and the drag answers afterwards.
+ * One value, one hand, for the rest of the run. */
+/* ---- THE SAVE MENU ON THE TOP SCREEN ---------------------------------------
+
+   The same three-layer shape the improved minimap's getter has, and for the
+   same three reasons.
+
+   ABSENT IS ON. It is a mod the owner asked for and recommended on, so a
+   settings file written before the key existed gets the composed picture.
+
+   IT IS PINNED OFF ON EVERY COMPARATOR ROUTE. A window selftest and a scene
+   sweep row are the two shapes every recorded baseline capture in this tree
+   is taken in. This option changes what a frame LOOKS LIKE, so left free it
+   would move recorded hashes on any route that reaches a level-clear screen,
+   for a reason that has nothing to do with the code under test. Pinning it
+   here, in the getter, covers both frame loops and every proof tool in
+   port/tools at once.
+
+   THE ENVIRONMENT STILL DISPOSES, in both directions and ahead of the pin: a
+   run that means to look at the composed picture sets
+   SM64DS_SAVE_MENU_ON_TOP=1 and gets it, selftest or not, which is how every
+   capture of it was taken. */
+extern "C" int host_setting_save_menu_on_top(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_SAVE_MENU_ON_TOP");
+        env = e ? ((e[0] == 0 || (e[0] == '0' && e[1] == 0)) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES"))
+        return 0;
+    load_once();
+    return g_save_menu_on_top;
+}
+
+/* ONE SCREEN MENUS, the SaveMenuOnTop pattern: the environment disposes in both directions
+   and outranks the pin, the comparator routes are pinned OFF so every recorded baseline
+   holds, then settings.json, and ABSENT MEANS ON. */
+extern "C" int host_setting_one_screen_menus(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_ONE_SCREEN_MENUS");
+        env = e ? ((e[0] == 0 || (e[0] == '0' && e[1] == 0)) ? 0 : 1) : -1;
+    }
+    if (env >= 0) return env;
+    if (getenv("SM64DS_WINDOW_SELFTEST") || getenv("SM64DS_SCENE_FRAMES")) {
+#ifndef PORT_ROM_CLEAN
+        /* proof arm: SM64DS_ONE_SCREEN_FILE=1 lets a comparator route read the key from settings.json,
+           so "absent means ON" can be shown with no override in the environment */
+        if (!getenv("SM64DS_ONE_SCREEN_FILE"))
+#endif
+            return 0;
+    }
+    load_once();
+    return g_one_screen_menus;
+}
+
+/* HUD LAYOUT, parsed only (0 DS, 1 N64). SM64DS_HUD_LAYOUT outranks the file. */
+extern "C" int host_setting_hud_layout(void)
+{
+    static int env = -2;
+    if (env == -2) {
+        const char *e = getenv("SM64DS_HUD_LAYOUT");
+        env = (e && e[0]) ? (e[0] == '1' ? 1 : 0) : -1;
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_hud_layout;
+}
+
+extern "C" double host_setting_minimap_scale_value(void)
+{
+    static int env_read = 0;
+    static double env = -1.0;        /* <0 means "the environment said nothing" */
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_MINIMAP_SCALE");
+        if (e && *e) {
+            char *end = 0;
+            const double v = strtod(e, &end);
+            env = (end != e) ? minimap_scale_sanitise(v, 0) : 1.0;
+        }
+    }
+    if (env > 0.0 && !g_minimap_scale_dragged) return env;
+    load_once();
+    return g_minimap_scale;
+}
+
+/* The chosen size as the exact rational the drawing and the touch inverse
+   share. ONE function, so a size can never mean two things in two files --
+   which is the rule the corner panel's geometry was already keeping with its
+   single integer divisor and has to keep now that the divisor is a fraction
+   the player can drag. */
+extern "C" void host_setting_minimap_scale_ratio(int *num, int *den)
+{
+    const int k = minimap_scale_k(host_setting_minimap_scale_value());
+    if (num) *num = k;
+    if (den) *den = 256;
+}
+
+/* THE DRAG'S TWO WRITES.
+ *
+ * _live moves the size for this run and nothing else: it is called on every
+ * frame of a drag, and a settings file rewritten sixty times a second would
+ * be a file the launcher is reading while it is half written.
+ *
+ * _save is the mouse-up: the same move, and then the number on disk, so the
+ * size survives a restart and the launcher's picker opens on it. It goes
+ * through save_keys like the debug menu's run and camera rows, which reloads
+ * the document and carries every key this program did not write across
+ * untouched. SM64DS_MINIMAP_SCALE keeps a run that never drags pinned exactly
+ * where it asked to be -- which is every scripted run -- and stands aside for
+ * a hand that has actually moved the map; the block above the getter is the
+ * argument for that.
+ *
+ * BOTH WRITES GO THROUGH ONE FUNCTION, and that is not tidiness: the defect
+ * this closes was a size written in one place and read from another, so a
+ * second writer that forgot to say a hand had moved it would put the map
+ * straight back to where the owner found it.
+ *
+ * %.6g is enough to print any number on the grid exactly (the grid is
+ * thirty-seconds, and 4096/128 = 32 is the ceiling), so a value written here
+ * reads back as the same value. */
+namespace {
+void minimap_scale_move_live(double s)
+{
+    load_once();
+    g_minimap_scale = minimap_scale_sanitise(s, 0);
+    g_minimap_scale_dragged = 1;
+}
+}
+
+extern "C" void host_setting_minimap_scale_set_live(double s)
+{
+    minimap_scale_move_live(s);
+}
+
+extern "C" int host_setting_save_minimap_scale(double s)
+{
+    minimap_scale_move_live(s);
+    char v[32];
+    snprintf(v, sizeof v, "%.6g", g_minimap_scale);
+    const char *const keys[1] = { "MinimapScale" };
+    const char *const vals[1] = { v };
+    return save_keys(keys, vals, 1, "minimap size");
+}
+
+extern "C" int host_setting_set_minimap_scale(double s)
+{
+    minimap_scale_move_live(s);
+    char v[32];
+    snprintf(v, sizeof v, "%.6g", g_minimap_scale);
+    queue_save("MinimapScale", v);
+    return 1;
+}
+
 
 /* HdTextures: 1 when the replacement pack is on. SM64DS_HD_TEXTURES has the
    mod keys' grammar rather than a number's -- unset is the file's answer,
@@ -2389,8 +3624,172 @@ extern "C" const char *host_setting_hd_textures_dir(void)
     return dir;
 }
 
+/* ---- the mods list (run mods1, lane MODFILES1) ---------------------------
+   settings.json gains "EnabledMods": ["a", "b"], the ids of the installed mods
+   that are switched on, in priority order (a later id wins over an earlier
+   one). hal/mods.cpp owns what the ids MEAN; this file only owns how
+   settings.json is found and scanned, so the list is read by the same scanner
+   and from the same file as every other key. Boot-latched there, not here.
+
+   json_value (above) cannot tell a top-level key from one nested under another
+   object: it steps through every string in the text. So the EnabledMods key is
+   found by top_level_value below, which tracks bracket depth and accepts the
+   key only at depth 1 of the settings object. The other keys keep json_value.
+
+   bundle  gets the folder settings.json was found in (the folder holding the
+           exe, the launcher and mods/), or, when there is no settings file,
+           SM64DS_ASSET_ROOT, or "." as the last resort, the same three
+           places the other bundle folders (palettes/, textures_hd/) are found.
+   arr     gets the raw text of the EnabledMods array ("[...]"), or an empty
+           string when the key is absent or is not an array.
+   Returns 1 when an array was there, 0 when not, and -1 when the array is
+   longer than arr can hold (arr is then empty). */
+static const char *top_level_value(const char *s, const char *key)
+{
+    const size_t klen = strlen(key);
+    int depth = 0;
+    for (const char *p = s; *p; ++p) {
+        if (*p == '{' || *p == '[') { ++depth; continue; }
+        if (*p == '}' || *p == ']') { --depth; continue; }
+        if (*p != '"') continue;
+        const char *name = p + 1;
+        const char *end = name;
+        while (*end && *end != '"') end += (*end == '\\' && end[1]) ? 2 : 1;
+        if (*end != '"') return 0;
+        p = end;
+        if (depth != 1) continue;
+        const char *q = end + 1;
+        while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+        if (*q != ':') continue;
+        if ((size_t)(end - name) == klen && ieq(name, key, klen)) {
+            ++q;
+            while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') ++q;
+            return q;
+        }
+    }
+    return 0;
+}
+
+extern "C" int host_setting_enabled_mods(char *bundle, size_t bcap,
+                                         char *arr, size_t acap)
+{
+    char path[1024];
+    int have = 0;
+    if (!bcap || !acap) return 0;
+    bundle[0] = '\0';
+    arr[0] = '\0';
+    if (find_settings(path, sizeof path)) {
+        char *slash = strrchr(path, '\\');
+        char *fwd = strrchr(path, '/');
+        if (fwd && (!slash || fwd > slash)) slash = fwd;
+        if (slash) {
+            *slash = '\0';
+            snprintf(bundle, bcap, "%s", path);
+            *slash = '/';
+        } else {
+            snprintf(bundle, bcap, ".");
+        }
+        have = 1;
+    } else {
+        const char *root = getenv("SM64DS_ASSET_ROOT");
+        snprintf(bundle, bcap, "%s", root && *root ? root : ".");
+    }
+    if (have) {
+        char *text = slurp(path);
+        if (text) {
+            if (looks_like_json_object(text)) {
+                const char *v = top_level_value(text, "EnabledMods");
+                if (v && *v == '[') {
+                    const char *e = json_value_end(v);
+                    if ((size_t)(e - v) < acap) {
+                        memcpy(arr, v, (size_t)(e - v));
+                        arr[e - v] = '\0';
+                        free(text);
+                        return 1;
+                    }
+                    free(text);
+                    return -1;
+                }
+            }
+            free(text);
+        }
+    }
+    return 0;
+}
+
+/* The same scanner for a mod's own mod.json: 1 when `text` is a JSON object,
+   and one string-or-scalar value by key (json_str's contract). */
+extern "C" int host_json_is_object(const char *text)
+{
+    return text && looks_like_json_object(text);
+}
+extern "C" int host_json_string(const char *text, const char *key, char *out,
+                                size_t cap)
+{
+    return text && json_str(text, key, out, cap);
+}
+
+/* WHERE THE IMPROVED MAP'S PANEL ARTWORK WOULD BE READ FROM, whether or not
+   anything is there. Exactly the shape host_setting_hd_textures_dir has above,
+   and for the same reason: an asset folder beside the game data, named here so
+   a log line can say where the game looked.
+
+     SM64DS_MINIMAP_DIR    the folder outright, used as given. A test points
+                           this at a read-only folder somewhere else.
+     SM64DS_ASSET_ROOT     "<root>/minimap". In a player's kit the launcher
+                           sets the asset root to the bundle directory, so
+                           this is a folder sitting beside the exe, exactly
+                           where textures_hd sits.
+     neither               "minimap", relative to the working directory.
+
+   THE PICTURES ARE NOT PART OF THIS PROGRAM. Nothing here ships, embeds or
+   copies them: the code reads a folder, and whether a folder with those two
+   files in it travels with a download is a packaging decision made outside
+   the code. With no folder the panel is composed at run time from the
+   player's own game data, which is what hal/sub_screen.cpp did before this
+   and still does. Built once, never null. */
+extern "C" const char *host_setting_minimap_dir(void)
+{
+    static int built = 0;
+    static char dir[1024];
+    if (!built) {
+        built = 1;
+        const char *over = getenv("SM64DS_MINIMAP_DIR");
+        if (over && *over) {
+            snprintf(dir, sizeof dir, "%s", over);
+        } else {
+            const char *root = getenv("SM64DS_ASSET_ROOT");
+            if (root && *root && strlen(root) + 12 < sizeof dir)
+                snprintf(dir, sizeof dir, "%s/minimap", root);
+            else
+                snprintf(dir, sizeof dir, "minimap");
+        }
+    }
+    return dir;
+}
+
 /* SmoothModels: the subdivision level, 0 for the ROM's own geometry.
    SM64DS_SMOOTH_MODELS overrides; junk reads as 0. */
+/* SmoothMotion: 1 on, 0 off. SM64DS_SMOOTH_MOTION overrides with the same
+   grammar (any nonzero number is on; junk and 0 are off). */
+extern "C" int host_setting_smooth_motion(void)
+{
+    static int env_read = 0;
+    static int env = -1;             /* <0 means "the environment said nothing" */
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_SMOOTH_MOTION");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e && v != 0) ? 1 : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_smooth_motion;
+}
+
 extern "C" int host_setting_smooth_models(void)
 {
     static int env_read = 0;
@@ -2407,4 +3806,139 @@ extern "C" int host_setting_smooth_models(void)
     if (env >= 0) return env;
     load_once();
     return g_smooth_models;
+}
+
+/* ---- run hd2's two accessors, host_setting_render_scale's shape exactly --
+   an environment override read once, in front of load_once and the stored
+   value, through the same sanitiser the file goes through, so a proof run can
+   pin either off ONE build without editing a player's settings file. */
+
+/* TextureFilter: 0 nearest, 1 bilinear, 2 trilinear.
+   SM64DS_TEXTURE_FILTER overrides; junk reads as 0. */
+extern "C" int host_setting_texture_filter(void)
+{
+    static int env_read = 0;
+    static int env = -1;             /* <0 means "the environment said nothing" */
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_TEXTURE_FILTER");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e) ? texture_filter_sanitise((int)v) : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_texture_filter;
+}
+
+/* AntiAliasing: 0 off, 1 edge smoothing.
+   SM64DS_ANTI_ALIASING overrides; junk reads as 0. */
+extern "C" int host_setting_anti_aliasing(void)
+{
+    static int env_read = 0;
+    static int env = -1;
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_ANTI_ALIASING");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e) ? anti_aliasing_sanitise((int)v) : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_anti_aliasing;
+}
+
+/* ---- run hd2 lane GPU1's three accessors, the same shape once more -------
+   an environment override read once, in front of load_once and the stored
+   value, through the same sanitiser the file goes through, so a proof run can
+   pin any of them off ONE build without editing a player's settings file.
+
+   SM64DS_PRESENT_FILTER_D3D rather than SM64DS_PRESENT_FILTER: that name has
+   belonged to the ordinary Windows path's halftone knob since before this key
+   existed (tests/walk_window.cpp reads it), and two settings answering to one
+   variable is how a proof run comes to mean something it did not say. */
+
+/* PresentBackend: 0 the ordinary Windows path, 1 Direct3D 11. */
+extern "C" int host_setting_present_backend(void)
+{
+    static int env_read = 0;
+    static int env = -1;             /* <0 means "the environment said nothing" */
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_PRESENT_BACKEND");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e) ? present_backend_sanitise((int)v) : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_present_backend;
+}
+
+/* PresentFilter: 0 nearest, 1 smooth, 2 sharp. Only read when the backend
+   is 1; this accessor answers either way and the backend is the one that
+   decides whether the answer matters. */
+extern "C" int host_setting_present_filter(void)
+{
+    static int env_read = 0;
+    static int env = -1;
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_PRESENT_FILTER_D3D");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e) ? present_filter_sanitise((int)v) : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_present_filter;
+}
+
+/* Renderer: 0 the software rasteriser, 1 Direct3D 11. INDEPENDENT of
+   PresentBackend: either can be on without the other, and with both on the
+   process still makes exactly one device (hal/gpu_device.cpp). */
+extern "C" int host_setting_renderer(void)
+{
+    static int env_read = 0;
+    static int env = -1;             /* <0 means "the environment said nothing" */
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_RENDERER");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e) ? renderer_sanitise((int)v) : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_renderer;
+}
+
+/* VSync: 0 off, 1 on. Only read when the backend is 1, for the same reason. */
+extern "C" int host_setting_vsync(void)
+{
+    static int env_read = 0;
+    static int env = -1;
+    if (!env_read) {
+        env_read = 1;
+        const char *e = getenv("SM64DS_VSYNC");
+        if (e && *e) {
+            char *end = 0;
+            const long v = strtol(e, &end, 10);
+            env = (end != e) ? vsync_sanitise((int)v) : 0;
+        }
+    }
+    if (env >= 0) return env;
+    load_once();
+    return g_vsync;
 }

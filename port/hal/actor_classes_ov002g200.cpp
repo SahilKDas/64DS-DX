@@ -1,4 +1,4 @@
-// GATE 200: PUSH_BLOCK (306) + MUGEN_BGM (351), both ov002 (already
+// GATE 200: POWER_FLOWER (306) + MUGEN_BGM (351), both ov002 (already
 // mounted). Four data symbols joined the ov002 mount for this gate
 // (g_profile_POWER_UP_ITEM, _ZTV9PushBlock, g_profile_MUGEN_BGM, _ZTV8MugenBgm);
 // everything else the classes touch was already mounted or hosted.
@@ -11,6 +11,13 @@
 // id; castle2-scope's correction #3). dsd's "PowerFlower" name lost a
 // naming race (actor_renames_report.txt:697); the class is PushBlock,
 // RTTI/parent table _ZTV18daObjPowerUpItem_c shares the same address.
+//
+// CORRECTED (lane FEATHER1): the paragraph above has it backwards. The table
+// at 0x02109800 is config's _ZTV11PowerFlower, every own slot below is a
+// _ZN11PowerFlower body, and InitResources loads gPFlowerOpenModelFile and
+// gPFlowerCloseModelFile: id 306 is the Power Flower. The registry row's
+// label now says POWER_FLOWER; the host symbol _ZTV9PushBlock, the fill's
+// name and the "PUSH_BLOCK" wording below are only names and were left alone.
 //
 // BOTH TABLES ARE 31-SLOT ACTOR, the ccm/IceSlideManager base family
 // (slot 12 base = 0x02043ac0 ActorBase::OnPendingDestroy, 13/14 traps,
@@ -219,7 +226,7 @@ static void g200_fill_shared(void *volatile *vt)
 }
 
 // ============================================================================
-// PUSH_BLOCK (306), 31 slots.
+// POWER_FLOWER (306, the host table is still named _ZTV9PushBlock), 31 slots.
 // ============================================================================
 static int __fastcall pb_init(void *s, void *)
 { return _ZN11PowerFlower13InitResourcesEv(s); }
@@ -228,7 +235,7 @@ static int __fastcall pb_clean(void *s, void *)
 static int __fastcall pb_behavior(void *s, void *)
 { return _ZN11PowerFlower8BehaviorEv(s); }
 static int __fastcall pb_render(void *s, void *)
-{ port_actor_render_probe("PUSH_BLOCK", (char *)s + 0xd4);
+{ port_actor_render_probe("POWER_FLOWER", (char *)s + 0xd4);
   return _ZN11PowerFlower6RenderEv(s); }
 static int __fastcall pb_yoshi(void *s, void *)
 { (void)s; return _ZN11PowerFlower13OnYoshiTryEatEv(); }

@@ -160,13 +160,57 @@ extern "C" void hal_fill_camera_vtable(void)
 
    So the two slots go quiet and say so. This is the same bargain the Player's
    Render slot takes; both come back the day the frame itself is the ROM's
-   (stage C's Scene::Render). */
-static int __fastcall cs_harness(void *, void *) { return 1; }
+   (stage C's Scene::Render).
+
+   THE DAY CAME FOR THE ACTOR FRAME (run linkfull, lane K1LOOP). The level
+   loop calls the ROM's func_02044120 whole at phase 4 now
+   (hal/actor_registry.cpp port_actor_frame), and on those frames it does not
+   drive the Camera by hand: the two slots dispatch the ROM's own bodies, so
+   Camera::Behavior runs in the behaviour walk at its priority 0x14c and
+   Camera::Render at the head of the render walk, before every model that
+   composes against the view it publishes -- the ordering reason above,
+   satisfied by the ROM's own priorities rather than by a hand call. The echo
+   (func_0203df40 -> func_0203e0ac) stays in the level loop after phase 4,
+   which is nearer the ROM's own point for it (phase 0x15) than it was.
+
+   What rides Camera::Render's face is the host rig and nothing of the ROM's:
+   the level loop's hook (port_level_camera_render_hook, installed by
+   tests/walk_window.cpp) steps the analog pivot, re-pushes the rig's view in
+   the analog and free modes, and widens the object cull for widescreen --
+   the three statements that sat right after the by-hand Camera::Render, in
+   the same order, still ahead of every other Render.
+
+   Every frame that is NOT the ROM's actor frame keeps the bargain above
+   exactly: the teardown convergence walks in hal/level_change.cpp, the F5
+   freeze, the rollback replay and the dev arms still walk the host split with
+   these slots quiet, and the level loop still makes its two hand calls on
+   those frames. A frame runs one shape or the other, so neither body can run
+   twice. */
+extern "C" int port_actor_frame_camera_rom(void);   /* hal/actor_registry.cpp */
+extern "C" void (*port_level_camera_render_hook)(void *cam);
+void (*port_level_camera_render_hook)(void *cam);
+
+static int __fastcall cs_frame_behavior(void *s, void *)
+{
+    if (port_actor_frame_camera_rom())
+        return _ZN6Camera8BehaviorEv(s);
+    return 1;
+}
+static int __fastcall cs_frame_render(void *s, void *)
+{
+    if (port_actor_frame_camera_rom()) {
+        const int r = _ZN6Camera6RenderEv(s);
+        if (port_level_camera_render_hook)
+            port_level_camera_render_hook(s);
+        return r;
+    }
+    return 1;
+}
 
 extern "C" void hal_camera_slots_harness_owned(void)
 {
-    _ZTV6Camera[6] = (void *)cs_harness;    /* Behavior + func_0203e0ac */
-    _ZTV6Camera[9] = (void *)cs_harness;    /* Render, before the bucket */
+    _ZTV6Camera[6] = (void *)cs_frame_behavior;   /* ROM frame: Behavior */
+    _ZTV6Camera[9] = (void *)cs_frame_render;     /* ROM frame: Render + rig */
 }
 
 /* ---- the local/per-player comms blocks --------------------------------

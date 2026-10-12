@@ -82,6 +82,15 @@ void     io_write(uint32_t addr, uint64_t value, unsigned width);
 // path that already does a 64-bit integer square root.
 unsigned long sqrt_runs();
 
+// Is the I/O window mapped? The 3D engine's plain latches -- CLEAR_COLOR
+// (0x04000350), DISP3DCNT (0x04000060) and the TOON TABLE (0x04000380, 32
+// halfwords) -- have no side effect on write, so the game stores them straight
+// into the window (the toon table by MI_CpuCopy16, src/func_020555a4.c) and the
+// renderer reads them there at draw time, as the hardware's rendering engine
+// does. A harness that draws without io_init() gets false and the renderer's
+// old fixed answers. Never maps anything itself.
+bool io_ready();
+
 // Write the geometry-engine-owned half of GXSTAT back into the mapped window:
 // the FIFO status and the two MATRIX STACK LEVELS, from the levels ntr/gx.cpp
 // is holding. On hardware those bits are driven continuously by the geometry

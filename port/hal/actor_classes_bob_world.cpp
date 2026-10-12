@@ -90,6 +90,10 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
 #include "dsstate_seg.h"
 #include <cstdlib>
 
+/* ntr::gx_polygons -- the frame's polygon list, for the cap's own render
+   accounting under SM64DS_CAP_TRIS (see cap_render). */
+#include "ntr/gx.h"
+
 #include "dActor_c.h"
 #include "fBase_c.h"
 
@@ -424,66 +428,22 @@ static int __fastcall coin_egg(void *s, void *, int a)
 // Coin::InitResources does NOT load its own file for coin types 0 and 1. It
 // reads data_ov002_020ff06c[type]->filePtr and hands it straight to
 // ModelBase::SetFile, on the assumption that somebody already loaded it. That
-// somebody is Stage::InitResources (arm9 0x0202cc0c), which walks a four-entry
-// table of SharedFilePtr* at arm9 0x020756f0 and loads each one. The four
-// entries -- and config/arm9/relocs.txt names all four -- are exactly the
-// coin's two pairs:
+// somebody is Stage::InitResources (arm9 0x0202cc0c), whose loop over the
+// twelve SharedFilePtr* at arm9 0x020756f0 loads the coin's two pairs first
+// (files 0x8006 / 0x8005 / 0x8008 / 0x8007), and Stage::CleanupResources
+// releases them again on the way out of the level.
 //
-//     0x020756f0 -> ov002 0x0210da48   file 0x8006   coin type 0, model B
-//     0x020756f4 -> ov002 0x0210d9b8   file 0x8005   coin type 0, model A
-//     0x020756f8 -> ov002 0x0210da50   file 0x8008   coin type 1, model B
-//     0x020756fc -> ov002 0x0210d9f8   file 0x8007   coin type 1, model A
-//
-// Stage::InitResources DOES NOT RUN IN THE PORT: hal/stage_bridges.cpp fills
-// every one of the Stage's twenty slots with a trap, and gate 26 landed the
-// Stage as a scene root rather than as a running actor. Without the preload a
-// spawned coin walks straight into Model::LoadTexAndPal with a null BMD_File
-// and faults at +0xc -- which is exactly what the first run did, and the
-// backtrace named every frame of it.
-//
-// So the load happens here, out of the same four SharedFilePtrs by name, with
-// the same Model::LoadFile the ROM calls. Nothing is invented: the fileIDs are
-// asserted against the ones __sinit_ov002_02100560 constructed them with, so a
-// mount that has drifted says so instead of loading a stranger's archive.
-// WHEN Stage::InitResources IS HOSTED THIS COMES OUT WHOLE -- it is one call
-// and one table, in the wrong place only because its owner is not running.
-extern "C" {
-void *_ZN5Model8LoadFileER13SharedFilePtr(void *ptr);
-extern unsigned char data_ov002_0210da48[], data_ov002_0210d9b8[],
-    data_ov002_0210da50[], data_ov002_0210d9f8[];
-}
-
-static void port_coin_models_preload(void)
-{
-    static const struct { unsigned char *ptr; unsigned short file;
-                          const char *what; }
-    k[] = {
-        {data_ov002_0210da48, 0x8006, "coin type 0 model B"},
-        {data_ov002_0210d9b8, 0x8005, "coin type 0 model A"},
-        {data_ov002_0210da50, 0x8008, "coin type 1 model B"},
-        {data_ov002_0210d9f8, 0x8007, "coin type 1 model A"},
-    };
-    static int done;
-    if (done)
-        return;
-    done = 1;
-    for (unsigned i = 0; i < sizeof k / sizeof k[0]; ++i) {
-        unsigned short id = *(unsigned short *)k[i].ptr;
-        if (id != k[i].file) {
-            std::fprintf(stderr, "FATAL: %s: the sinit constructed file %04x, "
-                         "the ROM's own table says %04x -- WRONG BYTES\n",
-                         k[i].what, id, k[i].file);
-            std::abort();
-        }
-        _ZN5Model8LoadFileER13SharedFilePtr(k[i].ptr);
-    }
-}
+// That loop and its release are hosted now (hal/level_boot.cpp's
+// port_stage_preload_shared_models, on every stage boot; the release in
+// hal/level_change.cpp's change teardown), so the once-per-process copy of
+// the coin half that stood here is gone: it held the four at one extra
+// reference for the whole process, where the cartridge frees and reloads them
+// with every level like the other eight.
 
 extern "C" void hal_fill_coin_vtable(void)
 {
     void **vt = _ZTV8daCoin_c;
     hal_fill_common_model_vtable();
-    port_coin_models_preload();
     port_coin_states_seat();
     bw_fill_shared(vt);
     vt[0] = (void *)coin_init;
@@ -1013,8 +973,131 @@ static int __fastcall cap_init(void *s, void *)
 { return ((daObjMarioCap_c *)s)->daObjMarioCap_c::InitResources(); }
 static int __fastcall cap_clean(void *s, void *)
 { return ((daObjMarioCap_c *)s)->daObjMarioCap_c::CleanupResources(); }
+/* SM64DS_CAP_PROBE=2 reports the SINGLE-PLAYER half of the same question the
+   render probe below answers for VS, and it is on Behavior rather than Render
+   because a cap the manager never raises is never handed to its Render slot at
+   all: the render probe stays silent and says nothing about why.
+
+   Two lines, both on a verdict change only, so a 600-frame run prints a handful:
+
+     [capmgr] -- the three per-character registry bytes the adventure manager
+       (func_ov001_020aaa54) reads, one triple per change. data_ov001_020ad628[c]
+       is the state byte: bit 0x10 is "character c is unlocked" and the only
+       writer of it is func_ov001_020ab2e4, which Stage::InitResources:313 calls.
+       Low two bits 2 = "this character's list is finished for the level".
+     [capb]  -- per cap actor: type, model index (0 Mario, 1 Luigi, 2 Wario),
+       unk_400 (the registry priority), unk_3ff (Behavior's own hide flag) and
+       byte +0x3eb, whose bit 1 is what the manager sets and what Behavior reads
+       (src/actors/daObjMarioCap_c.cpp:206-212). bit1=0 means invisible AND
+       inert: Behavior returns before the state machine, so nothing can be
+       picked up.
+
+   Both are read-only and cost one getenv per process. INERT UNLESS SET. */
+extern "C" {
+extern unsigned char data_ov001_020ad628[];
+extern unsigned char data_ov001_020ad62c[];
+extern unsigned char data_ov001_020ad630[];
+}
 static int __fastcall cap_behavior(void *s, void *)
-{ return ((daObjMarioCap_c *)s)->daObjMarioCap_c::Behavior(); }
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *e = std::getenv("SM64DS_CAP_PROBE");
+        on = (e && e[0] == '2') ? 1 : 0;
+    }
+    if (on) {
+        static unsigned char last628[3], last62c[3], last630[3];
+        static int mgr_seen;
+        if (!mgr_seen ||
+            last628[0] != data_ov001_020ad628[0] ||
+            last628[1] != data_ov001_020ad628[1] ||
+            last628[2] != data_ov001_020ad628[2] ||
+            last62c[0] != data_ov001_020ad62c[0] ||
+            last62c[1] != data_ov001_020ad62c[1] ||
+            last62c[2] != data_ov001_020ad62c[2] ||
+            last630[0] != data_ov001_020ad630[0] ||
+            last630[1] != data_ov001_020ad630[1] ||
+            last630[2] != data_ov001_020ad630[2]) {
+            for (int i = 0; i < 3; ++i) {
+                last628[i] = data_ov001_020ad628[i];
+                last62c[i] = data_ov001_020ad62c[i];
+                last630[i] = data_ov001_020ad630[i];
+            }
+            mgr_seen = 1;
+            std::printf("[capmgr] state628 %02x %02x %02x  busy62c %02x %02x %02x"
+                        "  count630 %u %u %u\n",
+                        last628[0], last628[1], last628[2],
+                        last62c[0], last62c[1], last62c[2],
+                        (unsigned)last630[0], (unsigned)last630[1],
+                        (unsigned)last630[2]);
+        }
+        {
+            static unsigned uids[64];
+            static unsigned char shown[64];
+            static int nseen;
+            const char *c = (const char *)s;
+            const unsigned uid = (unsigned)(size_t)c;
+            const unsigned char f3eb = *(const unsigned char *)(c + 0x3eb);
+            int slot = -1, say = 0;
+            for (int i = 0; i < nseen; ++i)
+                if (uids[i] == uid) { slot = i; break; }
+            if (slot < 0) {
+                if (nseen < 64) {
+                    slot = nseen++;
+                    uids[slot] = uid;
+                    shown[slot] = f3eb;
+                    say = 1;
+                }
+            } else if (shown[slot] != f3eb) {
+                shown[slot] = f3eb;
+                say = 1;
+            }
+            /* The collision half. func_ov002_020b6fcc, the state the raised cap
+               runs, does nothing at all until dCcAc_c::otherOwner names an
+               actor (src/actors/daObjMarioCap_c.cpp:978): that is the field the
+               cylinder system writes when something overlaps this cap, and the
+               pickup -- Player::SetNewHatCharacter -- is four lines below it.
+               A cap that is raised and drawn but whose otherOwner never leaves
+               zero cannot be collected, and no other probe in the tree says so.
+               dCcAc_c sits at this+0x110: vulnFlags +0x1c, hitFlags +0x20,
+               otherOwner +0x24. One line per change. */
+            {
+                static unsigned ccuid[64], cclast[64];
+                static int ccseen;
+                const unsigned other = *(const unsigned *)(c + 0x110 + 0x24);
+                const unsigned hits = *(const unsigned *)(c + 0x110 + 0x20);
+                const unsigned key = other ^ (hits << 1);
+                int cs = -1, csay = 0;
+                for (int i = 0; i < ccseen; ++i)
+                    if (ccuid[i] == uid) { cs = i; break; }
+                if (cs < 0) {
+                    if (ccseen < 64) { cs = ccseen++; ccuid[cs] = uid;
+                                       cclast[cs] = key; csay = 1; }
+                } else if (cclast[cs] != key) { cclast[cs] = key; csay = 1; }
+                if (csay)
+                    std::printf("[capcc] uid %u otherOwner %08x hitFlags %08x "
+                                "vulnFlags %08x\n", uid, other, hits,
+                                *(const unsigned *)(c + 0x110 + 0x1c));
+            }
+            if (say)
+                std::printf("[capb] uid %u pos(%d,%d,%d) area %d type %d model %d"
+                            " unk_400 %02x unk_3ff %02x f3eb %02x bit1 %d -> %s\n",
+                            uid,
+                            *(const int *)(c + 0x5c) >> 12,
+                            *(const int *)(c + 0x60) >> 12,
+                            *(const int *)(c + 0x64) >> 12,
+                            (int)*(const signed char *)(c + 0xcc),
+                            *(const int *)(c + 0x3f0),
+                            *(const int *)(c + 0x3f4),
+                            *(const unsigned char *)(c + 0x400),
+                            *(const unsigned char *)(c + 0x3ff),
+                            f3eb, (f3eb & 2) ? 1 : 0,
+                            (f3eb & 2) ? "RAISED, collectable"
+                                       : "HIDDEN, Behavior returns early");
+        }
+    }
+    return ((daObjMarioCap_c *)s)->daObjMarioCap_c::Behavior();
+}
 /* SM64DS_CAP_PROBE=1 reports, once per run, the two words the ROM's own
    WaterfallMist::Render gates on before it draws anything
    (src/actors/daObjMarioCap_c.cpp:14):
@@ -1088,6 +1171,66 @@ static int __fastcall cap_render(void *s, void *)
                          *(const int *)(c + 0x80) < 0x100)
                             ? "RETURNS EARLY, nothing drawn" : "draws");
             }
+        }
+    }
+    /* SM64DS_CAP_TRIS=1: what this cap's OWN Render puts into the frame's
+       polygon list, and where on the screen it lands -- the same instrument
+       shape lane YEGG2 used for the Yoshi egg, and for the same reason: "the
+       caps do not show up" is a DRAWING report, and the probe above only
+       witnesses that Render was ENTERED. One line per call while the count is
+       nonzero or the verdict changes, so a run says "this cap drew N triangles
+       inside the visible screen at x[a..b] y[c..d]" instead of "Render ran".
+       A DS screen is 256x192; alpha 0 would be geometry the raster discards.
+       Off unless the env is set. */
+    {
+        static int tris_on = -1;
+        if (tris_on < 0) tris_on = std::getenv("SM64DS_CAP_TRIS") != 0;
+        if (tris_on) {
+            size_t before = 0, after = 0;
+            ntr::gx_polygons(before);
+            const int r = ((daObjMarioCap_c *)s)->daObjMarioCap_c::Render();
+            const ntr::GxTriangle *t = ntr::gx_polygons(after);
+            const size_t n = after > before ? after - before : 0;
+            static unsigned uids[64];
+            static int lastn[64];
+            static int nseen;
+            const unsigned uid = (unsigned)(size_t)s;
+            int slot = -1, say = 0;
+            for (int i = 0; i < nseen; ++i)
+                if (uids[i] == uid) { slot = i; break; }
+            if (slot < 0) {
+                if (nseen < 64) { slot = nseen++; uids[slot] = uid;
+                                  lastn[slot] = (int)n; say = 1; }
+            } else if (lastn[slot] != (int)n) { lastn[slot] = (int)n; say = 1; }
+            if (say) {
+                if (n == 0) {
+                    std::fprintf(stderr, "[captris] uid %u: 0 triangles "
+                                 "submitted\n", uid);
+                } else {
+                    float mnx = 1e30f, mxx = -1e30f, mny = 1e30f, mxy = -1e30f;
+                    unsigned amin = 255, amax = 0;
+                    int textured = 0;
+                    for (size_t i = before; i < after; ++i) {
+                        for (int v = 0; v < 3; ++v) {
+                            const float X = t[i].v[v].x, Y = t[i].v[v].y;
+                            if (X < mnx) mnx = X;
+                            if (X > mxx) mxx = X;
+                            if (Y < mny) mny = Y;
+                            if (Y > mxy) mxy = Y;
+                        }
+                        if (t[i].alpha < amin) amin = t[i].alpha;
+                        if (t[i].alpha > amax) amax = t[i].alpha;
+                        if (t[i].tex) ++textured;
+                    }
+                    std::fprintf(stderr, "[captris] uid %u: %u triangles, "
+                                 "%d textured, alpha %u..%u, screen box "
+                                 "x[%.0f..%.0f] y[%.0f..%.0f]\n",
+                                 uid, (unsigned)n, textured, amin, amax,
+                                 mnx, mxx, mny, mxy);
+                }
+                std::fflush(stderr);
+            }
+            return r;
         }
     }
     return ((daObjMarioCap_c *)s)->daObjMarioCap_c::Render();
@@ -1532,8 +1675,23 @@ static int __fastcall as_render(void *s, void *)
     port_actor_render_probe("ARROW_SIGN", (char *)s + 0xd4);
     return ((daObjYajirusi_c *)s)->daObjYajirusi_c::Render();
 }
+/* Slot 16, the sign's destructor, and the one AfterCleanupResources runs on
+   every sign that dies (a giant Mario's hit ends in Kill -> MarkForDestruction).
+   The host ArrowSignRight is the FLAT view (include/ArrowSignRight.h), which has
+   no base class, so ~ArrowSignRight() destroys only the Model, the collider and
+   the shadow. The ROM's ~ArrowSignRight ends by chaining to ~dActor_c, which is
+   what unlinks the sign's node from the global actor list (data_0209b468), and
+   without it the node stayed in the list while AfterCleanupResources freed the
+   block under it: the next spawn that landed on those bytes left the list with a
+   garbage owner, and the next walk of the list (any FindWithID, e.g. a coin's
+   bounce) faulted. So this face runs the base tail the same way the Coin face
+   does: the members first, then _ZN8dActor_cD2Ev. */
 static int __fastcall as_d1(void *s, void *)
-{ return (int)(size_t)_ZN15daObjYajirusi_cD1Ev((int *)s); }
+{
+    int r = (int)(size_t)_ZN14ArrowSignRightD1Ev((int *)s);
+    _ZN8dActor_cD2Ev(s);
+    return r;
+}
 static int __fastcall as_d0(void *s, void *)
 { return (int)(size_t)_ZN15daObjYajirusi_cD0Ev((int *)s); }
 /* Slot 27, OnHitByMegaChar(Player &). The sign has its OWN body (ov098

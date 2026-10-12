@@ -1,5 +1,4 @@
 //cpp
-#include "IRQ.h"
 // @symbol _ZN3IRQ13DmaTimHandlerEj
 //
 // Language-mode flip only: the compiler mangles the name, it is no longer
@@ -7,6 +6,7 @@
 // See notes/plan-cpp-language-mode.md phase 1 (layout-free SDK namespaces).
 #include "types.h"
 extern "C" {
+extern void _ZN3IRQ11DisableIRQsEj(u32 mask);
 typedef struct
 {
   void (*fn)(void *);
@@ -39,7 +39,7 @@ void DmaTimHandler(u32 idx)
   {
     return;
   }
-  IRQ::DisableIRQs(mask);
+  _ZN3IRQ11DisableIRQsEj(mask);
 }
 
 }

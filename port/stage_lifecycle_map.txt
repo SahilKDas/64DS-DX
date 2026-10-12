@@ -154,8 +154,13 @@ from a mode the port never entered.
       screen to latch it, and port_level_boot_target() is the seam.
   data_0209f264 = SM64DS_ENTRANCE    data_0209f264 = data_0209f268
       SAME SHAPE. data_0209f268 is the entrance the previous scene chose.
-  data_0209f220 = SM64DS_STAR_FILTER data_0209f220 = data_0209f1f0
-      SAME SHAPE. data_0209f1f0 is the game-mode byte.
+  data_0209f220 = data_0209f1f0      data_0209f220 = data_0209f1f0
+      THE ROM'S OWN LINE NOW, after the 0.4.1 patch. data_0209f1f0 is the act
+      the level change staged and the star select's own output
+      (src/_ZN12dScStarSel_c8BehaviorEv.cpp:147). This used to read
+      SM64DS_STAR_FILTER unconditionally and so threw the player's chosen act
+      away on every course entry. SM64DS_STAR_FILTER now seats the PENDING act
+      once, on the first stage boot, exactly as SM64DS_ENTRANCE does above it.
   data_0209f344 = &VS_STAR_SPAWN_    data_0209f344 = &data_02075720[
     ORDERS[data_020a1040 % 6][0]       func_0203dad4() % 6]
       TRUE DUPLICATE of the ROM's tail block, and the comment at
@@ -2967,3 +2972,156 @@ one combination that differs is SM64DS_ROLLBACK_ACTOR_RENDER=1 (the conservative
 re-sim), where the bucket runs but rb_skip_render() is still true: the ROM's
 Render now draws a level the old path would have skipped. Nothing is presented
 on those frames, so the cost is rasterising work in a debug mode.
+
+
+19. LANE GAMEOVER1 (run linkfull): THE PORT HAS A STAGE TEARDOWN, ON ONE PATH
+------------------------------------------------------------------------------
+
+Sections 5, 9 and 12 each ended on the same condition: slot 3 stays a named
+abort "until the port has a real Stage teardown". The Game Over report made the
+condition urgent -- losing the last life aborted every build with "FATAL: Stage
+vtable slot 3 (CleanupResources) is not hosted" -- and this lane gave the port
+that teardown for the one family of requests that needs it: a scene request
+from a level with no level change behind it.
+
+THE PATH, every step the ROM's own:
+  KillPlayer / HitDeathPlane (no life left)  StartSceneFade(8, 0, 0), no level
+  Scene::BeforeBehavior, slot 7              runs the fade, marks the Stage
+  func_02043880, phase 1                     Stage and every child to cleanup
+  cleanup Process, slots 4 / 3 / 5           Stage::CleanupResources runs;
+                                             Scene::AfterCleanupResources
+                                             clears data_02092660;
+                                             fBase_c::AfterCleanupResources
+                                             destroys the Stage (slot 16)
+  Scene::SpawnIfNecessary                    spawns dScGameOver_c
+  CONTINUE: StartFile(1, 0)                  level request + scene 3
+  QUIT: StartSceneFade(1, 0, 0)              the title; its file select ends
+                                             in the same StartFile
+
+WHERE THE PORT HOLDS IT (hal/level_change.cpp, port_level_scene_crossing): the
+change poll, the ROM's seat for SpawnIfNecessary, enters the crossing on the
+first frame after the Stage is marked, pumps the ROM's own phase passes until
+the Stage is gone, runs the scene frames in the whole host frame (the
+star-select interlude's port_interlude_frame) until a scene hands back a level,
+and returns; the ordinary apply then builds a NEW Stage (port_stage_create is
+re-entrant now) and boots it through the first-entry path. Scenes 1, 3 and 4
+keep their existing paths; an unhosted scene keeps the named abort.
+
+SLOT 3 (hal/stage_bridges.cpp, st_clean): the ROM's body inside the crossing
+and inside the at-exit probe; the named abort on any other dispatch and under
+SM64DS_STAGE_SLOT3_TRAP. SM64DS_STAGE_SLOT3_ROM is no longer read. The
+paragraphs above that describe slot 3 as "SEATED AND ENV-GATED", "reached only
+under SM64DS_STAGE_SLOT3_ROM" and "AND SLOT 3 STILL STOPS THERE", and the
+skybox note's "exists only when SM64DS_STAGE_SLOT3_ROM is set", are history as
+of this section; the banner "THE GATE, TURNED ROUND" in that file is current.
+
+THE HOST ADAPTERS around the body, each one statement of it:
+  skybox DestroyVirt         a private copy of the skybox's own table, slot 1 a
+                             cdecl face onto the ROM's Model D0 (the call site
+                             pushes its receiver)
+  area transformers          the same for ??_7TextureTransformer@@6B@, which
+                             has no ROM slot 1 at all (MSVC's one folded
+                             destructor; +4 is the next table's RTTI locator:
+                             the DEP fault BUGS2 saw with the old gate open)
+  func_02073244 on WIPES     the static pool is the port's, not the Stage's:
+                             withdrawn before the body (its own null arm
+                             runs), handed back at the next Stage's slot 0
+  Deallocate() after GetFile the src _MSC_VER arm passes GetFile's result (the
+                             ARM register ride); the port's LoadFile row for
+                             that KCL image is dropped so no level change frees
+                             it again (hal/level_boot.cpp,
+                             port_level_kcl_released)
+
+ONE MORE, NOT IN THE STAGE: dScGameOver_c::Behavior's gate calls the installed
+fader's slot 0x14 cdecl-shaped with its own `this` in ECX, and the FaderColor
+predicate faces in hal/scene_boot.cpp read ECX. They now take the receiver from
+ECX only when ECX is a fader on their tables, else from the stack argument.
+
+WHAT IS NOT DONE, measured: after QUIT -> title -> file select -> a file, the
+level boots and plays but its 2D HUD shows the wrong sprites. The sub engine's
+bring-up runs per level entry (hal_sub_screen_level_init); the main engine's
+display statements of Stage::InitResources are hosted once a process
+(hal/star_flow.cpp's port_course_seat), so a level entered after the title keeps
+the title's main-engine state. The CONTINUE path's HUD is right. The VS results
+request (scene 7) is unhosted and unchanged.
+
+20. LANE HUDQUIT1 (run linkfull): STAGE::INITRESOURCES' OWN RESET, ON EVERY
+    STAGE BUILD
+------------------------------------------------------------------------------
+
+Section 19 ended on a leftover: after QUIT -> title -> file select -> a file,
+the level plays but its HUD is on the wrong screens. Its guess at the cause
+(main-engine display statements hosted once a process in hal/star_flow.cpp's
+port_course_seat) was an inference and is corrected here: port_course_seat
+seats the player globals and nothing else.
+
+MEASURED (the display registers read at the selftest picture, the same route
+and a fresh boot into the same level and file): POWCNT1 020f on the route,
+820f on the fresh boot. Bit 15 is the display swap, and OAM::Load
+(src/_ZN3OAM4LoadEv.cpp) sends the two sprite shadows to the engines by it, so
+the lives and star counter landed on the bottom screen and the camera buttons
+and the map marker on the top one, drawn out of the wrong engine's character
+memory. Every changed pixel was a sprite; the 3D matched.
+
+WHERE THE CARTRIDGE SETS IT: src/_ZN5Stage13InitResourcesEv.cpp:152-153, the
+first two statements of the once-per-init block, dScene_c::Initialise3dGraphics
+(its dScene_c::ResetHardwareRegisters starts with POWCNT1 |= 0x8000 and resets
+both 2D engines) and Enable3dEngines. Scenes reach the same reset through
+dScene_c::BeforeInitResources (slot 1); the Stage's slot 1 is
+Scene::ResetFadersAndSound only, so for a level the reset is InitResources'
+own, and hal/level_boot.cpp's port_stage_boot_body (the port's copy of that
+block) did not make it. The title and its file select clear the bit; nothing
+on the level path set it again after the first boot.
+
+WHAT CHANGED: port_stage_boot_body makes both calls at their InitResources
+position, before the archive mount. The statements it already hosted later in
+that order (hal_sub_screen_level_init, the engine-A seat in
+port_boot_course_sound) re-seat what the reset clears. The route's picture is
+now byte-identical to the fresh boot's.
+
+NOT HOSTED STILL, from the same block, each unchanged by this section and none
+of them measured to differ between routes after the reset: GX::DisableAllBanks
+before SetVramBanks, Initialise3dGraphics(0x1F), GX::DispOn,
+InitialiseVramGlobals, BG1CNT_A = 0x1f1c, and the DISPCNT layer-bit stores
+(the port publishes the two masks every frame instead).
+
+21. LANE GOVERCUT1 (run linkfull): THE OPENING AFTER A GAME OVER, THE ROM'S
+    GATE ON THE CROSSING'S FILE-SELECT ENTRY
+------------------------------------------------------------------------------
+
+After GAME OVER -> QUIT -> title -> a NEW file (section 19's crossing, with
+section 20's reset), the castle grounds came up with the HUD at once. The
+cartridge plays the opening there, as it does after a fresh boot.
+
+WHAT DECIDES IT ON THE CARTRIDGE: nothing is armed. StartFile (0x0202ae88)
+writes game mode 0 and requests level 1; Stage::LoadClsnAndObjects (ov002
+0x020fe190, src :78-100) sets intro when the mode is 0, the file's flags2
+bit 7 (data_0209caa0+8, "the opening has been seen") is clear and
+ContinueKuppaScriptIfNecessary returns 0, then declines the HUD (actor 0x14e)
+and calls StartIntroCutscene (0x0200eedc). The flag is the picked file's own:
+the file select copies its record into data_0209caa0 (measured with a write
+watch: dScDSMT_c::InitResources -> func_ov007_020b066c -> func_ov007_020cc600
+-> func_02013c84), and a new file's record carries flags2 0x08, bit 7 clear.
+
+WHAT THE PORT DID: hal/level_boot.cpp's boot writes flags2 bit 7 SET on every
+boot the intro seam was not armed for (that is what keeps the direct
+SM64DS_LEVEL boots out of the opening). Only the title bridge's
+port_level_entry_latch armed it. The crossing hands its StartFile request to
+the ordinary level-change apply, so the boot read "flags2 bit7 0 | armed 0"
+and overwrote the file's value before the ROM's gate read it.
+
+WHAT CHANGED: port_level_scene_crossing arms the same one-shot seam when a
+scene hands the game back through StartFile (hal/level_change.cpp). Nothing
+is decided there: CONTINUE (func_0202ae74's StartFile(1, 0)) reads bit 7 set
+and the seam answers no, as does SM64DS_SKIP_INTRO or a mode other than 0.
+
+MEASURED (R11's QUIT route with the opening gate's input): the level-1 player
+stream after the crossing equals a fresh boot's opening frame for frame over
+4000 frames (the opening's own level change at +2474, bit 7 0 -> 1 at +3444,
+363 distinct positions); CONTINUE's lines and pictures are unchanged.
+
+LEFT AS FOUND: at +1800 (the opening's character scene) the bottom-screen
+inset differs between the two routes in sprite positions only (engine B
+registers equal, sub OAM entries 16-37 moved); on both routes those sprites
+show the file select's leftover letters. That is the opening's bottom screen,
+not this crossing, and is reported for its own lane.

@@ -247,7 +247,6 @@ Lend:
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 extern "C" {  /* Address-named TU-local helper; original spelling unknown. */
-// @symbol func_ov065_0211ad70
 void func_ov065_0211ad70(daObjCtMecha05_c *actor)
 {
     actor->mState = 0;
@@ -291,7 +290,6 @@ int daObjCtMecha05_c::CleanupResources()
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 extern "C" {  /* Address-named TU-local helper; original spelling unknown. */
-// @symbol func_ov065_0211ac0c
 void func_ov065_0211ac0c(daObjCtMecha05_c *actor)
 {
     int distance = actor->mPosY - actor->mGroundY;
@@ -323,8 +321,7 @@ void func_ov065_0211ac0c(daObjCtMecha05_c *actor)
         0xdc000, 0x32000, 0x28a000, 0xf);
 }
 }
-// @symbol _ZN16daObjCtMecha05_cD1Ev
-// @symbol _ZN16daObjCtMecha05_cD0Ev
+
 /* -------------------------------------------------------------------------- */
 /*   _ZN16daObjCtMecha05_cD1Ev  0x0211ab60  size 0x4c  (complete-object)      */
 /*   _ZN16daObjCtMecha05_cD0Ev  0x0211abac  size 0x60  (deleting)            */

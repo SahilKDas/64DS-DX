@@ -56,7 +56,19 @@ void Message::AddChar(char c)
     }
 
     {
+#ifdef _MSC_VER
+        /* THE WIDTH INDEX IS THE BYTE THE CALLER PASSED, 0..255. On the DS
+           every caller hands AddChar a zero-extended byte in r0 and the ROM
+           indexes the table with r0 as it came (ldrb r6, [r3, r4] at
+           0x0201b690, no sign extension in between). MSVC sign-extends a
+           plain char parameter, so a code from 0x80 up (the button icons
+           0xf2..0xfd that data_0208ee6c hands over, the accented letters)
+           read up to 128 bytes BEFORE the table and got a garbage advance,
+           which scrambled the rest of the line. */
+        unsigned char width = data_0208f074[(unsigned char)c];
+#else
         unsigned char width = data_0208f074[c];
+#endif
         int b = data_0209d6b0;
         int d = data_0209d678;
         data_0209d678 = (d + width) & 7;

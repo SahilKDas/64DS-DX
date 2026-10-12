@@ -96,6 +96,93 @@ import sys
 # reverse face per slot. Lane FACES4 wrote both this wave, in port/faces_sync.txt,
 # so the condition is met and the rows go back.
 
+# RETIRED at VARIANT2 2026-09-23 (run linkfull, batch B1): each name below is
+# defined by its own src D0 file now, in that file's #ifdef _MSC_VER arm,
+# which calls this class's flat D1 (still a row here, so the D1 stays under
+# tools/dtor_store_guard.py) and then the class's own operator delete:
+# the same two steps the retired forwarder made (the D1 chain, then
+# _ZN6Memory10DeallocateEPvP4Heap with GAME_HEAP_PTR, the word at
+# 0x020a0eac). The rows came out of their batches rather than being
+# skipped, so the generated files carry each name exactly once:
+#   _ZN11PyramidLiftD0Ev
+#   _ZN12daDossyCap_cD0Ev
+#   _ZN13daObjDorifu_cD0Ev
+#   _ZN13daObjSwdoor_cD0Ev
+#   _ZN16dPathLiftActor_cD0Ev
+#   _ZN17BigMovingIceBlockD0Ev
+#   _ZN17BowserPuzzlePieceD0Ev
+#   _ZN6CoffinD0Ev
+#   _ZN6DorrieD0Ev
+#   _ZN8PoleLiftD0Ev
+
+# RETIRED at VARIANT2 2026-09-23 (run linkfull, batch B2): each name below is
+# defined by its own src D0 file now, in that file's #ifdef _MSC_VER arm:
+# the qualified destructor call, which MSVC expands in place exactly as it
+# did here, then the class's own operator delete, which is
+# _ZN6Memory10DeallocateEPvP4Heap with the word at 0x020a0eac
+# (GAME_HEAP_PTR). The arm's object makes the same calls, in the same
+# order, as the forwarder it replaces. These classes had no D1 row here,
+# so with this retirement they leave tools/dtor_store_guard.py's scope;
+# the guard passed on every one of them on the last build that carried
+# the forwarder. The rows came out of their batches rather than being
+# skipped, so the generated files carry each name exactly once:
+#   _ZN13PeachPaintingD0Ev
+#   _ZN13PrincessPeachD0Ev
+#   _ZN21daObj_volcanoCannon_cD0Ev
+#   _ZN4ToadD0Ev
+#   _ZN9KoopaFlagD0Ev
+
+# RETIRED at VARIANT2 2026-09-23 (run linkfull, batch B3): each name below is
+# defined by its own src D0 file now, in that file's #ifdef _MSC_VER arm
+# (port/slice_w26_variant2.txt enrols the file): the campaign's qualified
+# call, a direct call to the ??1 the class's D1 file defines out of line,
+# then the class's own operator delete. Those are the same two calls the
+# retired forwarder made, in the same order, with the same deallocation
+# (operator_delete2 for the Model family, Deallocate with the word at
+# 0x020a0eac for the rest). The D1 and D2 rows of these classes stay.
+# The rows came out of their batches rather than being skipped, so the
+# generated files carry each name exactly once:
+#   _ZN11dCapEnemy_cD0Ev
+#   _ZN14KnockDownPlankD0Ev
+#   _ZN15TextureSequenceD0Ev
+#   _ZN15dScMgSnowball_cD0Ev
+#   _ZN18TextureTransformerD0Ev
+#   _ZN9ModelAnimD0Ev
+#   _ZN9TowerStepD0Ev
+
+# RETIRED at VARIANT2 2026-09-23 (run linkfull, batch B4): _ZN9ModelAnimD2Ev is
+# defined by src/_ZN9ModelAnimD2Ev.cpp now, in its #ifdef _MSC_VER arm
+# (port/slice_w26_variant2.txt enrols the file): the qualified, direct call to
+# the ??1ModelAnim@@UAE@XZ that src/_ZN9ModelAnimD1Ev.cpp defines out of line,
+# the one call the retired forwarder made. The row came out of batch 5 rather
+# than being skipped, so the generated files carry the name exactly once.
+
+# RETIRED at V3B 2026-09-24 (run linkfull wave 27, batch 1): each D1 name below
+# is defined by its own src D1 file now, in that file's #ifdef _MSC_VER arm,
+# whose text is this generator's forwarder for the name (the qualified call,
+# so MSVC emits the inline destructor there instead of here) and whose object
+# is the retired forwarder's, instruction for instruction. They were each
+# class's LAST row here (VARIANT2's batch B1 moved their D0s into src and kept
+# these D1s under the guard), and slot 16 is their live teardown path, so they
+# do NOT leave the guard: tools/dtor_store_guard.py's SRC_ARMS names each src
+# file and re-proves the ROM body it stands for on every build, exactly as it
+# did while the forwarder lived here. The rows came out of their batches
+# rather than being skipped, so the generated files no longer carry them:
+#   _ZN13daObjSwdoor_cD1Ev
+#   _ZN17BigMovingIceBlockD1Ev
+#   _ZN17BowserPuzzlePieceD1Ev
+#   _ZN6CoffinD1Ev
+
+# RETIRED at RS5A 2026-09-25 (run linkfull wave 31, row R8): _ZN8SignPostD0Ev
+# is defined by src/_ZN8SignPostD0Ev.cpp now, in its #ifdef _MSC_VER arm, in
+# batch B1's shape: the flat D1 (still a row here, so the D1 stays under
+# tools/dtor_store_guard.py) and then the class's own operator delete, the
+# same two steps the retired forwarder made. The arm is what keeps that file's
+# key-function forcer, an EMPTY SignPost::Kill, out of the MSVC build: it had
+# been the port's only ?Kill@SignPost@@UAEXXZ, so a signpost's slot 31 ran
+# nothing. The row came out of batch 1 rather than being skipped, so the
+# generated files carry the name exactly once.
+
 BATCHES = {}
 
 BATCHES[1] = """
@@ -108,7 +195,6 @@ _ZN10daPgDfdr_cD0Ev
 _ZN10daPgDfdr_cD1Ev
 _ZN10daPgMthr_cD0Ev
 _ZN10daSldMng_cD0Ev
-_ZN11PyramidLiftD0Ev
 _ZN11PyramidLiftD1Ev
 _ZN11daChScene_cD0Ev
 _ZN11daObjFire_cD0Ev
@@ -119,7 +205,6 @@ _ZN11daWarpkun_cD0Ev
 _ZN11daWarpkun_cD1Ev
 _ZN11dScMgCard_cD0Ev
 _ZN11dScMgCard_cD1Ev
-_ZN12daDossyCap_cD0Ev
 _ZN12daDossyCap_cD1Ev
 _ZN12daIDonketu_cD0Ev
 _ZN12daIDonketu_cD1Ev
@@ -132,14 +217,9 @@ _ZN12dScMgJump2_cD0Ev
 _ZN12dScMgJump2_cD1Ev
 _ZN12dScMgSound_cD0Ev
 _ZN12dScMgSound_cD1Ev
-_ZN13PeachPaintingD0Ev
-_ZN13PrincessPeachD0Ev
-_ZN13daObjDorifu_cD0Ev
 _ZN13daObjDorifu_cD1Ev
 _ZN13daObjEmmLog_cD0Ev
 _ZN13daObjEmmLog_cD1Ev
-_ZN13daObjSwdoor_cD0Ev
-_ZN13daObjSwdoor_cD1Ev
 _ZN13daObjTdFuta_cD0Ev
 _ZN13daObjTdFuta_cD1Ev
 _ZN13daObjWakame_cD0Ev
@@ -188,7 +268,6 @@ _ZN15daYurei_Mucho_cD0Ev
 _ZN15daYurei_Mucho_cD1Ev
 _ZN15dScMgRoulette_cD0Ev
 _ZN15dScMgRoulette_cD1Ev
-_ZN16dPathLiftActor_cD0Ev
 _ZN16dPathLiftActor_cD1Ev
 _ZN16daObjBC_Switch_cD0Ev
 _ZN16daObjBC_Switch_cD1Ev
@@ -214,10 +293,6 @@ _ZN16daObjRcBuranko_cD1Ev
 _ZN16daObjRc_Dorifu_cD0Ev
 _ZN16daObjRc_Dorifu_cD1Ev
 _ZN16daObjWaterfall_cD0Ev
-_ZN17BigMovingIceBlockD0Ev
-_ZN17BigMovingIceBlockD1Ev
-_ZN17BowserPuzzlePieceD0Ev
-_ZN17BowserPuzzlePieceD1Ev
 _ZN17daObjBk_Rotebar_cD0Ev
 _ZN17daObjBk_Rotebar_cD1Ev
 _ZN17daObjBk_Ukisima_cD1Ev
@@ -266,10 +341,6 @@ _ZN21daObjKm2_Fall_Block_cD0Ev
 _ZN21daObjKm2_Fall_Block_cD1Ev
 _ZN21daObjKm3_Kurumajiku_cD0Ev
 _ZN21daObjKm3_Kurumajiku_cD1Ev
-_ZN21daObj_volcanoCannon_cD0Ev
-_ZN6CoffinD0Ev
-_ZN6CoffinD1Ev
-_ZN6DorrieD0Ev
 _ZN6DorrieD1Ev
 _ZN7daBar_cD0Ev
 _ZN7daBar_cD1Ev
@@ -280,21 +351,17 @@ _ZN7daDgr_cD0Ev
 _ZN7daDgr_cD1Ev
 _ZN7daDkk_cD0Ev
 _ZN7daDkk_cD1Ev
-_ZN8PoleLiftD0Ev
 _ZN8PoleLiftD1Ev
-_ZN8SignPostD0Ev
 _ZN8SignPostD1Ev
 _ZN8daEyBm_cD0Ev
 _ZN8daKpFr_cD0Ev
 _ZN8daKrpa_cD0Ev
 _ZN8daSCre_cD0Ev
 _ZN8daSCre_cD1Ev
-_ZN9KoopaFlagD0Ev
 _ZN9LightBeamD0Ev
 _ZN9daSCoin_cD0Ev
 _ZN9daSCoin_cD1Ev
 _ZN9daSetSE_cD0Ev
-_ZN4ToadD0Ev
 _ZN8daTree_cD0Ev
 _ZN8daTree_cD1Ev
 """
@@ -417,20 +484,12 @@ _ZN7daPkn_cD1Ev
 # is an LNK2005 -- out/SEATS2/seat_table.md's stated reason nobody seated these.
 
 BATCHES[5] = """
-_ZN11dCapEnemy_cD0Ev
 _ZN11dCapEnemy_cD1Ev
-_ZN15TextureSequenceD0Ev
 _ZN15TextureSequenceD1Ev
-_ZN15dScMgSnowball_cD0Ev
-_ZN18TextureTransformerD0Ev
 _ZN18TextureTransformerD1Ev
-_ZN9ModelAnimD0Ev
 _ZN9ModelAnimD1Ev
-_ZN9ModelAnimD2Ev
-_ZN14KnockDownPlankD0Ev
 _ZN14KnockDownPlankD1Ev
-_ZN14daObjBk_Lift_cD0Ev
-_ZN14daObjBk_Lift_cD1Ev
+_ZN9TowerStepD1Ev
 """
 
 # Which premise each batch stands on.  "inline" is DTORS-A's: the header spells

@@ -2,7 +2,6 @@
 // @symbol func_ov002_020e3e00
 /* recovered: shared common types */
 #include "common.h"
-#include "Model.h"
 //
 
 /* decl_common.h is deliberately NOT included. This file declares its callees
@@ -38,8 +37,10 @@ extern "C" {
 }
 
 
+struct Model { };
 
 extern "C" void _ZN5Model6RenderEPK7Vector3(Model *self, const Vector3 *v);
+extern "C" void _ZN9ModelBase12ApplyOpacityEj(Model *self, unsigned int a, int b);
 
 typedef struct { int m[12]; } Mat;
 
@@ -80,7 +81,7 @@ extern "C" void func_ov002_020e3e00(Model *obj, Vector3 *vec, unsigned int opaci
     func_02016acc(obj, 0x80);
     func_02016b24(obj, 0x40);
     _ZN5Model6RenderEPK7Vector3(obj, vec);
-    obj->ApplyOpacity(opacity, 0);
+    _ZN9ModelBase12ApplyOpacityEj(obj, opacity, 0);
     func_02016b24(obj, 0x80);
     func_02016acc(obj, 0x40);
 

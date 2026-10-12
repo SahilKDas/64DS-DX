@@ -52,9 +52,26 @@ src/__sinit_ov065_0211c440.c
 src/actors/daObjCvNewsLift_c.cpp
 # RETIRED at SLICE1: body now in src/_ZN12WorkElevatorD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
 #src/_ZN12WorkElevatorD0Ev.cpp
-# src/actors/daObjCvNewsLift_c.cpp is NOT here: it ends in a two-instruction mwcc
-# asm veneer (ands r0,r0,#1; bx lr) MSVC cannot compile -- hosted in
-# port/unmatched/WorkElevator_Mtx.cpp until hostgen grows asm excision (U5).
+src/_ZN12WorkElevator16CleanupResourcesEv.cpp
+src/_ZN12WorkElevator6RenderEv.cpp
+src/_ZN12WorkElevator8BehaviorEv.cpp
+src/_ZN12WorkElevator13InitResourcesEv.cpp
+src/func_ov021_0211129c.c
+# The render-side matrix pass, main's daObjCvNewsLift_c::UpdateModelTransforms
+# back-ported into its per-function file (run linkfull, lane ASMCPORT): the
+# ending is main's blink test, so the mwcc asm veneer is gone and the host copy
+# that stood in port/unmatched/WorkElevator_Mtx.cpp is retired.
+src/func_ov021_02111434.c
+src/func_ov021_02111ec4.c
+src/func_ov021_02111edc.cpp
+src/func_ov021_02111f1c.c
+src/func_ov021_02111f34.cpp
+src/func_ov021_02111f74.c
+src/func_ov021_02111f8c.cpp
+src/func_ov021_02111fcc.c
+src/func_ov021_02111fe4.c
+src/func_ov021_02112024.cpp
+src/func_ov021_02112128.c
 
 # ---- ROLLING_ROCK (221) -----------------------------------------------------
 src/actors/daGrock_c.cpp
@@ -92,4 +109,3 @@ port/hal/actor_classes_ov065.cpp
 port/unmatched/Ov065_StateDispatch.cpp
 port/unmatched/Snufit_Behavior.cpp
 port/unmatched/Swoop_Behavior.cpp
-port/unmatched/WorkElevator_Mtx.cpp

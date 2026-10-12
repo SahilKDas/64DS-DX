@@ -13,6 +13,52 @@
 // SM64DS_NO_AUDIO=1 skips the device entirely. The mixer and sequencer still
 // run -- clocked off the video frame instead of the device -- so a WAV dump
 // and every "did that command do anything" check still work.
+//
+// THE DEVICE OPENS ON A WORKER THREAD (run perf2, lane AUDIOBOOT). On some
+// machines winmm takes seconds to answer its first call: on the box this was
+// measured on, waveOutGetNumDevs took 13.4 s and waveOutOpen 7 to 17 s, while
+// every later call (prepare, write, reset) took under a millisecond. The open
+// used to run on the main thread at the first sound push, so the window sat
+// on its first picture for ~25 s before the title appeared. Now the first
+// push starts the open on a worker, gives it OPEN_GRACE_MS (a normal device
+// is live by then and the run is exactly the old one), and returns.
+//
+// WHILE THE WORKER WAITS, A VIRTUAL DEVICE DRAINS THE RING. It is the same
+// NBUF x OUT_FRAMES ring, refilled by the same loop, and each block counts as
+// played when the real clock says a device at SD_MIX_RATE would have finished
+// it -- exactly how waveOut hands a header back. So the mixer and the 192 Hz
+// sequencer clock advance at the pace a device that opened instantly would
+// have driven them, and not at the no-device clock's 546 frames a push, which
+// in a course (30 pushes a second) would have run the music at half speed and
+// brought it up late. Nothing reaches the speaker in that window: the player
+// hears silence until the device exists, and nothing more is lost than that.
+//
+// THE HAND-OVER renders nothing. The blocks the virtual device still has in
+// flight at that instant are prepared and written to the real device in the
+// order they were queued, the oldest from the frame the virtual device has
+// reached, so the speaker starts where an instant device would be; then the
+// ordinary refill runs for the headers the virtual device had already
+// finished -- the same work that push would have done with a device all
+// along. No block is rendered twice and none is skipped, so the tick count
+// and the sequence state carry straight across. (A device that refuses
+// 32768 Hz and opens at 48000 cannot play blocks rendered at 32768: those in
+// flight at the hand-over are dropped, at most 125 ms nobody heard.)
+//
+// TEST KNOBS, all off by default:
+//   SM64DS_AUDIO_OPEN_DELAY_MS=<n>  the worker sleeps n ms before it starts, to
+//                                   force the hand-over mid-level on a machine
+//                                   whose device opens fast.
+//   SM64DS_AUDIO_OPEN_SYNC=1        the old shape: the first push blocks until
+//                                   the device answers (the "instant device"
+//                                   side of an A/B, on one binary).
+//   SM64DS_AUDIO_BOOT_TRACE=<path>  one line per push: mode, frames rendered,
+//                                   the running total, the 192 Hz tick count
+//                                   that total implies, the blocks written.
+//   SM64DS_AUDIO_DEV_DUMP=<path>    every block exactly as handed to
+//                                   waveOutWrite, raw 16-bit stereo, in order.
+//   SM64DS_AUDIO_DEV_SILENT=1       each block is zeroed after that record and
+//                                   before the write, so a proof run can mix
+//                                   at full volume and still play nothing.
 #include "sdat.h"
 
 #include <stdio.h>
@@ -24,16 +70,20 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
+#include <atomic>
+#include <thread>
 #endif
 
 namespace {
 
-enum { OUT_FRAMES = 1024, NBUF = 4, MIX_MAX = 2048 };
+enum { OUT_FRAMES = 1024, NBUF = 4, MIX_MAX = 2048, OPEN_GRACE_MS = 200 };
 
 sd_s16 g_mix[MIX_MAX * 2];      // scratch at SD_MIX_RATE, stereo interleaved
 
-int g_opened;                   // 0 untried, 1 device live, -1 no device
+int g_opened;                   // 0 untried, 1 device live, -1 no device,
+                                // 2 opening on the worker (virtual device)
 int g_devRate = SD_MIX_RATE;
+sd_u32 g_cum;                   // frames rendered since boot, every path
 
 // HOST MASTER VOLUME. SM64DS_VOLUME is an integer 0..100 read once at boot; it
 // scales the already-mixed stereo output by vol/100 in linear amplitude
@@ -80,6 +130,15 @@ sd_s16  *g_buf[NBUF];
 double  g_phase;
 sd_s16  g_last[2];
 
+double now_ms(void)
+{
+    static LARGE_INTEGER f;
+    LARGE_INTEGER n;
+    if (!f.QuadPart) QueryPerformanceFrequency(&f);
+    QueryPerformanceCounter(&n);
+    return n.QuadPart * 1000.0 / f.QuadPart;
+}
+
 int open_at(int rate)
 {
     WAVEFORMATEX wf;
@@ -92,6 +151,121 @@ int open_at(int rate)
     wf.nAvgBytesPerSec = (DWORD)rate * 4;
     return p_Open(&g_dev, WAVE_MAPPER, &wf, 0, 0, CALLBACK_NULL)
            == MMSYSERR_NOERROR;
+}
+
+/* ---- the worker's half ------------------------------------------------
+   Everything the worker writes (g_lib, the p_ pointers, g_dev, the g_w*
+   figures) is written before the one release store to g_async and read by
+   the main thread only after the acquire load that sees it, so the ring and
+   the headers themselves are never touched by two threads. */
+std::atomic<int> g_async;       // 0 still opening, 1 open, -1 failed
+int    g_wFail;                 // 1 no winmm, 2 entry points, 3 refused
+int    g_wRate;
+double g_wLoadMs, g_wOpenMs[2];
+
+int open_device(int delay_ms)
+{
+    if (delay_ms > 0) Sleep((DWORD)delay_ms);
+    const double t0 = now_ms();
+    g_lib = LoadLibraryA("winmm.dll");
+    if (!g_lib) { g_wFail = 1; return 0; }
+    p_Open      = (pfnOpen)GetProcAddress(g_lib, "waveOutOpen");
+    p_Prepare   = (pfnHdr) GetProcAddress(g_lib, "waveOutPrepareHeader");
+    p_Unprepare = (pfnHdr) GetProcAddress(g_lib, "waveOutUnprepareHeader");
+    p_Write     = (pfnHdr) GetProcAddress(g_lib, "waveOutWrite");
+    p_Reset     = (pfnDev) GetProcAddress(g_lib, "waveOutReset");
+    p_Close     = (pfnDev) GetProcAddress(g_lib, "waveOutClose");
+    if (!p_Open || !p_Prepare || !p_Unprepare || !p_Write || !p_Reset || !p_Close) {
+        g_wFail = 2;
+        return 0;
+    }
+    const double t1 = now_ms();
+    g_wLoadMs = t1 - t0;
+    g_wRate = SD_MIX_RATE;
+    int ok = open_at(SD_MIX_RATE);
+    g_wOpenMs[0] = now_ms() - t1;
+    if (!ok) {
+        const double t2 = now_ms();
+        g_wRate = 48000;
+        ok = open_at(48000);
+        g_wOpenMs[1] = now_ms() - t2;
+    }
+    if (!ok) { g_wFail = 3; return 0; }
+    return 1;
+}
+
+void open_worker(int delay_ms)
+{
+    const int ok = open_device(delay_ms);
+    g_async.store(ok ? 1 : -1, std::memory_order_release);
+}
+
+/* ---- the virtual device ------------------------------------------------
+   Per header: when the virtual device finishes playing it (g_vEnd), the order
+   it was queued in (g_vSeq), and where its first frame sits in the rendered
+   stream (g_off, the WAV dump's frame index). g_vBusy is the instant the
+   virtual device's queue runs dry, so a late refill starts playing when it is
+   written and not in the past -- the same idle a starved waveOut has. */
+double g_vEnd[NBUF], g_vBusy;
+unsigned g_vSeq[NBUF], g_seq;
+sd_u32 g_off[NBUF];
+int    g_trim = -1;             // the header handed over part-played, if any
+int    g_trimFrames;            // how much of it the virtual device played
+
+/* ---- the test trace and the device dump -------------------------------- */
+FILE  *g_btFile;
+FILE  *g_ddFile;
+int    g_ddSilent;
+int    g_btPush;
+double g_bt0;
+char   g_btW[160];
+int    g_btWn;
+
+void bt_open(void)
+{
+    const char *p = getenv("SM64DS_AUDIO_BOOT_TRACE");
+    if (p && *p) g_btFile = fopen(p, "w");
+    const char *d = getenv("SM64DS_AUDIO_DEV_DUMP");
+    if (d && *d) g_ddFile = fopen(d, "wb");
+    g_ddSilent = getenv("SM64DS_AUDIO_DEV_SILENT") != 0;
+    g_bt0 = now_ms();
+    if (g_btFile)
+        fprintf(g_btFile, "# n = push, t = ms since the first push, rend = "
+                "frames rendered this push, cum = frames since boot, tick = "
+                "192 Hz frames that total implies, w = blocks written "
+                "(header@first frame)\n");
+}
+
+void bt_note(int i)
+{
+    const int skip = (i == g_trim) ? g_trimFrames : 0;
+    if (g_btFile && g_btWn < (int)sizeof g_btW - 16)
+        g_btWn += sprintf(g_btW + g_btWn, " %d@%u", i, (unsigned)(g_off[i] + skip));
+}
+
+void bt_write(int i)
+{
+    const int skip = (i == g_trim) ? g_trimFrames : 0;
+    if (g_ddFile)
+        fwrite(g_buf[i] + skip * 2, sizeof(sd_s16) * 2, OUT_FRAMES - skip, g_ddFile);
+    if (g_ddSilent)     // recorded above, then the speaker gets zeros
+        memset(g_buf[i], 0, OUT_FRAMES * 2 * sizeof(sd_s16));
+    bt_note(i);
+}
+
+void bt_line(const char *mode, int free_on_entry, sd_u32 cum0)
+{
+    if (g_btFile) {
+        fprintf(g_btFile, "n=%d t=%.1f mode=%s free=%d rend=%u cum=%u tick=%u w=%s\n",
+                g_btPush, now_ms() - g_bt0, mode, free_on_entry,
+                (unsigned)(g_cum - cum0), (unsigned)g_cum,
+                (unsigned)((unsigned long long)g_cum * 192u / SD_MIX_RATE),
+                g_btWn ? g_btW + 1 : "-");
+        fflush(g_btFile);
+    }
+    g_btWn = 0;
+    g_btW[0] = 0;
+    ++g_btPush;
 }
 #endif
 
@@ -119,6 +293,7 @@ void render_mix(int frames)
     if (frames > MIX_MAX) frames = MIX_MAX;
     sd_mix_render(g_mix, frames);
     sd_wav_write(g_mix, frames);
+    g_cum += (sd_u32)frames;
 }
 
 /* THE RING-HEALTH LINE, once, at exit. Registered from sd_out_open so it only
@@ -203,9 +378,146 @@ void sd_wav_close(void)
 
 // ---- device -------------------------------------------------------------
 
+#if defined(_WIN32)
+namespace {
+
+double g_tFirst;                // the first sound push, for the ready line
+
+/* The ring is allocated when the first push starts the open, before the
+   device exists, so the virtual device can fill it. The headers are NOT
+   prepared here: waveOutPrepareHeader needs the device, and it runs on the
+   main thread at the hand-over (go_live). */
+void ring_alloc(void)
+{
+    for (int i = 0; i < NBUF; i++) {
+        g_buf[i] = (sd_s16 *)calloc(OUT_FRAMES * 2, sizeof(sd_s16));
+        memset(&g_hdr[i], 0, sizeof g_hdr[i]);
+        g_hdr[i].lpData = (LPSTR)g_buf[i];
+        g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
+        g_hdr[i].dwFlags = WHDR_DONE;       // free to fill
+    }
+}
+
+/* The main thread's half of the open, once the worker has answered (or, under
+   SM64DS_AUDIO_OPEN_SYNC, once open_device returned on this thread). With
+   nothing in flight -- the SYNC shape, or a device that answers before the
+   second push -- this is exactly what the old open did after waveOutOpen. */
+int go_live(int ok)
+{
+    if (!ok) {
+        if (g_wFail == 1)
+            fprintf(stderr, "[sdat] winmm.dll not available -- silent\n");
+        else if (g_wFail == 2)
+            fprintf(stderr, "[sdat] winmm waveOut entry points missing -- silent\n");
+        else
+            fprintf(stderr, "[sdat] waveOutOpen failed at 32768 and 48000 Hz "
+                            "-- silent\n");
+        g_opened = -1;
+        return 0;
+    }
+    g_devRate = g_wRate;
+
+    // The blocks the virtual device has not finished BY NOW (not by the last
+    // push: one it finished since then is played, and handing it over would
+    // play it twice in the timeline), oldest first.
+    const double now = now_ms();
+    for (int i = 0; i < NBUF; i++)
+        if (!(g_hdr[i].dwFlags & WHDR_DONE) && g_vEnd[i] <= now)
+            g_hdr[i].dwFlags |= WHDR_DONE;
+    int order[NBUF], n = 0;
+    for (int i = 0; i < NBUF; i++)
+        if (!(g_hdr[i].dwFlags & WHDR_DONE)) order[n++] = i;
+    for (int a = 1; a < n; a++)
+        for (int b = a; b > 0 && g_vSeq[order[b]] < g_vSeq[order[b - 1]]; b--) {
+            const int t = order[b];
+            order[b] = order[b - 1];
+            order[b - 1] = t;
+        }
+    // The oldest is part-played: the real device starts where the virtual
+    // one is, so its header covers only the frames still to play (and is
+    // re-prepared whole when it comes back, in the refill below).
+    g_trim = -1;
+    g_trimFrames = 0;
+    if (n > 0 && g_wRate == SD_MIX_RATE) {
+        const int i = order[0];
+        const double start = g_vEnd[i] - OUT_FRAMES * 1000.0 / SD_MIX_RATE;
+        int played = now > start ? (int)((now - start) * SD_MIX_RATE / 1000.0) : 0;
+        if (played > OUT_FRAMES - 1) played = OUT_FRAMES - 1;
+        if (played > 0) { g_trim = i; g_trimFrames = played; }
+    }
+    for (int i = 0; i < NBUF; i++) {
+        const DWORD done = g_hdr[i].dwFlags & WHDR_DONE;
+        g_hdr[i].dwFlags = 0;               // prepare wants it zero
+        if (i == g_trim) {
+            g_hdr[i].lpData = (LPSTR)(g_buf[i] + g_trimFrames * 2);
+            g_hdr[i].dwBufferLength =
+                (DWORD)((OUT_FRAMES - g_trimFrames) * 2 * sizeof(sd_s16));
+        }
+        p_Prepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
+        g_hdr[i].dwFlags |= done;
+    }
+    int dropped = 0;
+    if (g_devRate != SD_MIX_RATE) {
+        // Rendered at 32768 Hz for the virtual device; this device plays
+        // 48000 through the resampler, so these cannot be handed over.
+        for (int k = 0; k < n; k++) g_hdr[order[k]].dwFlags |= WHDR_DONE;
+        dropped = n;
+        n = 0;
+    }
+    for (int k = 0; k < n; k++) {
+        bt_write(order[k]);
+        p_Write(g_dev, &g_hdr[order[k]], sizeof(WAVEHDR));
+    }
+    g_opened = 1;
+    fprintf(stderr, "[sdat] waveOut open at %d Hz, %d x %d frames (%.0f ms)\n",
+            g_devRate, NBUF, OUT_FRAMES,
+            1000.0 * NBUF * OUT_FRAMES / g_devRate);
+    fprintf(stderr, "[sdat] device ready %.0f ms after the first sound push "
+                    "(winmm load %.0f ms, open %.0f ms%s); %d block(s) in "
+                    "flight handed over (the first from its frame %d), %d "
+                    "dropped\n",
+            now - g_tFirst, g_wLoadMs, g_wOpenMs[0] + g_wOpenMs[1],
+            g_wOpenMs[1] > 0 ? " incl. the 48000 Hz retry" : "", n,
+            g_trimFrames, dropped);
+    fprintf(stderr, "[audio] master volume %d%%%s\n", out_volume_pct(),
+            out_volume_pct() == 0 ? " (silent)" : "");
+    atexit(out_report);
+    return 1;
+}
+
+/* One push while the worker is still opening: the virtual device hands back
+   every header whose block it has finished by now, and the refill below is
+   the device path's own, less the resampler (the virtual device plays
+   SD_MIX_RATE) and less the write. */
+void virt_push(sd_u32 cum0)
+{
+    const double now = now_ms();
+    int free_on_entry = 0;
+    for (int i = 0; i < NBUF; i++) {
+        if (!(g_hdr[i].dwFlags & WHDR_DONE) && g_vEnd[i] <= now)
+            g_hdr[i].dwFlags |= WHDR_DONE;
+        if (g_hdr[i].dwFlags & WHDR_DONE) free_on_entry++;
+    }
+    for (int i = 0; i < NBUF; i++) {
+        if (!(g_hdr[i].dwFlags & WHDR_DONE)) continue;
+        g_off[i] = g_cum;
+        render_mix(OUT_FRAMES);
+        memcpy(g_buf[i], g_mix, OUT_FRAMES * 2 * sizeof(sd_s16));
+        g_hdr[i].dwFlags &= ~WHDR_DONE;
+        const double start = g_vBusy > now ? g_vBusy : now;
+        g_vEnd[i] = g_vBusy = start + OUT_FRAMES * 1000.0 / SD_MIX_RATE;
+        g_vSeq[i] = ++g_seq;
+        bt_note(i);
+    }
+    bt_line("virt", free_on_entry, cum0);
+}
+
+}  // namespace
+#endif
+
 int sd_out_open(void)
 {
-    if (g_opened) return g_opened > 0;
+    if (g_opened) return g_opened == 1;
     g_opened = -1;
 
     if (getenv("SM64DS_NO_AUDIO")) {
@@ -214,47 +526,35 @@ int sd_out_open(void)
         return 0;
     }
 #if defined(_WIN32)
-    g_lib = LoadLibraryA("winmm.dll");
-    if (!g_lib) {
-        fprintf(stderr, "[sdat] winmm.dll not available -- silent\n");
-        return 0;
-    }
-    p_Open      = (pfnOpen)GetProcAddress(g_lib, "waveOutOpen");
-    p_Prepare   = (pfnHdr) GetProcAddress(g_lib, "waveOutPrepareHeader");
-    p_Unprepare = (pfnHdr) GetProcAddress(g_lib, "waveOutUnprepareHeader");
-    p_Write     = (pfnHdr) GetProcAddress(g_lib, "waveOutWrite");
-    p_Reset     = (pfnDev) GetProcAddress(g_lib, "waveOutReset");
-    p_Close     = (pfnDev) GetProcAddress(g_lib, "waveOutClose");
-    if (!p_Open || !p_Prepare || !p_Unprepare || !p_Write || !p_Reset || !p_Close) {
-        fprintf(stderr, "[sdat] winmm waveOut entry points missing -- silent\n");
-        return 0;
-    }
-
-    g_devRate = SD_MIX_RATE;
-    if (!open_at(SD_MIX_RATE)) {
-        g_devRate = 48000;
-        if (!open_at(48000)) {
-            fprintf(stderr, "[sdat] waveOutOpen failed at 32768 and 48000 Hz "
-                            "-- silent\n");
-            return 0;
+    const char *dl = getenv("SM64DS_AUDIO_OPEN_DELAY_MS");
+    int delay = dl ? atoi(dl) : 0;
+    if (delay < 0) delay = 0;
+    ring_alloc();
+    g_tFirst = now_ms();
+    int async = getenv("SM64DS_AUDIO_OPEN_SYNC") == 0;
+    if (async) {
+        try {
+            std::thread(open_worker, delay).detach();
+        } catch (...) {
+            async = 0;                      // no thread: open here, as before
         }
     }
-    for (int i = 0; i < NBUF; i++) {
-        g_buf[i] = (sd_s16 *)calloc(OUT_FRAMES * 2, sizeof(sd_s16));
-        memset(&g_hdr[i], 0, sizeof g_hdr[i]);
-        g_hdr[i].lpData = (LPSTR)g_buf[i];
-        g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
-        p_Prepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
-        g_hdr[i].dwFlags |= WHDR_DONE;      // free to fill
-    }
-    g_opened = 1;
-    fprintf(stderr, "[sdat] waveOut open at %d Hz, %d x %d frames (%.0f ms)\n",
-            g_devRate, NBUF, OUT_FRAMES,
-            1000.0 * NBUF * OUT_FRAMES / g_devRate);
-    fprintf(stderr, "[audio] master volume %d%%%s\n", out_volume_pct(),
-            out_volume_pct() == 0 ? " (silent)" : "");
-    atexit(out_report);
-    return 1;
+    if (!async) return go_live(open_device(delay));
+    /* THE GRACE. A device that answers in the tens of milliseconds a normal
+       machine takes is waited for, here, for up to OPEN_GRACE_MS: then it is
+       live before the first block is rendered and nothing at all is lost,
+       exactly as when the open ran on this thread. Only a slow device costs
+       the boot this much and then goes to the background. */
+    while (g_async.load(std::memory_order_acquire) == 0 &&
+           now_ms() - g_tFirst < OPEN_GRACE_MS)
+        Sleep(1);
+    const int st = g_async.load(std::memory_order_acquire);
+    if (st != 0) return go_live(st > 0);
+    g_opened = 2;
+    fprintf(stderr, "[sdat] audio device opening in the background "
+                    "(delay %d ms); the ring runs on the real clock until it "
+                    "answers\n", delay);
+    return 0;
 #else
     fprintf(stderr, "[sdat] no audio backend on this platform -- silent\n");
     return 0;
@@ -264,17 +564,22 @@ int sd_out_open(void)
 void sd_out_close(void)
 {
 #if defined(_WIN32)
-    if (g_opened > 0) {
-        p_Reset(g_dev);
-        for (int i = 0; i < NBUF; i++) {
-            p_Unprepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
-            free(g_buf[i]);
-            g_buf[i] = 0;
+    if (g_opened == 2) {
+        // Still opening: the worker owns g_lib and g_dev until it answers,
+        // and a device it opens after this is left to process teardown.
+    } else {
+        if (g_opened > 0) {
+            p_Reset(g_dev);
+            for (int i = 0; i < NBUF; i++) {
+                p_Unprepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
+                free(g_buf[i]);
+                g_buf[i] = 0;
+            }
+            p_Close(g_dev);
+            g_dev = 0;
         }
-        p_Close(g_dev);
-        g_dev = 0;
+        if (g_lib) { FreeLibrary(g_lib); g_lib = 0; }
     }
-    if (g_lib) { FreeLibrary(g_lib); g_lib = 0; }
 #endif
     g_opened = -1;
     sd_wav_close();
@@ -282,9 +587,20 @@ void sd_out_close(void)
 
 void sd_out_push(void)
 {
+#if defined(_WIN32)
+    const sd_u32 cum0 = g_cum;
+    const char *mode = "dev";
+    if (!g_opened) bt_open();
+#endif
     if (!g_opened) sd_out_open();
 
 #if defined(_WIN32)
+    if (g_opened == 2) {
+        const int st = g_async.load(std::memory_order_acquire);
+        if (st == 0) { virt_push(cum0); return; }
+        go_live(st > 0);
+        mode = "hand";
+    }
     if (g_opened > 0) {
         // SM64DS_SND_SLOW_MS: how the push's time splits between the mix
         // render and the device write (see consumer.cpp's [snd-slow] line)
@@ -302,7 +618,18 @@ void sd_out_push(void)
         if (free_on_entry == NBUF && g_pushes > 1) g_starved++;
         for (int i = 0; i < NBUF; i++) {
             if (!(g_hdr[i].dwFlags & WHDR_DONE)) continue;
+            if (i == g_trim) {
+                // back from the hand-over's part block: whole again
+                p_Unprepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
+                g_hdr[i].lpData = (LPSTR)g_buf[i];
+                g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
+                g_hdr[i].dwFlags = 0;
+                p_Prepare(g_dev, &g_hdr[i], sizeof(WAVEHDR));
+                g_trim = -1;
+                g_trimFrames = 0;
+            }
             const clock_t c0 = slow_ms > 0 ? clock() : 0;
+            g_off[i] = g_cum;
             if (g_devRate == SD_MIX_RATE) {
                 render_mix(OUT_FRAMES);
                 memcpy(g_buf[i], g_mix, OUT_FRAMES * 2 * sizeof(sd_s16));
@@ -334,6 +661,7 @@ void sd_out_push(void)
             g_hdr[i].dwBufferLength = OUT_FRAMES * 2 * sizeof(sd_s16);
             g_refills++;
             const clock_t c1 = slow_ms > 0 ? clock() : 0;
+            bt_write(i);
             p_Write(g_dev, &g_hdr[i], sizeof(WAVEHDR));
             if (slow_ms > 0) {
                 const double k = 1000.0 / CLOCKS_PER_SEC;
@@ -345,10 +673,14 @@ void sd_out_push(void)
         if (slow_ms > 0 && t_mix + t_write >= slow_ms)
             fprintf(stderr, "[snd-slow]   out_push: %d block(s) refilled (%d free on entry), "
                     "mix %.1f ms, waveOutWrite %.1f ms\n", refilled, free_on_entry, t_mix, t_write);
+        bt_line(mode, free_on_entry, cum0);
         return;
     }
 #endif
     // No device: clock the mixer off the video frame so state still advances
     // (envelopes decay, sequences end) and the dump still fills.
     render_mix(SD_MIX_RATE / 60);
+#if defined(_WIN32)
+    bt_line("nodev", -1, cum0);
+#endif
 }

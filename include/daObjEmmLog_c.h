@@ -7,9 +7,7 @@
 extern "C" void *_ZN7fBase_cnwEj(unsigned size);
 
 /**
- * Rolling log from the ex_m_map stage (Emm; data/stage/ex_m_map in the ROM
- * file table -- not Tiny-Huge Island, whose stage dirs are tibi_deka_*).
- * Actor 174 EMM_LOG (debug table 0x0208f980);
+ * Tiny-Huge Island rolling log. Actor 174 EMM_LOG (debug table 0x0208f980);
  * ov043 multiplexes the same id as BIG_MOVING_LOG. ov052's other class is
  * daObjEmmYuka_c / EMM_YUKA (175), the SQUARE_PATH_LIFT overlay_actors lists.
  *
@@ -27,7 +25,18 @@ struct daObjEmmLog_c : dBgActor_c {
     s32 mBobAmplitude;      /* 0x324 -- 0x64000, or the spawn byte * 0xa000 */
 
     /* Inline empty dtor: mwccarm emits D1 then D0, no D2. */
-    virtual ~daObjEmmLog_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjEmmLog_c() {}   /* no slot */
+#else
+    virtual ~daObjEmmLog_c() {}   /* D1 and D0 */
+#endif
 
     s32 InitResources();      /* slot  0 */
     s32 CleanupResources();   /* slot  3 */

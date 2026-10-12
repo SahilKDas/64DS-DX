@@ -1,3 +1,3 @@
-void func_ov006_020efc08(void *object)
+void func_ov006_020efc08(void)
 {
 }

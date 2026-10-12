@@ -35,9 +35,9 @@ typedef char ResourceDescriptor_size_must_be_0x0c[
     sizeof(ResourceDescriptor) == 0x0c ? 1 : -1];
 
 extern "C" {
-int func_ov002_020bad10(daObjSwdoor_c *self, ResourceDescriptor *descriptor);
-int func_ov002_020baba8(daObjSwdoor_c *self, ResourceDescriptor *descriptor);
-int func_ov002_020bac18(daObjSwdoor_c *self);
+int func_ov002_020bad10(daObjCvShutter_c *self, ResourceDescriptor *descriptor);
+int func_ov002_020baba8(daObjCvShutter_c *self, ResourceDescriptor *descriptor);
+int func_ov002_020bac18(daObjCvShutter_c *self);
 int _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(void *self, int a, int b);
 extern ResourceDescriptor data_ov021_021148d0;
 }
@@ -68,18 +68,3 @@ s32 daObjCvShutter_c::CleanupResources()
 {
     return func_ov002_020baba8(this, &data_ov021_021148d0);
 }
-// @symbol _ZN16daObjCvShutter_cD1Ev
-// @symbol _ZN16daObjCvShutter_cD0Ev
-/* NOT WRITTEN HERE ON PURPOSE. The inline `~daObjCvShutter_c() {}` in the
-   header is the whole source of both variants: from an inline body mwcc emits
-   D1 and then D0 -- the cartridge's own order -- and no D2. Writing the body
-   out of line here instead flips them to D0-before-D1 and the isolation step
-   rejects the object.
-
-   Their bodies are THREE vptr stores, and the middle one is the finding:
-   `daObjCvShutter_c : daObjSwdoor_c : dBgActor_c` emits this class's vptr,
-   then daObjSwdoor_c's -- inlined, because that destructor is defined in its
-   class body -- then dBgActor_c's, then dBgActor_c's dBgW_KcMbg and Model,
-   then dActor_c. A one-level chain would emit two. This class adds no member
-   with a destructor of its own, and D0's trailing deallocation is the inline
-   `operator delete` it inherits, which is why nothing here names a heap. */

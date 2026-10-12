@@ -1,43 +1,51 @@
 //cpp
-/**
- * daKpa_c in the Dark World's drifting stairs (`dorifu`).
+/* Manually curated production translation unit.
+ * ov043/daObjKm1_Dorifu_c  (5 function(s))
  *
- * No fields of its own. InitResources / CleanupResources hand this
- * overlay's five-plank file table to daObjDorifu_c's shared
- * overloads. Each daObjDorifuResources row is modelFile, clsnFile,
- * clps: InitResources loads modelFile with Model::LoadFile,
- * clsnFile with dBgW_Kc::LoadFile, clps as CLPS into SetFile.
- * ov043 sinit constructs those SharedFilePtrs as file IDs
- * 1609 / 1610, 1611 / 1612, 1613 / 1614, 1615 / 1616, 1617 / 1618.
+ * One intact mwccarm object owns the five retail text contributions together
+ * with this class's RTTI, type-name string, SpawnInfo, resource table, and
+ * vtable storage.
  *
- * The five-entry table is defined in this TU (retail places it
- * after the profile, before the vtable).
+ * FUNCTION ORDER IS DELIBERATELY THE REVERSE OF THE ROM'S -- mwccarm 2004/b56
+ * emits one .text section per function in reverse source order. The destructor
+ * variants are the documented compiler-chosen exception.
  *
- * daObjKm1_Dorifu_c_classInit is reconstructed (RTTI
- * daObjKm1_Dorifu_c, KM1_DORIFU registry). Retail does not
- * store that spelling.
- *
- * deslop
- * Leftover: the BMD/KCL SharedFilePtrs and CLPS_Block are still
- *   data_ov043_*.
+ * Assembled from these legacy one-function sources (ROM address order):
+ *   [0] 0x02111630  src/_ZN17daObjKm1_Dorifu_cD1Ev.cpp
+ *   [1] 0x021116b0  src/_ZN17daObjKm1_Dorifu_cD0Ev.cpp
+ *   [2] 0x02111744  src/_ZN17daObjKm1_Dorifu_c16CleanupResourcesEv.cpp
+ *   [3] 0x02111758  src/_ZN17daObjKm1_Dorifu_c13InitResourcesEv.cpp
+ *   [4] 0x0211176c  src/StairsBdw_Spawn.cpp
  */
 
 #include "daObjKm1_Dorifu_c.h"
 
-struct DorifuSpawnInfo {
-    daObjKm1_Dorifu_c *(*classInit)();
-    s16 executePriority; /* +4: also KM1_DORIFU registry id 0x0086 = 134 */
-    s16 renderPriority;  /* +6 */
-    u32 actorFlags;
-    Fix12i clipOffsetY;
-    Fix12i clipRadius;
-    Fix12i clipDistance;
-    Fix12i farDistance;
+struct StairsBdwSpawnInfo {
+    daObjKm1_Dorifu_c *(*spawn)();
+    s16 behaviorPriority;
+    s16 renderPriority;
+    u32 flags;
+    Fix12i rangeOffsetY;
+    Fix12i range;
+    Fix12i drawDistance;
+    u32 unk_18;
 };
-typedef char DorifuSpawnInfo_size_must_be_0x1c[
-    sizeof(DorifuSpawnInfo) == 0x1c ? 1 : -1];
+
+typedef char StairsBdwSpawnInfo_size_must_be_0x1c[
+    sizeof(StairsBdwSpawnInfo) == 0x1c ? 1 : -1];
 
 extern "C" {
+extern void *_ZN7fBase_cnwEj(unsigned size);
+extern void _ZN10dBgActor_cC2Ev(void *self);
+extern void __cxa_vec_ctor(void *base, int count, int stride,
+                          void *constructor, void *destructor);
+extern int _ZTV13daObjDorifu_c[];
+extern int _ZTV17daObjKm1_Dorifu_c[];
+extern void _ZN5ModelC1Ev(void *self);
+extern void _ZN5ModelD1Ev(void *self);
+extern void _ZN10dBgW_KcMbgC1Ev(void *self);
+extern void _ZN10dBgW_KcMbgD1Ev(void *self);
+
 extern SharedFilePtr data_ov043_021126a0;
 extern SharedFilePtr data_ov043_02112678;
 extern CLPS_Block data_ov043_02111c40;
@@ -55,14 +63,37 @@ extern SharedFilePtr data_ov043_02112660;
 extern CLPS_Block data_ov043_02111c60;
 }
 
+/* ROM ordinal 4 -- daObjKm1_Dorifu_c_classInit, 0x0211176c, size 0x90 */
 // @symbol daObjKm1_Dorifu_c_classInit
+/* Reconstructed source-style name: SM64DS proves daObjKm1_Dorifu_c through RTTI,
+ * allocation size, vtable identity, and the KM1_DORIFU registry profile;
+ * later EAD lineage supplies classInit. Exact original spelling is not
+ * preserved. Historical alias: StairsBdw_Spawn. */
 extern "C" daObjKm1_Dorifu_c *daObjKm1_Dorifu_c_classInit()
 {
-    return new daObjKm1_Dorifu_c();
+    char *actor = static_cast<char *>(_ZN7fBase_cnwEj(0xdcc));
+
+    if (actor) {
+        _ZN10dBgActor_cC2Ev(actor);
+        *reinterpret_cast<int *>(actor) = (int)_ZTV13daObjDorifu_c;
+        __cxa_vec_ctor(actor + 0x320, 5, 0x50,
+                      (void *)_ZN5ModelC1Ev, (void *)_ZN5ModelD1Ev);
+        __cxa_vec_ctor(actor + 0x4b0, 5, 0x1c8,
+                      (void *)_ZN10dBgW_KcMbgC1Ev,
+                      (void *)_ZN10dBgW_KcMbgD1Ev);
+        *reinterpret_cast<int *>(actor) =
+            (int)&_ZTV17daObjKm1_Dorifu_c[2];
+    }
+
+    return reinterpret_cast<daObjKm1_Dorifu_c *>(actor);
 }
 
-// @symbol g_profile_KM1_DORIFU
-extern "C" DorifuSpawnInfo g_profile_KM1_DORIFU = {
+/* Reconstructed source-style name: SM64DS proves this descriptor through
+ * its registry role, the KM1_DORIFU literal ROM profile ID, and the
+ * factory relocation it carries; later EAD lineage supplies g_profile_.
+ * Exact original spelling is not preserved. Historical alias:
+ * StairsBdw_SpawnInfo. */
+extern "C" StairsBdwSpawnInfo g_profile_KM1_DORIFU = {
     daObjKm1_Dorifu_c_classInit,
     0x0086,
     0x00af,
@@ -81,14 +112,16 @@ extern "C" daObjDorifuResources data_ov043_02112518[5] = {
     {&data_ov043_02112690, &data_ov043_02112660, &data_ov043_02111c60}
 };
 
+/* ROM ordinal 3 -- _ZN17daObjKm1_Dorifu_c13InitResourcesEv */
 // @symbol _ZN17daObjKm1_Dorifu_c13InitResourcesEv
-s32 daObjKm1_Dorifu_c::InitResources()
+int daObjKm1_Dorifu_c::InitResources()
 {
     return daObjDorifu_c::InitResources(data_ov043_02112518);
 }
 
+/* ROM ordinal 2 -- _ZN17daObjKm1_Dorifu_c16CleanupResourcesEv */
 // @symbol _ZN17daObjKm1_Dorifu_c16CleanupResourcesEv
-s32 daObjKm1_Dorifu_c::CleanupResources()
+int daObjKm1_Dorifu_c::CleanupResources()
 {
     return daObjDorifu_c::CleanupResources(data_ov043_02112518);
 }

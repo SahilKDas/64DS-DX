@@ -22,7 +22,7 @@
  * other slot holds the base's word and is inherited.
  *
  * FIVE DESCENDANTS, more than any other class in this series:
- * daObjBk_Ukisima_c (was RotatingPlatformWf), daObjFl_Koma_D_c (was RotatingPlatformLll),
+ * daObjBk_Ukisima_c (was RotatingPlatformWf), daObjFl_Koma_D_c (RotatingPlatformLll),
  * daObjWc_Obj07_c (was RotatingPlatformWdw), daObjRc_Kaitendai_c (was RotatingPlatformRr)
  * and daObjKm3_Kaitendai_c (include/daObjKm3_Kaitendai_c.h). Each one's destructor
  * stores this class's vtable between its own and _ZTV10dBgActor_c, which is the
@@ -57,10 +57,21 @@ struct daObjKaitendai_c : dBgActor_c {
        _ZN16daObjKaitendai_cD1Ev (which does exist out of line, at ov002
        0x020b6664, still under its func_ov002_ name). An out-of-line declaration
        here would make each descendant emit a `bl` the ROM does not have. */
-    virtual ~daObjKaitendai_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daObjKaitendai_c() {}   /* no slot */
+#else
+    virtual ~daObjKaitendai_c() {}   /* D1 and D0 */
+#endif
 
     /* Slot 6, this class's own override, defined out of line in
-       src/actors/daObjKaitendai_c.cpp. LAYOUT-NEUTRAL: it re-uses the
+       src/_ZN16daObjKaitendai_c8BehaviorEv.cpp. LAYOUT-NEUTRAL: it re-uses the
        slot dBgActor_c already holds rather than appending one, and adds no
        field, so the 0x320 assert below is untouched.
 

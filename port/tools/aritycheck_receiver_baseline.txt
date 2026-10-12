@@ -56,6 +56,10 @@
 #       correct: the free function it now calls really does take nothing.
 #       The row retires because no directive binds that spelling to the flat
 #       body any more, so the flat body is not what the declaration reaches.
+#       LATER (run linkfull lane ENDFLY1): main respelled the site itself to
+#       func_ov007_020c3d1c((void *)data_ov007_02103448), declared
+#       (void *), which agrees with the definition, so the face and the
+#       directive were both retired and the row stays out.
 #   func_ov007_020c3d1c|src/func_ov007_020c05f8.c
 #       Never a defect at all, and it should not have been in this file. That
 #       TU is a `ldr ip,[pc]; bx ip` long-branch veneer, and
@@ -80,7 +84,6 @@
 
 _ZN10FaderColorD1Ev|src/__sinit_02073e6c.c
 _ZN10FaderColorD1Ev|src/__sinit_02074edc.c
-_ZN10StarMarker27SpawnRedCoinStarIfNecessaryEv|src/actors/daCoin_c.cpp
 _ZN9dBgCh_LinC1Ev|src/__sinit_0207501c.c
 _ZN11ShadowModel12InitCylinderEv|port/unmatched/Boo_InitResources.c
 _ZN11ShadowModel12InitCylinderEv|src/actors/daTrs_c.cpp

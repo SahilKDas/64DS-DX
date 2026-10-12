@@ -76,17 +76,33 @@
 // hal_sub_screen_set_stacked. A level never asks, so a level gets the inset.
 // SM64DS_DUAL_SCREEN=1 forces it on and =0 forces it off, both ways, and the
 // env is read HERE so there is one place that decides.
+#include <atomic>      /* POLISH1A: the forced-panel flag */
 #include <cstdio>
 #include <cstdlib>
 
 #include <windows.h>
 
+#include <chrono>        /* ASSET1: the menu cost line */
 #include <cstring>       /* run mg16 lane MP3: the touch-ring store */
 
+#include "ntr/gx.h"
 #include "ntr/ppu.h"
+#include "ntr/gx.h"       /* ASSET1: gx_coverage for keycover menu pieces */
+#include "hal/menu_compose.h"   /* run menu1 lane HOOK1: the one-screen menu compose layer */
+#include "hal/menu_bigmap.h"    /* run menu1 lane MAP1: Select shows the big map */
+#include "hal/gpu_raster.h"      /* SAVEOVL1: the menu layer on the card */
 #include "hal/comms_seam.h"   /* run mg16 lane MP3: touch_ring_index/advance */
 
 #include "hal/screen_gap.h"
+#include "hal/host_settings.h"   /* the improved map's two keys */
+
+/* The PNG reader, vendored public-domain and already the one this port uses
+   for the replacement texture pack (ntr/hdtex.cpp, which is where the
+   IMPLEMENTATION is compiled -- every ntr library variant carries it, and
+   every target that links this file links one of them). Declarations only
+   here. The relative include is the spelling hdtex.cpp uses, because
+   port/CMakeLists.txt belongs to another lane. */
+#include "../third_party/stb/stb_image.h"
 
 namespace OAM {
 void Reset();
@@ -101,16 +117,41 @@ public:
 };
 
 extern "C" {
+int port_level_id(void);   /* hal/level_boot.cpp */
 /* the present rectangle, defined at the bottom of this file */
 void hal_present_set_rect(int x, int y, int w, int h, int src_w, int src_h);
 /* THE FIT, the one copy of it; tests/walk_window.cpp's present() and the
    layout selftest below both call this rather than each spelling it. */
 void hal_present_fit(int cw, int ch, int sw, int sh, int *x, int *y, int *w, int *h);
 int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy);
+/* SETMENU1: the in-game settings page (hal/settings_page_hooks.cpp) */
+extern "C" int settings_page_hook_pad(uint16_t *pressed);
+extern "C" int settings_page_hook_touch(unsigned char down, unsigned char sx, unsigned char sy);
+extern "C" int settings_page_swallow_back(void);
+extern "C" void menu_pause_hook_pad(uint16_t *pressed, int back);   /* PAUSE3: hal/menu_recipe_pause.cpp */
 int hal_present_client_to_sub(int cx, int cy, int *dsx, int *dsy);
 /* the layout mode, defined at the bottom of this file */
 int hal_sub_screen_stacked(void);
 void hal_touch_client_probe(void);
+/* defined at the bottom of this file; poll_touch asks it who owns the keyboard */
+int hal_window_focused(void);
+/* THE THREE ATTENTION ARROWS, re-anchored above the panel (engine A's raster,
+   hal/message_compositor.cpp, which owns the sprites; this file owns where the
+   panel is). Called with the panel rect this frame's compose just drew, so the
+   arrows follow the size, the aspect and the render scale for free. Inert
+   unless hal_minimap_arrow_reanchor_on below says so, and nothing to draw is
+   the ordinary case: the ROM raises the cue only on a map event. */
+void port_bounce_arrows_present(unsigned int *dst, int dst_w, int dst_h,
+                                int px0, int py0, int pw, int ph);
+/* THE MENU COMPOSE'S PLANES (hal/message_compositor.cpp, which owns engine A's layers; this file feeds them to
+   hal/menu_compose.cpp). The host-row plane holds the lifted SRC_TOP_HOSTROW pixels (ARGB, alpha 0 = nothing, SCREEN_W
+   stride); the top2d plane holds the lifted SRC_TOP_2D cells in DS space. Null on a frame that lifted nothing there. */
+const unsigned int *port_menu_hostrow_plane(void);
+const MenuTopCell *port_menu_top2d_plane(void);
+unsigned int port_engine_a_fade_px(unsigned int argb, unsigned char bm);
+void port_engine_a_fade_px_prep(void);
+int port_scene_live_id(void);
+void hal_lc_trace(int w, int h, int frame, int composed);   /* hal/menu_recipe_lc.cpp */
 /* the two engines' brightness blends (hal/fader_wipes.cpp). The SUB one is what
    the sub framebuffer is composed with; the main one is still read by the inset
    path, where the panel is inside engine A's framebuffer when walk_window's own
@@ -126,10 +167,6 @@ int port_gxbank_layout_check(void);
    the Minimap hand OAM::Render, checked for a missed pointer rebase */
 int hal_oam_templates_check(void);
 int hal_oam_walk_probe(void);
-/* the minimap's per-frame affine callback (port/unmatched/Minimap_Affine.cpp),
-   the STAGE's own func_02019144 first beat, which the port cannot dispatch
-   through the block because the Stage's table is hosted by nobody */
-void port_minimap_affine_update(void);
 /* what hal/scene_boot.cpp's beat answered this frame: 1 = run func_02019144's
    tail, 0 = the current graphics block already did the display sync itself */
 int port_graph_block_verdict(void);
@@ -184,13 +221,64 @@ extern int data_0209f498[];      /* the Ctrl[4] block, stride 0x18 */
 extern char data_0209f49c[];     /* split: held buttons  (DS: f498 + 4) */
 extern char data_0209f49e[];     /* split: pressed       (DS: f498 + 6) */
 extern void *data_0209f318;      /* the Camera actor */
+/* THE LEVEL-CLEAR SCREEN'S OWN TWO WORDS, and the swap below reads nothing
+   else. data_0209f20c is "the level-clear screen owns the game": the player's
+   own star animation raises it (src/actors/Player.cpp:6522, :6718, :6742) and
+   src/_ZN5Stage8BehaviorEv.cpp:206 runs Stage::LC_Update only while it is up.
+   data_0209f2d4 is that function's own state word. */
+extern unsigned char data_0209f20c;
+extern unsigned char data_0209f2d4;
+extern unsigned char data_0209f2c4;   /* 0 = playing, else the pause is up (Stage::Behavior :206-243) */
+/* the NEW COIN RECORD flag: LC_Update's case 1 sets it when the course's coin
+   total beats the saved record, and LC_Render then draws the "HIGH SCORE"
+   banner above the coin total (see kCoinRow0Rec) */
+extern unsigned char data_0209f2b0;
+/* WHICH COURSE THE LEVEL-CLEAR SCREEN IS FOR: Stage::Render and LC_Render both
+   place the coin total (and the HIGH SCORE banner) by SublevelToLevel of this
+   byte, see lc_total_is_high */
+extern char data_02092124;
+extern int SublevelToLevel(int i);
+/* and the button LC_Update's case 3 takes on Start: see hal_lc_menu_pad */
+extern unsigned char data_0209f2e0;
 }
 
 namespace {
 
 const int kMargin = 8;
 
+/* ---- THE CORNER PANEL'S GEOMETRY, COMPUTED ONCE ----------------------------
+ *
+ * THREE READERS, ONE ARITHMETIC. The compose draws the panel, this file
+ * publishes its origin, and poll_touch's inset arm runs the whole thing
+ * backwards to turn a client pixel into a DS pixel. Before the size became a
+ * player option those three shared one integer divisor and agreed by
+ * construction. A fraction cannot be trusted to agree by construction -- two
+ * sites rounding 5/8 of 256 independently is exactly the shape of defect that
+ * put every menu tap two thirds of the way up its button at 32:9 (lane WIDE4)
+ * -- so the numbers are computed HERE, once per frame, and the other two read
+ * these variables rather than recomputing anything.
+ *
+ * g_pan_num / g_pan_den is the size as a fraction of one DS screen:
+ *
+ *   option OFF   1 / g_div          exactly what this file has always drawn
+ *   option ON    the MinimapScale table's ratio (index 0 is 1/2, which IS
+ *                g_div 2, so scale 1 with the option on is the same picture)
+ *
+ * SM64DS_SUB_SCALE still rules with the option off and is IGNORED with it on:
+ * the two knobs mean the same thing and the player-facing one wins when the
+ * player has turned it on. Said here rather than discovered by a player whose
+ * old environment variable stopped having an effect.
+ */
+int g_div = 2;             // panel downscale divisor (SM64DS_SUB_SCALE)
+int g_pan_num = 1, g_pan_den = 2;   /* panel size as a fraction of a DS screen */
+int g_pan_w, g_pan_h;               /* the drawn panel, in framebuffer pixels */
+int g_pan_margin = kMargin;         /* what was left of the margin (see below) */
+
 bool g_on = true;
+/* POLISH1A: a DS bottom-screen menu (pause plates, the save screen's choices, game over's CONTINUE / QUIT) is up while no one-screen recipe
+   owns it (OneScreenMenus off, or a pause variant no recipe covers): the corner panel is the only place those plates show, so the panel
+   is forced on for as long as the menu is up even with the panel option off. Set on the decide side each tick, read on the draw side. */
+std::atomic<int> g_force_panel{0};
 bool g_ready;
 /* Headless runs must not read the mouse or the keyboard. SM64DS_WINDOW_SELFTEST
    is CI's comparator and several of these binaries run on one machine at once,
@@ -204,7 +292,1651 @@ bool g_headless;
    window in the background has a documented way to say so. */
 bool g_nofocusgate;
 int g_x0, g_y0;            // panel origin in framebuffer pixels
-int g_div = 2;             // panel downscale divisor (SM64DS_SUB_SCALE)
+
+/* The improved map's own gate, asked once per process. The keys are latched
+   at boot like Aspect and RenderScale, so re-asking every frame would only
+   re-walk the environment. */
+int improved_map_on(void)
+{
+    static int v = -1;
+    if (v < 0) v = host_setting_improved_minimap() ? 1 : 0;
+    return v;
+}
+
+/* How far the decorated panel reaches past the map on each side, in
+   framebuffer pixels, for the size currently in g_pan_*. Defined further down,
+   beside the panel's own geometry, and declared here because the size has to
+   be settled before anything is drawn. Zero on all four sides with the option
+   off, where there is no panel. */
+void panel_extents(int *l, int *t, int *r, int *b);
+
+/* The inset selftest's size override, in g_pan_num's own units. Zero at every
+   other moment, including in every player's run. */
+int g_size_force;
+
+/* THE SCREEN SWAP'S two per-frame answers, declared up here because
+   handle_rect reads the first of them and sits above the block that defines
+   the rest. Zero in every frame that is not a level-clear save menu, and
+   zero for the whole of every run with the option off. See the banner over
+   swap_geom_for. */
+int g_menu_up;                   /* the ROM pair's answer for this frame */
+
+
+/* SM64DS_MINIMAP_TRACE=1: every rectangle the geometry above and the panel's
+   own settled on, printed when one of them changes. It exists so that a
+   capture can be MEASURED against the numbers the program actually drew,
+   rather than against a restatement of this arithmetic in some other
+   language -- which is the one thing a proof about a picture must not be.
+   Silent without the variable. Defined beside the panel's geometry. */
+void panel_trace(int w, int h);
+
+/* THE ONE ARITHMETIC. See the banner over g_pan_num.
+ *
+ * THE PANEL IS WHAT IS ANCHORED, not the map, whenever there is a panel. The
+ * owner asked for the whole thing -- plate, banner and all -- to stay in the
+ * picture at every size, so the eight-pixel inset is measured from the
+ * panel's outer edge and the map sits wherever that puts it. With the option
+ * off there is no panel and this is the arithmetic it always was, to the
+ * pixel.
+ *
+ * THE MARGIN GIVES WAY BEFORE THE SIZE DOES. At a large size there is no room
+ * for the inset the smaller sizes sit in, so the margin shrinks to whatever
+ * fits before the size is touched at all.
+ *
+ * AND THEN THE SIZE GIVES WAY. A size whose panel will not fit the picture
+ * even flush to the corner steps down four pixels of map width at a time
+ * until it does -- which is the ceiling the drag runs into, and the reason
+ * the ceiling lives here rather than in the settings file: it depends on the
+ * picture, and the picture depends on the window, the aspect and the render
+ * scale. The old code answered "no room" by RETURNING WITHOUT DRAWING, which
+ * for a player who picked the largest size was a map that silently did not
+ * appear; a size one step smaller is a better answer than no map. */
+void hal_sub_panel_geometry(int w, int h)
+{
+    int num = 1, den = g_div;
+    if (improved_map_on()) {
+        host_setting_minimap_scale_ratio(&num, &den);
+        /* the inset selftest walks every size through this function without
+           touching the player's settings; zero at every other moment */
+        if (g_size_force > 0) num = g_size_force;
+    }
+    if (num < 1) num = 1;
+    if (den < 1) den = 1;
+
+    /* the smallest the improved map goes is the picture the port drew before
+       it existed, which is half a DS screen: num/den = 1/2 */
+    const int on = improved_map_on() ? 1 : 0;
+    const int nmin = on ? (den / 2 < 1 ? 1 : den / 2) : num;
+    int el = 0, et = 0, er = 0, eb = 0;
+    for (;;) {
+        g_pan_num = num;
+        g_pan_den = den;
+        g_pan_w = ntr::SUB_W * num / den;
+        g_pan_h = ntr::SUB_H * num / den;
+        if (!on) break;
+        panel_extents(&el, &et, &er, &eb);
+        if (num <= nmin) break;
+        if (el + g_pan_w + er <= w && et + g_pan_h + eb <= h) break;
+        num -= 4;
+        if (num < nmin) num = nmin;
+    }
+
+    int m = kMargin;
+    if (el + g_pan_w + er + m > w) m = w - (el + g_pan_w + er);
+    if (et + g_pan_h + eb + m > h) m = h - (et + g_pan_h + eb);
+    if (m < 0) m = 0;
+    g_pan_margin = m;
+
+    g_x0 = w - m - er - g_pan_w;
+    g_y0 = h - m - eb - g_pan_h;
+    if (g_x0 < 0) g_x0 = 0;
+    if (g_y0 < 0) g_y0 = 0;
+
+    if (on) panel_trace(w, h);
+}
+
+/* ---- THE DECORATIVE PANEL, COMPOSED FROM THE PLAYER'S OWN GAME DATA -------
+ *
+ * WHAT IT IS. A bordered panel behind the map, tiled with the game's own
+ * wallpaper, with a plaque on its top edge reading MAP -- the design an artist
+ * sent the owner. His two PNGs are DERIVED FROM THE CARTRIDGE (lane MINIMAP1
+ * measured it: every colour in both sits on the DS's own BGR555 ladder, the
+ * panel interior is an exact 32x32 repeat, and its fifteen wallpaper colours
+ * are one 16-entry DS palette, in palette order, inside the ROM). The public
+ * bundle is ROM-clean, so those files are never committed, copied, embedded or
+ * read. The look comes from the player's own copy of the game instead, and
+ * only the DESIGN'S GEOMETRY is taken from the artist's work, which is what
+ * geometry is.
+ *
+ * WHERE THE WALLPAPER LIVES, MEASURED RATHER THAN GUESSED. The palette lane
+ * MINIMAP1 found in the cartridge is ARCHIVE/en1.narc member 6, bank 2 -- the
+ * ONLY bank in that whole archive whose sixteen entries carry those fifteen
+ * colours, searched bank by bank. Drawing member 1's background map with
+ * member 2's tiles through that bank paints exactly those fifteen colours and
+ * repeats every 32 pixels horizontally with a 0.991 match, which is the same
+ * 32x32 motif MINIMAP1 measured in the artist's panel. So the three members
+ * are the wallpaper, and this reads them straight out of the archive:
+ *
+ *     0x8401  the background map   LZ-compressed, 32x32 entries
+ *     0x8402  the tiles            LZ-compressed, 4bpp
+ *     0x8406  the palettes         plain, nine banks of sixteen
+ *
+ * It is a MENU screen's background, so a course never loads it and there is no
+ * copy in VRAM to borrow -- hence the archive read. It happens ONCE, the first
+ * frame a course draws the panel, and only with the option on.
+ *
+ * THE GEOMETRY, off the artist's design, in DS pixels against its own 240x180
+ * interior: six pixels of wallpaper outside a frame one pixel thick on the
+ * left and top and two on the right and bottom, so the panel stands seven
+ * pixels proud of the map on the left and top and eight on the right and
+ * bottom. The plaque is 109 wide and 32 tall against a 255-wide panel, centred
+ * on its top edge with ten of those rows above it. Every one of those numbers
+ * is a size or a position.
+ *
+ * THE COLOURS ARE ROLES, taken from the player's palette and never from the
+ * PNG: the wallpaper is the player's tiles as they are, the frame is the
+ * darkest colour in the player's own wallpaper bank taken down to a shadow of
+ * itself, and the plaque is the brightest one.
+ *
+ * WHAT IS STILL OWED. The word MAP is drawn in this file's own block letters,
+ * not in the game's font: finding the cartridge's own MAP label, or its HUD
+ * glyphs, is a hunt this lane did not have the clock for. Everything else on
+ * the panel is the player's own data. */
+extern "C" const unsigned char *port_fs_archive_member(unsigned fileID,
+                                                       unsigned *len_out);
+extern "C" void DecompressLZ16(void *src, void *dst);
+extern "C" void port_title_press_seen(void);   /* hal/menu_recipe_title.cpp */
+extern "C" int port_host_key_script(int vk);   /* tests/walk_window.cpp: SM64DS_HOST_KEY, 0 when unset */
+
+const unsigned kWallScreen = 0x8401, kWallTiles = 0x8402, kWallPltt = 0x8406;
+const int kWallBank = 2;          /* measured; see the banner above */
+
+/* the motif, 32x32 ARGB, and the two colour roles taken from the same bank */
+unsigned g_motif[32][32];
+unsigned g_panel_dark, g_panel_bright;
+int g_motif_state;                /* 0 not tried, 1 ready, -1 unavailable */
+
+unsigned bgr555_to_argb(unsigned c)
+{
+    const unsigned r = c & 0x1F, g = (c >> 5) & 0x1F, b = (c >> 10) & 0x1F;
+    return 0xFF000000u | ((r << 3 | r >> 2) << 16) | ((g << 3 | g >> 2) << 8)
+           | (b << 3 | b >> 2);
+}
+
+/* The compressed member, expanded with the game's own decompressor. The size
+   is the LZ header's own, which is what every caller of DecompressLZ16 in the
+   ROM relies on; a member that is not LZ at all is refused rather than run. */
+unsigned char *wall_expand(unsigned fileID, unsigned *out_len)
+{
+    unsigned n = 0;
+    const unsigned char *raw = port_fs_archive_member(fileID, &n);
+    if (!raw || n < 4 || raw[0] != 0x10) return 0;
+    const unsigned size = (unsigned)raw[1] | (unsigned)raw[2] << 8
+                        | (unsigned)raw[3] << 16;
+    if (size < 32 || size > (1u << 20)) return 0;
+    unsigned char *dst = (unsigned char *)std::malloc(size);
+    if (!dst) return 0;
+    /* DecompressLZ16 takes a writable source pointer the way the ROM's own
+       callers hand it one; the bytes are not modified. */
+    DecompressLZ16((void *)raw, dst);
+    *out_len = size;
+    return dst;
+}
+
+int wall_build(void)
+{
+    unsigned scr_n = 0, til_n = 0, pal_n = 0;
+    unsigned char *scr = wall_expand(kWallScreen, &scr_n);
+    unsigned char *til = scr ? wall_expand(kWallTiles, &til_n) : 0;
+    const unsigned char *pal = port_fs_archive_member(kWallPltt, &pal_n);
+    int ok = 0;
+    if (scr && til && pal && scr_n >= 2048 && til_n >= 1024
+        && pal_n >= (unsigned)(kWallBank + 1) * 32) {
+        unsigned bank[16];
+        int distinct = 0;
+        for (int k = 0; k < 16; ++k) {
+            const unsigned c = (unsigned)pal[kWallBank * 32 + k * 2]
+                             | (unsigned)pal[kWallBank * 32 + k * 2 + 1] << 8;
+            bank[k] = bgr555_to_argb(c);
+            int seen = 0;
+            for (int j = 0; j < k; ++j) if (bank[j] == bank[k]) seen = 1;
+            distinct += !seen;
+        }
+        /* THE GUARD ON THE WHOLE DERIVATION. A wallpaper bank is sixteen
+           distinct colours; a bank that is mostly one colour is not the one
+           this was measured against, and the panel falls back rather than
+           painting a flat rectangle and calling it the artist's design. */
+        if (distinct >= 12) {
+            /* The first 4x4 block of the background map whose sixteen entries
+               all carry ONE non-zero palette, which is a block of wallpaper
+               and not the header or the frame the menu draws around it. */
+            int bx = -1, by = -1;
+            for (int ty = 0; ty + 4 <= 32 && by < 0; ++ty)
+                for (int tx = 0; tx + 4 <= 32; ++tx) {
+                    int pl = -1, good = 1;
+                    for (int j = 0; j < 4 && good; ++j)
+                        for (int i = 0; i < 4; ++i) {
+                            const unsigned e =
+                                (unsigned)scr[((ty + j) * 32 + tx + i) * 2]
+                                | (unsigned)scr[((ty + j) * 32 + tx + i) * 2 + 1] << 8;
+                            const int p = (int)(e >> 12);
+                            if (!p || (pl >= 0 && p != pl)) { good = 0; break; }
+                            pl = p;
+                        }
+                    if (good) { bx = tx; by = ty; break; }
+                }
+            if (bx >= 0) {
+                unsigned lo = 0xFFFFFFFFu, hi = 0;
+                /* INDEX 0 IS NOT A COLOUR. On the DS a 4bpp background pixel
+                   of index 0 is transparent and the layer under it shows
+                   through, so painting it with the bank's entry 0 would put a
+                   colour on the panel that the wallpaper never shows -- the
+                   first build of this did, and the frame came out blue. The
+                   motif paints those pixels with the pattern's own field
+                   colour instead: the non-transparent index that covers most
+                   of the block. */
+                int hist[16] = {0};
+                for (int j = 0; j < 4; ++j)
+                    for (int i = 0; i < 4; ++i) {
+                        const unsigned e =
+                            (unsigned)scr[((by + j) * 32 + bx + i) * 2]
+                            | (unsigned)scr[((by + j) * 32 + bx + i) * 2 + 1] << 8;
+                        const unsigned t = e & 0x3FFu;
+                        for (int k = 0; k < 32; ++k) {
+                            const unsigned o = t * 32u + (unsigned)k;
+                            if (o >= til_n) break;
+                            ++hist[til[o] & 0xF];
+                            ++hist[til[o] >> 4];
+                        }
+                    }
+                int field = 1;
+                for (int k = 2; k < 16; ++k)
+                    if (hist[k] > hist[field]) field = k;
+                bank[0] = bank[field];
+                for (int j = 0; j < 4; ++j)
+                    for (int i = 0; i < 4; ++i) {
+                        const unsigned e =
+                            (unsigned)scr[((by + j) * 32 + bx + i) * 2]
+                            | (unsigned)scr[((by + j) * 32 + bx + i) * 2 + 1] << 8;
+                        const unsigned t = e & 0x3FFu;
+                        const int hf = (e >> 10) & 1, vf = (e >> 11) & 1;
+                        for (int y = 0; y < 8; ++y)
+                            for (int x = 0; x < 8; ++x) {
+                                const int sx = hf ? 7 - x : x;
+                                const int sy = vf ? 7 - y : y;
+                                const unsigned o = t * 32u + (unsigned)sy * 4u
+                                                 + (unsigned)(sx >> 1);
+                                unsigned idx = 0;
+                                if (o < til_n)
+                                    idx = (sx & 1) ? (unsigned)(til[o] >> 4)
+                                                   : (unsigned)(til[o] & 0xF);
+                                const unsigned c = bank[idx];
+                                g_motif[j * 8 + y][i * 8 + x] = c;
+                                const unsigned l = ((c >> 16) & 0xFF)
+                                                 + ((c >> 8) & 0xFF) + (c & 0xFF);
+                                if (l < lo) { lo = l; g_panel_dark = c; }
+                                if (l > hi) { hi = l; g_panel_bright = c; }
+                            }
+                    }
+                /* THE FRAME'S COLOUR ROLE: the darkest colour the player's own
+                   wallpaper actually uses, taken down to a third of itself so
+                   it reads as a shadow line round the panel. A role, computed
+                   from the player's palette; nothing is sampled from anyone's
+                   artwork. */
+                g_panel_dark = 0xFF000000u
+                    | ((((g_panel_dark >> 16) & 0xFF) / 3) << 16)
+                    | ((((g_panel_dark >> 8) & 0xFF) / 3) << 8)
+                    | ((g_panel_dark & 0xFF) / 3);
+                ok = 1;
+            }
+        }
+    }
+    std::free(scr);
+    std::free(til);
+    if (!ok && std::getenv("SM64DS_MINIMAP_TRACE"))
+        std::fprintf(stderr, "[mmtrace] wallpaper not available "
+                     "(screen %u tiles %u palette %u); plain panel\n",
+                     scr_n, til_n, pal_n);
+    else if (ok && std::getenv("SM64DS_MINIMAP_TRACE"))
+        std::fprintf(stderr, "[mmtrace] wallpaper motif built from the "
+                     "player's data; frame %06x plaque %06x\n",
+                     g_panel_dark & 0xFFFFFF, g_panel_bright & 0xFFFFFF);
+    return ok;
+}
+
+/* M, A and P in a 5x7 grid, one bit per column, this file's own lettering.
+   Named for what it is: the game's own MAP label is still owed. */
+const unsigned char kGlyphMAP[3][7] = {
+    { 0x11, 0x1B, 0x15, 0x11, 0x11, 0x11, 0x11 },   /* M */
+    { 0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11 },   /* A */
+    { 0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10 },   /* P */
+};
+
+/* ---- THE ARTIST'S PANEL, WHEN THE PLAYER HAS THE PICTURES ------------------
+ *
+ * WHAT THIS IS. Someone drew the owner a panel to go round the map -- a
+ * bordered plate with a MAP plaque on its top edge -- and sent him two PNGs.
+ * When those two files are sitting in a folder beside the game data, THEY are
+ * the panel: read at boot, drawn as they are. When they are not, the panel
+ * composed from the player's own game data a few hundred lines above is drawn
+ * instead, silently but for one line on stderr.
+ *
+ * THE PICTURES ARE NOT PART OF THIS PROGRAM, and that is the whole shape of
+ * this code. They are not in the repository, not in the build, not embedded in
+ * the executable and not copied into any tree: lane MINIMAP1 measured them to
+ * be made from the cartridge's own art (every colour on the DS's own BGR555
+ * ladder, an exact 32x32 repeat, and the panel's fifteen wallpaper colours
+ * sitting in one 16-entry DS palette inside the ROM, in palette order). So
+ * what this file does is read a FOLDER. Whether a folder with those two files
+ * in it travels with a download is a packaging decision, and it is the
+ * owner's, made outside this code.
+ *
+ * WHICH FOLDER: host_setting_minimap_dir() -- "<asset root>/minimap", the same
+ * root textures_hd uses, with SM64DS_MINIMAP_DIR to point somewhere else.
+ *
+ * AT WHATEVER SIZE THEY COME. Nothing below counts on the two files being the
+ * size the first pair happened to be. The well, the notch and the plaque's
+ * place are all found as PROPORTIONS of the picture that carries them, so a
+ * pair drawn at twice or four times the pixels lands on exactly the same
+ * screen rectangles and simply has more detail to give when the map is small,
+ * which is the whole point of sending a bigger one. The only thing the two
+ * files owe each other is ONE PIXEL GRID: the plaque is drawn at the plate's
+ * own scale, so both files have to be at the same multiple. The boot line
+ * below prints both sizes so a mismatched pair is visible at a glance.
+ * Filtering cost does not follow the file's size either: see ArtScaled.
+ *
+ * WHAT IS READ OUT OF THEM, AND IT IS MEASURED RATHER THAN ASSUMED. The panel
+ * carries an inner outlined rectangle -- a dark line inset from its border --
+ * and the map has to sit exactly inside it. Rather than trust a pixel count,
+ * art_scan_inner below finds that rectangle by scanning the picture: the rows
+ * and columns that are more than half dark are the frame's own lines, and the
+ * interior is what they enclose. The same scan reports the transparent notch
+ * at the top (where the plaque drops in) and the brightest and darkest colours
+ * the artwork uses, which is where the resize handle takes its colours from.
+ * Nothing about the artwork is hardcoded except the sanity bounds a scan has
+ * to pass before it is believed.
+ *
+ * A picture that will not load, will not scan, or scans to something absurd is
+ * simply not used. There is no half-way state. */
+struct ArtImage {
+    int w, h;
+    unsigned *px;              /* ARGB8888, top row first */
+};
+
+ArtImage g_art_base, g_art_tab;
+int g_art_state;               /* 0 not tried, 1 both here, -1 not available */
+/* the inner outlined rectangle's INTERIOR, in base-image pixels, inclusive */
+int g_art_ix0, g_art_iy0, g_art_ix1, g_art_iy1;
+int g_art_notch;               /* fully transparent rows at the top */
+unsigned g_art_bright, g_art_dark;   /* the artwork's own two extremes */
+/* how far the map is inset inside the well when the well is not 4:3. Zero on
+   the owner's own picture, whose well is 240 x 180 and so is exactly 4:3;
+   published for the boot line and for the captures' measured rows. */
+int g_art_gapx, g_art_gapy;
+
+int art_load_one(const char *dir, const char *name, ArtImage *im)
+{
+    char path[1200];
+    std::snprintf(path, sizeof path, "%s/%s", dir, name);
+    int w = 0, h = 0, comp = 0;
+    unsigned char *p = stbi_load(path, &w, &h, &comp, 4);
+    if (!p) return 0;
+    if (w < 8 || h < 8 || w > 4096 || h > 4096) { stbi_image_free(p); return 0; }
+    unsigned *px = (unsigned *)std::malloc((size_t)w * (size_t)h * 4u);
+    if (!px) { stbi_image_free(p); return 0; }
+    for (int i = 0; i < w * h; ++i)
+        px[i] = ((unsigned)p[i * 4 + 3] << 24) | ((unsigned)p[i * 4] << 16)
+              | ((unsigned)p[i * 4 + 1] << 8) | (unsigned)p[i * 4 + 2];
+    stbi_image_free(p);
+    im->w = w;
+    im->h = h;
+    im->px = px;
+    return 1;
+}
+
+void art_free(ArtImage *im)
+{
+    std::free(im->px);
+    im->px = 0;
+    im->w = im->h = 0;
+}
+
+inline unsigned art_lum(unsigned c)
+{
+    return (((c >> 16) & 0xFF) * 77 + ((c >> 8) & 0xFF) * 151
+            + (c & 0xFF) * 28) >> 8;
+}
+
+/* THE INNER OUTLINED RECTANGLE, FOUND BY MEASUREMENT.
+ *
+ * The frame is a dark line on a light plate, so "dark" is defined against the
+ * picture's own middle rather than against a constant: the median luminance of
+ * its opaque pixels, halved. A row of the frame is then a row where more than
+ * half the picture's width is dark, and a column likewise -- which no row of
+ * wallpaper can be, and which a line of any thickness is. The first and last
+ * such rows and columns are the four lines; walking in from each gives its
+ * THICKNESS, and what the four thicknesses enclose is the interior.
+ *
+ * Then it has to pass: an interior at least 16 x 12, and all four frame lines
+ * at least one pixel IN from the picture's own edge -- a dark line lying on
+ * the outermost row is a picture with a dark border, not a panel with a map
+ * well. That last test is the whole sanity check, and it is a test about
+ * POSITION rather than about proportion on purpose: the artwork this was
+ * written for is 255 x 205 with a 240 x 180 well, which is 94% of its width,
+ * so any "the interior must be at most so many tenths of the picture" rule
+ * large enough to be safe would have refused the very picture it exists to
+ * accept. A picture that fails is refused whole, because a panel drawn round
+ * a rectangle that is not the artist's is worse than the one this program can
+ * compose for itself. */
+int art_scan_inner(const ArtImage *im)
+{
+    long hist[256];
+    for (int i = 0; i < 256; ++i) hist[i] = 0;
+    long opaque = 0;
+    for (int i = 0; i < im->w * im->h; ++i)
+        if (im->px[i] >> 24) { ++hist[art_lum(im->px[i]) & 0xFF]; ++opaque; }
+    if (opaque < 64) return 0;
+    long half = opaque / 2, run = 0;
+    unsigned med = 0;
+    for (int i = 0; i < 256; ++i) {
+        run += hist[i];
+        if (run >= half) { med = (unsigned)i; break; }
+    }
+    const unsigned thr = med > 1 ? med / 2 : 1;
+
+    /* the two profiles, and the extremes of the palette while the pixels are
+       already in hand */
+    unsigned lo = 0xFFFFFFFFu, hi = 0;
+    g_art_bright = 0xFFFFFFFFu;
+    g_art_dark = 0xFF000000u;
+    int *rowd = (int *)std::calloc((size_t)im->h, sizeof(int));
+    int *cold = (int *)std::calloc((size_t)im->w, sizeof(int));
+    if (!rowd || !cold) { std::free(rowd); std::free(cold); return 0; }
+    for (int y = 0; y < im->h; ++y)
+        for (int x = 0; x < im->w; ++x) {
+            const unsigned c = im->px[y * im->w + x];
+            if (!(c >> 24)) continue;
+            const unsigned l = art_lum(c);
+            if (l < lo) { lo = l; g_art_dark = c | 0xFF000000u; }
+            if (l >= hi) { hi = l; g_art_bright = c | 0xFF000000u; }
+            if (l < thr) { ++rowd[y]; ++cold[x]; }
+        }
+
+    int t = -1, b = -1, l = -1, r = -1;
+    for (int y = 0; y < im->h; ++y) if (rowd[y] * 2 > im->w) { if (t < 0) t = y; b = y; }
+    for (int x = 0; x < im->w; ++x) if (cold[x] * 2 > im->h) { if (l < 0) l = x; r = x; }
+    int ok = 0;
+    if (t >= 0 && b > t && l >= 0 && r > l) {
+        int t1 = t, b0 = b, l1 = l, r0 = r;
+        while (t1 + 1 < im->h && rowd[t1 + 1] * 2 > im->w) ++t1;
+        while (b0 - 1 >= 0 && rowd[b0 - 1] * 2 > im->w) --b0;
+        while (l1 + 1 < im->w && cold[l1 + 1] * 2 > im->h) ++l1;
+        while (r0 - 1 >= 0 && cold[r0 - 1] * 2 > im->h) --r0;
+        const int ix0 = l1 + 1, ix1 = r0 - 1, iy0 = t1 + 1, iy1 = b0 - 1;
+        const int iw = ix1 - ix0 + 1, ih = iy1 - iy0 + 1;
+        if (t1 < b0 && l1 < r0 && iw >= 16 && ih >= 12 &&
+            ix0 >= 2 && iy0 >= 2 && ix1 <= im->w - 3 && iy1 <= im->h - 3) {
+            g_art_ix0 = ix0; g_art_ix1 = ix1;
+            g_art_iy0 = iy0; g_art_iy1 = iy1;
+            ok = 1;
+        }
+    }
+    /* the notch: the fully transparent rows at the top, which is where the
+       plaque drops in and by how much it stands proud of the plate */
+    g_art_notch = 0;
+    for (int y = 0; y < im->h; ++y) {
+        int any = 0;
+        for (int x = 0; x < im->w && !any; ++x) any = im->px[y * im->w + x] >> 24;
+        if (any) break;
+        ++g_art_notch;
+    }
+    std::free(rowd);
+    std::free(cold);
+    return ok;
+}
+
+/* Asked once. Both files or neither: a plate with no plaque, or a plaque with
+   no plate, is not the design anyone drew. */
+int art_build(void)
+{
+    const char *dir = host_setting_minimap_dir();
+    int ok = art_load_one(dir, "SM64DSMapBase.png", &g_art_base)
+          && art_load_one(dir, "SM64DSMapText.png", &g_art_tab)
+          && art_scan_inner(&g_art_base)
+          && g_art_tab.w <= g_art_base.w;
+    if (!ok) {
+        art_free(&g_art_base);
+        art_free(&g_art_tab);
+        std::fprintf(stderr, "[minimap] no panel artwork in %s -- the panel is "
+                     "composed from the game's own data instead\n", dir);
+    } else {
+        const int iw = g_art_ix1 - g_art_ix0 + 1, ih = g_art_iy1 - g_art_iy0 + 1;
+        std::fprintf(stderr, "[minimap] panel artwork from %s: plate %dx%d, "
+                     "plaque %dx%d, map well %d,%d %dx%d, notch %d rows\n",
+                     dir, g_art_base.w, g_art_base.h, g_art_tab.w, g_art_tab.h,
+                     g_art_ix0, g_art_iy0, iw, ih, g_art_notch);
+        /* THE MAP IS 4:3 AND SO, ON THE OWNER'S PICTURE, IS THE WELL. Said out
+           loud either way, because a well that is not 4:3 means the map no
+           longer touches all four of its sides and a reader is owed the number
+           rather than a squint at a screenshot. */
+        if (iw * 3 == ih * 4)
+            std::fprintf(stderr, "[minimap] the well is exactly 4:3, so the map "
+                         "fills it to all four sides at every size\n");
+        else
+            std::fprintf(stderr, "[minimap] the well is %dx%d, which is %d "
+                         "pixels off 4:3 in width (4:3 at that height is %d): "
+                         "the map keeps its own shape and is centred in the "
+                         "well, so it touches two sides and not four\n",
+                         iw, ih, iw - ih * 4 / 3, ih * 4 / 3);
+    }
+    return ok;
+}
+
+inline int art_on(void)
+{
+    if (!g_art_state) g_art_state = art_build() ? 1 : -1;
+    return g_art_state == 1;
+}
+
+/* FLOOR division, because the picture extends OUTWARD from the rectangle the
+   arithmetic below is anchored on and the coordinates going into it are
+   therefore negative as often as not. C's own division truncates towards
+   zero, which would fold the two pixels either side of the anchor onto the
+   same destination row and put a seam at the anchor's own edge. */
+inline int fdiv(int a, int b)
+{
+    return a >= 0 ? a / b : -((-a + b - 1) / b);
+}
+
+/* ONE PICTURE, PLACED BY AN ANCHOR RECTANGLE RATHER THAN BY ITS OWN.
+ *
+ * The caller names a rectangle INSIDE the source picture and the destination
+ * rectangle it has to land on exactly; the rest of the picture follows from
+ * the same linear map and spills outside as far as it goes. That is the shape
+ * this needs because the thing being placed is the artist's map well: the well
+ * must sit exactly on the map, and where the plate's outer edge then falls is
+ * an answer, not an input. Placing the picture by its own rectangle and hoping
+ * the well lands right is how a border ends up a pixel inside the map.
+ *
+ * The source's alpha is a stencil (0 or 255 is all this artwork has, and
+ * anything between reads as present -- the plate is a stencil, not a blend).
+ *
+ * MAGNIFIED: nearest neighbour, one source pixel per destination block, for
+ * the reason ntr's own compose gives for the map -- a filter would invent
+ * pixels the artist did not draw. That is the answer at every ratio above
+ * 1:1, exact multiple or not, and it is the answer this file already gave.
+ *
+ * REDUCED: THE AREA AVERAGE, each source pixel counted by HOW MUCH OF IT the
+ * destination pixel actually covers. It used to count whole source pixels --
+ * the block from one integer boundary to the next -- and that is what put the
+ * owner's MAP lettering out of focus at the small sizes. At the default map
+ * the plate is drawn at eight fifteenths of its own size, so a destination
+ * pixel covers 1.875 source ones: a whole-pixel block is therefore one pixel
+ * wide about an eighth of the time and two the rest, so a letter's stroke is
+ * copied at full ink in the wrong place on some columns and mixed half and
+ * half with the plate on others. The eye reads that unevenness as blur. With
+ * fractional coverage every column gets the same, correct share of the stroke
+ * and the lettering holds its shape all the way down.
+ *
+ * The source's alpha is a stencil (0 or 255 is all this artwork has, and
+ * anything between reads as present -- the plate is a stencil, not a blend),
+ * so a pixel the artist left empty contributes nothing to the average and a
+ * destination pixel with no opaque source under it is not drawn at all.
+ *
+ * AND IT IS DONE ONCE PER SIZE, NOT ONCE PER FRAME. See ArtScaled below. */
+struct ArtScaled {
+    const ArtImage *src;                 /* what it was made from */
+    int sx, sy, sw, sh, dw, dh;          /* and at what ratio */
+    int ox, oy;                          /* its corner, relative to the anchor */
+    int w, h;
+    unsigned *px;                        /* ARGB; alpha 0 means draw nothing */
+};
+
+/* how much of source pixel u, whose own span is [u*den, u*den+den), falls
+   inside the destination pixel's span [A, B) -- all three in units of den */
+inline long long art_cov(long long A, long long B, long long u, long long den)
+{
+    const long long lo = u * den, hi = lo + den;
+    const long long l = A > lo ? A : lo, r = B < hi ? B : hi;
+    return r > l ? r - l : 0;
+}
+
+inline long long lfdiv(long long a, long long b)
+{
+    return a >= 0 ? a / b : -((-a + b - 1) / b);
+}
+
+/* THE ARTWORK AT THE SIZE IT IS BEING DRAWN AT, KEPT.
+ *
+ * This is what lets the artist hand over a file of ANY size. Filtering a
+ * picture properly costs work in proportion to the SOURCE's pixels, so a plate
+ * four times as wide is sixteen times the work -- about a million weighted
+ * samples a frame at the default map size, every frame, for a picture that has
+ * not changed. Scaling it once and keeping the result costs that only when the
+ * map's size changes, which is when the player drags the corner, and the draw
+ * itself is then a copy whose cost depends on the size on screen and not at
+ * all on the size of the file. A 4x file and a 1x file draw at the same speed.
+ *
+ * Rebuilt when any of the seven numbers that define the scaling changes, and
+ * not otherwise. */
+void art_scaled_build(ArtScaled *o, const ArtImage *im,
+                      int sx, int sy, int sw, int sh, int dw, int dh)
+{
+    if (o->src == im && o->sx == sx && o->sy == sy && o->sw == sw
+        && o->sh == sh && o->dw == dw && o->dh == dh && o->px)
+        return;
+    std::free(o->px);
+    o->px = 0;
+    o->src = im;
+    o->sx = sx; o->sy = sy; o->sw = sw; o->sh = sh; o->dw = dw; o->dh = dh;
+    o->ox = fdiv(-sx * dw, sw);
+    o->oy = fdiv(-sy * dh, sh);
+    o->w = fdiv((im->w - sx) * dw, sw) - o->ox;
+    o->h = fdiv((im->h - sy) * dh, sh) - o->oy;
+    if (o->w < 1 || o->h < 1) { o->w = o->h = 0; return; }
+    o->px = (unsigned *)std::calloc((size_t)o->w * (size_t)o->h, 4u);
+    if (!o->px) { o->w = o->h = 0; return; }
+
+    const int shrinkx = dw < sw, shrinky = dh < sh;
+    for (int Y = 0; Y < o->h; ++Y) {
+        /* this row's span in source rows, in units of dh */
+        const long long Ay = (long long)(o->oy + Y) * sh + (long long)sy * dh;
+        const long long By = Ay + sh;
+        int v0 = (int)lfdiv(Ay, dh);
+        int v1 = shrinky ? (int)lfdiv(By + dh - 1, dh) : v0 + 1;
+        if (v0 < 0) v0 = 0;
+        if (v1 > im->h) v1 = im->h;
+        if (v0 >= im->h || v1 <= v0) continue;
+        for (int X = 0; X < o->w; ++X) {
+            const long long Ax = (long long)(o->ox + X) * sw + (long long)sx * dw;
+            const long long Bx = Ax + sw;
+            int u0 = (int)lfdiv(Ax, dw);
+            int u1 = shrinkx ? (int)lfdiv(Bx + dw - 1, dw) : u0 + 1;
+            if (u0 < 0) u0 = 0;
+            if (u1 > im->w) u1 = im->w;
+            if (u0 >= im->w || u1 <= u0) continue;
+            unsigned long long r = 0, g = 0, b = 0, t = 0;
+            for (int v = v0; v < v1; ++v) {
+                const long long cy = shrinky ? art_cov(Ay, By, v, dh) : dh;
+                if (cy <= 0) continue;
+                const unsigned *srow = im->px + (size_t)v * im->w;
+                for (int u = u0; u < u1; ++u) {
+                    const unsigned c = srow[u];
+                    if (!(c >> 24)) continue;
+                    const long long cx = shrinkx ? art_cov(Ax, Bx, u, dw) : dw;
+                    if (cx <= 0) continue;
+                    const unsigned long long k = (unsigned long long)(cx * cy);
+                    r += k * ((c >> 16) & 0xFF);
+                    g += k * ((c >> 8) & 0xFF);
+                    b += k * (c & 0xFF);
+                    t += k;
+                }
+            }
+            if (!t) continue;        /* nothing opaque under it: stays empty */
+            o->px[(size_t)Y * o->w + X] =
+                0xFF000000u | ((unsigned)((r + t / 2) / t) << 16)
+                | ((unsigned)((g + t / 2) / t) << 8) | (unsigned)((b + t / 2) / t);
+        }
+    }
+    if (std::getenv("SM64DS_MINIMAP_TRACE"))
+        std::fprintf(stderr, "[mmtrace] artwork scaled: %dx%d -> %dx%d at "
+                     "%d/%d, %s\n", im->w, im->h, o->w, o->h, dw, sw,
+                     (shrinkx || shrinky) ? "area average" : "nearest");
+}
+
+/* The copy. The anchor rectangle still decides where it lands: the scaled
+   picture's own corner is the anchor plus the offset the scaling worked out,
+   so the well still sits exactly on the map and the rest of the plate falls
+   where that puts it. */
+void art_draw(const ArtScaled *o, unsigned *dst, int w, int h, int dx, int dy)
+{
+    if (!o->px) return;
+    for (int Y = 0; Y < o->h; ++Y) {
+        const int D = dy + o->oy + Y;
+        if (D < 0 || D >= h) continue;
+        const unsigned *srow = o->px + (size_t)Y * o->w;
+        unsigned *drow = dst + (size_t)D * ntr::SCREEN_W;
+        for (int X = 0; X < o->w; ++X) {
+            const int E = dx + o->ox + X;
+            if (E < 0 || E >= w) continue;
+            const unsigned c = srow[X];
+            if (c >> 24) drow[E] = c;
+        }
+    }
+}
+
+ArtScaled g_scaled_base, g_scaled_tab;
+
+void art_blit(ArtScaled *o, const ArtImage *im, unsigned *dst, int w, int h,
+              int sx, int sy, int sw, int sh,
+              int dx, int dy, int dw, int dh)
+{
+    if (sw < 1 || sh < 1 || dw < 1 || dh < 1) return;
+    art_scaled_build(o, im, sx, sy, sw, sh, dw, dh);
+    art_draw(o, dst, w, h, dx, dy);
+}
+
+void px_put(unsigned *dst, int dw, int dh, int x, int y, unsigned c)
+{
+    if (x < 0 || y < 0 || x >= dw || y >= dh) return;
+    dst[y * ntr::SCREEN_W + x] = c;
+}
+
+void px_fill(unsigned *dst, int dw, int dh, int x0, int y0, int w, int h,
+             unsigned c)
+{
+    for (int y = y0; y < y0 + h; ++y)
+        for (int x = x0; x < x0 + w; ++x)
+            px_put(dst, dw, dh, x, y, c);
+}
+
+/* ---- THE PANEL'S RECTANGLES, COMPUTED ONCE FOR BOTH PASSES ----------------
+ *
+ * THE PANEL IS DRAWN IN TWO PASSES NOW, on either side of the map, because
+ * the owner asked for exactly that: "the MAP banner and text should be above
+ * the minimap layer and the background should be behind the minimap layer".
+ * So the plate goes down first, the map is composed over it, and the plaque
+ * goes on top of the map. That is the whole reason this arithmetic is here
+ * rather than inside one drawing function: two passes reading one set of
+ * numbers cannot disagree about where the plaque is, and the plaque now
+ * overlaps something (the map) where before it only ever overlapped the
+ * plate.
+ *
+ * WHERE THE PLAQUE GOES IS MEASURED OFF THE ARTIST'S OWN MOCK-UP rather than
+ * chosen: in it the plate picture's top row and the plaque's top row are the
+ * SAME row, and the plaque is centred across the plate's width -- (255 - 109)
+ * / 2 = 73, and 73 is where it sits. The plate picture carries ten fully
+ * transparent rows at the top for exactly that, the notch the plaque drops
+ * into, so the plate is blitted whole, notch and all, and its transparent
+ * rows draw nothing.
+ *
+ * Returns 1 when the artwork is the panel, 0 when it is the composed one. */
+struct PanelGeom {
+    int x0, y0, pw, ph;        /* the plate, or the composed panel */
+    int tx, ty, tw, th;        /* the MAP plaque */
+    int wx, wy, ww, wh;        /* the artist's well, placed (art only) */
+    int vx, vy;                /* the panel's top-left VISIBLE corner */
+};
+
+int panel_geom(PanelGeom *g)
+{
+    /* The artist's margins, carried onto whatever size the map is drawn at.
+       Seven DS pixels proud on the left and top, eight on the right and
+       bottom, at the map's own scale, and never less than one pixel so the
+       smallest map still has a panel round it. */
+    const int sx7 = ntr::SUB_W * 7 * g_pan_num / (256 * g_pan_den);
+    const int sx8 = ntr::SUB_W * 8 * g_pan_num / (256 * g_pan_den);
+    const int sy7 = ntr::SUB_H * 7 * g_pan_num / (192 * g_pan_den);
+    const int sy8 = ntr::SUB_H * 8 * g_pan_num / (192 * g_pan_den);
+    /* A FLOOR OF SIX PIXELS, because the artist's margin is a PROPORTION of
+       his own 240-wide map and the smallest map here is 128 wide: three pixels
+       of margin is one pixel of wallpaper once the frame lines have taken
+       their share, which is a smudge rather than a panel. Above the smallest
+       couple of sizes the proportion is what rules. */
+    const int ml = sx7 < 6 ? 6 : sx7, mt = sy7 < 6 ? 6 : sy7;
+    const int mr = sx8 < 7 ? 7 : sx8, mb = sy8 < 7 ? 7 : sy8;
+
+    const int x0 = g_x0 - ml, y0 = g_y0 - mt;
+    const int pw = g_pan_w + ml + mr, ph = g_pan_h + mt + mb;
+
+    /* ---- THE MAP GOES INSIDE THE PICTURE'S OWN SQUARE ---------------------
+     *
+     * The owner: "make it match up with the outline and be inside the square
+     * on the image i sent". So the plate is not scaled to some rectangle of
+     * this program's choosing and the map dropped roughly in the middle of it;
+     * the WELL the artist drew is placed exactly onto the map, and the rest of
+     * the picture follows from that. plate_to_fb_x / _y below are that one
+     * linear map, and everything -- the plate's rectangle, the plaque's, the
+     * resize handle's corner -- is read out of it, so nothing can drift.
+     *
+     * ITS SHAPE. The map is 4:3 at every size and so, on the owner's picture,
+     * is the well: 240 x 180 at 7,17 inside a 255 x 205 plate. When a picture
+     * turns up whose well is NOT 4:3 the map keeps its own shape and is
+     * centred in the well instead, with the plate scaled by whichever axis
+     * binds, so the map is inscribed rather than stretched. The boot line says
+     * which of the two the picture got. */
+    if (art_on()) {
+        const int bw = g_art_base.w, bh = g_art_base.h;
+        const int iw = g_art_ix1 - g_art_ix0 + 1;
+        const int ih = g_art_iy1 - g_art_iy0 + 1;
+        if (iw > 0 && ih > 0 && g_pan_w > 0 && g_pan_h > 0) {
+            /* the well, grown to hold the map: whichever axis binds sets the
+               scale, and the map is centred across the other one */
+            int wellw = g_pan_w, wellh = g_pan_h;
+            if ((long)ih * g_pan_w >= (long)iw * g_pan_h)
+                wellh = (int)((long)ih * g_pan_w / iw);
+            else
+                wellw = (int)((long)iw * g_pan_h / ih);
+            const int gapx = (wellw - g_pan_w) / 2, gapy = (wellh - g_pan_h) / 2;
+            g_art_gapx = gapx;
+            g_art_gapy = gapy;
+            const int wx = g_x0 - gapx, wy = g_y0 - gapy;
+
+            const int px0 = wx + fdiv(-g_art_ix0 * wellw, iw);
+            const int px1 = wx + fdiv((bw - g_art_ix0) * wellw, iw);
+            const int py0 = wy + fdiv(-g_art_iy0 * wellh, ih);
+            const int py1 = wy + fdiv((bh - g_art_iy0) * wellh, ih);
+            const int tu = (bw - g_art_tab.w) / 2;
+            const int tx0 = wx + fdiv((tu - g_art_ix0) * wellw, iw);
+
+            g->x0 = px0;
+            g->y0 = py0;
+            g->pw = px1 - px0;
+            g->ph = py1 - py0;
+            g->tx = tx0;
+            g->ty = py0;
+            g->tw = fdiv(g_art_tab.w * wellw, iw);
+            g->th = fdiv(g_art_tab.h * wellh, ih);
+            g->wx = wx;
+            g->wy = wy;
+            g->ww = wellw;
+            g->wh = wellh;
+            /* the plate's OPAQUE top-left, which is the corner a player sees
+               and therefore the corner the resize handle goes on: the notch
+               rows above it are the hole the plaque drops into and draw
+               nothing at all */
+            g->vx = px0;
+            g->vy = py0 + fdiv(g_art_notch * wellh, ih);
+            return 1;
+        }
+    }
+
+    g->x0 = x0;
+    g->y0 = y0;
+    g->pw = pw;
+    g->ph = ph;
+    g->tw = pw * 109 / 255;
+    g->th = ph * 32 / 195;
+    if (g->tw < 12) g->tw = 12;
+    if (g->th < 6) g->th = 6;
+    g->tx = x0 + (pw - g->tw) / 2;
+    g->ty = y0 - ph * 10 / 195;
+    g->wx = g_x0;
+    g->wy = g_y0;
+    g->ww = g_pan_w;
+    g->wh = g_pan_h;
+    g->vx = x0;
+    g->vy = y0;
+    return 0;
+}
+
+/* How far the panel reaches past the map on each side. Declared near the top
+   of the file: the size has to be settled before anything is drawn, and what
+   settles it is whether this fits. The rectangles are worked out with the map
+   at the origin so the answers are offsets rather than positions, and the two
+   globals that stand in for it are put back afterwards because the caller has
+   not decided them yet this frame. */
+void panel_extents(int *l, int *t, int *r, int *b)
+{
+    const int sx = g_x0, sy = g_y0;
+    g_x0 = 0;
+    g_y0 = 0;
+    PanelGeom g;
+    panel_geom(&g);
+    g_x0 = sx;
+    g_y0 = sy;
+
+    int x0 = g.x0 < g.tx ? g.x0 : g.tx;
+    int y0 = g.y0 < g.ty ? g.y0 : g.ty;
+    int x1 = g.x0 + g.pw, y1 = g.y0 + g.ph;
+    if (g.tx + g.tw > x1) x1 = g.tx + g.tw;
+    if (g.ty + g.th > y1) y1 = g.ty + g.th;
+    *l = x0 < 0 ? -x0 : 0;
+    *t = y0 < 0 ? -y0 : 0;
+    *r = x1 > g_pan_w ? x1 - g_pan_w : 0;
+    *b = y1 > g_pan_h ? y1 - g_pan_h : 0;
+}
+
+/* ---- THE RESIZE HANDLE ----------------------------------------------------
+ *
+ * The owner: "could we actually make it where you can grab the top left
+ * corner and put a yellow/tan square there to grab and resize the minimap so
+ * its easy to scale it with window size", and then, on a draft that showed it
+ * only under the pointer: "make the yellow always be up. the square".
+ *
+ * SO IT IS ALWAYS THERE. No hover test, no fade, nothing to discover: while
+ * the improved map is on and the map is on screen, the square is on its
+ * top-left corner. There is exactly one condition that takes it away, and it
+ * is not a preference about clutter -- MouseCapture. With that key on the
+ * window hides the pointer and pins it to the middle of the picture to steer
+ * the camera with, so there is no cursor in the player's hand to grab
+ * anything with and a handle would be a control that cannot be operated. The
+ * key reloads live, so turning MouseCapture off in the launcher brings the
+ * square back without restarting the game.
+ *
+ * ITS COLOURS ARE THE PANEL'S OWN: the brightest and darkest colours in the
+ * artist's picture when the picture is what is drawn, and the same two the
+ * composed panel takes from the player's palette when it is not. Nothing here
+ * picks a colour.
+ *
+ * ITS SIZE IS THE MAP'S, NOT THE PICTURE'S. The owner, on seeing it against a
+ * small map: "the yellow square on the minimap doesnt scale with map size so
+ * when the map is small its massive". It used to be ten pixels against a
+ * 384-row PICTURE, a number the map had no say in, so on the smallest map the
+ * square took a thirteenth of the map's width and on the largest it was a
+ * speck in the corner. It is EIGHT PERCENT OF THE MAP'S OWN WIDTH now,
+ * rounded to a whole pixel, so it reads the same against the thing it resizes
+ * at every size: 10 pixels on a 128-wide map, 15 on 192, 20 on 256.
+ *
+ * WITH A FLOOR AND A CEILING, both in picture pixels, because a share of a
+ * width is the wrong answer at the two ends: under eight pixels the square is
+ * too small to put a pointer on, and over thirty-two it stops being a grip and
+ * starts covering the artist's corner. The ceiling binds from a map 400 wide
+ * up, so the biggest maps all carry the same 32-pixel square.
+ *
+ * The picture's height is still the parameter and is no longer read. It stays
+ * so that the draw, the trace and the press go on asking this one function,
+ * which is the whole reason the square cannot drift from the thing you grab. */
+int handle_rect(int *hx, int *hy, int *hs, int h)
+{
+    (void)h;
+    if (!improved_map_on() || hal_sub_screen_stacked()) return 0;
+    /* AND NOT WHILE THE PICTURE IS COMPOSED: the map is not on the picture
+       at all for those frames, so there is no map corner to grab. One test,
+       and it covers the draw and the press both, because both come through
+       here. */
+    if (hal_menu_live()) return 0;
+    if (host_setting_mouse_capture()) return 0;
+    PanelGeom g;
+    panel_geom(&g);
+    int s = (g_pan_w * 8 + 50) / 100;
+    if (s < 8) s = 8;
+    if (s > 32) s = 32;
+    if (hx) *hx = g.vx;
+    if (hy) *hy = g.vy;
+    if (hs) *hs = s;
+    return 1;
+}
+
+/* THE DRAG'S STATE, host statics rather than anything in .dsstate, for the
+   reason poll_touch's own latch gives: a save-state load must not restore a
+   half-finished drag onto a hand that is not holding the button any more. */
+int g_handle_own;                /* this press started on the handle */
+int g_handle_num0;               /* g_pan_num when it started */
+int g_handle_bx0, g_handle_by0;  /* where in the picture it started */
+long g_handle_grabs, g_handle_frames;   /* for the proof's census line */
+
+/* THE PRESS, IF IT IS THE HANDLE'S. Returns 1 when the handle owns it, and
+ * then the press reaches nothing else at all: no stylus record, so no touch
+ * for the ROM to read and no camera button for it to hit-test. A drag that
+ * started here goes on owning the button after the cursor has left the
+ * square, which is what dragging a corner means; only letting go ends it.
+ *
+ * WHICH WAY IT SCALES. The map is anchored at its bottom-right corner, so
+ * pulling the handle up and to the left makes it bigger. Both axes count: the
+ * map keeps its 4:3 shape, so a pixel of height is worth four thirds of a
+ * pixel of width, and the two are averaged. A pull straight left, straight up
+ * or along the diagonal all do the sensible thing.
+ *
+ * THE SIZE MOVES LIVE AND IS WRITTEN DOWN ONLY ON RELEASE. A settings file
+ * rewritten sixty times a second is a file the launcher would be reading
+ * half-written. */
+int handle_press(int bx, int by, int on_picture)
+{
+    int hx, hy, hs;
+    if (!handle_rect(&hx, &hy, &hs, ntr::active_h)) {
+        g_handle_own = 0;
+        return 0;
+    }
+    if (!g_handle_own) {
+        if (!on_picture) return 0;
+        if (bx < hx || by < hy || bx >= hx + hs || by >= hy + hs) return 0;
+        g_handle_own = 1;
+        g_handle_num0 = g_pan_num;
+        g_handle_bx0 = bx;
+        g_handle_by0 = by;
+        ++g_handle_grabs;
+        std::fprintf(stderr, "[minimap] handle grabbed at picture (%d,%d); the "
+                     "map is %dx%d and this press reaches nothing else\n",
+                     bx, by, g_pan_w, g_pan_h);
+    }
+    ++g_handle_frames;
+
+    const int dx = g_handle_bx0 - bx, dy = g_handle_by0 - by;
+    const int dw = (3 * dx + 4 * dy) / 6;      /* pixels of map width */
+    int num = g_handle_num0 + dw * g_pan_den / ntr::SUB_W;
+    const int nmin = g_pan_den / 2 < 1 ? 1 : g_pan_den / 2;
+    if (num < nmin) num = nmin;
+    /* the ceiling is the drawing layer's: hal_sub_panel_geometry steps a size
+       down until the whole panel fits the picture, and what it settles on is
+       what gets written down when the button comes up */
+    host_setting_minimap_scale_set_live(2.0 * num / g_pan_den);
+    return 1;
+}
+
+/* THE BUTTON CAME UP. The size the drawing layer actually settled on -- which
+   is the one the player is looking at, after its own clamp -- goes to
+   settings.json, so it survives a restart and the launcher's picker opens on
+   it. */
+void handle_release(void)
+{
+    if (!g_handle_own) return;
+    g_handle_own = 0;
+    const double s = 2.0 * g_pan_num / g_pan_den;
+    host_setting_save_minimap_scale(s);
+    std::fprintf(stderr, "[minimap] resized to %g (map %dx%d) and saved\n",
+                 s, g_pan_w, g_pan_h);
+}
+
+/* See the declaration near the top of the file. One line per change, so a
+   windowed run that presents every frame prints one line and not sixty a
+   second. */
+void panel_trace(int w, int h)
+{
+    static int trace = -1;
+    static int last[8];
+    if (trace < 0) trace = std::getenv("SM64DS_MINIMAP_TRACE") ? 1 : 0;
+    if (!trace) return;
+    const int now[8] = { w, h, g_pan_num, g_pan_den, g_x0, g_y0,
+                         g_pan_w, g_pan_h };
+    int moved = 0;
+    for (int i = 0; i < 8; ++i)
+        if (now[i] != last[i]) { moved = 1; last[i] = now[i]; }
+    if (!moved) return;
+    PanelGeom g;
+    const int art = panel_geom(&g);
+    int hx = 0, hy = 0, hs = 0;
+    handle_rect(&hx, &hy, &hs, h);
+    std::fprintf(stderr,
+                 "[mmtrace] geom: picture %dx%d scale %.5f ratio %d/%d "
+                 "map %d,%d %dx%d panel %d,%d %dx%d plaque %d,%d %dx%d "
+                 "handle %d,%d %d well %d,%d %dx%d gap %d,%d art %d\n",
+                 w, h, 2.0 * g_pan_num / g_pan_den, g_pan_num, g_pan_den,
+                 g_x0, g_y0, g_pan_w, g_pan_h, g.x0, g.y0, g.pw, g.ph,
+                 g.tx, g.ty, g.tw, g.th, hx, hy, hs,
+                 g.wx, g.wy, g.ww, g.wh, g_art_gapx, g_art_gapy, art);
+}
+
+/* ---- THE INSET MAP'S OWN SELFTEST -----------------------------------------
+ *
+ * SM64DS_LAYOUT_SELFTEST's other half. The one further down this file asserts
+ * the STACKED layout and runs from the stacked image's own builder, so it
+ * never fires in a course -- and a course is the only place the inset map
+ * exists. This is the same idea over the inset arm, run once per process the
+ * first time a course composes.
+ *
+ * WHAT IT ASSERTS, at every size including three that are not on the
+ * launcher's picker:
+ *   G1 the four corners of the DRAWN map, run back through the exact
+ *      expression poll_touch's inset arm uses, land within ONE DS pixel of DS
+ *      (0,0), (255,0), (0,191) and (255,191). One pixel is the floor for a
+ *      reduced size, where one drawn pixel covers two DS ones and the last
+ *      drawn column can only name the first of the two it covers.
+ *   G2 one pixel outside each of the four edges reads OUTSIDE.
+ *   G3 the map is 4:3 exactly.
+ *   G4 the whole decorated panel is inside the picture.
+ * G4 is the one that can legitimately fail: it is the clamp's own promise,
+ * and a size that cannot keep it is supposed to have been stepped down before
+ * it was drawn. */
+void inset_map_selftest(int w, int h)
+{
+    const char *env = std::getenv("SM64DS_LAYOUT_SELFTEST");
+    if (!env || !*env) return;
+    /* 128 is scale 1 and 512 is scale 4; 220, 300 and 460 are off the
+       launcher's picker on purpose, because the size is a free number now.
+       Every one is on the grid -- a multiple of four -- because that is the
+       only thing a size is allowed to be, and a fixture that asks for a size
+       the program cannot produce is testing nothing. */
+    static const int forced[9] = { 128, 160, 192, 220, 256, 300, 384, 460, 512 };
+    const int s_num = g_pan_num, s_den = g_pan_den, s_w = g_pan_w,
+              s_h = g_pan_h, s_x = g_x0, s_y = g_y0, s_m = g_pan_margin;
+
+    int passed = 0;
+    for (int i = 0; i < 9; ++i) {
+        g_size_force = forced[i];
+        hal_sub_panel_geometry(w, h);
+        char fails[8];
+        int nf = 0;
+        const int mx1 = g_x0 + g_pan_w - 1, my1 = g_y0 + g_pan_h - 1;
+        int dx, dy, ok = 1;
+#define INV(bx, by) (dx = fdiv(((bx) - g_x0) * g_pan_den, g_pan_num), \
+                     dy = fdiv(((by) - g_y0) * g_pan_den, g_pan_num))
+        INV(g_x0, g_y0);
+        if (dx > 1 || dy > 1 || dx < 0 || dy < 0) ok = 0;
+        INV(mx1, g_y0);
+        if (dx < ntr::SUB_W - 2 || dx > ntr::SUB_W - 1 || dy > 1) ok = 0;
+        INV(g_x0, my1);
+        if (dy < ntr::SUB_H - 2 || dy > ntr::SUB_H - 1 || dx > 1) ok = 0;
+        INV(mx1, my1);
+        if (dx < ntr::SUB_W - 2 || dy < ntr::SUB_H - 2) ok = 0;
+        if (!ok) fails[nf++] = '1';
+        ok = 1;
+        INV(g_x0 - 1, g_y0);
+        if (dx >= 0) ok = 0;
+        INV(g_x0, g_y0 - 1);
+        if (dy >= 0) ok = 0;
+        INV(mx1 + 1, g_y0);
+        if (dx < ntr::SUB_W) ok = 0;
+        INV(g_x0, my1 + 1);
+        if (dy < ntr::SUB_H) ok = 0;
+#undef INV
+        if (!ok) fails[nf++] = '2';
+        if (g_pan_w * 3 != g_pan_h * 4) fails[nf++] = '3';
+        int el, et, er, eb;
+        panel_extents(&el, &et, &er, &eb);
+        if (g_x0 - el < 0 || g_y0 - et < 0 ||
+            g_x0 + g_pan_w + er > w || g_y0 + g_pan_h + eb > h)
+            fails[nf++] = '4';
+        fails[nf] = 0;
+        if (!nf) {
+            ++passed;
+            std::fprintf(stderr, "[insetst] size %d: map %d,%d %dx%d panel "
+                         "%d,%d %dx%d G1..G4 PASS\n", forced[i], g_x0, g_y0,
+                         g_pan_w, g_pan_h, g_x0 - el, g_y0 - et,
+                         el + g_pan_w + er, et + g_pan_h + eb);
+        } else {
+            std::fprintf(stderr, "[insetst] size %d: map %d,%d %dx%d panel "
+                         "%d,%d %dx%d FAIL G%s\n", forced[i], g_x0, g_y0,
+                         g_pan_w, g_pan_h, g_x0 - el, g_y0 - et,
+                         el + g_pan_w + er, et + g_pan_h + eb, fails);
+        }
+    }
+    std::fprintf(stderr, "INSET MAP SELFTEST: %s %d/9\n",
+                 passed == 9 ? "PASS" : "FAIL", passed);
+    g_size_force = 0;
+    g_pan_num = s_num;
+    g_pan_den = s_den;
+    g_pan_w = s_w;
+    g_pan_h = s_h;
+    g_x0 = s_x;
+    g_y0 = s_y;
+    g_pan_margin = s_m;
+}
+
+
+/* ---- THE MENU COMPOSE, HOST SIDE (run menu1, lane HOOK1) -------------------
+ *
+ * The level-clear save menu (SaveMenuOnTop) used to live here as swap_geom_for, swap_present, swap_inverse
+ * and swap_now. It is recipe "lc" of the generic compose layer now (hal/menu_recipe_lc.cpp, hal/menu_compose.cpp)
+ * and this file is the HOST side of that layer: it decides the frame's one predicate, feeds the layer the real
+ * engine-B planes, draws it at the two seams (before and after engine A's fade), and runs the stylus and pad
+ * seams. The rule that survives from the swap: ONE PREDICATE PER FRAME. hal_menu_decide_tick asks once per tick (at the
+ * head of engine A's composite on one thread), the compose and the draw read the bound decision (hal_menu_draw_live),
+ * the input paths read the latest one (hal_menu_live).
+ * The 0.4.1 "lift without draw" defect (text lifted from the picture and never drawn back) cannot recur as the
+ * panel option any more: the draw does not depend on g_on (the scan-out is forced when a menu is live), and the
+ * layer keeps the once-per-process LIFT WITHOUT DRAW net. */
+extern ntr::SubFramebuffer g_sub;
+
+/* The option, asked once per process and latched, like the improved map's. */
+int save_menu_on_top(void)
+{
+    static int v = -1;
+    if (v < 0) v = host_setting_save_menu_on_top() ? 1 : 0;
+    return v;
+}
+
+/* THE PAIR: the level-clear screen owns the game and LC_Update is in a state that draws the menu. */
+int save_menu_is_up(void)
+{
+    return data_0209f20c != 0 && data_0209f2d4 >= 1 && data_0209f2d4 <= 3;
+}
+
+/* key -> enabled, for hal_menu_set_enable_fn */
+int menu_enable(int key)
+{
+    static int one = -1;
+    if (key == MENU_KEY_SAVE_MENU_ON_TOP) return save_menu_on_top();
+    if (key == MENU_KEY_ONE_SCREEN_MENUS) {
+        if (one < 0) one = host_setting_one_screen_menus() ? 1 : 0;
+        return one;
+    }
+    return 0;
+}
+
+/* ===== MENU DRAW PATH BEGIN (MENUSPLIT1) =====================================================================
+   Everything between this banner and the END banner runs on the DRAW side of the decide / draw split: it reads the bound
+   MenuDecision and the frame's planes (engine-B VRAM / OAM / palette / registers, the lifted planes, the fade state),
+   never ROM program memory, the live scene object or a ROM function. tools-free audit: the grep in
+   runs/menu1/out/MENUSPLIT1 (draw_audit.py) scans this region and menu_compose.cpp's draw functions. */
+/* THE COLOUR THE PLATES SIT ON, read off the machine rather than guessed.
+   The PPU's backdrop is entry 0 of the engine's own BG palette -- engine B's
+   is at 0x05000400 -- and it is the colour ppu_scanout_sub starts every
+   pixel of the bottom screen from, so a pixel that is still it is a pixel
+   engine B drew nothing on. Two things happen to it before it reaches the
+   raster and both happen here: BGR555 is widened to eight bits a channel the
+   way ntr's own bgr555 does it, and engine B's MASTER_BRIGHT (0x0400106C,
+   mode in bits 14-15, factor in bits 0-4) is applied the way
+   ppu_scanout_sub applies it to every pixel it writes -- without that a
+   fading bottom screen would carry a backdrop this key no longer matched.
+   Measured on the level-clear menu: palette entry 0x0FAB and the brightness
+   unit off, so the raster's backdrop is (90,239,24), which the ROM's own -7
+   on the finished picture then darkens to the (51,135,14) a capture shows.
+   That pair is the fallback value if this read ever has to be replaced by a
+   constant. */
+unsigned menu_backdrop_px(void)
+{
+    const unsigned c = *(volatile unsigned short *)0x05000400u;
+    const unsigned r5 = c & 0x1Fu, g5 = (c >> 5) & 0x1Fu,
+                   b5 = (c >> 10) & 0x1Fu;
+    int r = (int)(r5 << 3 | r5 >> 2), g = (int)(g5 << 3 | g5 >> 2),
+        b = (int)(b5 << 3 | b5 >> 2);
+    const unsigned mb = *(volatile unsigned short *)0x0400106Cu;
+    const unsigned mode = (mb >> 14) & 3u;
+    int f = (int)(mb & 0x1Fu);
+    if (f > 16) f = 16;
+    if (f && mode == 1) {
+        r += (255 - r) * f / 16;
+        g += (255 - g) * f / 16;
+        b += (255 - b) * f / 16;
+    } else if (f && mode == 2) {
+        r -= r * f / 16;
+        g -= g * f / 16;
+        b -= b * f / 16;
+    }
+    return ((unsigned)r << 16) | ((unsigned)g << 8) | (unsigned)b;
+}
+
+/* The same suppression hal_sub_screen_present installs for the corner-inset layout every frame (the improved map's
+   touch-marker removal), put back after a masked scan-out so nothing later in the frame sees the menu's. */
+uint32_t inset_bg_suppress(void)
+{
+    return improved_map_on() ? (1u << 10) : 0u;
+}
+
+/* ENGINE B'S MASKED SCAN-OUTS, the only source a SRC_SUB piece is drawn from (see the level-clear plates: the buttons
+   are BG0 and BG1, the course map behind them is BG3 and OBJ, and a colour key cannot tell them apart). One extra
+   scan-out per distinct layer mask, at most two a frame; the ROM's registers are not written (the suppression is
+   read-only, ntr/ppu.h). The core caches the answer per mask, so this runs at most once per mask per drawn frame. */
+ntr::SubFramebuffer g_sub_menu;
+ntr::SubFramebuffer g_sub_menu2;
+int g_msub_n;
+
+const uint32_t *menu_sub_for(uint8_t layers)
+{
+    if (g_msub_n >= 2) return &g_sub.px[0][0];       /* over the cap: the live scan-out */
+    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    ++g_msub_n;
+    ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
+    ntr::ppu_scanout_sub(buf);
+    ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
+    return &buf.px[0][0];
+}
+
+/* ASSET1: the same masked scan-out with only OAM entries lo..hi drawn (one sprite or a set, alone). */
+const uint32_t *menu_sub_for_oam(uint8_t layers, int lo, int hi)
+{
+    if (g_msub_n >= 2) return &g_sub.px[0][0];
+    ntr::SubFramebuffer &buf = g_msub_n == 0 ? g_sub_menu : g_sub_menu2;
+    ++g_msub_n;
+    uint32_t sel[4] = { 0, 0, 0, 0 };
+    for (int i = lo < 0 ? 0 : lo; i <= hi && i < 128; ++i) sel[i >> 5] |= 1u << (i & 31);
+    ntr::ppu_sub_set_bg_suppress((~(unsigned)layers & 0x1fu) << 8);
+    ntr::ppu_sub_set_obj_select(sel);
+    ntr::ppu_scanout_sub(buf);
+    ntr::ppu_sub_set_obj_select(0);
+    ntr::ppu_sub_set_bg_suppress(inset_bg_suppress());
+    return &buf.px[0][0];
+}
+
+MenuSources g_msrc;
+uint32_t *g_picsnap;                                 /* a copy of the picture for SRC_TOP_PIC pieces */
+uint8_t *g_covsnap;                                  /* ASSET1: a copy of the 3D coverage plane, same frame, for keycover pieces */
+
+/* SAVEOVL1: draw the bound recipe into a MENU LAYER on the card instead of onto the picture. Only a frame the card still holds, with
+   this tick's overlay on the card, and a recipe whose pieces never read the picture (hal_menu_layer_ok). 1 = drawn (or nothing to
+   draw at this stage); 0 = the caller draws onto the picture as before. */
+void menu_prepare_sources(unsigned *dst, int w, int h);
+static int menu_layer_try(unsigned *dst, int w, int h, int stage)
+{
+    (void)dst;
+    if (!ntr::gx_card_overlay_active() || !port_gpu_layer_ready() || !hal_menu_layer_ok()) return 0;
+    if (!hal_menu_draws_in(stage)) return 1;
+    unsigned *lay = port_gpu_layer_begin(w, h, ntr::SCREEN_W);
+    if (!lay) return 0;
+    hal_menu_set_layer2(port_gpu_layer2());
+    hal_menu_set_layer_mode(1);
+    menu_prepare_sources(lay, w, h);
+    hal_menu_present(lay, w, h, stage);
+    hal_menu_set_layer_mode(0);
+    hal_menu_set_layer2(0);
+    if (hal_menu_layer_conflicts() > 0) return 0;   /* a third translucent write on one pixel: the picture takes this tick */
+    if (!port_gpu_layer_end(w, h, stage == MENU_STAGE_POST_FADE)) return 0;
+    return 1;
+}
+
+/* Hand the layer this frame's planes. Called right before hal_menu_present, at each of its two stages. */
+void menu_prepare_sources(unsigned *dst, int w, int h)
+{
+    const std::chrono::steady_clock::time_point t_prep = std::chrono::steady_clock::now();
+    struct PrepEnd {
+        std::chrono::steady_clock::time_point t;
+        ~PrepEnd() { hal_menu_note_cost(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t).count()); }
+    } prep_end = { t_prep };
+    g_msub_n = 0;
+    std::memset(&g_msrc, 0, sizeof g_msrc);
+    g_msrc.sub = &g_sub.px[0][0];
+    g_msrc.sub_backdrop = menu_backdrop_px();
+    g_msrc.top2d = port_menu_top2d_plane();
+    g_msrc.hostrow = port_menu_hostrow_plane();
+    g_msrc.hostrow_stride = ntr::SCREEN_W;
+    g_msrc.hostrow_w = w;
+    g_msrc.hostrow_h = h;
+    if (hal_menu_uses_src(SRC_TOP_PIC) || hal_menu_needs_picsnap()) {
+        if (!g_picsnap) g_picsnap = (uint32_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H * sizeof(uint32_t));
+        if (g_picsnap) {
+            /* source and destination overlap (the backdrop piece is the whole picture), so the layer reads a copy */
+            for (int y = 0; y < h; ++y)
+                std::memcpy(g_picsnap + (size_t)y * ntr::SCREEN_W, dst + (size_t)y * ntr::SCREEN_W,
+                            (size_t)w * sizeof(uint32_t));
+            g_msrc.pic = g_picsnap;
+            g_msrc.pic_stride = ntr::SCREEN_W;
+            g_msrc.pic_w = w;
+            g_msrc.pic_h = h;
+            g_msrc.pic_rx = ntr::present_x();
+            g_msrc.pic_ry = ntr::present_y();
+            g_msrc.pic_rw = ntr::present_w();
+            g_msrc.pic_rh = ntr::present_h();
+            if (hal_menu_uses_cover()) {
+                /* ASSET1: where the 3D engine wrote a pixel. gx_coverage is valid right after gx_render and nothing
+                   rasterises between it and this draw. SCREEN_W stride, like the picture. */
+                const uint8_t *cv = ntr::gx_coverage();
+                if (!g_covsnap) g_covsnap = (uint8_t *)std::malloc((size_t)ntr::SCREEN_W * ntr::SCREEN_H);
+                if (cv && g_covsnap) {
+                    for (int y = 0; y < h; ++y)
+                        std::memcpy(g_covsnap + (size_t)y * ntr::SCREEN_W, cv + (size_t)y * ntr::SCREEN_W, (size_t)w);
+                    g_msrc.pic_cover = g_covsnap;
+                }
+            }
+        }
+    }
+    port_engine_a_fade_px_prep();
+    g_msrc.bm_apply = port_engine_a_fade_px;
+    {
+        int evy = 0, white = 0;
+        g_msrc.rom_dimming = (port_fader_blend_state(&evy, &white) && evy > 0) ? 1 : 0;
+    }
+    g_msrc.sub_for = menu_sub_for;
+    g_msrc.sub_for_oam = menu_sub_for_oam;
+    hal_menu_set_sources(&g_msrc);
+    hal_menu_set_dst_stride(ntr::SCREEN_W);
+}
+
+/* ===== MENU DRAW PATH END ===== */
+
+/* The square itself, drawn in the pass above the map so nothing covers it. */
+void hal_sub_panel_handle(unsigned *dst, int w, int h)
+{
+    int hx, hy, hs;
+    if (!handle_rect(&hx, &hy, &hs, h)) return;
+    const int art = (g_art_state == 1);
+    const unsigned bright = art ? g_art_bright
+                                : ((g_motif_state == 1) ? g_panel_bright
+                                                        : 0xFFE0C060u);
+    const unsigned dark = art ? g_art_dark
+                              : ((g_motif_state == 1) ? g_panel_dark
+                                                      : 0xFF201408u);
+    px_fill(dst, w, h, hx, hy, hs, hs, bright);
+    px_fill(dst, w, h, hx, hy, hs, 1, dark);
+    px_fill(dst, w, h, hx, hy + hs - 1, hs, 1, dark);
+    px_fill(dst, w, h, hx, hy, 1, hs, dark);
+    px_fill(dst, w, h, hx + hs - 1, hy, 1, hs, dark);
+}
+
+/* THE PANEL, DRAWN BEHIND THE MAP. Called from hal_sub_screen_present with the
+   framebuffer, just before the map itself is composed over the middle of it.
+   The plaque is NOT drawn here: it belongs above the map and is the second
+   pass, hal_sub_panel_plaque below. */
+void hal_sub_panel_decor(unsigned *dst, int w, int h)
+{
+    /* the archive read only matters when this program has to compose the
+       panel itself, so a player with the artwork never pays for it */
+    if (!art_on() && !g_motif_state) g_motif_state = wall_build() ? 1 : -1;
+
+    PanelGeom g;
+    if (panel_geom(&g)) {
+        /* THE WELL ONTO THE MAP, and the rest of the picture wherever that
+           puts it. See the banner over art_blit. */
+        art_blit(&g_scaled_base, &g_art_base, dst, w, h,
+                 g_art_ix0, g_art_iy0,
+                 g_art_ix1 - g_art_ix0 + 1, g_art_iy1 - g_art_iy0 + 1,
+                 g.wx, g.wy, g.ww, g.wh);
+        return;
+    }
+    const int x0 = g.x0, y0 = g.y0, pw = g.pw, ph = g.ph;
+
+    /* the two margins the frame lines are proportioned from, read back out of
+       the rectangle rather than recomputed, so there is still one arithmetic */
+    const int ml = g_x0 - x0, mr = x0 + pw - (g_x0 + g_pan_w);
+
+    const unsigned flat = (g_motif_state == 1) ? g_motif[0][0] : 0xFF4A3B18u;
+    const unsigned dark = (g_motif_state == 1) ? g_panel_dark : 0xFF201408u;
+
+    /* the wallpaper, at the map's own pixel grid so the panel and the map read
+       as one picture; a plain fill if the archive could not be read */
+    /* The column's motif index, worked out once for the row loop rather than
+       twice per pixel: the biggest panel is a whole framebuffer of them. */
+    static unsigned char col[ntr::SCREEN_W];
+    for (int x = x0 < 0 ? 0 : x0; x < x0 + pw && x < w; ++x)
+        col[x] = (unsigned char)(((x - x0) * g_pan_den / g_pan_num) & 31);
+    for (int y = y0; y < y0 + ph; ++y) {
+        if (y < 0 || y >= h) continue;
+        const unsigned *row = g_motif[((y - y0) * g_pan_den / g_pan_num) & 31];
+        for (int x = x0 < 0 ? 0 : x0; x < x0 + pw && x < w; ++x)
+            dst[y * ntr::SCREEN_W + x] =
+                (g_motif_state == 1) ? row[col[x]] : flat;
+    }
+
+    /* THE FRAME, one artist pixel thick on the left and top and two on the
+       right and bottom, drawn WHERE THE ARTIST HAS IT: immediately against the
+       map, with nothing between. It used to be pushed one pixel further out to
+       make room for the map's own black outline; the owner asked for that
+       outline to go ("Remove the black outline that is usually around the
+       minimap and make it match up with the outline"), it is gone with the
+       option on, and this line moves into the space it left. */
+    const int ft = ml / 7 < 1 ? 1 : ml / 7;
+    const int fb_ = (mr * 2) / 8 < 1 ? 1 : (mr * 2) / 8;
+    const int fx = g_x0, fy = g_y0;
+    const int fw = g_pan_w, fh = g_pan_h;
+    px_fill(dst, w, h, fx - ft, fy - ft, fw + ft * 2, ft, dark);
+    px_fill(dst, w, h, fx - ft, fy + fh, fw + ft + fb_, fb_, dark);
+    px_fill(dst, w, h, fx - ft, fy - ft, ft, fh + ft * 2, dark);
+    px_fill(dst, w, h, fx + fw, fy - ft, fb_, fh + ft + fb_, dark);
+}
+
+/* THE PLAQUE, DRAWN ABOVE THE MAP. The second of the panel's two passes,
+   called from hal_sub_screen_present AFTER ppu_compose_sub has put the map
+   down -- the owner's own order, "the MAP banner and text should be above the
+   minimap layer". It overlaps the top of the map now, which is what the
+   artist's mock-up shows too: there the plaque covers the top fifteen rows of
+   the 180-row map well, across its middle 109 columns.
+
+   The attention arrows are drawn after this and stay above everything. */
+void hal_sub_panel_plaque(unsigned *dst, int w, int h)
+{
+    PanelGeom g;
+    const int art = panel_geom(&g);
+    const int tx = g.tx, ty = g.ty, tw = g.tw, th = g.th;
+
+    if (art) {
+        /* the plaque rides the plate's scale exactly -- the same well-to-map
+           ratio -- with its own top-left corner as the anchor */
+        art_blit(&g_scaled_tab, &g_art_tab, dst, w, h,
+                 0, 0,
+                 g_art_ix1 - g_art_ix0 + 1, g_art_iy1 - g_art_iy0 + 1,
+                 tx, ty, g.ww, g.wh);
+        return;
+    }
+
+    const unsigned dark = (g_motif_state == 1) ? g_panel_dark : 0xFF201408u;
+    const unsigned bright = (g_motif_state == 1) ? g_panel_bright : 0xFFE0C060u;
+
+    /* THE PLAQUE. 109 wide and 32 tall against the artist's 255-wide panel,
+       centred, with ten of its rows above the panel's top edge, and its
+       corners cut at forty-five degrees over seven of its own pixels. */
+    const int cut = tw * 7 / 109;
+    for (int y = 0; y < th; ++y) {
+        int in = 0;
+        if (y < cut) in = cut - y;
+        else if (y >= th - cut) in = cut - (th - 1 - y);
+        if (in < 0) in = 0;
+        px_fill(dst, w, h, tx + in, ty + y, tw - in * 2, 1, bright);
+        px_put(dst, w, h, tx + in, ty + y, dark);
+        px_put(dst, w, h, tx + tw - 1 - in, ty + y, dark);
+    }
+    px_fill(dst, w, h, tx + cut, ty, tw - cut * 2, 1, dark);
+    px_fill(dst, w, h, tx + cut, ty + th - 1, tw - cut * 2, 1, dark);
+
+    /* MAP, in this file's own letters, scaled to the plaque and centred. */
+    int gs = th / 9;
+    if (gs < 1) gs = 1;
+    const int gw = (5 * 3 + 2 * 2) * gs;          /* three glyphs, two gaps */
+    int gx = tx + (tw - gw) / 2;
+    const int gy = ty + (th - 7 * gs) / 2;
+    for (int gi = 0; gi < 3; ++gi) {
+        for (int r = 0; r < 7; ++r)
+            for (int c = 0; c < 5; ++c)
+                if (kGlyphMAP[gi][r] & (0x10 >> c))
+                    px_fill(dst, w, h, gx + c * gs, gy + r * gs, gs, gs, dark);
+        gx += 7 * gs;
+    }
+}
+
+/* ---- THE ROM'S OWN CAMERA-BUTTON ZONE, quoted -----------------------------
+ *
+ * src/_ZN5Stage16CheckCameraInputEv.cpp:52-58 decides whether a stylus press
+ * is on one of the four map arrows, and these are its literal bounds:
+ *
+ *   camera mode 0 (the DS camera): y >= 0x8a AND (x <= 0x58 OR x >= 0xa7)
+ *   camera mode 2 (the zoom):      y >= 0x9a AND  x >= 0xa7
+ *
+ * With the improved map on, a press inside that zone is NOT PUBLISHED, which
+ * is how the arrows stop being clickable without anything in src/ changing
+ * and without a hot zone left behind under an invisible button. The ROM's
+ * own hit test then runs over a record that says nothing was touched there,
+ * which is the same answer it gives today for a player who did not touch it.
+ *
+ * MODE 2's zone is a subset of mode 0's, so one test covers both and a
+ * camera mode this port does not select cannot leak a hot zone either. */
+int in_camera_button_zone(int dsx, int dsy)
+{
+    return dsy >= 0x8a && (dsx <= 0x58 || dsx >= 0xa7);
+}
+
+/* ---- AND ONLY WHERE THE ARROWS EXIST: A COURSE ----------------------------
+ *
+ * The zone above is the ROM's hit test for the camera arrows, and the ROM runs
+ * it from exactly one place: Stage::Behavior calls Stage::CheckCameraInput
+ * (src/_ZN5Stage8BehaviorEv.cpp), so the arrows are a thing only while a
+ * course is running. The host makes that same call once a frame from the
+ * level loop, through hal_sub_camera_input below, and from nowhere else.
+ *
+ * The press filter used to apply the zone on EVERY screen. On the file select
+ * that swallowed the Back arrow (DS x 182-248, y 140-174, wholly inside the
+ * zone's right-hand block), and it could only be seen with the improved map
+ * on, which every recorded harness forces off (host_settings.cpp). So the
+ * filter now asks the ROM's own question: will the course's camera reader
+ * run on this poll's frame? g_tp_frame is poll_touch's own count, and the
+ * level loop stamps it through hal_sub_camera_zone_live immediately before
+ * its own poll, on the frame whose hal_sub_camera_input reads the stylus, so
+ * the stamp equals the count exactly on a level-loop poll. The title, the
+ * file select, the star select, the minigames and every other menu run their
+ * polls from the scene loop and never stamp, so their buttons are the ROM's
+ * own again.
+ *
+ * STAMPED BEFORE THE POLL, NOT AFTER THE READ (run hunt3, lane POLISH1). The
+ * stamp used to be taken inside hal_sub_camera_input, after the frame's poll,
+ * for the NEXT poll to match. That answered the previous frame's question,
+ * and at a change between a course and a scene it answered it wrongly for one
+ * frame: the star select interlude runs scene frames inside one level frame,
+ * so its first poll matched the course's stamp and dropped a press on the
+ * star select's own screen there; and the first course poll after the title
+ * hand-off had no stamp at all (-1), so a press held on a hidden arrow across
+ * it was published for that one frame. */
+int g_cam_reader_at = -1;        /* g_tp_frame of the last level-loop poll */
+
+/* ---- AND THE OTHER HALF: THE ARROWS ARE NOT DRAWN --------------------------
+ *
+ * HOW THEY ARE IDENTIFIED, and it is not by position. A sprite's position is a
+ * poor key here: the minimap's player icon and its star markers move over the
+ * whole screen, and the arrows' own corners are exactly where the player icon
+ * sits when the owner is at the bottom of a course, so a position test would
+ * make Mario's head vanish at the bottom of the map. The key is the TILE
+ * NUMBER AND THE PALETTE the arrows' own templates carry.
+ * HUD::RenderCameraButtons (src/_ZN3HUD19RenderCameraButtonsEv.cpp) passes
+ * palette -1, so OAM::Render keeps each template's own palette in the entry it
+ * writes (the priority field is patched, which is why bits 10-11 are not part
+ * of the key); and the eight templates are ROM data this binary links by name
+ * (ov002_data.c.obj, aliased in hal/sub_actors.cpp). The set is therefore read
+ * from the cartridge's own tables at run time. No literal, no guess, and a
+ * graphic that moved would take its tile with it.
+ *
+ * THE PALETTE IS PART OF THE KEY because engine B's OBJ VRAM is shared by
+ * every bottom-screen sprite. Every attr2 in those eight lists carries palette
+ * 9, while the star select's "TOUCH ME!" pieces, the Picture Poker icons and
+ * the title's arrows reuse the same tile numbers (468 / 476) with palette 0,
+ * so a tile-number test alone hid them whenever the improved map was on. The
+ * palette is what tells the two apart on any frame, with no dependence on
+ * which loop ran last.
+ *
+ * Tile 0 is never added: it is the ROM's own "nothing here" and unrelated
+ * templates carry it.
+ *
+ * The predicate is installed into ntr's raster (ppu_sub_set_obj_veto) because
+ * the policy is this file's and the raster is a hardware model. */
+extern "C" {
+extern const unsigned short _ZN3OAM12CAM_BUTTON_LE[];
+extern const unsigned short _ZN3OAM12CAM_BUTTON_RE[];
+extern const unsigned short _ZN3OAM20CAM_BUTTON_L_PRESSEDE[];
+extern const unsigned short _ZN3OAM20CAM_BUTTON_R_PRESSEDE[];
+extern const unsigned short _ZN3OAM14S_CAM_BUTTON_LE[];
+extern const unsigned short _ZN3OAM14S_CAM_BUTTON_RE[];
+extern const unsigned short _ZN3OAM22S_CAM_BUTTON_L_PRESSEDE[];
+extern const unsigned short _ZN3OAM22S_CAM_BUTTON_R_PRESSEDE[];
+}
+
+/* attr2 with the priority bits dropped: tile (bits 0-9) and palette (12-15). */
+unsigned short g_cam_tiles[64];
+int g_cam_tiles_n = -1;
+
+void cam_tiles_add(const unsigned short *t)
+{
+    /* an OamAttr is four halfwords and attr3 == 0xffff ends the list
+       (include/OamAttr.h). The sixteen is a guard, not a length: a list that
+       never terminates is a corrupt table and must not be walked off. */
+    for (int i = 0; i < 16; ++i) {
+        const unsigned short a2 = t[i * 4 + 2];
+        const unsigned short a3 = t[i * 4 + 3];
+        const unsigned short key = (unsigned short)(a2 & 0xF3FFu);
+        if ((key & 0x03FFu) && g_cam_tiles_n <
+                (int)(sizeof g_cam_tiles / sizeof g_cam_tiles[0])) {
+            int seen = 0;
+            for (int k = 0; k < g_cam_tiles_n; ++k)
+                if (g_cam_tiles[k] == key) { seen = 1; break; }
+            if (!seen) g_cam_tiles[g_cam_tiles_n++] = key;
+        }
+        if (a3 == 0xffff) return;
+    }
+}
+
+int cam_button_veto(unsigned short a2)
+{
+    if (g_cam_tiles_n < 0) {
+        g_cam_tiles_n = 0;
+        cam_tiles_add(_ZN3OAM12CAM_BUTTON_LE);
+        cam_tiles_add(_ZN3OAM12CAM_BUTTON_RE);
+        cam_tiles_add(_ZN3OAM20CAM_BUTTON_L_PRESSEDE);
+        cam_tiles_add(_ZN3OAM20CAM_BUTTON_R_PRESSEDE);
+        cam_tiles_add(_ZN3OAM14S_CAM_BUTTON_LE);
+        cam_tiles_add(_ZN3OAM14S_CAM_BUTTON_RE);
+        cam_tiles_add(_ZN3OAM22S_CAM_BUTTON_L_PRESSEDE);
+        cam_tiles_add(_ZN3OAM22S_CAM_BUTTON_R_PRESSEDE);
+        if (std::getenv("SM64DS_MINIMAP_TRACE")) {
+            std::fprintf(stderr, "[mmtrace] camera-button tile/palette (%d):",
+                         g_cam_tiles_n);
+            for (int k = 0; k < g_cam_tiles_n; ++k)
+                std::fprintf(stderr, " %u/%u",
+                             (unsigned)(g_cam_tiles[k] & 0x03FFu),
+                             (unsigned)(g_cam_tiles[k] >> 12));
+            std::fprintf(stderr, "\n");
+        }
+    }
+    const unsigned short key = (unsigned short)(a2 & 0xF3FFu);
+    for (int k = 0; k < g_cam_tiles_n; ++k)
+        if (g_cam_tiles[k] == key)
+            return (improved_map_on() || menu_bigmap_up()) ? 3 : 1;   /* MAP1: the big map has no camera buttons either */
+    return 0;
+}
 int g_zoom = 1;
 HWND g_hwnd;
 // The client rectangle the framebuffer was last presented into, in client
@@ -549,6 +2281,11 @@ void poll_touch(void)
        the second of those is a bug worth chasing. `clamped` is the third
        answer the latch adds: off the surface, and published anyway. */
     int live_cx = 0, live_cy = 0, live_seen = 0, live_on = 0, live_clamped = 0;
+    /* and the fourth: the resize handle took the press. Without it the
+       recorder below reports a grab as a press that landed on the top screen,
+       which is the one line a player's log would show for a square they had
+       just successfully grabbed. */
+    int live_handle = 0;
     /* THE GESTURE'S OWN STATE, and a host static on purpose rather than
        anything in .dsstate: a save-state load must not restore a half-finished
        drag onto a hand that is not holding the button any more. Same argument
@@ -562,10 +2299,43 @@ void poll_touch(void)
        hand reaches. Unarmed this costs one load and nothing else. */
     const int inj = g_inj_armed;
     if (inj) ++g_inj_frames;
-    const int btn = inj ? 1
-                        : (!g_headless && g_on && GetAsyncKeyState_ &&
-                           (GetAsyncKeyState_(VK_LBUTTON) & 0x8000) ? 1 : 0);
-    if (!btn) drag_own = 0;
+    /* THE OS BUTTON IS MACHINE-GLOBAL, so it only counts as the stylus while
+       this window is the foreground one and the press began while it already
+       was. GetAsyncKeyState(VK_LBUTTON) reads the physical button for the
+       whole desktop: without this a click in a browser or a chat window
+       that happened to sit over the bottom screen touched the game behind it
+       (file select, pause menu, minigames), the same hole the keyboard and
+       the pad were closed against (hal_window_focused).
+         raw_was    the button was down at the last poll
+         focus_was  the window was foreground at the last poll
+         hold_ok    the hold that is down right now began on a focused window
+       The click that BRINGS the window to the front is not a touch: it flips
+       the foreground and the button in the same instant, so at the poll before
+       it the window was not focused (focus_was 0) and the hold is dead until
+       the button comes up. Losing focus with the button held drops the touch
+       at once (btn goes 0 below, which releases the drag), and getting it
+       back with the button still held does not revive it. SM64DS_TOUCH_PROBE,
+       the in-process stylus and SM64DS_SKIP_MENU never come through here. */
+    int btn;
+    if (inj) {
+        btn = 1;
+    } else {
+        static int raw_was, focus_was, hold_ok;
+        const int raw = (!g_headless && (g_on || g_force_panel.load() || hal_menu_live()) && !menu_bigmap_up() && GetAsyncKeyState_ &&   /* MAP1: no stylus under the big map */
+                         (GetAsyncKeyState_(VK_LBUTTON) & 0x8000)) ? 1 : 0;
+        const int foc = hal_window_focused();
+        if (!raw)              hold_ok = 0;
+        else if (!raw_was)     hold_ok = foc && focus_was;
+        else if (!foc)         hold_ok = 0;
+        btn = raw && foc && hold_ok;
+        raw_was = raw;
+        focus_was = foc;
+    }
+    if (!btn) {
+        drag_own = 0;
+        /* and a resize that was in progress is finished and written down */
+        handle_release();
+    }
     if (btn && (inj || (GetCursorPos_ && ScreenToClient_))) {
         POINT p;
         int got;
@@ -589,23 +2359,81 @@ void poll_touch(void)
                rectangle, run backwards), then panel pixels to DS pixels,
                because the panel is drawn at 1/g_div in a corner. Unchanged. */
             int fx = -1, fy = -1, on_picture = 0;
+            int bx = -1, by = -1;
             if (hal_sub_screen_stacked()) {
                 on_picture =
                     hal_present_client_to_sub((int)p.x, (int)p.y, &fx, &fy);
             } else {
-                int bx, by;
                 /* a click in a letterbox bar is not on the panel however close
                    the clamp puts it, so the inside answer gates the press */
                 on_picture =
                     hal_present_client_to_fb((int)p.x, (int)p.y, &bx, &by);
-                fx = (bx - g_x0) * g_div;
-                fy = (by - g_y0) * g_div;
+                /* panel pixels back to DS pixels. The forward direction is
+                   DS * num / den (hal_sub_panel_geometry), so the inverse is
+                   * den / num, and with the option off num is 1 and den is
+                   g_div -- byte for byte the multiply this replaces. */
+                /* FLOOR, not truncate. A point one pixel LEFT of the map is
+                   at -1 framebuffer pixels, and at a magnified size -1 times
+                   den over num truncates to 0 -- so the pixel of panel just
+                   outside the map's left edge read as DS column 0 and the
+                   touch surface was one pixel wider than the picture on two
+                   of its four sides. Harmless while the map was a bare inset
+                   over the 3D view; not harmless with the artist's frame
+                   drawn on exactly those pixels. */
+                if (hal_menu_live()) {
+                    /* A MENU RECIPE OWNS THE PICTURE: the only touch surface on it is its touch pieces, so the
+                       inverse reads the very rectangles the layer drew LAST frame (hal_menu_touch_inverse) and every
+                       other pixel answers nothing. A drag that started on a piece stays clamped to it. */
+                    int in = 0;
+                    hal_menu_touch_inverse(bx, by, &fx, &fy, &in);
+                    if (!in) on_picture = 0;
+                } else {
+                    fx = fdiv((bx - g_x0) * g_pan_den, g_pan_num);
+                    fy = fdiv((by - g_y0) * g_pan_den, g_pan_num);
+                }
             }
             live_cx = (int)p.x;
             live_cy = (int)p.y;
             live_seen = 1;
-            const int on_surface = on_picture && fx >= 0 && fx < ntr::SUB_W &&
-                                   fy >= 0 && fy < ntr::SUB_H;
+            int on_surface = on_picture && fx >= 0 && fx < ntr::SUB_W &&
+                             fy >= 0 && fy < ntr::SUB_H;
+            /* THE ARROWS ARE NOT CLICKABLE WITH THE OPTION ON. Refused here,
+               at the one seam that decides whether a host click becomes a
+               stylus record at all, so the press never exists as far as the
+               ROM is concerned -- no press, no camera step, and no invisible
+               button to hit by accident. The bumpers, Q / E and the right
+               stick reach the camera through tests/walk_window.cpp's own
+               cam_turn and are untouched by this.
+               IT ALSO ENDS A DRAG rather than clamping one: a press that
+               wanders into the zone is dropped for as long as it is in there,
+               which is what a player who cannot see a button expects. */
+            /* NOT WHILE THE LEVEL-CLEAR MENU IS UP, whichever way round the
+               screens are. The zone is DS y >= 0x8a with x outside the middle,
+               and the menu's third plate runs to DS y 0x97 across the whole
+               width -- so with the improved map on, the bottom twelve rows of
+               that button's left and right thirds were a dead zone. The four
+               camera arrows are not what the bottom screen is showing while
+               the menu owns it, and the menu's own touch boxes are the only
+               hit test running. g_menu_up is the ROM's own pair, taken once a
+               frame at the presentation seam. */
+            if (on_surface && improved_map_on() && !g_menu_up && !hal_menu_live() &&
+                g_cam_reader_at == g_tp_frame &&
+                in_camera_button_zone(fx, fy)) {
+                on_surface = 0;
+                drag_own = 0;
+            }
+            /* THE RESIZE HANDLE TAKES THE PRESS WHOLE. Tested here, at the one
+               seam that decides whether a host click becomes a stylus record
+               at all, so a press that started on the square never exists as
+               far as the ROM is concerned: no touch, no camera step, nothing
+               published. It is tested AFTER the camera zone and before the
+               arming edge, because the handle sits outside the map's own
+               rectangle and the two can never both claim a press. */
+            if (!hal_sub_screen_stacked() && handle_press(bx, by, on_picture)) {
+                on_surface = 0;
+                drag_own = 0;
+                live_handle = 1;
+            }
             /* the arming edge, and the only one there is */
             if (on_surface) drag_own = 1;
             if (inj && on_surface) ++g_inj_on_surface;
@@ -691,6 +2519,18 @@ void poll_touch(void)
             sy = (unsigned char)fy;
         }
     }
+    /* THE MENU LAYER'S SYNTHESISED PRESS (a pad or key confirm on a touch hotspot): a separate single-producer queue,
+       consumed here beside the forced tap and never through SKIP_MENU's globals. The layer is told whether a real
+       stylus is held and refuses to start (or drops) a press while one is. */
+    {
+        int qx = 0, qy = 0, qdown = 0;
+        hal_menu_touch_real_held(down ? 1 : 0);
+        if (hal_menu_touch_queue_poll(&qx, &qy, &qdown) && qdown) {
+            down = 1;
+            sx = (unsigned char)qx;
+            sy = (unsigned char)qy;
+        }
+    }
 
     /* run mg16 lane MP3: SM64DS_COMMS_INJECT's stylus half, honoured in the
        same place and the same way as the touch probe above. It exists for the
@@ -708,6 +2548,13 @@ void poll_touch(void)
             sy = (unsigned char)iy;
         }
     }
+
+    /* SETMENU1: the in-game settings page takes the stylus (the press on the title's wrench / the pause menu's Options plate that opens
+       it, and every touch while it is up): the ROM sees no press. Single player only, as the pad half is. */
+    if (!port::comms_transport() && settings_page_hook_touch(down, sx, sy)) down = 0;
+
+    /* ASSET6: a stylus / click / queued press going into the ROM gives the title attract its hidden save words back first */
+    if (down) port_title_press_seen();
 
     /* ---- BYTE +1 IS THE ROM'S CHANGE EDGE, NOT "HELD FOR TWO FRAMES" ------
      *
@@ -980,8 +2827,14 @@ void poll_touch(void)
             std::fprintf(stderr, "[touch] f%d press client(%d,%d) is NOT on "
                          "the stylus surface: %s -- no touch published\n",
                          f, live_cx, live_cy,
-                         on_top ? "it is on the TOP screen"
-                                : "it is in a letterbox bar");
+                         live_handle
+                             ? "the map's corner handle took it"
+                             : (hal_menu_live()
+                                    ? "the composed menu picture takes "
+                                      "a click on its touch pieces and "
+                                      "nowhere else"
+                                    : (on_top ? "it is on the TOP screen"
+                                              : "it is in a letterbox bar")));
             std::fflush(stderr);
         }
         down_was = down;
@@ -1278,6 +3131,42 @@ extern "C" void hal_sub_screen_level_init(void)
        off after the second and every later level entry. */
     _ZN5Stage12SetVramBanksEv();
 
+    /* ENGINE A'S BG SCREEN BASE OFFSET, Stage::InitResources:272:
+     *
+     *     *p0 = (*p0 & ~0x38000000) | 0x08000000;      p0 = DISPCNT_A
+     *
+     * DISPCNT bits 27-29 are engine A's BG SCREEN base offset in 64K pages and
+     * the ROM sets it to ONE. It is the statement that keeps the main engine's
+     * four tilemaps out of its own character data, and the port was not making
+     * it: DISPCNT_A read back 0x00001d08 at the level-clear menu, bits 27-29
+     * zero, so every engine-A tilemap sat 0x10000 BELOW where the cartridge
+     * puts it.
+     *
+     * WHAT THAT COST, measured on a star return with the save menu up. The
+     * fonts live at func_02054d88() (src/func_02054d88.c), which on this path
+     * is 0x06000000: the small 8x16 message font at +0, and the big 16x16 menu
+     * font that LoadFont(0) decompresses at +0x8000 (src/LoadFont.cpp:39).
+     * With the offset missing BG3_A's tilemap lands at 0x06008800 and BG1_A's
+     * at 0x0600f800, both INSIDE the big font. So the moment the level-clear
+     * banner drew its own text, func_0201d850's MultiStore16(0x2ff, ...) wrote
+     * 0x800 bytes of blank-tile entries straight through the menu font, and
+     * the three save-menu buttons came up as combed stripes instead of
+     * letters. The 0x02ff halfwords and the runs of 0x0200, 0x0201, 0x0202
+     * were readable in a dump of the font, which is how this was found.
+     *
+     * Nothing else has to change for it. The ROM's own pointer helpers read
+     * the same bits (src/_ZN2G212GetBG3ScrPtrEv.cpp computes `sbase` from
+     * DISPCNT & 0x38000000), and port/ntr/ppu.cpp:300-301 already honours the
+     * offset on engine A, so the write and the scan-out move together.
+     *
+     * It sits here because this function is the port's copy of
+     * Stage::InitResources:262-351, and :272 is inside that span, one
+     * statement above the sub engine's own DISPCNT block below. */
+    {
+        volatile unsigned *p0 = (volatile unsigned *)0x04000000;
+        *p0 = (*p0 & ~0x38000000u) | 0x08000000u;
+    }
+
     /* THE SUB ENGINE'S OWN DISPCNT, which nothing in the port was setting --
        it read back 0, meaning "display off, no layers, no sprites".
        Every value here is Stage::InitResources', the ROM function that puts
@@ -1350,23 +3239,56 @@ extern "C" void hal_sub_screen_level_init(void)
        loads its three BGs at priority 0 and every cloud pixel is opaque, so the
        whole HUD lost the priority compare against a backdrop that should not
        have been on screen at all. SM64DS_GFX2D_PREINTRO=1 puts the clouds
-       back. */
+       back.
+
+       AND THE BIT IS THE SAVE BLOCK'S NOW, NOT THIS FUNCTION'S (run linkfull,
+       lane CLOUDOAM1). This call used to force bit 0x80 SET around the load,
+       because the boot decided the bit only after this function ran. That
+       forcing was right for every level walked in and wrong for exactly the one
+       screen the cloud set exists for: THE OPENING, where the bit really is
+       clear. The port took the in-game branch there too, 0x23d never reached
+       0x06600000, and the opening's three drifting clouds (func_ov002_020f20f4,
+       OamAttrs data_ov002_0210be1c) drew with the file select's leftover
+       letters. hal/level_boot.cpp's port_stage_boot_body now settles the bit
+       (set for every entry but the opening and its continuation) BEFORE it
+       calls this, so the ROM's own test picks the set, as on the DS: the
+       in-game set for a level being played, the clouds for the opening. */
     if (!std::getenv("SM64DS_NO_GFX2D")) {
         const unsigned char saved = data_0209caa0[8];
         if (std::getenv("SM64DS_GFX2D_PREINTRO"))
             data_0209caa0[8] &= ~0x80;
-        else
-            data_0209caa0[8] |= 0x80;
-        Stage::LoadGraphics2D(false, data_0209f2f8);
+        /* THE LEVEL HANDED TO LoadGraphics2D IS THE ONE BEING ENTERED. The
+           ROM latches data_0209f2f8 = data_02092110 first (InitResources:227)
+           and LoadGraphics2D's tail asks SublevelToLevel(it) == 0x1d: on the
+           castle it loads file 0x22f (the pause card's tilemap) at engine A
+           BG screen block 0x10 and 0x25c (TOUCH TO SELECT) at block 0x12,
+           which is where PS_Update's BG2CNT 0x1010 / BG1CNT 0x1210 look. This
+           host call runs before level_boot writes data_0209f2f8 (it does so
+           after hal_sub_screen_level_init), so on the first entry of a
+           process that entered by a direct boot (SM64DS_LEVEL, the battery)
+           the argument was still 0: the course branch ran, TOUCH TO SELECT
+           landed in block 0x10 and the castle pause drew no card at all. A
+           title-to-level crossing and every later level change had latched
+           already, so they were right. port_level_id() is the value
+           level_boot writes into data_0209f2f8 a few lines later. */
+        const int entering = (int)port_level_id();
+        Stage::LoadGraphics2D(false, entering);
         data_0209caa0[8] = saved;
         std::printf("[sub] Stage::LoadGraphics2D(0, %d) done, layer mask "
-                    "data_0209d454 = %02x\n", (int)data_0209f2f8,
+                    "data_0209d454 = %02x\n", entering,
                     data_0209d454);
     }
 }
 
-/* Top of the 2D frame: both shadows back to "every sprite disabled" and both
-   entry counters to zero, so this frame's Render calls fill from the start. */
+/* Top of the 2D frame. It used to put both OAM shadows back to "every sprite
+   disabled" and both entry counters to zero with OAM::Reset, so the frame's
+   Render calls filled from the start. That is the ROM's frame phase 2's first
+   statement on its full arm (src/func_02019390.c), and both host loops call the
+   ROM's phase 2 now (hal/fader_wipes.cpp's port_frame_phase2, run linkfull lane
+   RESET2), before anything renders, so the reset is gone from here: the ROM
+   decides it, including the scenes whose graphics block answers 0 and skips it
+   (the title). hal/scene_boot.cpp keeps a host OAM::Reset for the frames its
+   own pause holds still, which the ROM has no counterpart for. */
 void hal_sub_screen_frame_begin(void)
 {
     /* Once, on the first frame, and deliberately here rather than in init:
@@ -1408,7 +3330,6 @@ void hal_sub_screen_frame_begin(void)
             tab_was = tab;
         }
     }
-    OAM::Reset();
     poll_touch();
     /* Inert unless SM64DS_TOUCH_CLIENT_PROBE is set, and here rather than
        inside poll_touch because it wants a present rectangle the frame loop
@@ -1697,10 +3618,177 @@ extern "C" void port_frame_oam_upload(void)
     ntr::ppu_seam_oam_mark_uploaded();
 }
 
+/* ---- IS THE ATTENTION CUE RE-ANCHORED THIS FRAME? -------------------------
+ *
+ * Asked by engine A's raster (hal/message_compositor.cpp) once per frame,
+ * before it decides whether to hold the three bouncing arrows back out of the
+ * top screen's own buffer.
+ *
+ * The cue is the ROM's "look at the bottom screen": Stage::RenderBouncingArrows
+ * puts three arrows along the bottom edge of the TOP screen and plays a sound,
+ * because on a DS the thing to look at is the other panel. On this port the
+ * bottom screen is a corner inset over the same picture, so the arrows point at
+ * empty floor. With the improved map on they are moved to sit just above the
+ * inset instead -- which is the whole request.
+ *
+ * SAME GATE AS THE REST OF THE OPTION: the improved map on, and the corner
+ * inset layout, which is a course. Menus and minigames take the stacked
+ * layout, where the bottom screen is a real second panel and the ROM's own
+ * placement is already right. */
+int hal_minimap_arrow_reanchor_on(void)
+{
+    return improved_map_on() && !hal_sub_screen_stacked();
+}
+
+/* THE LEVEL-CLEAR SAVE MENU'S OWN ANSWER, for the one reader outside this
+   file. The window's mouse capture pins the pointer to the middle of the
+   client area and hides it, and fences it inside that area -- so with the
+   capture on a player cannot aim at the save menu at all: not at the corner
+   panel, which the fence keeps him off, and not at the big picture either,
+   because the pointer is not his to move. The capture's own rule is that it
+   stays off wherever the pointer is really a pen, and a menu with three touch
+   boxes is exactly that. Same predicate the swap reads, so the two cannot
+   disagree about when the menu is up. */
+extern "C" int hal_save_menu_up(void)
+{
+    return save_menu_is_up() ? 1 : 0;
+}
+
+/* ---- H1: THE FRAME'S ONE PREDICATE, asked at the head of engine A's composite -------------------------------
+ *
+ * hal/message_compositor.cpp calls this first thing in port_message_composite_engine_a. It picks the frame's recipe
+ * once (hal_menu_frame_begin) and hands back the lift plan; everything else this frame reads hal_menu_live().
+ * The gate is the layout: a stacked scene (minigames) shows both screens whole and no recipe may match, the
+ * fallback included (MENU_SCENE_GATED). The corner-panel option g_on is deliberately NOT a term: a live menu forces
+ * its own engine-B scan-out. */
+/* THE DECIDE STEP OF THE TICK (logic thread; MENUSPLIT1). Everything here reads the ROM or host settings: the recipe
+   pick through hal_menu_decide, the level-clear pair for the touch seams, the level-clear trace. A render thread
+   (RENDERTHREAD1) calls this at the end of the tick, after the ROM tick and before the frame packet is handed off, and
+   puts hal_menu_decision_copy in the packet. */
+extern "C" void hal_menu_decide_tick(int w, int h)
+{
+    static int init;
+    if (!init) {
+        init = 1;
+        hal_menu_set_enable_fn(menu_enable);
+    }
+    hal_menu_set_netplay(port::comms_transport() != 0);
+    const int scene = hal_sub_screen_stacked() ? MENU_SCENE_GATED : port_scene_live_id();
+    hal_menu_decide(w, h, scene);
+    g_force_panel.store((!g_on && scene != MENU_SCENE_GATED && !hal_menu_live() &&
+                         (save_menu_is_up() || scene == 8 || scene == 4 || (data_0209f2c4 != 0 && data_0209f20c == 0 && (scene == 3 || scene == -1)))) ? 1 : 0);
+    /* THE COMPOSE'S OWN ANSWER AND ITS RECTANGLES, once a frame, by the same rule: one place decides, everybody else
+       reads. They are computed whatever the answer is, so poll_touch's inverse has this frame's numbers on the very
+       frame the plates come on. (These two lines read the ROM, so they live on the decide side; they used to sit in
+       the present body.) */
+    {
+        static int swap_frame;
+        g_menu_up = save_menu_is_up();
+        hal_lc_trace(w, h, swap_frame++, hal_menu_live());
+    }
+}
+
+/* H1 for a one-thread build: decide, then bind the decision for the draw, then hand back the lift plan. */
+extern "C" const MenuLiftInfo *hal_menu_hook_h1(int w, int h)
+{
+    hal_menu_decide_tick(w, h);
+    hal_menu_draw_frame_begin(0);
+    return hal_menu_lift_info();
+}
+
+/* ---- H4: THE PAD, from a controller or the keyboard -----------------------------------------------------
+ *
+ * Called from the frame loop right after the ROM's own PadData build, before the tick reads it (level loop:
+ * tests/walk_window.cpp, scene loop: scene_host_input_frame), single player only. The pressed bits are rewritten in
+ * BOTH spellings the ROM reads, data_020a0e58 + slot * 4 + 2 and the split data_020a0e5a + slot * 4 (IsButtonInputValid
+ * reads only the split one, src/IsButtonInputValid.c), on the LOCAL slot data_020a0e40. What happens to them is the live
+ * recipe's driver (hal_menu_pad); with no recipe live this does nothing. host_back is the Backspace key's down edge:
+ * the ROM has no pad "back" (every ROM back control is a touch box), and the pad bit 0x0001 is the DS A key, a confirm. */
+extern "C" {
+extern unsigned char data_020a0e40;   /* the local player's slot */
+extern int data_020a0e58[];           /* PadData[i]: {u16 held, u16 pressed} */
+extern int data_020a0e5a[];           /* the split spelling of .pressed */
+}
+
+/* SETMENU1: where the pointer is over the picture, in picture pixels (the settings page's mouse); 0 when the window is not focused or the
+   pointer is off the picture. SM64DS_SETPAGE_SCRIPT stands in for it on a scripted run (settings_page_scripted). */
+extern "C" int hal_window_cursor_fb(int *fx, int *fy)
+{
+    if (g_headless || !GetCursorPos_ || !ScreenToClient_ || !hal_window_focused()) return 0;
+    POINT p;
+    if (!GetCursorPos_(&p) || !ScreenToClient_(g_hwnd, &p)) return 0;
+    return hal_present_client_to_fb((int)p.x, (int)p.y, fx, fy) ? 1 : 0;
+}
+
+extern "C" void hal_menu_pad_seam(void)
+{
+    static int back_was;
+    int back = 0;
+    {
+        /* ASSET6: SM64DS_HOST_KEY=08@f scripts the Backspace here too (a scripted run has no focused window to read the key from) */
+        int d = port_host_key_script(VK_BACK);
+        if (!d && !g_headless && GetAsyncKeyState_ && hal_window_focused()) d = (GetAsyncKeyState_(VK_BACK) & 0x8000) ? 1 : 0;
+        back = d && !back_was;
+        back_was = d;
+        if (back && settings_page_swallow_back()) back = 0;   /* SETPAGEFIX1: the Backspace that is the page's Back is not the ROM's */
+    }
+    menu_bigmap_pad_seam();   /* MAP1: Select shows / hides the big map; the ROM never sees that Select (OneScreenMenus on) */
+    if (!hal_menu_live()) return;
+    /* ASSET3: MOUSE HOVER. A menu recipe's hotspots take the mouse focus when the pointer moves onto them (hal_menu_hover had no
+       caller): the pointer in client pixels -> picture pixels, the same inverse the stylus uses. SM64DS_MENU_HOVER_AT=x,y@N (picture
+       pixels, from the Nth live frame on) stands in for the pointer on a scripted run. Only a pointer that moved since the last frame counts, so a pointer left
+       resting on a plate does not keep overriding the pad. */
+    {
+        static LONG last_x = -1, last_y = -1;
+        static int env_read, env_on, env_at, calls;
+        static POINT env_pt;
+        ++calls;
+#ifndef PORT_ROM_CLEAN      /* the scripted pointer is a proof arm: not in the shipped build */
+        if (!env_read) {
+            env_read = 1;
+            const char *e = getenv("SM64DS_MENU_HOVER_AT");
+            if (e && sscanf(e, "%ld,%ld@%d", &env_pt.x, &env_pt.y, &env_at) >= 2) env_on = 1;
+        }
+#else
+        (void)env_read; (void)env_at;
+#endif
+        POINT p;
+        int got = 0;
+        if (env_on) { p = env_pt; got = calls >= env_at; }
+        else if (!g_headless && GetCursorPos_ && ScreenToClient_ && hal_window_focused())
+            got = (GetCursorPos_(&p) && ScreenToClient_(g_hwnd, &p)) ? 1 : 0;
+        if (got && (p.x != last_x || p.y != last_y)) {
+            last_x = p.x; last_y = p.y;
+            int hbx = -1, hby = -1;
+            if (env_on) hal_menu_hover((int)p.x, (int)p.y);          /* the scripted point is already a picture pixel */
+            else if (hal_present_client_to_fb((int)p.x, (int)p.y, &hbx, &hby)) hal_menu_hover(hbx, hby);
+        }
+    }
+    const int slot = data_020a0e40;
+    unsigned short *pressed = (unsigned short *)((char *)data_020a0e58 + slot * 4 + 2);
+    unsigned short *split = (unsigned short *)((char *)data_020a0e5a + slot * 4);
+    uint16_t k = *pressed;
+    const uint16_t k0 = k;
+    settings_page_hook_pad(&k);      /* SETMENU1: the confirm on the wrench / the Options plate opens the settings page, the ROM never sees it */
+    menu_pause_hook_pad(&k, back);   /* PAUSE3: while the 4:3 star tracker is showing, A / B slide back and the plank cursor is not moved */
+    hal_menu_pad(&k, back);
+    if (k != k0) {
+        *pressed = k;
+        *split = k;
+    }
+}
+
 /* Bottom of the frame: upload the shadows the game filled, rasterise engine B,
    drop it into the corner. With the panel off nothing here writes a pixel. */
-void hal_sub_screen_present(unsigned int *dst, int w, int h)
+/* The corner-inset rectangle this frame's present drew, for engine A's fade
+   (hal_sub_screen_present below); g_inset_live is 0 on a frame that drew no
+   inset (stacked layout, panel off, the level-clear compose). */
+static int g_inset_rect[4];
+static int g_inset_live;
+
+static void sub_screen_present_body(unsigned int *dst, int w, int h)
 {
+    g_inset_live = 0;
     hal_screens_probe();
     hal_obj_parity_probe();
     /* SM64DS_SUB_SCALE is a divisor: 1 = full DS size (a quarter of the 2x
@@ -1712,10 +3800,52 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
             init = 1;
             const int v = env_flag("SM64DS_SUB_SCALE", 2);
             g_div = v < 1 ? 1 : (v > 4 ? 4 : v);
+            /* the improved map's sprite veto, installed once. It is installed
+               whatever the option says, because it also LABELS the four
+               entries for the census; it only declines them when the option
+               is on (cam_button_veto's own return). */
+            ntr::ppu_sub_set_obj_veto(cam_button_veto);
         }
     }
-    g_x0 = w - ntr::SUB_W / g_div - kMargin;
-    g_y0 = h - ntr::SUB_H / g_div - kMargin;
+    hal_sub_panel_geometry(w, h);
+    /* (the menu's per-frame answer and its trace are the decide step now: hal_menu_decide_tick above) */
+    /* the inset arm of SM64DS_LAYOUT_SELFTEST, once per process and only in a
+       course, which is the only place this map exists */
+    {
+        static int done;
+        if (!done && !hal_sub_screen_stacked()) {
+            done = 1;
+            inset_map_selftest(w, h);
+            const char *lst = std::getenv("SM64DS_LAYOUT_SELFTEST");
+            if (lst && *lst) hal_menu_lc_selftest();
+        }
+    }
+    /* THE TOUCH TARGET, not presented with the option on. Measured on this
+       build: the marker is BG2 of the sub engine, which the game enables only
+       while the bottom screen registers a touch (DISPCNT_B 0x40011803 ->
+       0x40011c03, bit 10), and the port draws it in the map's TOP-LEFT CORNER
+       whatever point was actually touched -- a click at the middle of the map
+       moves 1260 pixels and every one of them is inside a quarter disc of
+       radius 40 at DS (0,0). A marker that does not follow the touch is worse
+       than no marker, and a player clicking with a mouse needs no marker at
+       all, so with the improved map on this layer is not presented.
+       ONLY IN THE CORNER-INSET LAYOUT, which is a course: menus and minigames
+       take the stacked layout, where the bottom screen is the thing being
+       played on and BG2 is nobody's marker. Zero otherwise, which is the
+       raster's own old behaviour. */
+    ntr::ppu_sub_set_bg_suppress(
+        ((improved_map_on() || menu_bigmap_up()) && !hal_sub_screen_stacked()) ? (1u << 10) : 0u);   /* MAP1: nor the touch marker */
+    /* THE MAP'S BLACK OUTLINE, and where it comes from. It is not the
+       cartridge's: the DS bottom screen's own outermost rows and columns are
+       whatever the game drew there. It is this port's, one pixel wide, drawn
+       by ntr::ppu_compose_sub immediately outside the map so a bare inset
+       reads as a panel rather than as a hole in the 3D picture. With a
+       decorated panel round the map that line sits on top of the artist's own
+       border, which is precisely what the owner asked to be rid of, so with
+       the improved map on it is not drawn and the panel's own frame takes its
+       place. Off, and in the stacked layout, it is exactly what it was. */
+    ntr::ppu_sub_set_compose_border(
+        (improved_map_on() && !hal_sub_screen_stacked()) ? 0 : 1);
     /* Publish the layer mask, the way nine ROM functions do with this exact
        line. Minimap::Behavior and Message::UpdateWindow both write
        data_0209d454 and then push it themselves; doing it once more here is
@@ -1744,16 +3874,15 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
         *(volatile unsigned *)0x04001000 =
             (*(volatile unsigned *)0x04001000 & ~0x1f00u) | (mask << 8);
     }
-    /* func_02019144's FIRST beat, for the one block the port cannot dispatch:
-       the Stage's. Its table (data_02092188) is hosted by nobody, so
-       hal/scene_boot.cpp's beat refuses it and answers 1, and this hand copy
-       of Stage::GraphCallback2 is what stands in. It runs exactly when the
-       beat did NOT dispatch a real block, which is every level frame and
-       leaves the 46-level net where it was. port/unmatched/Minimap_Affine.cpp
-       carries the callback; the rest of func_02019144 is the layer-mask
-       publish above and the OAM upload below. */
+    /* func_02019144's FIRST beat, the current block's slot 2, is
+       hal/scene_boot.cpp's port_graph_block_beat for every block now, the
+       Stage's included: its table is seated and registered
+       (hal/arm9_tables_link100.cpp, run linkfull lane SEATS3), so
+       Stage::GraphCallback2 -- the minimap's BG3 affine -- runs there, once a
+       frame, and the hand copy of it this branch used to call is retired. The
+       rest of func_02019144 is the layer-mask publish above and the OAM upload
+       below. */
     if (run_tail) {
-        port_minimap_affine_update();
         /* IMMEDIATELY BEFORE THE UPLOAD, and that placement is the whole point.
            port_message_composite_engine_a ran a few lines earlier in both frame
            loops and rasterised engine A's sprites out of 0x07000000 as it
@@ -1845,7 +3974,7 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
     ntr::ppu_vram_publish();
     ntr::ppu_display_capture(dst, w, h);
 
-    if (g_on) ntr::ppu_scanout_sub(g_sub);
+    if (g_on || g_force_panel.load() || hal_menu_draw_live() || menu_bigmap_up()) ntr::ppu_scanout_sub(g_sub);   /* a live menu, or the big map (MAP1), forces its own scan-out */
     /* THE LATE UPLOAD, and it is now the OPT-IN arm. port_frame_oam_upload
        above already ran this frame's OAM::Load at func_02019144's own line,
        ahead of both rasters; this block is what SM64DS_OAM_LOAD_LATE=1 gets
@@ -1854,7 +3983,7 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
         ntr::ppu_seam_oam_mark();
         _ZN3OAM4LoadEv();
     }
-    if (!g_on) return;
+    if (!g_on && !g_force_panel.load() && !hal_menu_draw_live() && !menu_bigmap_up()) return;
     /* THE STACKED LAYOUT WRITES NOTHING INTO dst HERE, and that is the whole
        trick. dst is the framebuffer, the scan-out above is everything the
        bottom screen needs, and the stacked image is built downstream by
@@ -1863,9 +3992,117 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
        the framebuffer this function is handed comes out of a stacked frame
        byte-for-byte identical to a panel-off frame, which is what keeps every
        ppu_write_bmp site in the tree at 512x384 and unmoved. */
-    if (!hal_sub_screen_stacked())
-        ntr::ppu_compose_sub(g_sub, dst, w, h, kMargin, g_div);
+    if (!hal_sub_screen_stacked() && hal_menu_draw_live()) {
+        /* A MENU RECIPE OWNS THE PICTURE THIS FRAME. Nothing of the map panel is drawn: the recipe's pieces are the
+           picture's menu, and the plate, the banner, the handle and the attention arrows are none of those. A
+           PRE_FADE recipe (level-clear) draws here, before engine A's fade; a POST_FADE one in the wrapper below. */
+        /* the recipe reads and writes the picture's own pixels: a frame held on the card (run cardfull) is read back first --
+           unless every piece of it only writes or composes (SAVEOVL1): then it is drawn into a menu layer the card lays over
+           its composite, and the picture stays where it is */
+        if (menu_layer_try(dst, w, h, MENU_STAGE_PRE_FADE)) {
+            /* drawn into the layer */
+        } else {
+            ntr::gx_card_settle_because("a menu recipe's picture");
+            if (hal_menu_draws_in(MENU_STAGE_PRE_FADE)) {
+                menu_prepare_sources(dst, w, h);
+                hal_menu_present(dst, w, h, MENU_STAGE_PRE_FADE);
+            }
+        }
+    } else if (!hal_sub_screen_stacked() && menu_bigmap_up()) {
+        /* MAP1: SELECT SHOWS THE BIG MAP. The bottom screen's scan-out, big and centred over the dimmed picture, instead of the corner
+           panel. The rectangle is handed to engine A's fade like the panel's, so the map is not dimmed with the fade. */
+        ntr::gx_card_settle_because("the big map's picture");
+        menu_bigmap_draw(&g_sub.px[0][0], dst, w, h, ntr::SCREEN_W, g_inset_rect);
+        g_inset_live = 1;
+    } else if (!hal_sub_screen_stacked()) {
+        /* THE DECORATIVE PANEL FIRST, because it goes BEHIND the map: the
+           compose below writes the map over the middle of it and its own one
+           pixel frame lands on the panel's inner edge. Only with the option
+           on; with it off not a pixel of this runs. */
+        if (improved_map_on()) hal_sub_panel_decor(dst, w, h);
+        ntr::ppu_compose_sub(g_sub, dst, w, h, g_x0, g_y0, g_pan_num, g_pan_den);
+        /* the rectangle engine A's fade treats as one piece (the wrapper
+           below): the map, its one-pixel frame and, with the improved map,
+           the decoration round it */
+        {
+            int el = 0, et = 0, er = 0, eb = 0;
+            if (improved_map_on()) panel_extents(&el, &et, &er, &eb);
+            g_inset_rect[0] = g_x0 - (el > 1 ? el : 1);
+            g_inset_rect[1] = g_y0 - (et > 1 ? et : 1);
+            g_inset_rect[2] = g_x0 + g_pan_w + (er > 1 ? er : 1);
+            g_inset_rect[3] = g_y0 + g_pan_h + (eb > 1 ? eb : 1);
+            g_inset_live = 1;
+        }
+        /* AND THE PANEL'S SECOND PASS, the MAP plaque, which the owner asked
+           to sit ABOVE the map rather than behind it. Three layers in his own
+           order: the plate, the map, the banner. */
+        if (improved_map_on()) hal_sub_panel_plaque(dst, w, h);
+        /* AND THE RESIZE HANDLE, above the map and the banner both, because it
+           is a control and a control that something can be drawn over is a
+           control a player cannot find. */
+        if (improved_map_on()) hal_sub_panel_handle(dst, w, h);
+        /* AFTER THE PANEL, DELIBERATELY. The arrows sit just above the panel's
+           top edge, so at every size but the largest they do not touch it; at
+           the largest size on a 4:3 picture the panel IS the picture and the
+           band has nowhere above to go, and drawing them here means the player
+           still sees the cue instead of losing it under the map. Engine A's
+           raster ran earlier in the frame (port_message_composite_engine_a),
+           which is why the sprites are handed over rather than drawn there. */
+        port_bounce_arrows_present(dst, w, h, g_x0, g_y0, g_pan_w, g_pan_h);
+    }
     g_ready = true;
+
+    /* SM64DS_BG2_TRACE=1: engine B's BG2 control and affine registers, once a
+       frame and only when one of them has changed. The touch marker the owner
+       calls "the target" is that layer (lane MINIMAP1 measured it: the sub
+       engine's 128 sprite entries are byte-identical touched and untouched,
+       and DISPCNT_B's layer mask goes 0x18 to 0x1c on touch), and it is drawn
+       in the map's top-left corner wherever the touch actually was. An affine
+       layer is PLACED by its reference point, so this prints what the game
+       writes there against where the touch is: if the reference point moves
+       with the stylus the port is misreading it, and if it does not the
+       cartridge places the marker some other way. */
+    {
+        static int on = -1;
+        static unsigned last[6];
+        if (on < 0) on = std::getenv("SM64DS_BG2_TRACE") ? 1 : 0;
+        if (on) {
+            const unsigned cnt = *(volatile unsigned short *)0x0400100c;
+            /* the map's own occupancy, because a text background can also be
+               placed by REDRAWING it: the box of non-empty entries says which
+               it is. Screen base is BGxCNT bits 8..12 in 2K units. */
+            const unsigned screen = 0x06200000u + (((cnt & 0x1f00u) >> 8) << 11);
+            unsigned bx0 = 64, bx1 = 0, by0 = 64, by1 = 0, nz = 0;
+            for (unsigned ty = 0; ty < 32; ++ty)
+                for (unsigned tx = 0; tx < 64; ++tx) {
+                    const unsigned short e = *(volatile unsigned short *)
+                        (screen + (ty * 64u + tx) * 2u);
+                    if (!(e & 0x3FFu)) continue;
+                    ++nz;
+                    if (tx < bx0) bx0 = tx;
+                    if (tx > bx1) bx1 = tx;
+                    if (ty < by0) by0 = ty;
+                    if (ty > by1) by1 = ty;
+                }
+            const unsigned now[6] = {
+                *(volatile unsigned *)0x04001000,
+                cnt,
+                (unsigned)(*(volatile unsigned short *)0x04001018)
+                    | (unsigned)(*(volatile unsigned short *)0x0400101a) << 16,
+                *(volatile unsigned *)0x04001028,
+                *(volatile unsigned *)0x0400102c,
+                (bx0 << 24) | (bx1 << 16) | (by0 << 8) | by1,
+            };
+            if (std::memcmp(now, last, sizeof now) != 0) {
+                std::memcpy(last, now, sizeof now);
+                std::fprintf(stderr, "[bg2b] DISPCNT %08x BG2CNT %04x "
+                             "HOFS %u VOFS %u BG2X %08x BG2Y %08x  map@%08x "
+                             "%u entries, tiles x %u..%u y %u..%u\n",
+                             now[0], now[1], now[2] & 0xFFFFu, now[2] >> 16,
+                             now[3], now[4], screen, nz, bx0, bx1, by0, by1);
+            }
+        }
+    }
 
     /* SM64DS_SUB_DUMP=N: the bottom screen alone, at 256x192, on frame N. */
     {
@@ -1880,6 +4117,54 @@ void hal_sub_screen_present(unsigned int *dst, int w, int h)
                         *(volatile unsigned short *)0x0400100e);
         }
     }
+}
+
+/* THE PRESENT, and then ENGINE A'S FADE COMPOSITE over the framebuffer it was
+   handed (hal/message_compositor.cpp, port_engine_a_fade). Both frame loops
+   call this right after the engine-A compositor; the level loop used to run
+   the fade itself, here, after this call, and the scene loop never ran it.
+   The body above has an early return (the panel switched off), so the fade
+   hangs off this wrapper and not off the body's last line. */
+extern "C" void port_engine_a_fade(unsigned int *px, int w, int h);
+extern "C" void port_engine_a_bright_mask_rect(int x0, int y0, int x1,
+                                               int y1);
+void hal_sub_screen_present(unsigned int *dst, int w, int h)
+{
+    sub_screen_present_body(dst, w, h);
+    /* THE INSET TAKES ONE VERDICT: the whole panel is blended, as it always
+       was, instead of each of its pixels being judged by the engine-A layer
+       under it (see port_engine_a_bright_mask_rect) */
+    if (g_inset_live)
+        port_engine_a_bright_mask_rect(g_inset_rect[0], g_inset_rect[1],
+                                       g_inset_rect[2], g_inset_rect[3]);
+    port_engine_a_fade(dst, w, h);
+    /* H2's second stage: the recipes that draw over the finished, faded picture */
+    if (hal_menu_draws_in(MENU_STAGE_POST_FADE) && !hal_sub_screen_stacked()) {
+        if (!menu_layer_try(dst, w, h, MENU_STAGE_POST_FADE)) {
+            menu_prepare_sources(dst, w, h);
+            hal_menu_present(dst, w, h, MENU_STAGE_POST_FADE);
+        }
+    }
+}
+
+/* MENUINTERP2 (hunt8): THE PICTURES BETWEEN TICKS UNDER A MENU THAT MOVES 3D PIXELS.
+   hal_menu_pic_snapshot: the copy of the finished, faded picture that menu_prepare_sources took right before this tick's POST_FADE
+   draw, i.e. the picture the menu was cut from (3D + the engine-A cells the recipe did not lift, no menu piece yet). Valid for the
+   tick whose draw ran (the SRC_TOP_PIC piece asked for it); null otherwise. SCREEN_W stride, like the framebuffer.
+   hal_menu_relift: the same draw again on a picture between ticks: dst is that picture (the replayed 3D, the tick's 2D put back, the
+   fade) before any menu piece, and the 3D coverage of the replay that made it is what gx_coverage answers now. The recipe's planes
+   (lifted top2d, engine-B scan-outs, host images) are the tick's own and constant between ticks; the bound decision is the tick's.
+   Returns 1 when the menu was drawn. */
+extern "C" const uint32_t *hal_menu_pic_snapshot(void)
+{
+    return hal_menu_draw_live() && hal_menu_draws_in(MENU_STAGE_POST_FADE) && hal_menu_needs_picsnap() ? g_picsnap : 0;
+}
+extern "C" int hal_menu_relift(unsigned int *dst, int w, int h)
+{
+    if (!dst || !hal_menu_draw_live() || !hal_menu_draws_in(MENU_STAGE_POST_FADE)) return 0;
+    menu_prepare_sources(dst, w, h);
+    hal_menu_present_relift(dst, w, h, MENU_STAGE_POST_FADE);
+    return 1;
 }
 
 /* ---- the stacked layout ----------------------------------------------------
@@ -2191,6 +4476,14 @@ unsigned hal_sub_screen_stacked_generation(void)
  * The gate in front of all of it is the CAMERA's own +0x154 bit 0x1000. With
  * that clear the ROM draws no buttons and reads no touches, so if the panel
  * shows arrows and nothing rotates, this is the word to look at. */
+/* The level loop's poll is next, and this frame's hal_sub_camera_input will
+   read what it publishes: the arrow zone is live for that poll (see
+   g_cam_reader_at). */
+void hal_sub_camera_zone_live(void)
+{
+    g_cam_reader_at = g_tp_frame;
+}
+
 void hal_sub_camera_input(void)
 {
     const char *ctrl = (const char *)data_0209f498;
@@ -2334,8 +4627,8 @@ static void layout_log(const char *why)
         "present=(%d,%d,%d,%d) src=%dx%d "
         "touch=(%d,%d,%d,%d)\n",
         why, stacked ? "stacked" : "inset", ntr::active_w, ntr::active_h, lay.scale,
-        lay.w, lay.h, lay.head_h, lay.top_y, lay.w, lay.pan_h,
-        lay.pan_x0, lay.top_y, lay.pan_w, lay.pan_h, lay.band_y, lay.band_h,
+        lay.w, lay.h, lay.head_h, lay.top_y, lay.w, lay.top_h,
+        lay.pan_x0, lay.top_y, lay.pan_w, lay.top_h, lay.band_y, lay.band_h,
         lay.bottom_y, lay.w, lay.pan_h,
         lay.pan_x0, lay.bottom_y, lay.pan_w, lay.pan_h,
         g_pr_x, g_pr_y, g_pr_w, g_pr_h, g_pr_sw, g_pr_sh,
@@ -2389,10 +4682,10 @@ static void layout_selftest(void)
         int nfail = 0;
 
         /* A: no region beyond the pictures */
-        if (lay.h != lay.head_h + lay.pan_h * 2 + lay.band_h)
+        if (lay.h != lay.head_h + lay.top_h + lay.pan_h + lay.band_h)
             fails[nfail++] = 'A';
         /* B: the pictures are adjacent */
-        if (lay.band_y != lay.top_y + lay.pan_h ||
+        if (lay.band_y != lay.top_y + lay.top_h ||
             lay.bottom_y != lay.band_y + lay.band_h)
             fails[nfail++] = 'B';
         /* C: both pictures are 4:3 */
@@ -2471,7 +4764,7 @@ static void layout_selftest(void)
            picture's last row maps OUTSIDE. */
         {
             const long long ty0 = ry + (long long)lay.top_y * rh / lay.h;
-            const long long ty1 = ry + (long long)(lay.top_y + lay.pan_h) * rh / lay.h - 1;
+            const long long ty1 = ry + (long long)(lay.top_y + lay.top_h) * rh / lay.h - 1;
             int fx, fy, ok = 1;
             if (!hal_present_client_to_fb((int)bx0, (int)ty0, &fx, &fy)) ok = 0;
             if (!hal_present_client_to_fb((int)bx1, (int)ty0, &fx, &fy)) ok = 0;
@@ -2600,7 +4893,7 @@ int hal_present_client_to_fb(int cx, int cy, int *fx, int *fy)
        the message_compositor band split belongs here; flagged for Tango. */
     const ntr::StackLayout &lay = *hal_screen_layout();
     const int inside = x >= 0 && y >= lay.top_y && x < ntr::active_w &&
-                       y < lay.top_y + (hal_sub_screen_stacked() ? lay.pan_h
+                       y < lay.top_y + (hal_sub_screen_stacked() ? lay.top_h
                                                                  : ntr::active_h);
     /* AND THE FRAMEBUFFER ROW IS THE SOURCE ROW MINUS top_y, which was a no-op
        for as long as top_y was zero and is not one any more: the gapless
@@ -2788,7 +5081,7 @@ void hal_touch_client_probe(void)
         if (sx >= 0 && sx < ssw) {
             if (lay.head_h > 0 && sy >= 0 && sy < lay.top_y)
                 where = "HEADROOM";
-            else if (sy >= lay.top_y && sy < lay.top_y + lay.pan_h)
+            else if (sy >= lay.top_y && sy < lay.top_y + lay.top_h)
                 where = "top screen";
             else if (lay.band_h > 0 && sy >= lay.band_y && sy < lay.bottom_y)
                 where = "GAP";
@@ -2803,12 +5096,11 @@ void hal_touch_client_probe(void)
     std::fflush(stderr);
 }
 
-// ---- the three leaves LoadGraphics2D names but never reaches ---------------
+// ---- the three leaves LoadGraphics2D names, and what became of each --------
 //
-// Each of these sits on a branch the port does not take, and each drags a
-// subsystem with no host seam behind it. They are stubbed by name rather than
-// sliced in, and each says so if it is ever actually called -- which would
-// mean the branch analysis is wrong, not that the stub is.
+// Each once sat on a branch the port did not take, or dragged a subsystem with
+// no host seam behind it, and was stubbed here by name. None is stubbed here
+// any more; the three blocks below say where each body came from.
 
 /* LoadFont3D is NOT faced here any more (VS wiring lane, run vs1). The
    "only from LoadGraphics2D(b != 0)" premise stopped holding when scene 6
@@ -2822,18 +5114,25 @@ void hal_touch_client_probe(void)
    src/LoadFont3D.c is the body, compiled by slice_vs. Leaving the stub here
    would be a duplicate definition -- the wave-C precedent above. */
 
-/* Top-screen furniture: it rasterises the controller-mode caption into
-   G2::GetBG2CharPtr through func_0201d590, the main engine's text path. The
-   bottom screen never reads any of it.
-   PORT_HOST_ABI: src writes the top-screen BG2 text layer, a subsystem the port
-   does not host. */
-void LoadControllerModeText(int a)
-{
-    static int said;
-    if (!said++)
-        std::printf("  [sub] LoadControllerModeText(%d): top-screen text is "
-                    "not hosted\n", a);
-}
+/* LoadControllerModeText is NOT stubbed here any more (run linkfull, wave 31B,
+   lane S42D). The stub that stood here said the top-screen BG2 text layer was
+   "a subsystem the port does not host", and that stopped being true when
+   hal/message_compositor.cpp started scanning engine A's text BGs over the 3D
+   frame: the caption path is the same one the dialogue box already takes.
+   Stage::LoadGraphics2D calls LoadControllerModeText(0x280) on every single-
+   player level load; the matched src/LoadControllerModeText.c rasterises the
+   three mode captions (message 0x280, 0x281, 0x282) through func_0201d590
+   (src/func_0201d590.cpp: the font blit into G2::GetBG2CharPtr, tiles 0x280
+   and up) and writes their tile rows into G2::GetBG2ScrPtr at +0x40, +0x840
+   and +0x1040 -- row 1 of three consecutive 2 KB screen blocks. Stage::
+   PS_Update's controller-mode page (case 7) then points BG2CNT's screen base
+   at block 0xd + the chosen mode, which is how ONE of the three captions
+   shows on the top screen while that page is up and none of them otherwise.
+   Every callee and every global of both bodies was already in the link
+   (func_0201eaac, func_0201b6f8, func_0201b100, MultiStore_Int, the G2
+   getters); port/slice_w31_s42d.txt compiles the two TUs on all three
+   targets this file is on. Leaving the stub here would be a duplicate
+   definition -- the LoadFont3D precedent above. */
 
 /* The third leaf, func_ov004_020adc4c, is NOT stubbed here any more (run linkw
    wave C, lane cat-2d). It was tagged `src reads data_ov004_020beb60, and

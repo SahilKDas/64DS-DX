@@ -37,13 +37,10 @@
 #include "dScMgD3DBase_c.h"
 #include "dMgJump3DMario_c.h"
 
-/* The array runtime passes each element address and ignores callback results.
- * The casts below adapt the existing lifecycle entries at that ABI boundary. */
-extern "C" void __cxa_vec_cleanup(void *base, unsigned int count, unsigned int stride,
-                       void (*dtor)(void *));
+extern "C" void __cxa_vec_cleanup(void *base, int count, int stride, void *dtor);
 extern "C" void _ZN5ModelD1Ev(void *p);
-extern "C" int func_ov006_020c6f3c(int *object);
-extern "C" void func_ov006_020eed64(void *object);
+extern "C" void func_ov006_020c6f3c(void);
+extern "C" void func_ov006_020eed64(void);
 
 struct dScMgJump2_c : dScMgD3DBase_c {
     /* DEFINED IN THE CLASS BODY, DELIBERATELY -- not a style choice.
@@ -59,10 +56,21 @@ struct dScMgJump2_c : dScMgD3DBase_c {
        DECLARED but not defined here is OnYoshiTryEat below, which lives in
        src/minigames/d_s_mg_jump2.cpp, so _ZTV12dScMgJump2_c is still emitted
        by that one translation unit and by no other. */
-    virtual ~dScMgJump2_c() {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgJump2_c() {   /* no slot */
+#else
+    virtual ~dScMgJump2_c() {   /* D1 and D0 */
+#endif
         _ZN5ModelD1Ev((char *)this + 0x5a14);
-        __cxa_vec_cleanup(mArray3, 0x10, 0x24, func_ov006_020eed64);
-        __cxa_vec_cleanup(mArray2, 6, 0xf0, (void (*)(void *))func_ov006_020c6f3c);
+        __cxa_vec_cleanup(mArray3, 0x10, 0x24, (void *)func_ov006_020eed64);
+        __cxa_vec_cleanup(mArray2, 6, 0xf0, (void *)func_ov006_020c6f3c);
     }
     virtual void OnYoshiTryEat(int arg);               /* slot 18 */
     virtual int  OnTurnIntoEgg(int mode);              /* slot 19 */

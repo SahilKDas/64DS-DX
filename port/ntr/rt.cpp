@@ -1,6 +1,7 @@
 #include "ntr/rt.h"
 
 #include "ntr/mmio.h"
+#include "hal/dsstate_seg.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -156,10 +157,22 @@ void hblank_line() {
         ++g_hb_window_writes;
 }
 
+// rt_window_rows' record (see rt.h): the WIN1H:WIN0H word of each engine for
+// each visible line of the last scan, and whether a handler wrote any of them.
+uint32_t g_win_rows[2][192];
+bool g_win_rows_live;
+
+inline void win_rows_take(int y) {
+    g_win_rows[0][y] = *reinterpret_cast<volatile uint32_t *>(REG_WIN0H);
+    g_win_rows[1][y] = *reinterpret_cast<volatile uint32_t *>(REG_WIN0H_SUB);
+}
+
 // Advance the scanline counter across a frame. Anything spinning on VCOUNT --
 // the decomp does, in func_02013f4c -- needs this to actually move.
 void run_scanlines() {
     const bool off = hblank_off();
+    bool rows_written = false;
+    win_rows_take(0);
     for (uint16_t line = 0; line < 263; ++line) {
         reg16(REG_VCOUNT) = line;
         if (off) continue;
@@ -175,6 +188,7 @@ void run_scanlines() {
                 std::fflush(stderr);
             }
             hblank_line();
+            if (line < 191) rows_written = true;
         } else if (hblank_trace()) {
             const unsigned g = rt_hblank_gates();
             if (g != g_hb_gates_said && (g & HBLANK_GATE_HANDLER)) {
@@ -190,7 +204,9 @@ void run_scanlines() {
                 std::fflush(stderr);
             }
         }
+        if (line < 191) win_rows_take(line + 1);
     }
+    g_win_rows_live = rows_written;
 }
 
 }  // namespace
@@ -204,6 +220,173 @@ void rt_vblank_wait() {
 }
 
 uint64_t rt_frame() { return g.frame; }
+
+// ---- DS TIMER 0, THE OS TICK (run hunt2, lane HUD2) -------------------------
+//
+// WHAT THE ROM DOES WITH IT. src/func_02059788.c (called by main() at boot,
+// hal/boot_os.cpp port_boot_rom_main_head) zeroes TM0CNT_L, writes TM0CNT_H =
+// 0xc1 (bit 7 run, bit 6 IRQ on overflow, prescaler 1 = F/64) and registers
+// func_02059700 on IRQ mask 8, which bumps the 48-bit overflow count at
+// data_020a6438 and re-arms itself. src/func_02059650.c reads the tick as
+// (overflows << 16) | TM0CNT_L, and everything that measures time reads that:
+// Timer::GetTime (the course timer on the HUD, src/_ZN3HUD15RenderTimeTimerEv.cpp,
+// and the Princess's Secret Slide's under-21-second star, src/actors/Player.cpp
+// case 16), the tick-to-ms helpers, the alarm list.
+//
+// WHAT THE PORT DID. Nothing moved the counter and nothing raised mask 8, so
+// the tick read 0 for the whole run: every Timer read 0, the course timer sat
+// at 00'00"00 and the slide's time test always passed.
+//
+// THE MODEL. The counter lives where the ROM reads it, the mapped I/O word at
+// 0x04000100, and moves by the DS's own clock: a frame is 263 lines of 2130
+// cycles of the 33.51 MHz bus, and the game tick is data_0208ee44 frames (the
+// ROM's vblanks-per-tick word; 2 on a course). The frame loops call this once
+// per game tick, beside the frame clock (func_020197b8 phase 6), and not on a
+// frame the host froze (its menu, a level re-seat), because no DS time passes
+// in a frame the DS never ran. A start edge (bit 7 going up) starts the count
+// at the value the ROM just wrote to TM0CNT_L, which is the reload the DS
+// latches from that write; each overflow reloads it and sets IF bit 3, and
+// when IE bit 3, IME and the CPSR I bit let it through the ROM's own vector
+// runs (runtime.cpp rt_timer0_dispatch), acknowledged first the way the DS
+// dispatcher acknowledges IF. A masked overflow stays pending in IF, as on
+// the DS, and func_02059650 already counts a pending one.
+//
+// DETERMINISTIC: the count is a function of the ticks run, never of the host
+// clock, so a selftest's pictures and traces do not move between runs.
+namespace {
+uint16_t g_t0_ctl_was;
+uint16_t g_t0_reload;
+uint32_t g_t0_frac;
+unsigned long long g_t0_irqs;
+int g_t0_band = -1;
+struct Timer0CensusReg {
+    Timer0CensusReg() {
+        if (std::getenv("SM64DS_IRQ_CENSUS")) std::atexit(report);
+    }
+    static void report() {
+        std::fprintf(stderr, "[timer0] census: overflow irqs delivered=%llu "
+                     "TM0CNT_L=%04x TM0CNT_H=%04x\n", g_t0_irqs,
+                     static_cast<unsigned>(reg16(0x04000100)),
+                     static_cast<unsigned>(reg16(0x04000102)));
+        std::fflush(stderr);
+    }
+} g_t0_census_reg;
+}  // namespace
+
+extern "C" int port_irqcb_band_ok(void);
+
+void rt_timer0_advance(unsigned vblanks) {
+    static int off = -1;
+    if (off < 0) off = std::getenv("SM64DS_TIMER0_OFF") ? 1 : 0;
+    if (off) return;
+    if (g_t0_band < 0) {
+        g_t0_band = port_irqcb_band_ok() ? 1 : 0;
+        if (!g_t0_band) {
+            std::fprintf(stderr, "[timer0] the IRQ callback band came apart "
+                         "(data_020a60f4 != data_020a60c4 + 0x30): timer 0 "
+                         "stays frozen rather than run the tick's re-arm "
+                         "into the wrong words\n");
+            std::fflush(stderr);
+        }
+    }
+    if (!g_t0_band) return;
+    if (vblanks < 1 || vblanks > 4) vblanks = 2;   // port_frame_divider's reading
+
+    const uint16_t ctl = reg16(0x04000102);
+    const bool was_running = (g_t0_ctl_was & 0x80) != 0;
+    g_t0_ctl_was = ctl;
+    if (!(ctl & 0x80)) return;
+    if (!was_running) {
+        g_t0_reload = reg16(0x04000100);
+        g_t0_frac = 0;
+    }
+
+    static const unsigned kShift[4] = {0, 6, 8, 10};   // F/1, /64, /256, /1024
+    const unsigned sh = kShift[ctl & 3];
+    const uint64_t cycles = static_cast<uint64_t>(vblanks) * 560190u + g_t0_frac;
+    g_t0_frac = static_cast<uint32_t>(cycles & ((1u << sh) - 1u));
+    uint64_t cnt = reg16(0x04000100) + (cycles >> sh);
+    unsigned overflows = 0;
+    while (cnt >= 0x10000u) {
+        cnt = cnt - 0x10000u + g_t0_reload;
+        ++overflows;
+    }
+    reg16(0x04000100) = static_cast<uint16_t>(cnt);
+
+    if (overflows && (ctl & 0x40)) reg32(REG_IF) |= 0x8u;
+    // One edge per delivery; the IF bit is a latch, so overflows that land
+    // while the gates are shut collapse into the one pending bit, as on the DS.
+    for (unsigned i = 0; i < (overflows ? overflows : 1u); ++i) {
+        if (!(reg32(REG_IF) & 0x8u) || !rt_timer0_irq_gates_open()) break;
+        reg32(REG_IF) &= ~0x8u;
+        if (g_irq_mode_enter) g_irq_mode_enter();
+        rt_timer0_dispatch();
+        if (g_irq_mode_exit) g_irq_mode_exit();
+        ++g_t0_irqs;
+        if (i + 1 < overflows) reg32(REG_IF) |= 0x8u;
+    }
+}
+
+// ---- TIMER 0 IN A SAVE STATE (run hunt3, lane POLISH1) ----------------------
+//
+// The OS tick is (overflow count << 16) | TM0CNT_L. The overflow count
+// (data_020a6438) and every Timer object are hosted DS globals and ride in
+// .dsstate; the low half is the I/O word at 0x04000100, and the save state
+// deliberately captures no I/O shadow (ntr/io.cpp, port_hw_regions_*). So an
+// F9 put the overflow count back but left the counter where the live run had
+// it: the course timer came back off by up to 65535 counts (1/8 s), and a
+// state saved in the first 1/8 s after the slide's timer started could read
+// a small negative time, which the HUD caps to 99'59"99 until the next
+// overflow.
+//
+// What the timer needs is exactly this: the counter, its control word, the
+// pending-overflow bit in IF, and this model's own three words (the control
+// word it last saw, the reload it latched, the prescaler remainder), so the
+// next rt_timer0_advance continues from the saved instant as if the run had
+// never left it. hal/lk6_savestate.cpp copies them in here just before it
+// captures .dsstate and puts them back just after it restores it; a disk load
+// (hal/lk7_persist.cpp) puts them back after its own .dsstate copy, before it
+// hands the world to the slot. Nothing else reads this record: the rollback
+// ring's .dsstate copies carry it inert, as they carried nothing before.
+// THE STATE LAYOUT CHANGES by this record's 20 bytes; a disk state from an
+// earlier build is already refused by its gittip.
+extern "C" {
+DSSTATE_BEGIN
+struct PortTimer0Saved {
+    uint32_t magic;       // kT0Magic once a save has filled it
+    uint16_t cnt_l;       // TM0CNT_L, the counter
+    uint16_t cnt_h;       // TM0CNT_H, run / IRQ / prescaler
+    uint16_t ctl_was;     // g_t0_ctl_was
+    uint16_t reload;      // g_t0_reload
+    uint16_t if_tm0;      // IF bit 3, a pending overflow
+    uint16_t pad;
+    uint32_t frac;        // g_t0_frac
+};
+PortTimer0Saved port_timer0_saved;
+DSSTATE_END
+}
+static const uint32_t kT0Magic = 0x56533054u;   // "T0SV"
+
+extern "C" void port_timer0_state_save(void) {
+    port_timer0_saved.magic = kT0Magic;
+    port_timer0_saved.cnt_l = reg16(0x04000100);
+    port_timer0_saved.cnt_h = reg16(0x04000102);
+    port_timer0_saved.ctl_was = g_t0_ctl_was;
+    port_timer0_saved.reload = g_t0_reload;
+    port_timer0_saved.if_tm0 = static_cast<uint16_t>(reg32(REG_IF) & 0x8u);
+    port_timer0_saved.pad = 0;
+    port_timer0_saved.frac = g_t0_frac;
+}
+
+extern "C" void port_timer0_state_load(void) {
+    if (port_timer0_saved.magic != kT0Magic) return;   // saved before this record existed
+    reg16(0x04000100) = port_timer0_saved.cnt_l;
+    reg16(0x04000102) = port_timer0_saved.cnt_h;
+    g_t0_ctl_was = port_timer0_saved.ctl_was;
+    g_t0_reload = port_timer0_saved.reload;
+    reg32(REG_IF) = (reg32(REG_IF) & ~0x8u) | (port_timer0_saved.if_tm0 & 0x8u);
+    g_t0_frac = port_timer0_saved.frac;
+}
 
 uint32_t rt_irq_disable() {
     const uint32_t prev = g.cpsr_i;
@@ -226,6 +409,12 @@ uint32_t rt_irq_restore(uint32_t prev) {
 bool rt_irq_masked() { return g.cpsr_i != 0; }
 
 void rt_scanout_frame() { run_scanlines(); }
+
+bool rt_window_rows(int engine, const uint32_t **rows) {
+    if (!g_win_rows_live || engine < 0 || engine > 1 || !rows) return false;
+    *rows = g_win_rows[engine];
+    return true;
+}
 
 void rt_hblank_counters(unsigned long long *deliveries,
                         unsigned long long *window_writes) {

@@ -56,7 +56,11 @@ src/actors/dScTitle_c.cpp
 # port/slice_scene1.txt made for src/actors/dScStarSel_c.cpp: MSVC folds the
 # ROM's destructor variants into ONE symbol, so only one of a class's two
 # per-function destructor TUs can be compiled. Listing both is LNK2005.
-#src/actors/dScTitle_c.cpp
+# (Run linkfull wave 27, lane V3B: the D0 file has an `#ifdef _MSC_VER` arm
+# now that defines only the flat D0 name in terms of the D1 file's ??1, so it
+# no longer collides; it rides port/slice_w27_v3b.txt. Do not list it here
+# as well, or it is compiled twice.)
+#src/_ZN10dScTitle_cD0Ev.cpp
 # slot 0  InitResources -- 0x020ada9c
 # slot 6  Behavior -- 0x020ad814, the level/entrance picker state machine
 #

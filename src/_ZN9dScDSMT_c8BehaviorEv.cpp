@@ -1,5 +1,4 @@
 //cpp
-#include "Sound.h"
 // @symbol _ZN9dScDSMT_c8BehaviorEv
 /* recovered: named members + real C++ method */
 /* dScDSMT_c::Behavior() -- vtable slot 6. Pumps the download-play state
@@ -27,16 +26,25 @@ s32 dScDSMT_c::Behavior()
     int result;
 
     if (data_ov007_02103260 >= 0 && DecIfAbove0_Short(&data_ov007_02104c28) == 0) {
-        Sound::LoadAndSetMusic_Layer1(data_ov007_02103260);
+        _ZN5Sound22LoadAndSetMusic_Layer1Ei(data_ov007_02103260);
         data_ov007_02103260 = -1;
     }
 
+#ifdef _MSC_VER
+    /* The ROM leaves each func_0203da9c() result, the comms slot index, in r0
+       for the accessor after it (0x020cc310..0x020cc320); pass it. */
+    {
+        u16 *p = func_0203dabc(func_0203da9c());
+        int arg4;
+        arg4 = func_0203dae4(func_0203da9c());
+#else
     func_0203da9c();
     {
         u16 *p = func_0203dabc();
         int arg4;
         func_0203da9c();
         arg4 = func_0203dae4();
+#endif
         result = func_ov007_020b7090(p[0], p[1], p[2], p[3], arg4);
     }
 

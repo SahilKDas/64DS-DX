@@ -6,6 +6,7 @@
 /* recovered: named members + shared header, real C++ method */
 #include "Player.h"
 extern "C" {
+extern int func_ov002_020c0434(void* c);
 extern void func_ov002_020c0364(void* c, u32 arg);
 extern void func_ov002_020c06fc(void* c, u32 arg);
 extern int func_ov002_020e3078(void* c, void* s);
@@ -29,7 +30,7 @@ extern int data_ov002_0211013c[];
 
 int Player::St_Land_Main()
 {
-    if (func_ov002_020c0434()) {
+    if (func_ov002_020c0434(((char*)this))) {
         func_ov002_020c0364(((char*)this), 3);
         func_ov002_020c06fc(((char*)this), 0x4000);
         return 1;

@@ -37,23 +37,9 @@ struct daPgMthr_c : dActor_c {
     s32 mHomePosX;                   /* 0x364 */
     s32 mHomePosY;                   /* 0x368 */
     s32 mHomePosZ;                   /* 0x36c */
-    /* 021123d0 writes data_ov018_02113c4c + (i<<4) here; 02112398/0211235c
-       call through it as a PMF pair. */
-    void *mState;                    /* 0x370 */
-    /* ClosestPlayer / FindWithID result. StartTalk, ShowMessage,
-       GetTalkState, DropActor take it as Player. */
-    Player *mPlayer;                 /* 0x374 */
-    /* 021118fc: last FindWithID hit, so a new PLAYER (0xbf) is noticed. */
-    dActor_c *mLastPlayer;           /* 0x378 */
-    s32 unk_37c;                     /* 0x37c -- 021122ec/021121dc/02111f1c write 0/1/2; no reader in this TU */
-    s16 mLookAngX;                   /* 0x380 -- 02111a48 approaches, 02111d28 applies */
-    s16 mLookAngY;                   /* 0x382 */
-    s16 mMessageId;                  /* 0x384 -- 0xac / 0xad / 0xae from 02111968 */
-    u8  mGaveStar;                   /* 0x386 -- 02111fac sets when spawning POWER_STAR */
-    u8  mHoldingBaby;                /* 0x387 -- 02111968, held actorID 0x100 (BABY_PENGUIN) */
-    u8  mTalkStep;                   /* 0x388 -- 02111fac 0..3 */
-    u8  mTalkTimer;                  /* 0x389 -- 021121dc arms 0x3c; DecIfAbove0_Byte */
-    u8  pad_38a[2];
+    u8  pad_370[0x4];
+    s32 unk_374;                     /* 0x374 */
+    u8  pad_378[0x14];
 
     /* --- vtable overrides. Slots are inherited from fBase_c/dActor_c. --- */
     /* Defined here, in the class body, and not out of line in the .cpp: the
@@ -64,24 +50,23 @@ struct daPgMthr_c : dActor_c {
      * group comes out ROM-ascending, and no D2 is emitted at all. The body is
      * genuinely empty -- every store and call in the two ROM bodies is base and
      * member destruction the compiler generates. Slots 16 (D1), 17 (D0). */
-    virtual ~daPgMthr_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daPgMthr_c() {}   /* no slot */
+#else
+    virtual ~daPgMthr_c() {}   /* D1 and D0 */
+#endif
     virtual int InitResources();                 /* slot 0 */
     virtual int CleanupResources();              /* slot 3 */
     virtual int Behavior();                      /* slot 6 */
     virtual int Render();                        /* slot 9 */
     virtual void OnPendingDestroy();             /* slot 12 */
-
-    void func_ov018_02111968(void *found, char *heldRaw);
-    void func_ov018_02111a48(char *b);
-    void func_ov018_02111b3c();
-    void func_ov018_02111d28();
-    int func_ov018_02111e28();
-    int func_ov018_02111f1c();
-    int func_ov018_02111fac();
-    int func_ov018_021121dc();
-    int func_ov018_02112234();
-    int func_ov018_021122ec();
-    void func_ov018_021123d0(int i);
 };
 
 #ifndef SM64DS_PLATFORM_PC
@@ -129,18 +114,13 @@ struct daPgMthr_c {
     s32 mHomePosX;            /* 0x364 */
     s32 mHomePosY;            /* 0x368 */
     s32 mHomePosZ;            /* 0x36c */
-    void *mState;             /* 0x370 */
-    s32 mPlayer;              /* 0x374 */
-    s32 mLastPlayer;          /* 0x378 */
-    s32 unk_37c;              /* 0x37c */
-    s16 mLookAngX;            /* 0x380 */
-    s16 mLookAngY;            /* 0x382 */
-    s16 mMessageId;           /* 0x384 */
-    u8  mGaveStar;            /* 0x386 */
-    u8  mHoldingBaby;         /* 0x387 */
-    u8  mTalkStep;            /* 0x388 */
-    u8  mTalkTimer;           /* 0x389 */
-    u8  pad_38a[2];
+    u8  pad_370[0x4];
+    s32 unk_374;            /* 0x374 */
+    /* Trailing remainder, 0x14 bytes. Every marker is already typed and the
+       last field the five recovered functions touch ends at 0x378;
+       daPgMthr_c_classInit allocates 0x38c. The reference does not document
+       this class's members. */
+    u8  pad_378[0x14];
 };
 
 #ifndef SM64DS_PLATFORM_PC

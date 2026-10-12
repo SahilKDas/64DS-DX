@@ -38,21 +38,35 @@
 //
 // read straight out of the five PMF pairs __sinit_02075154 copies into the
 // list heads (arm9 0x02099f48/50/60/68/70; each is {function, 0}, a plain
-// nonvirtual pointer-to-member). The port seats the same five functions in
-// the same slots and walks the lists with host copies of func_02043fdc /
-// func_020441cc, because MSVC has no representation for an mwcc PMF -- the
-// same treatment func_0204335c and func_02043288 already have.
+// nonvirtual pointer-to-member). The records are hosted beside their five
+// __fastcall faces (unmatched/func_02043fdc_hostcopy.cpp, each face carrying
+// the per-actor quarantine), the ROM's sinit copies them at Entry, and the
+// lists are walked by the matched src/func_02043fdc.cpp and
+// src/func_020441cc.cpp through /vmg /vmm member pointers, which are the ROM's
+// eight-byte pairs (the hostcopy file's header).
 //
-// The frame is SPLIT here rather than driven through one func_02044120 call
-// for one reason: the render pass has to run inside the host's render frame,
-// after gx_reset and the camera push. Phases 4/2/3 are the tick, phase 5 is
-// the render bucket, phase 1 closes the frame. Same functions, same order.
+// THE FRAME IS THE ROM'S NOW (run linkfull, lane K1LOOP): both host loops
+// call src/func_02044120.c itself at phase 4 (port_actor_frame below), all
+// five walks in the ROM's order. It used to be SPLIT -- 4/2/3 as a "tick",
+// 5 inside the host's render frame, 1 after the level draw -- because the
+// render walk has to land in an open geometry buffer with this frame's view.
+// That is the DS's own arrangement read the other way round: the list-5 walk
+// submits geometry at phase 4 and the engine rasterises it after the swap, so
+// the loops open the host geometry buffer before phase 4 (where the DS's is
+// empty, after the previous swap) and rasterise it later, and the Camera
+// renders at the head of list 5 (render priority 0) with the host rig riding
+// its face (hal/camera_bridges.cpp). The split functions below stay for the
+// frames that are not the ROM's (the F5 freeze, the rollback replay, the
+// teardown convergence loops in hal/level_change.cpp, the dev arms): a frame
+// runs one shape or the other, never both, and the census counts it.
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#include "mod_hooks.h"
 
 extern "C" {
 
@@ -290,10 +304,35 @@ static int port_host_abi_blocked(unsigned id)
 
 extern "C" const char *port_actor_class_name(unsigned id);
 
+/* THE OVERLAY LOAD THIS HOOK STANDS IN FOR (run hunt1, lane MGMENU1).
+   The ROM's occupant of data_020a4b58 is func_0201a694 (src/func_0201a694.c,
+   seated by src/func_0201a5cc.c). For a scene id it asks GetSceneOverlayID
+   and, for a minigame (0x169..0x186, IsMinigameActorID's range), calls
+   func_0201a798(&overlay_6), which loads ov004 and then ov006
+   (src/func_0201a798.c). The DS overlay load runs each overlay's static-init
+   range, so all 35 ov004/ov006 constructors have run before the factory is
+   reached. One of them, __sinit_ov004_020b948c, constructs
+   dScMgBase_c::graphCallback_c in data_ov004_020beb74 (its vtable word is
+   data_ov004_020bc03c); every minigame's slot 33 then parks that block in
+   data_0209d4a8.
+
+   The port's model of "ov004 + ov006 are loaded" is hal/scene_mg.cpp's
+   port_scene_mg_prepare (the constructors, then the seats that follow them),
+   and until now only the direct SM64DS_SCENE=<minigame> boot ran it. A
+   minigame picked from the minigame menu (scene 5) spawns through this hook
+   with none of it done, and the frame's graphics-block dispatch
+   (func_02019404 / func_02019144) calls through the block's zero vtable word.
+   So the hook does it here, at func_0201a694's point, before the factory.
+   The gate is the ROM's own predicate, inside port_scene_mg_prepare; every
+   other id is untouched. It runs once per process, as on the direct boot:
+   the port never unloads ov006, so there is no FS_EndOverlay to undo it. */
+extern "C" void port_scene_mg_prepare(int id);
+
 extern "C" int port_prespawn_hook(void *idv)
 {
     unsigned id = (unsigned)(size_t)idv;
     if (id < PORT_ACTOR_IDS && data_020a4bb8[id] && !port_host_abi_blocked(id)) {
+        port_scene_mg_prepare((int)id);
         static int trc = -1;
         if (trc < 0) trc = std::getenv("SM64DS_TRACE_SPAWN") != 0;
         if (trc) std::fprintf(stderr, "  [spawn+] actor 0x%x %s proceed\n",
@@ -360,6 +399,16 @@ extern "C" void hal_fill_moving_cylinder_vtables(void);
 typedef const char *(*port_classname_fn)(unsigned id);
 extern "C" port_classname_fn port_classname_resolver;
 
+/* run mods1: the registry's own factory for an id (what a plugin's
+   replace_actor wraps), or 0 when the class is not registered. */
+extern "C" void *port_actor_registry_stock_factory(unsigned actor_id)
+{
+    for (const PortActorClass *k = port_actor_classes; k->name; ++k)
+        if (k->id == actor_id && k->info && k->factory)
+            return (void *)k->factory;
+    return 0;
+}
+
 extern "C" void port_actor_registry_install(void)
 {
     int n = 0;
@@ -403,32 +452,61 @@ extern "C" void port_actor_registry_install(void)
         if (k->fill) k->fill();
         ++n;
     }
+    /* run mods1: a plugin's replace_actor choices are written over the stock
+       factories every time the table is (re)written, i.e. every level boot. */
+    if (port_mod_hook_registry)
+        port_mod_hook_registry();
     data_020a4b58[0] = (int)(size_t)port_prespawn_hook;
     std::printf("[reg] %d actor classes registered, the gate is armed\n", n);
 }
 
 // ---- the frame -------------------------------------------------------------
 //
-// Seat the five list callbacks the way __sinit_02075154 does, with the host
-// copies of the Process wrappers in place of the ROM's PMFs. The list heads
-// are the port's own zeroed storage, so the two words the ROM's sinit copies
-// out of data_02099f48..70 are written directly here.
+// THE FIVE LIST CALLBACKS ARE THE ROM'S SINIT'S NOW (run linkfull, lane
+// K1LOOP). This function used to write them by hand -- "the way
+// __sinit_02075154 does" -- because the sinit's five source records were
+// hosted nowhere. They are hosted (unmatched/func_02043fdc_hostcopy.cpp: each
+// record is {the list's __fastcall face, 0}, the pair PMF3 proved), and the
+// ROM's own __sinit_02075154 runs at Entry from hal/ctor_runner.cpp's table,
+// its last word, zeroing each head and copying the pair in.
+//
+// So the a2 seat (hal/level_boot.cpp, every level and scene boot) CHECKS here
+// instead of writing. One case writes: a target with no Entry seam
+// (smoke_player: hal/ctor_runner.cpp's CMake note says its initialisers are
+// linked and not run) reaches this with the heads still zero, and then the
+// ROM's own sinit runs here, once, before anything is spawned onto a list.
+// A head that holds anything else is a fault this line names.
 typedef int (*PortListFn)(void *);
+extern "C" void (__fastcall *const g_pmf3_list_cells[5])(void *, void *);
+extern "C" void __sinit_02075154(void);
 
 extern "C" void port_actor_lists_seat(void)
 {
-    /* {head, callback, 0} -- the scene tree, walked by func_020441cc */
-    data_020a4b6c[1] = (int)(size_t)(PortListFn)func_02043880;
-    data_020a4b6c[2] = 0;
-    /* {head, tail, callback, 0} -- the four walked by func_02043fdc */
-    data_020a4b88[2] = (int)(size_t)(PortListFn)func_0204335c;
-    data_020a4b88[3] = 0;
-    data_020a4b78[2] = (int)(size_t)(PortListFn)func_02043288;
-    data_020a4b78[3] = 0;
-    data_020a4b98[2] = (int)(size_t)(PortListFn)func_0204322c;
-    data_020a4b98[3] = 0;
-    data_020a4ba8[2] = (int)(size_t)(PortListFn)func_020432e4;
-    data_020a4ba8[3] = 0;
+    if (data_020a4b6c[1] == 0 && data_020a4b88[2] == 0 &&
+        data_020a4b78[2] == 0 && data_020a4b98[2] == 0 &&
+        data_020a4ba8[2] == 0) {
+        std::fprintf(stderr, "[k1loop] the five list heads are unseated at the "
+                             "a2 seat (no Entry runner on this target): running "
+                             "__sinit_02075154 here\n");
+        __sinit_02075154();
+    }
+    const struct { const int *head; int w; int cell; const char *name; } k[] = {
+        {data_020a4b6c, 1, 0, "scene tree data_020a4b6c"},
+        {data_020a4b88, 2, 1, "init data_020a4b88"},
+        {data_020a4b78, 2, 2, "behaviour data_020a4b78"},
+        {data_020a4b98, 2, 3, "render data_020a4b98"},
+        {data_020a4ba8, 2, 4, "cleanup data_020a4ba8"},
+    };
+    for (const auto &r : k) {
+        if (r.head[r.w] != (int)(size_t)g_pmf3_list_cells[r.cell] ||
+            r.head[r.w + 1] != 0) {
+            std::fprintf(stderr, "FATAL: [k1loop] list head %s holds {%08x, %x}, "
+                                 "not the pair __sinit_02075154 copies\n",
+                         r.name, (unsigned)r.head[r.w],
+                         (unsigned)r.head[r.w + 1]);
+            std::abort();
+        }
+    }
 }
 
 /* Phases 4, 2 and 3 of func_02044120: cleanup, the init pass for anything
@@ -893,8 +971,13 @@ static void port_pound_probe(void)
     std::fflush(stderr);
 }
 
+static unsigned g_k1_f_tick, g_k1_f_render, g_k1_f_pass;   /* this frame */
+static unsigned g_k1_n_tick, g_k1_n_render, g_k1_n_pass;   /* whole run */
+
 extern "C" void port_actor_tick(void)
 {
+    ++g_k1_f_tick;
+    ++g_k1_n_tick;
     port_bob_debug_watch();
     port_pound_probe();
     pp_qblock_follow();
@@ -1051,6 +1134,8 @@ static int port_cylinder_pass_on(void)
 
 extern "C" void port_actor_render(void)
 {
+    ++g_k1_f_render;
+    ++g_k1_n_render;
     if (port_cylinder_pass_on())
         _ZN5dCc_c7ProcessEv();
     data_02099f24[0] = 5;
@@ -1137,9 +1222,153 @@ extern "C" void port_actor_render_replay(void)
    deferred list insertions -- the housekeeping that closes the ROM's frame. */
 extern "C" void port_actor_scene_pass(void)
 {
+    ++g_k1_f_pass;
+    ++g_k1_n_pass;
     data_02099f24[0] = 1;
     func_020441cc(data_020a4b6c);
     data_02099f24[0] = 0;
+}
+
+// ---- THE ROM'S ACTOR FRAME, WHOLE (run linkfull, lane K1LOOP) --------------
+//
+// src/func_020197b8.c phase 4 is one statement, `func_02044120();`, and this is
+// where both host loops make it: tests/walk_window.cpp's level loop and
+// hal/scene_boot.cpp's port_scene_tick, each at the point the ROM's loop
+// reaches phase 4 (after phase 3, the scene request). func_02044120 walks
+// cleanup, init, behaviour, render and the scene tree in that order, setting
+// data_02099f24 to 4 / 2 / 3 / 5 / 1 and back to 0 itself.
+//
+// The four host watchers port_actor_tick runs ahead of its walks run here ahead
+// of the ROM's (debug-only, each inert unless its variable is set), and the
+// SM64DS_TRACE_LISTS lines are printed before the call: the behaviour list is
+// named before the cleanup walk rather than after it, which is the one thing
+// that moves for port/tools/stage_pause_proof.py's rung 2 (it asks only that
+// the Stage heads that list).
+//
+// level_camera = 1 is the level loop: while the ROM walks, the Camera's two
+// harness-owned slots dispatch the ROM's own Camera::Behavior and
+// Camera::Render (hal/camera_bridges.cpp), because the Camera is on these lists
+// at behaviour priority 0x14c and render priority 0 and the level loop no longer
+// drives it by hand on these frames. The scene loop passes 0: a scene's camera
+// slots are whatever they were before this lane.
+extern "C" void func_02044120(void);
+extern "C" unsigned g_k1_list_disp[5];   /* the faces' counters (hostcopy) */
+static int g_k1_rom_camera;
+static unsigned g_k1_f_rom;
+static unsigned g_k1_n_rom_level, g_k1_n_rom_scene;
+static unsigned g_k1_frames_rom, g_k1_frames_split, g_k1_frames_idle;
+static unsigned g_k1_frames_double;
+static unsigned g_k1_conv_tick, g_k1_conv_pass;
+static unsigned long long g_k1_disp_total[5];
+static int g_k1_census = -1;
+
+extern "C" int port_actor_frame_camera_rom(void) { return g_k1_rom_camera; }
+
+static void k1_report(void)
+{
+    std::fprintf(stderr,
+                 "[k1loop] actor frame: func_02044120 %u call(s) (level %u, "
+                 "scene %u); frames ROM %u / host split %u / no walk %u; "
+                 "double-walk frames %u; host split calls tick %u render %u "
+                 "scene pass %u (teardown convergence tick %u scene pass %u); "
+                 "dispatches tree %llu init %llu behaviour %llu "
+                 "render %llu cleanup %llu\n",
+                 g_k1_n_rom_level + g_k1_n_rom_scene, g_k1_n_rom_level,
+                 g_k1_n_rom_scene, g_k1_frames_rom, g_k1_frames_split,
+                 g_k1_frames_idle, g_k1_frames_double, g_k1_n_tick,
+                 g_k1_n_render, g_k1_n_pass, g_k1_conv_tick, g_k1_conv_pass,
+                 g_k1_disp_total[0],
+                 g_k1_disp_total[1], g_k1_disp_total[2], g_k1_disp_total[3],
+                 g_k1_disp_total[4]);
+    std::fflush(stderr);
+}
+
+static void k1_arm(void)
+{
+    if (g_k1_census >= 0) return;
+    g_k1_census = std::getenv("SM64DS_K1_CENSUS") != 0;
+    std::atexit(k1_report);
+}
+
+/* SM64DS_K1_SPLIT=1 puts the old split back on this same binary (tick at phase
+   4, render inside the host frame, scene tree after the level draw): the A/B
+   the census is read against, the IRQ2_OFF / NO_FRAME_CLOCK shape. A
+   diagnostic, not a setting; nothing in port/ or a bundle sets it. */
+extern "C" int port_actor_frame_split_forced(void)
+{
+    static int v = -1;
+    if (v < 0) v = std::getenv("SM64DS_K1_SPLIT") != 0;
+    return v;
+}
+
+extern "C" void port_actor_frame(int level_camera)
+{
+    k1_arm();
+    port_bob_debug_watch();
+    port_pound_probe();
+    pp_qblock_follow();
+    port_vt_audit();
+    port_list_trace("cleanup", data_020a4ba8);
+    port_list_trace("pending", data_020a4b88);
+    port_list_trace("behaviour", data_020a4b78);
+    g_k1_rom_camera = level_camera;
+    func_02044120();
+    g_k1_rom_camera = 0;
+    ++g_k1_f_rom;
+    if (level_camera) ++g_k1_n_rom_level; else ++g_k1_n_rom_scene;
+}
+
+/* The loops call this at their phase-4 point, before either shape runs. What
+   the lists saw earlier in the same frame is hal/level_change.cpp's teardown
+   convergence (it calls the split tick and the scene pass in a loop of its own
+   while the dying level empties, at phase 3, on either shape): counted apart
+   as convergence, so the frame's own account below starts clean. */
+extern "C" void port_actor_frame_begin(void)
+{
+    g_k1_conv_tick += g_k1_f_tick;
+    g_k1_conv_pass += g_k1_f_pass;
+    for (int i = 0; i < 5; ++i) {
+        g_k1_disp_total[i] += g_k1_list_disp[i];
+        g_k1_list_disp[i] = 0;
+    }
+    g_k1_f_rom = g_k1_f_tick = g_k1_f_render = g_k1_f_pass = 0;
+}
+
+/* Once per loop frame, at the scene tree's point (the end of the actor work):
+   classify the frame, count a frame that walked a list twice (the ROM frame
+   AND a split call, or either twice), and with SM64DS_K1_CENSUS=1 print the
+   per-list dispatch counts the faces took this frame. */
+extern "C" void port_actor_frame_end(int frame, const char *loop)
+{
+    k1_arm();
+    if (g_k1_f_rom > 1 || g_k1_f_tick > 1 || g_k1_f_render > 1 ||
+        g_k1_f_pass > 1 || (g_k1_f_rom &&
+                            (g_k1_f_tick || g_k1_f_render || g_k1_f_pass))) {
+        ++g_k1_frames_double;
+        std::fprintf(stderr, "[k1loop] %s f%d WALKED TWICE: func_02044120 %u, "
+                             "tick %u, render %u, scene pass %u\n",
+                     loop, frame, g_k1_f_rom, g_k1_f_tick, g_k1_f_render,
+                     g_k1_f_pass);
+    }
+    if (g_k1_f_rom) ++g_k1_frames_rom;
+    else if (g_k1_f_tick || g_k1_f_render || g_k1_f_pass) ++g_k1_frames_split;
+    else ++g_k1_frames_idle;
+    if (g_k1_census)
+        std::fprintf(stderr, "[k1c] %s f%d %s tree %u init %u beh %u ren %u "
+                             "cln %u\n",
+                     loop, frame,
+                     g_k1_f_rom ? "rom" : (g_k1_f_tick || g_k1_f_render ||
+                                           g_k1_f_pass) ? "split" : "none",
+                     g_k1_list_disp[0], g_k1_list_disp[1], g_k1_list_disp[2],
+                     g_k1_list_disp[3], g_k1_list_disp[4]);
+    for (int i = 0; i < 5; ++i) {
+        g_k1_disp_total[i] += g_k1_list_disp[i];
+        g_k1_list_disp[i] = 0;
+    }
+    g_k1_f_rom = g_k1_f_tick = g_k1_f_render = g_k1_f_pass = 0;
+    /* run mods1: the plugins' on_frame, after the frame's actor work */
+    if (port_mod_hook_frame)
+        port_mod_hook_frame();
 }
 
 /* How many actors are currently on each list -- the read-back that says the

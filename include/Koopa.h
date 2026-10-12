@@ -3,22 +3,28 @@
 
 #include "types.h"
 
-/* Retail ov062 RTTI at 0x0211da5c spells "8daNknk_c". Its typeinfo at
- * 0x0211da68 names dEnemyBase_c; the vtable address point is 0x0211dab4.
- * Normal (NOKONOKO, actor 0xcb) and small (NOKONOKO_S, actor 0xcc)
- * factories both allocate 0x3d0 bytes of this one class.
+/* Derives from dEnemyBase_c, on the evidence of its own destructor: `_ZN5KoopaD1Ev`
+ * stores this vtable, destroys its members in reverse declaration order, then
+ * calls `dEnemyBase_c::~dEnemyBase_c`. Everything this header used to restate below 0x110
+ * belongs to that chain and is inherited now.
  *
- * Field names below are from this TU's reads. mKoopaVariant is 0 while
- * the Koopa still has its shell, 1 after the shell is popped
- * (func_ov062_02117bf4), back to 0 when it touches a SHELL (actor 0x11d)
- * in state 2, and 2 for the small Koopa. mHomePos is the spawn point the
- * leash is measured from. mSafePos is the last spot that was not a
- * cliff edge. mAimAngle faces the closest player, or home when that
- * player is outside the leash. mTargetAngle is what mPrevAngleY is
- * steered toward. mTimer counts the idle pause and the post-kick wait.
- * mTurnTimer counts down to the next random heading. mTurning stays set
- * while AngleAwayFromWallOrCliff's turn is still running. mFootstep
- * blocks a second dust puff in the same animation window.
+ * The members close exactly on one another, and dEnemyBase_c's own 0x110 closes
+ * exactly on the first. Member NAMES are the ones this header already used --
+ * a rebase should not also rename things its callers spell:
+ *
+ *     0x110 dCcAc_c       0x34   -> 0x144
+ *     0x144 dBgCh_Actr             0x1bc  -> 0x300
+ *     0x300 ModelAnim                0x64   -> 0x364
+ *     0x364 ShadowModel              0x28   -> 0x38c
+ *
+ * SIZE IS THE OBSERVED FIELD SPAN, rounded up. It guards this declaration; it
+ * is not independent evidence about the ROM.
+ *
+ * SM64DS RTTI names the implementation daNknk_c. The reconstructed factory
+ * daNknk_c_classInit_NOKONOKO (historical alias Koopa_Spawn)
+ * installs this class's cartridge vtable; the reconstructed profile
+ * global g_profile_NOKONOKO (historical alias Koopa_SpawnInfo)
+ * is its registry descriptor.
  */
 
 #include "dEnemyBase_c.h"
@@ -29,38 +35,44 @@
 #include "ShadowModel.h"
 #include "dBgCh_Actr.h"
 
-struct daNknk_c : dEnemyBase_c {
-    dCcAc_c         mdCc_c;                  /* 0x110 */
-    dBgCh_Actr      mWithMeshClsn;           /* 0x144 */
-    ModelAnim       mModelAnim;              /* 0x300 */
-    ShadowModel     mShadowModel;            /* 0x364 */
-    s32             mState;                  /* 0x38c */
-    s32             mKoopaVariant;           /* 0x390 */
-    s32             mModelIndex;             /* 0x394 */
-    u8              mAnimIndex;              /* 0x398 */
-    u8              pad_399[3];              /* 0x399 */
-    s32             mHomePosX;               /* 0x39c */
-    s32             mHomePosY;               /* 0x3a0 */
-    s32             mHomePosZ;               /* 0x3a4 */
-    s32             mSafePosX;               /* 0x3a8 */
-    s32             mSafePosY;               /* 0x3ac */
-    s32             mSafePosZ;               /* 0x3b0 */
-    Player         *mClosestPlayer;          /* 0x3b4 */
-    s32             mPlayerDist;             /* 0x3b8 */
-    s32             mAnimSpeed;              /* 0x3bc */
-    s16             mAimAngle;               /* 0x3c0 */
-    s16             mTargetAngle;            /* 0x3c2 */
-    u16             mWalkState;              /* 0x3c4 */
-    u16             mTimer;                  /* 0x3c6 */
-    u16             mTurnTimer;              /* 0x3c8 */
-    u16             mInvincibleTimer;        /* 0x3ca */
-    u8              mTurning;                /* 0x3cc */
-    u8              mFootstep;               /* 0x3cd */
-    u8              mLandingDustTimer;       /* 0x3ce */
-    u8              pad_3cf;                 /* 0x3cf */
+struct Koopa : dEnemyBase_c {
+    dCcAc_c           mdCc_c;         /* 0x110 */
+    dBgCh_Actr                 mWithMeshClsn;         /* 0x144 */
+    ModelAnim                    mModelAnim;            /* 0x300 */
+    ShadowModel                  mShadowModel;          /* 0x364 */
+    s32                          mState;                /* 0x38c */
+    s32                          mKoopaVariant;         /* 0x390 */
+    s32                          mModelIndex;           /* 0x394 */
+    u8  pad_398[0x4];
+    s32                          unk_39c;               /* 0x39c */
+    s32                          unk_3a0;               /* 0x3a0 */
+    s32                          unk_3a4;               /* 0x3a4 */
+    s32                          unk_3a8;               /* 0x3a8 */
+    s32                          unk_3ac;               /* 0x3ac */
+    s32                          unk_3b0;               /* 0x3b0 */
+    u8  pad_3b4[0x8];
+    s32                          mAnimSpeed;               /* 0x3bc */
+    u8  pad_3c0[0x4];
+    u16                          mWalkState;               /* 0x3c4 */
+    u8  pad_3c6[0x4];
+    u16                          mInvincibleTimer;               /* 0x3ca */
+    u8  pad_3cc[0x2];
+    u8                           mLandingDustTimer;               /* 0x3ce */
+    u8  pad_3cf[0x1];
 
     /* --- vtable --- */
-    virtual ~daNknk_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~Koopa();   /* no slot */
+#else
+    virtual ~Koopa();   /* D1 and D0 */
+#endif
 
     virtual s32   OnYoshiTryEat();         /* slot 18 */
     virtual void  OnTurnIntoEgg(Player &player); /* slot 19 */
@@ -72,9 +84,6 @@ struct daNknk_c : dEnemyBase_c {
     void OnPendingDestroy();
     int Render();
 };
-
-// Community source compatibility name; retail RTTI is daNknk_c.
-typedef daNknk_c Koopa;
 
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */

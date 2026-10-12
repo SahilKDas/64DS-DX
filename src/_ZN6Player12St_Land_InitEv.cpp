@@ -81,7 +81,7 @@ int Player::St_Land_Init()
 
     *(short*)(c + 0x6a4) = 2;
     if (func_ov002_020e2c84(c) != 2 && mIsInShallowWater == 0) {
-        ((Player *)(c))->func_ov002_020bf9d4();
+        func_ov002_020bf9d4(c);
     }
 
     return 1;

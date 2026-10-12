@@ -46,6 +46,7 @@ void func_020393d4(void *p, void *v);
 void func_020393c4(void *p, void *v);
 void func_020393a4(int *p, int v);
 int _ZN5Sound8PlayLongEjjjRK7Vector3s(unsigned a, unsigned b, unsigned c, void *pos, unsigned e);
+extern int _ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -69,7 +70,6 @@ extern "C" daObjWc_Obj05_c *daObjWc_Obj05_c_classInit()
 namespace tail_e40 { extern "C" int func_ov029_02111e40(void *b, void *c); }
 #pragma long_calls on
 namespace fndef_e60 {
-// @symbol func_ov029_02111e60
 extern "C" int func_ov029_02111e60(void *a, void *b, void *c)
 {
     return tail_e40::func_ov029_02111e40(b, c);
@@ -81,7 +81,6 @@ extern "C" int func_ov029_02111e60(void *a, void *b, void *c)
 /* -------------------------------------------------------------------------- */
 /* BeforeClsn helper: if the other actor's actorID (dActor_c+0x0c) is PLAYER
  * (0xbf), arm unk_32a. The unsigned char temporary is load-bearing. */
-// @symbol func_ov029_02111e40
 extern "C" void func_ov029_02111e40(char *a, char *b)
 {
     unsigned char ok = *(unsigned short *)(b + 0xc) == 0xbf;
@@ -101,7 +100,7 @@ s32 daObjWc_Obj05_c::InitResources()
     KCL_File *mc = (KCL_File *)dBgW_Kc::LoadFile(*(SharedFilePtr *)data_ov029_02114284);
     _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block(
         &mMeshCollider, mc, &mClsnMat, 0x1000, mAngleY, *(CLPS_Block *)data_ov029_0211306c);
-    func_020393d4(&mMeshCollider, (void *)&dBgW::UpdatePosWithTransform);
+    func_020393d4(&mMeshCollider, (void *)&_ZN4dBgW22UpdatePosWithTransformERS_P8dActor_cR5dBgPiR7Vector3P10Vector3_16S8_);
     func_020393c4(&mMeshCollider, (void *)&func_ov029_02111e60);
     unk_32b = 0;
     unk_32a = unk_32b;
@@ -203,7 +202,6 @@ s32 daObjWc_Obj05_c::CleanupResources()
     ((SharedFilePtr *)data_ov029_02114284)->Release();
     return 1;
 }
-// @symbol _ZN15daObjWc_Obj05_cD1Ev
-// @symbol _ZN15daObjWc_Obj05_cD0Ev
+
 /* daObjWc_Obj05_c's inline class-body destructor is instantiated by the
  * definitions above. mwccarm emits D1 and D0 into this object. */

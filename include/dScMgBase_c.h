@@ -17,10 +17,21 @@ struct dScMgBase_c : dScene_c {
     dScMgBase_c();
     /* Declared first (key function), and deliberately NOT defined inline:
        descendants call _ZN11dScMgBase_cD2Ev as a real `bl`, and an inline
-       body makes every one of them miss. Defined once in
-       src/minigames/d_s_mg_base.cpp, which emits D2, D0 and D1.
+       body makes every one of them miss. Defined in
+       src/_ZN11dScMgBase_cD1Ev.cpp and .../_D0Ev.cpp.
        MEASURED -- do not move the body up here. */
-    virtual ~dScMgBase_c();
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgBase_c();   /* no slot */
+#else
+    virtual ~dScMgBase_c();   /* D1 and D0 */
+#endif
 
     /* Own copy, deliberately: mwcc only inlines a D0 route through the class
        itself or its immediate base, so descendants cannot reach dScene_c's.
@@ -887,7 +898,7 @@ ALL EIGHTEEN ARE DECLARED (2026-08-31). This class and all 32 of
     s32 unk_0ac;            /* 0x0ac */
     u8  pad_0b0[0x4];
     s32 mHudScore;          /* 0x0b4 -- zeroed by BeforeInitResources; the
-                                value func_ov004_020adb1c writes into the dMeter_c
+                                value func_ov004_020adb1c writes into the HUD
                                 counter word. Leaves keep their own tallies and
                                 copy the result here */
     s32 unk_0b8;            /* 0x0b8 */

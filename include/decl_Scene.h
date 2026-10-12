@@ -22,6 +22,7 @@ extern "C" {
 
 extern int _ZN8dScene_c14BeforeBehaviorEv();
 extern int _ZN8dScene_c15SetSceneToSpawnEjj(u32, u32);
+extern int _ZN8dScene_c19BeforeInitResourcesEv(void*);
 extern void _ZN8dScene_c20Initialise3dGraphicsEv(void);
 extern void _ZN8dScene_c20SetAndStopColorFaderEv(void);
 extern void _ZN8dScene_c21AfterCleanupResourcesEj(char*, unsigned int);

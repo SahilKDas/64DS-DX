@@ -1,28 +1,34 @@
-#include "Decimal.h"
+extern int func_02071644(void *out, int n);
 
-extern void func_02071644(Decimal *result, int length);
+struct S {
+    unsigned char b0;       /* [0] */
+    unsigned char pad1;     /* [1] */
+    short s2;               /* [2] */
+    unsigned char b4;       /* [4] */
+    unsigned char data[1];  /* [5] */
+};
 
-void func_020712a0(Decimal *result, unsigned char *digits, short exp)
+void func_020712a0(struct S *out, unsigned char *str, short val)
 {
     int i;
     unsigned char c;
-    result->exp = exp;
-    result->sign = 0;
+    out->s2 = val;
+    out->b0 = 0;
     i = 0;
-    while (i < 0x20 && digits[0] != 0) {
-        result->sig.text[i++] = (unsigned char)(*digits++ - 0x30);
+    while (i < 0x20 && str[0] != 0) {
+        out->data[i++] = (unsigned char)(*str++ - 0x30);
     }
-    result->sig.length = (unsigned char)i;
-    if (digits[0] == 0) return;
-    if (digits[0] < 5) return;
-    if (digits[0] > 5) goto docall;
-    c = digits[1];
-    digits++;
+    out->b4 = (unsigned char)i;
+    if (str[0] == 0) return;
+    if (str[0] < 5) return;
+    if (str[0] > 5) goto docall;
+    c = str[1];
+    str++;
     while (c != 0) {
         if (c != 0x30) goto docall;
-        c = *++digits;
+        c = *++str;
     }
-    if ((result->sig.text[i - 1] & 1) == 0) return;
+    if ((out->data[i - 1] & 1) == 0) return;
 docall:
-    func_02071644(result, result->sig.length);
+    func_02071644(out, out->b4);
 }

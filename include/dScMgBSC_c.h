@@ -17,7 +17,7 @@
  * (0x021250e4), StateMoveCards approaches x toward 0x90000 and y toward
  * 0x30000 (0x02124e1c), StateWaitDeal runs both halves through
  * Math_Function_0203b14c as coordinates (0x02124fd8), and Render reads
- * them back with `>> 12` for the dMeter_c -- 1:4096 fixed-point screen
+ * them back with `>> 12` for the HUD -- 1:4096 fixed-point screen
  * positions, spelled s32 like the camera fields in
  * dScMgSingle3DBase_c.h. The factory still constructs it as raw bytes
  * (`__cxa_vec_ctor(p+0x51a8, 2, 8, func_0203d738,
@@ -74,7 +74,18 @@ typedef char dMgBSCSharedState_c_size_must_be_0x270[sizeof(dMgBSCSharedState_c) 
 #endif
 
 struct dScMgBSC_c : dScMgSingle3DBase_c {
-    virtual ~dScMgBSC_c() {
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~dScMgBSC_c() {   /* no slot */
+#else
+    virtual ~dScMgBSC_c() {   /* D1 and D0 */
+#endif
         __cxa_vec_cleanup(mCardPos, 2, 8, (void *)NullDestructor_0203d47c);
     }
 

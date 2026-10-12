@@ -244,7 +244,10 @@ DSSTATE_END
 extern "C" {
 void *_ZN7dBgW_Kc8LoadFileER13SharedFilePtr(void *fp)
 { return dBgW_Kc::LoadFile(*(SharedFilePtr *)fp); }
-void _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *bmd, int a, int b)
+/* Returns ModelBase::SetFile's int (run linkfull, lane RS4PORT): matched
+   callers test it (src/func_ov002_020f6618.cpp returns 0 on a failed load),
+   and a void bridge handed them whatever EAX held. */
+int _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *bmd, int a, int b)
 {
     if (getenv("PORT_TRACE_SETFILE")) {
         extern void *_ZTV5Model[8];
@@ -255,7 +258,7 @@ void _ZN9ModelBase7SetFileEP8BMD_Fileii(void *self, void *bmd, int a, int b)
                 self ? ((void ***)self)[0][1] : 0, bmd, b,
                 (void *)_ZTV5Model, (void *)_ZTV10ModelAnim2);
     }
-    ((ModelBase *)self)->ModelBase::SetFile((BMD_File *)bmd, a, b);
+    return ((ModelBase *)self)->ModelBase::SetFile((BMD_File *)bmd, a, b);
 }
 }
 #pragma comment(linker, "/alternatename:?data_ov098_0213c380@@3PADA=_data_ov098_0213c380")
@@ -549,6 +552,32 @@ static void __fastcall ma2_render(void *self, void *, const void *s)
 { ((ModelAnim *)self)->ModelAnim::Render((const Vector3 *)s); }
 static void __fastcall ma2_virtual18(void *self, void *, unsigned m, const void *s)
 { ((ModelAnim *)self)->ModelAnim::Virtual18(m, (const Vector3 *)s); }
+/* THE ANIMATION-BASE SECONDARY TABLES carry the ROM's own two words (run
+   linkfull, lane V3A); they used to hold the no-op above. config/arm9/relocs.txt,
+   and the same words in extracted/arm9_dec.bin at its base 0x02004000:
+       from:0x0208e9d8 -> 0x020171b8  _ZThn80_N10ModelAnim2D1Ev  VTable_Animation_ModelAnim2Thunk[0]
+       from:0x0208e9dc -> 0x020171a8  _ZThn80_N10ModelAnim2D0Ev  VTable_Animation_ModelAnim2Thunk[1]
+       from:0x0208e9a4 -> 0x02017178  _ZThn80_N9ModelAnimD1Ev    VTable_Animation_ModelAnimThunk[0]
+       from:0x0208e9a8 -> 0x02017168  _ZThn80_N9ModelAnimD0Ev    VTable_Animation_ModelAnimThunk[1]
+   Two words a table (the next word already belongs to the next table). Each
+   thunk is `ldr ip,=-80; add r0,r0,ip; b <primary>`: move `this` from the
+   Animation base at +0x50 back to the object, then the D1 or D0. The src thunk
+   files' `#ifdef _MSC_VER` arms are exactly that.
+   NOTHING READS THESE FOUR WORDS, MEASURED: MSVC-built ModelAnims carry MSVC's
+   own vftables, and cdb watchpoints on all four words through the level boot,
+   teardown and re-entry of levels 8, 13 and 28 saw zero accesses. So the no-op
+   was never reached and the ROM's words change no behaviour; they are the
+   reference edge that links the four thunk TUs. __fastcall, as every slot here. */
+extern "C" {
+void *_ZThn80_N10ModelAnim2D1Ev(void *thiz);   /* arm9 0x020171b8 */
+void *_ZThn80_N10ModelAnim2D0Ev(void *thiz);   /* arm9 0x020171a8 */
+void _ZThn80_N9ModelAnimD1Ev(void *thiz);      /* arm9 0x02017178 */
+void *_ZThn80_N9ModelAnimD0Ev(void *thiz);     /* arm9 0x02017168 */
+}
+static void *__fastcall ma2_thn80_d1(void *self, void *) { return _ZThn80_N10ModelAnim2D1Ev(self); }
+static void *__fastcall ma2_thn80_d0(void *self, void *) { return _ZThn80_N10ModelAnim2D0Ev(self); }
+static void __fastcall ma_thn80_d1(void *self, void *) { _ZThn80_N9ModelAnimD1Ev(self); }
+static void *__fastcall ma_thn80_d0(void *self, void *) { return _ZThn80_N9ModelAnimD0Ev(self); }
 extern "C" {
 extern void *_ZTV10ModelAnim2[12];
 extern void *VTable_Animation_ModelAnim2Thunk[12];
@@ -567,9 +596,9 @@ void hal_fill_modelanim2_vtable(void)
     _ZTV10ModelAnim2[4] = (void *)ma2_virtual10;
     _ZTV10ModelAnim2[5] = (void *)ma2_render;
     _ZTV10ModelAnim2[6] = (void *)ma2_virtual18;
-    /* the Animation-base secondary table only ever destructs */
-    VTable_Animation_ModelAnim2Thunk[0] = (void *)ma2_dtor;
-    VTable_Animation_ModelAnim2Thunk[1] = (void *)ma2_dtor;
+    /* the Animation-base secondary table: the ROM's two words (block above) */
+    VTable_Animation_ModelAnim2Thunk[0] = (void *)ma2_thn80_d1;
+    VTable_Animation_ModelAnim2Thunk[1] = (void *)ma2_thn80_d0;
     /* plain ModelAnim (the Player's head models) shares every slot */
     _ZTV9ModelAnim[0] = (void *)ma2_dtor;
     _ZTV9ModelAnim[1] = (void *)ma2_dtor;
@@ -578,8 +607,8 @@ void hal_fill_modelanim2_vtable(void)
     _ZTV9ModelAnim[4] = (void *)ma2_virtual10;
     _ZTV9ModelAnim[5] = (void *)ma2_render;
     _ZTV9ModelAnim[6] = (void *)ma2_virtual18;
-    VTable_Animation_ModelAnimThunk[0] = (void *)ma2_dtor;
-    VTable_Animation_ModelAnimThunk[1] = (void *)ma2_dtor;
+    VTable_Animation_ModelAnimThunk[0] = (void *)ma_thn80_d1;
+    VTable_Animation_ModelAnimThunk[1] = (void *)ma_thn80_d0;
 }
 }
 
@@ -634,52 +663,28 @@ void hal_fill_shadow_vtable(void)
 extern "C" {
 void *_ZN5Model23AddToCommonModelDataArrER8BMD_File(void *file)
 { return Model::AddToCommonModelDataArr(*(BMD_File *)file); }
-void *func_0203cc0c(unsigned size);
+/* THE DS GLOBAL operator new is the ROM's own now (run linkfull, lane RS5B):
+   src/_Znwj.cpp, the three-instruction veneer onto func_0203cc0c, carries its
+   real signature since main #1394 (`void *_Znwj(u32 size) { return
+   func_0203cc0c(size); }`), so the size is a real argument under cdecl too and
+   the host body that stood here -- the same one line, written for the old
+   void/void spelling -- is retired. The src TU is built on the six targets
+   that compile this file (port/slice_w31_rs5b.txt). */
 void _ZN6Memory10DeallocateEPv(void *p);
 
-/* THE DS GLOBAL operator new. src/_Znwj.cpp is byte-matched and it is a
-   THREE-INSTRUCTION ARM VENEER -- `ldr ip, [pc]; bx ip; .word 0x203cc0c` --
-   transcribed exactly as `void _Znwj(void) { func_0203cc0c(); }`. It names no
-   parameter because it MOVES none: the allocation size the caller left in r0
-   is still in r0 when func_0203cc0c reads it. Compile that under 32-bit cdecl
-   and the size is on the caller's stack, nothing pushes it a second time, and
-   func_0203cc0c reads _Znwj's own return address as the byte count. No slice
-   position fixes that, and no target could carry both definitions anyway --
-   the matched TU and this one spell the same C symbol.
-
-   HEAP IDENTITY IS NOT AT STAKE, which is the thing worth checking before
-   touching operator new at all. The callee below is the ROM's own next hop,
-   matched and linked: build/port/walk_window.map lists _func_0203cc0c against
-   func_0203cc0c.c.obj, and that TU is `Heap::Allocate(data_020a0ea0, size)`.
-   So this definition reaches the ROM's game-heap word through the ROM's own
-   body. The argument is the only thing it adds.
-   PORT_HOST_ABI: ARM r0 ride-through; src/_Znwj.cpp names no size. */
-void *_Znwj(unsigned size) { return func_0203cc0c(size); }
-
 /* THE DS GLOBAL operator delete2, the same shape one address down.
-   src/_ZN6Memory16operator_delete2EPv.cpp is the veneer at 0x203cbcc
-   (`ldr ip, [pc]; bx ip; .word 0x203cbf0`), transcribed `void
-   _ZN6Memory16operator_delete2EPv(void) { _ZdlPv(); }` -- it hands _ZdlPv the
-   pointer that is already in r0, and under cdecl it hands it nothing. The
-   port has been ruling on this exact veneer shape since gate 24: the same
-   finding is written out in slice_gate24.txt and slice_gate31.txt for
-   func_0203cbc0, the OTHER ROM veneer onto _ZdlPv, which is hosted in
-   unmatched/func_02073244_hostcopy.c for the same reason.
-
-   THE ROUTE ENDS IN THE ROM'S HEAP, checked rather than assumed, and it is
-   NOT the ROM's hop sequence. The ROM goes _ZdlPv -> defaultHeapPtr
-   ->_Deallocate -> (a third veneer) -> Heap::Deallocate. This goes through
-   the matched Memory::Deallocate(void*) -> Memory::Deallocate(void*, 0),
-   which falls back to the same defaultHeapPtr and calls the same
-   Heap::Deallocate, whose body is a single dispatch of vtable slot 4. Same
-   heap pointer, same virtual, more hops.
-
-   The extra hops are deliberate. _ZdlPv reaches walk_window and smoke_player
-   only -- it is absent from the smoke_actor, smoke_savestate and smoke_persist
-   maps -- while this definition has to resolve in all five targets that
-   compile this file, and Memory::Deallocate's C name does resolve in all five.
-   Pointing this at _ZdlPv would buy one hop of ROM shape at the price of an
-   /alternatename fallback in three harnesses.
-   PORT_HOST_ABI: ARM r0 ride-through; the src veneer names no pointer. */
-void _ZN6Memory16operator_delete2EPv(void *p) { _ZN6Memory10DeallocateEPv(p); }
+   It is the ROM's own body now (run linkfull, lane ASMCPORT):
+   src/_ZN6Memory16operator_delete2EPv.cpp, the three-word veneer at 0x0203cbcc
+   onto _ZdlPv at 0x0203cbf0, carries its real signature since main #1243
+   (`void Memory::operator_delete2(void *ptr) { _ZdlPv(ptr); }`), so the
+   pointer is a real argument under cdecl too, and the host body that stood
+   here (routed through Memory::Deallocate because the old src spelled the
+   veneer void/void) is retired. The free now takes the ROM's own hops:
+   _ZdlPv -> Memory::defaultHeapPtr->_Deallocate -> Heap::Deallocate. The src
+   TU builds on the six targets that compile this file (the ASMCPORT block of
+   port/CMakeLists.txt), and all six carry src/_ZdlPv.cpp. MSVC spells the
+   member ?operator_delete2@Memory@@YAXPAX@Z; the flat C name the ROM's C
+   callers, include/Fader.h's class delete and the generated D0 faces ask for
+   is bridged onto it here. */
+#pragma comment(linker, "/alternatename:__ZN6Memory16operator_delete2EPv=?operator_delete2@Memory@@YAXPAX@Z")
 }

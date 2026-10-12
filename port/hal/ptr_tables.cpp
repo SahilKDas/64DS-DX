@@ -359,12 +359,12 @@ void *data_020876e4[6] = {
 // romdata.py the loop would hand Model::LoadFile twelve DS addresses; that is
 // why the name is not on its NAMED list and must not be put there.
 //
-// hal/level_boot.cpp's port_stage_preload_shared_models ALREADY SPELLS THESE
-// TWELVE BY NAME, in this order, for exactly this reason -- it is the port's
+// hal/level_boot.cpp's port_stage_preload_shared_models once spelled these
+// twelve by name, in this order, for exactly this reason -- the port's
 // hand-rolled stand-in for the ROM's loop, written when the table itself could
-// not be mounted. This row is the same twelve names as the table the ROM's own
-// loop indexes, so seating Stage::InitResources retires that stand-in rather
-// than doubling it. The order is the ROM's, read out of the arm9 relocation
+// not be mounted. It now indexes this table at every Stage boot and its release
+// twin at every teardown (run hunt2, lane GAMEOVER1), as the ROM's two loops
+// do. This row is the ROM's own twelve. The order is the ROM's, read out of the arm9 relocation
 // table and quoted per slot below; it is not this file's choice.
 //
 // ptr_audit STAYS AT ZERO through this change: the audit's subject is

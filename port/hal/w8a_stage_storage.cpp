@@ -118,11 +118,13 @@ unsigned short data_0209f360[4];
 unsigned char data_0209fcc8[4];
 
 /* The CURRENT SCENE'S GRAPHICS BLOCK pointer. Stage::InitResources stores
-   &data_0209f3c4 here and func_02019144 dispatches its vtable slot 2 (the beat
-   hal/sub_actors.cpp stands in for with port_minimap_affine_update). Declared
-   `int` in one TU and `void *` in another; four bytes either way. Nothing in
-   today's link seats it, so it stays the null the ROM boots with until the
-   Stage's InitResources runs for real. */
+   &data_0209f3c4 here and func_02019144 dispatches its vtable slot 2,
+   Stage::GraphCallback2 (hal/scene_boot.cpp's port_graph_block_beat on this
+   port). Declared `int` in one TU and `void *` in another; four bytes either
+   way. The level boot makes that store at InitResources:284's point and the
+   level teardown clears it at CleanupResources:77's (hal/level_boot.cpp, run
+   linkfull lane K7GC2); scenes seat their own blocks through their own
+   InitResources. */
 unsigned char data_0209d4a8[4];
 
 }  /* extern "C" */

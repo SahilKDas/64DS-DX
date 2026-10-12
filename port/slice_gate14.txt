@@ -17,13 +17,29 @@
 src/stage/LevelObjects.cpp
 
 # ---- the fifteen sub-loaders, in dispatch-table order (index 0..14)
-# src/stage/LevelObjects.cpp is hosted in
-# port/unmatched/LoadEntranceObjects.cpp (LEVELBOOT_HOST_SOURCES): its last
-# call is an ARM r0 ride-through into StartEntranceFaderWipe, and the ROM
-# `ldrsb r0, [r0, sl]` two instructions ahead of the `bl` is the argument.
-# Dormant on every mounted level (they all take the `< 0` return); the file
-# header says what it did and did not fix.
-# Left live here it would come back into the link -- gate 14 is unfiltered.
+src/_Z19LoadStandardObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+# LoadEntranceObjects is back (run linkfull, lane RS4PORT). Its last call used
+# to ride the wipe type through ARM r0 into StartEntranceFaderWipe, so
+# port/unmatched/LoadEntranceObjects.cpp hosted it. main #3106 (f0f946a92)
+# passes the table value it tests; this per-function file carries that one
+# hunk from main's src/stage/LevelObjects.cpp (the SYNC8C route (a) back-port),
+# byte-identical under mwccarm 2004/b56, and the host copy is retired.
+# port/hal/cxx_aliases.cpp gives the flat name the port's dispatch calls its
+# alias onto the C++ definition, the same row its fourteen siblings have.
+src/_Z19LoadEntranceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z19LoadPathNodeObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z15LoadPathObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z15LoadViewObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z17LoadSimpleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z25LoadTeleportSourceObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z23LoadTeleportDestObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z14LoadFogObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z15LoadDoorObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z15LoadExitObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z22LoadMinimapTileObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z23LoadMinimapScaleObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z23LoadUnusedType13ObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
+src/_Z21LoadStarCameraObjectsRN11LVL_Overlay11ObjSubTableEij.cpp
 
 # ---- the pointer-store setters the sub-loaders are veneers over
 src/func_0203aca0.c
@@ -56,15 +72,15 @@ src/StartIntroCutscene.c
 # The debug character swap calls Player::SetRealCharacter, which reaches it two
 # frames down the voice-bank load, so the host owns it now (see below).
 src/_ZN5Sound16LoadInitialGroupEi.cpp
-# _ZN5Sound19LoadGroupAndSetBankEii: HOST COPY at unmatched/Sound_LoadGroupAndSetBank.cpp
-# (wired in CMakeLists). The matched C calls func_0203d7d4() with no argument and
-# relies on func_020134d8's return being live in ARM r0; cdecl drops it, so the host
-# copy passes func_020134d8(a, data_0209b498) explicitly. See that file's header.
+# Sound::LoadGroupAndSetBank compiles from src/ again: main #3102 passes
+# func_020134d8's return to func_0203d7d4 explicitly, the value the ROM leaves
+# in r0, so the host copy that did the same in port/unmatched/ is gone.
+src/_ZN5Sound19LoadGroupAndSetBankEii.cpp
 # src/_ZN5Sound6Player19SetPlayableSeqCountEii.cpp is also listed in
-# slice_gate10.txt, where SLICE10_CAM_SOURCES now filters it out: it writes
-# through data_020a4d84, which is data_020a4d6c + 0x18 on the DS but a
-# separate object on the host, so hal/sdat/sound_abi.cpp hosts it. Listing it
-# here as well put it straight back into the link.
+# slice_gate10.txt, which is the one place it compiles from. It used to be
+# filtered there and hosted in hal/sdat/sound_abi.cpp (it wrote through
+# data_020a4d84); it writes data_020a4d6c's record field +0x18 now
+# (include/SoundPlayerRecord.h) and links as it is.
 src/DisableSoundPlayersForCredits.c
 # src/func_0203d974.c is the same case: also listed in slice_gate10.txt, where
 # SLICE10_CAM_SOURCES filters it out, and hosted in hal/sdat/sound_abi.cpp

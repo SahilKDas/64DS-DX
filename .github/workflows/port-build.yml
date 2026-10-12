@@ -108,7 +108,6 @@ jobs:
           mkdir -p build
           python tools/port_refcheck.py --json build/port_refcheck.json
           python port/tools/check_pack_boundaries.py
-          python port/tools/import_coopdx_characters.py port/mods --dry-run --report build/coopdx-compatibility.json
 
       - name: Upload report
         if: always()

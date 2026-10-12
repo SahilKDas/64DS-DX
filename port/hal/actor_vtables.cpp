@@ -110,17 +110,14 @@ int data_0208e4b8[20];   /* fBase_c-era vtable-ish install in Actor ctor */
 void *data_0208e3a4[31];
 }
 
-// ---- fBase_c::fBase_c() transcription ---------------------------------
-// The ROM ctor is a hand-asm block (src/actors/ActorBase.cpp); this is its
-// C transcription, field for field against the disassembly there. The spawn
-// CONTEXT globals it reads (pending actor ID, area byte, the spawn-info
-// pointer table for the two processing-list priorities) are storage here;
-// the smoke seeds them the way func_02010e78/ActorDerived::Spawn would.
+// ---- fBase_c::fBase_c(): the storage its constructor reads ----------------
+// The constructor itself is the #ifdef _MSC_VER arm of src/_ZN7fBase_cC2Ev.cpp
+// now (run linkfull, lane VARIANT5): the transcription that stood here, moved
+// there statement for statement -- see the note below. The spawn CONTEXT
+// globals it reads (pending actor ID, area byte, the spawn-info pointer table
+// for the two processing-list priorities) are storage here; the smoke seeds
+// them the way func_02010e78/ActorDerived::Spawn would.
 extern "C" {
-void _ZN7fBase_c9SceneNodeC1Ev(void *node);
-int func_0203b438(void *a, void *b, void *c);
-int func_02043810(void *p);
-
 /* the transient fBase_c vtable install. EIGHTEEN words -- fBase_c's own
    virtual list runs 0..17 (arm9 0x02099edc) -- and this was [8], so a ctor-time
    dispatch of anything from OnPendingDestroy up read past the end. */
@@ -136,71 +133,28 @@ int port_tree_link_refusals(void) { return port_tree_link_refused; }
 void *data_020a4bb8_storage[512];
 void **data_020a4bb8 = data_020a4bb8_storage;  /* actorID -> SpawnInfo* */
 
-/* PORT_HOST_ABI: the matched TU is an mwccarm `asm` block (ARM hand-asm); MSVC has no inline ARM assembler.
-   src/actors/ActorBase.cpp is `extern "C" asm void* _ZN7fBase_cC2Ev(void* self)`
-   followed by 70-odd ARM instructions -- an asm-hatch TU, not C. It is a match
-   under the asm-primitive policy and it is unbuildable by any host compiler:
-   MSVC's __asm accepts x86 only, and the block is register-allocated ARM
-   (ldr r1,=data_02099edc / strh r2,[r0,#0xc] / bl chains). Re-derived from the
-   ROM for this ruling: arm9 0x02043dec (size 0x160) reads e92d4030 / e24dd004
-   / e1a04000 / e59f112c / e2845014 / e1a00005 -- stmdb sp!,{r4,r5,lr}; sub
-   sp,sp,#4; mov r4,r0; ldr r1,[pc,#0x12c]; add r5,r4,#0x14; mov r0,r5 --
-   instruction for instruction the head of that asm block. Same class as
-   __cxa_vec_ctor below, which carries the same tag. The C transcription above
-   is the faithful stand-in, written field for field against that block.
-   NOT a stub: it is a full transcription, and the reason it cannot be retired
-   is the source language, not a missing closure. */
-void *_ZN7fBase_cC2Ev(char *self)
-{
-    *(void **)self = data_02099edc;
-    _ZN7fBase_c9SceneNodeC1Ev(self + 0x14);
-    *(void **)(self + 0x24) = self;             /* sceneNode.actor */
-    for (int off = 0x28; off <= 0x38; off += 0x10) {
-        *(void **)(self + off) = 0;
-        *(void **)(self + off + 4) = 0;
-        *(void **)(self + off + 8) = self;
-        *(unsigned short *)(self + off + 0xc) = 0;
-        *(unsigned short *)(self + off + 0xe) = 0;
-    }
-    int id = data_02099e70[0];
-    *(int *)(self + 4) = id;
-    data_02099e70[0] = id + 1;
-    *(int *)(self + 8) = data_020a4b60[0];
-    *(unsigned short *)(self + 0xc) = data_020a4b54;
-    *(unsigned char *)(self + 0x12) = data_020a4b48;
-    /* THE REFUSAL IS SILENT AND IT IS THE ONE OUTCOME THAT MATTERS. Read
-       src/func_0203b438.c: with a null parent it takes handle_a, and handle_a
-       opens `if (a->f0 != 0) return 0` -- a parentless spawn into a tree that
-       already has a root LINKS NOTHING and says nothing. The actor then runs
-       normally (its behaviour/render nodes are separate lists) but the phase-1
-       scene pass, func_02043880, never reaches it, and that pass is the only
-       thing that moves a marked actor onto the cleanup list. So a refused link
-       is invisible until a level change, when it becomes "TEARDOWN DID NOT
-       CONVERGE". Counting it costs one branch and turns that into a number.
-       port_tree_link_refusals reports it; nothing here changes behaviour. */
-    if (!func_0203b438(data_020a4b6c, self + 0x14,
-                       (void *)(size_t)data_020a4b64[0]))
-        ++port_tree_link_refused;
-    {
-        unsigned short *info = (unsigned short *)data_020a4bb8[
-            *(unsigned short *)(self + 0xc)];
-        *(unsigned short *)(self + 0x28 + 0xc) = info[2];   /* prio at +4 */
-        *(unsigned short *)(self + 0x28 + 0xe) = info[2];
-        *(unsigned short *)(self + 0x38 + 0xc) = info[3];   /* prio at +6 */
-        *(unsigned short *)(self + 0x38 + 0xe) = info[3];
-    }
-    {
-        char *parent = (char *)(size_t)func_02043810(self);
-        if (parent) {
-            unsigned char pf = *(unsigned char *)(parent + 0x13);
-            if (pf & 3)
-                *(unsigned char *)(self + 0x13) |= 2;
-            if (pf & 0xC)
-                *(unsigned char *)(self + 0x13) |= 8;
-        }
-    }
-    return self;
-}
+/* THE CONSTRUCTOR THAT STOOD HERE IS THE SRC ARM NOW (run linkfull, lane
+   VARIANT5). It was the port's transcription of arm9 0x02043dec, tagged
+   PORT_HOST_ABI because MSVC's compile of the matched constructor stores
+   MSVC's own fBase_c vftable (D1/D0 folded, every slot after the destructor
+   one early) where the cartridge stores data_02099edc, the ROM-shaped
+   transient table hal/dtor_seats_base.cpp fills and hal/cxx_aliases.cpp
+   publishes as __ZTV9ActorBase (lane V3B measured that compile, wave 27).
+   src/_ZN7fBase_cC2Ev.cpp's #ifdef _MSC_VER arm now defines
+   _ZN7fBase_cC2Ev with the same statements in the same order, the first one
+   the store of data_02099edc, so every actor and scene is still constructed
+   with the ROM's transient table, and the refusal count still counts.
+
+   THE REFUSAL IS SILENT AND IT IS THE ONE OUTCOME THAT MATTERS. Read
+   src/func_0203b438.c: with a null parent it takes handle_a, and handle_a
+   opens `if (a->f0 != 0) return 0` -- a parentless spawn into a tree that
+   already has a root LINKS NOTHING and says nothing. The actor then runs
+   normally (its behaviour/render nodes are separate lists) but the phase-1
+   scene pass, func_02043880, never reaches it, and that pass is the only
+   thing that moves a marked actor onto the cleanup list. So a refused link
+   is invisible until a level change, when it becomes "TEARDOWN DID NOT
+   CONVERGE". The constructor counts it in port_tree_link_refused above and
+   port_tree_link_refusals reports it; nothing about it changes behaviour. */
 } /* extern "C" */
 
 // ---- gate-9 storage and bridges -------------------------------------------

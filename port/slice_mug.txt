@@ -667,7 +667,33 @@
 # reached -- the BlendModelAnim + SharedFilePtr block the factory constructs
 # and the camera preset the Render and InitResources call -- then whatever the
 # link asked for, each line marked with the wave that added it.
-src/actors/unit020bfec0.cpp
-src/actors/dScMgSlots.cpp
-# RETIRED at SLICE1: body now in src/actors/dScMgSlots.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
-#src/actors/dScMgSlots.cpp
+src/func_ov006_020c1eb4.c
+src/func_ov006_020c1ef8.c
+src/func_ov006_020c1f04.c
+src/func_ov006_020c201c.cpp
+src/func_ov006_020c2144.c
+src/func_ov006_020c2154.c
+src/func_ov006_020c21e4.c
+# run linkfull, lane RS4PORT: the +0x4f38 sub-object's constructor, host-copied
+# until main #3107 spelled its two file ids (0x205, 0x206) in place of the
+# placeholder globals g0 and g1; main's blob, and
+# port/unmatched/MgSlot3_SubObjCtor.cpp is retired.
+src/func_ov006_020c221c.c
+src/_ZN12dScMgSlot3_cD1Ev.cpp
+# RETIRED at SLICE1: body now in src/_ZN12dScMgSlot3_cD1Ev.cpp. MSVC folds the ROM destructor variants into one symbol, so only one of a class two per-function destructor TUs can be compiled.
+#src/_ZN12dScMgSlot3_cD0Ev.cpp
+src/_ZN12dScMgSlot3_c25OnAimedAtWithEggReturnVecEv.cpp
+src/_ZN12dScMgSlot3_c16OnAimedAtWithEggEv.cpp
+src/_ZN12dScMgSlot3_c9Virtual80Ev.cpp
+src/func_ov006_0210ab08.c
+src/func_ov006_0210ab90.c
+src/func_ov006_0210ab94.c
+src/func_ov006_0210ac38.c
+src/func_ov006_0210ac3c.cpp
+src/func_ov006_0210adac.c
+src/func_ov006_0210af64.c
+src/func_ov006_0210b1fc.c
+src/_ZN12dScMgSlot3_c13OnYoshiTryEatEi.cpp
+src/_ZN12dScMgSlot3_c6RenderEv.cpp
+src/_ZN12dScMgSlot3_c13InitResourcesEv.cpp
+src/d_s_mg_slot3.c

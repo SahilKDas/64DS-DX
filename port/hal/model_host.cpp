@@ -180,12 +180,22 @@ void func_02052514(int *a, int *b)
 /* ITCM fast-path display-list submit: same (channel, src, size) contract as
  * func_0205a358 (func_02044534 calls that one with identical arguments), so
  * the host forwards to the pump that gate 4a already proved byte-exact.
+ * ONLY FOR THE NARROW HARNESSES since run linkfull wave 27 (lane P1, the
+ * STAGE4P DMA checkpoint 1). The three hosting targets compile this file with
+ * SM64DS_DMA_GXFIFO_ROM and link src/func_01ffde98.c, the ROM's own body: its
+ * bit-31 polls read a DMA3CNT latch the host DMAStartTransfer never sets, and
+ * each chunk it starts reaches gx_write_fifo through that host body, so the
+ * words reach the geometry FIFO in the same order without the pump. The
+ * smoke_* harnesses do not take port/slice_w28_p1.txt and keep this
+ * forwarder.
  * PORT_HOST_ABI: DS DMA-to-GXFIFO; ntr models the FIFO seam, not raw DMA. */
+#ifndef SM64DS_DMA_GXFIFO_ROM
 void func_0205a358(int ch, int src, int size, void (*cb)(int), int arg);
 void func_01ffde98(int ch, int src, int size)
 {
     func_0205a358(ch, src, size, 0, 0);
 }
+#endif /* SM64DS_DMA_GXFIFO_ROM */
 
 // ---- GX bank plumbing ----------------------------------------------------
 // Begin/End LoadTex unmap the destination banks to LCDC and remap after; the
@@ -392,16 +402,15 @@ extern "C" void DMAStartTransferFB(unsigned char ch, u32 src, u32 dst, u32 ctrl)
     DMAStartTransfer(ch, (int)src, (int)dst, (int)ctrl);
 }
 
-// operator_new2 on the DS is a register-passthrough tail-call veneer to
-// func_0203cc0c; that shape breaks on cdecl (the callee would read the
-// wrong stack slot), so the host bridge passes the argument explicitly.
-extern "C" void *func_0203cc0c(unsigned size);
-// PORT_HOST_ABI: ARM register ride-through: the ROM is a tail-call veneer
-//   to func_0203cc0c that never names its argument. See the note above.
-extern "C" void *_ZN6Memory13operator_new2Ej(unsigned size)
-{
-    return func_0203cc0c(size);
-}
+// Memory::operator_new2 IS THE ROM'S OWN BODY (run linkfull, lane ASMCPORT).
+// src/_ZN6Memory13operator_new2Ej.cpp, the three-word veneer at 0x0203cbd8
+// onto func_0203cc0c (Heap::Allocate on the game heap word), names its size
+// argument since main #1243, so the cdecl call passes it and the host copy
+// that stood here for the old void/void spelling is retired. The src TU builds
+// on every target that compiles this file (the ASMCPORT block of
+// port/CMakeLists.txt); MSVC spells it ?operator_new2@Memory@@YAPAXI@Z, and
+// the flat C name every ROM caller uses is bridged onto it here.
+#pragma comment(linker, "/alternatename:__ZN6Memory13operator_new2Ej=?operator_new2@Memory@@YAPAXI@Z")
 
 // OAM::Reset declares its globals at C++ linkage; alias them onto the
 // C-named storage above (same mechanism as the LoadTex globals).

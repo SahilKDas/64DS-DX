@@ -7,13 +7,69 @@ src/game/actors/d_a_obj_c1_trap.cpp:
     complete
     .text start:0x021111a0 end:0x021119d0
 
-src/game/actors/d_a_obj_c1_hikari.cpp:
+src/_ZN9LightBeamD1Ev.cpp:
     complete
-    .text start:0x021119d0 end:0x02111e10
+    .text start:0x021119d0 end:0x02111a08
 
-src/actors/daObjC1Peach_c.cpp:
+src/_ZN9LightBeamD0Ev.cpp:
     complete
-    .text start:0x02111e10 end:0x0211203c
+    .text start:0x02111a08 end:0x02111a54
+
+src/func_ov010_02111a54.c:
+    complete
+    .text start:0x02111a54 end:0x02111a94
+
+src/_ZN9LightBeam16CleanupResourcesEv.cpp:
+    complete
+    .text start:0x02111a94 end:0x02111ab8
+
+src/_ZN9LightBeam6RenderEv.cpp:
+    complete
+    .text start:0x02111ab8 end:0x02111ae0
+
+src/_ZN9LightBeam8BehaviorEv.cpp:
+    complete
+    .text start:0x02111ae0 end:0x02111d20
+
+src/_ZN9LightBeam13InitResourcesEv.cpp:
+    complete
+    .text start:0x02111d20 end:0x02111dd0
+
+src/d_a_obj_c1_hikari.c:
+    complete
+    .text start:0x02111dd0 end:0x02111e10
+
+src/_ZN13PeachPaintingD1Ev.cpp:
+    complete
+    .text start:0x02111e10 end:0x02111e40
+
+src/_ZN13PeachPaintingD0Ev.cpp:
+    complete
+    .text start:0x02111e40 end:0x02111e84
+
+src/_ZN13PeachPainting20UpdateModelTransformEv.cpp:
+    complete
+    .text start:0x02111e84 end:0x02111ec4
+
+src/_ZN13PeachPainting16CleanupResourcesEv.cpp:
+    complete
+    .text start:0x02111ec4 end:0x02111ee8
+
+src/_ZN13PeachPainting6RenderEv.cpp:
+    complete
+    .text start:0x02111ee8 end:0x02111f28
+
+src/_ZN13PeachPainting8BehaviorEv.cpp:
+    complete
+    .text start:0x02111f28 end:0x02111fc0
+
+src/_ZN13PeachPainting13InitResourcesEv.cpp:
+    complete
+    .text start:0x02111fc0 end:0x02112004
+
+src/d_a_obj_c1_peach.c:
+    complete
+    .text start:0x02112004 end:0x0211203c
 
 src/__sinit_ov010_0211203c.c:
     complete

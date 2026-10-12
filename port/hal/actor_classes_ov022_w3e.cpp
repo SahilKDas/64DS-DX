@@ -98,10 +98,13 @@
 //
 // 243 keeps a pointer at +0x108 to a pair of mwcc pointer-to-member records,
 // and __sinit_ov022_021130bc builds that pair in bss 0x02114690 by copying the
-// two .data pairs at 0x02114424 ({func_ov022_021126ac, 0}) and 0x0211442c
-// ({func_ov022_02112710, 0}). Two TUs dispatch through it:
-//   src/game/actors/d_a_obj_fl_maruta.cpp        sets the pointer and calls record 0
-//   src/game/actors/d_a_obj_fl_maruta.cpp  calls the record at +8
+// two .data pairs at 0x0211442c ({func_ov022_02112710, 0}) to +0 (the INIT
+// half) and 0x02114424 ({func_ov022_021126ac, 0}) to +8 (the per-frame half).
+// Read off the sinit's own bytes (ov022 0x021130bc: ldr r1 = 0x0211442c,
+// ldr r0 = 0x02114424, str [r1] -> 0x02114690+0, str [r0] -> +8), not off the
+// .data addresses' order. Two TUs dispatch through it:
+//   src/_ZN21daObj_volcanoCannon_c11ChangeStateEPNS_5StateE.cpp        sets the pointer and calls record 0
+//   src/_ZN21daObj_volcanoCannon_c8BehaviorEv.cpp  calls the record at +8
 // Both are compiled with /vmg /vmm (port/CMakeLists.txt), which is the wave-18
 // ruling: that pair of flags gives MSVC the ROM's own 8-byte {fn, delta}
 // representation, so `pp + 1` strides eight onto the second record's function
@@ -115,16 +118,16 @@
 // hal/actor_classes_ov063.cpp, same order, same reason. Deltas are ROM ZERO on
 // both records and are written back as zero.
 //
-// ---- ONE TU HELD OUT, AND IT IS NOT A REFUSAL OF THE BODY ----------------
+// ---- SLOT 16 IS THE MATCHED D1, REACHED THROUGH A FACE --------------------
 //
-// src/game/actors/d_a_obj_fl_maruta.cpp (243's slot 16) is a real MSVC-synthesised
-// destructor over a shadow class with no vtable store of its own; MSVC mangles
-// it ??1RollingLogLll@@UAE@XZ and never as the Itanium name the slot needs.
-// That is the MotherPenguin / OneUpLogo / BabyPenguin shape gate 191, gate 193
-// and slice_ov030cast.txt (for this class's ov030 twin) all keep out. The
-// chain is spelled in vf_d1 below, HIGH ADDRESS FIRST, from the ROM body at
-// 0x021125e0: MovingCylinderClsn at +0xd4 then Actor::D2, with the vptr
-// restore the ROM does first.
+// src/_ZN21daObj_volcanoCannon_cD1Ev.cpp (243's slot 16) is a real MSVC-synthesised
+// destructor; MSVC mangles it ??1daObj_volcanoCannon_c@@QAE@XZ and never as the
+// Itanium name the slot needs, so vf_d1 below reaches it through the face
+// hal/actorport_dtor_bridge.cpp aliases onto it (run hunt2, lane ABI2). The ROM
+// body at 0x021125e0 is the chain it runs: the vptr restore the ROM does
+// first, then MovingCylinderClsn at +0xd4, then Actor::D2, HIGH ADDRESS FIRST.
+// Before that, slot 16 reached ROLLING_LOG_LLL (70)'s D1 through the shifted
+// dsd naming (the VOLCANO_FIRE block below).
 //
 // ---- LANE OWNERSHIP -------------------------------------------------------
 //
@@ -163,7 +166,7 @@ extern "C" void *__fastcall port_actor_s30_base(void *self, void *, void *out);
     243  InitResources / Behavior                      -> methods
     243  CleanupResources / D0                         -> C names  */
 #include "RollingLogLll.h"
-#include "RollingLogLll.h"
+#include "daObj_volcanoCannon_c.h"
 
 extern "C" {
 /* the arm9 shared half -- the same slot-for-slot set the four wave-8 tables
@@ -199,7 +202,7 @@ void __sinit_ov022_02112e58(void);   /* 77's                       */
 void __sinit_ov022_02113050(void);   /* 70's                       */
 void __sinit_ov022_021130bc(void);   /* 243's two PMF state records */
 
-/* the destructor chain vf_d1 spells out (243's held-out slot 16) */
+/* the destructor chain 243's slot 16 body runs (the src D1 vf_d1 reaches) */
 void _ZN7dCcAc_cD1Ev(void *self);
 void _ZN8dActor_cD2Ev(void *self);
 }
@@ -574,8 +577,8 @@ extern "C" void hal_fill_rolling_log_lll_vtable(void)
 }
 
 // ============================================================================
-// VOLCANO_FIRE (243) -- table 0x0211447c, THIRTY-ONE slots, bodies spelled
-// _ZN13RollingLogLll* (THE SHIFT)
+// VOLCANO_FIRE (243) -- table 0x0211447c, THIRTY-ONE slots, its own bodies
+// (dsd's shifted spelling of them was _ZN13RollingLogLll*, THE SHIFT)
 // ============================================================================
 //
 // 284-byte object and the only ACTOR in this file -- MovingCylinderClsn at
@@ -589,8 +592,8 @@ int *_ZN21daObj_volcanoCannon_cD0Ev(int *self);                 /* slot 17 */
 void *daObj_volcanoCannon_c_classInit(void);
 /* the two PMF state bodies the record seat installs (both matched, both on
    this lane's slice). ROM pairs, read out of overlay_0022.bin:
-     0x02114424 = { func_ov022_021126ac, 0 }
-     0x0211442c = { func_ov022_02112710, 0 }   */
+     0x02114424 = { func_ov022_021126ac, 0 }   -> bss +8, the per-frame half
+     0x0211442c = { func_ov022_02112710, 0 }   -> bss +0, the init half   */
 int func_ov022_021126ac(char *self);
 int func_ov022_02112710(char *self);
 extern unsigned char data_ov022_02114690[];   /* the bss pair the sinit fills */
@@ -607,28 +610,38 @@ DSSTATE_END
    are daObj_volcanoCannon_c_classInit, _ZN21daObj_volcanoCannon_cD0Ev, _ZN21daObj_volcanoCannon_cD1Ev.
    Read out of extracted/overlays/overlay_0022.bin; the LHS is not a config
    symbol anywhere, so the alias cannot be defeated by a later slice. */
+/* SLOTS 0, 6 AND 16 ARE THIS CLASS'S OWN. The ROM words of 0x0211447c are
+   0x021128b8 (daObj_volcanoCannon_c::InitResources), 0x02112800 (::Behavior)
+   and 0x021125e0 (its D1), read out of overlay_0022.bin. These three used to
+   reach ROLLING_LOG_LLL (70)'s bodies at 0x02112590 / 0x02112560 and its D1,
+   a leftover of the shifted dsd naming above: the ring's first fireball ran
+   the rolling log's InitResources, which read a resource table this 0x11c-byte
+   actor does not have and called through -1, and the quarantine froze the
+   VolcanoRing whose Behavior had spawned it. */
 static int __fastcall vf_init(void *s, void *)
-{ return ((RollingLogLll *)s)->RollingLogLll::InitResources(); }
+{ return ((daObj_volcanoCannon_c *)s)->daObj_volcanoCannon_c::InitResources(); }
 static int __fastcall vf_clean(void *s, void *)
 { return _ZN21daObj_volcanoCannon_c16CleanupResourcesEv(s); }
 static int __fastcall vf_behavior(void *s, void *)
-{ return ((RollingLogLll *)s)->RollingLogLll::Behavior(); }
+{ return ((daObj_volcanoCannon_c *)s)->daObj_volcanoCannon_c::Behavior(); }
 static int __fastcall vf_render(void *s, void *)
 { return ((fBase_c *)s)->fBase_c::Render(); }
-/* slot 16: src/game/actors/d_a_obj_fl_maruta.cpp is held out (MSVC mangles it
-   ??1RollingLogLll@@UAE@XZ). The ROM body at 0x021125e0 restores the vptr,
-   runs MovingCylinderClsn::D1 at +0xd4 and then Actor::D2 -- HIGH ADDRESS
-   FIRST, one member, no Deallocate (that is D0's). */
-/* slot 16 is the matched src D1 through hal/dtor_faces_cpp.cpp (lane DTOR-FACES-CPP);
-   the transcribed thunk that stood here (vf_d1) spelled the same chain by hand. */
+/* slot 16: the ROM body at 0x021125e0 restores the vptr, runs
+   MovingCylinderClsn::D1 at +0xd4 and then Actor::D2 -- HIGH ADDRESS FIRST,
+   one member, no Deallocate (that is D0's). That body is the matched
+   src/_ZN21daObj_volcanoCannon_cD1Ev.cpp (??1daObj_volcanoCannon_c@@QAE@XZ),
+   reached through the face hal/actorport_dtor_bridge.cpp aliases onto it. */
+extern "C" void __fastcall actorport_d16t_daObj_volcanoCannon_c(void *, void *);
+static int __fastcall vf_d1(void *s, void *e)
+{ actorport_d16t_daObj_volcanoCannon_c(s, e); return (int)(size_t)s; }
 static int __fastcall vf_d0(void *s, void *)
 { return (int)(size_t)_ZN21daObj_volcanoCannon_cD0Ev((int *)s); }
 /* the two pointer-to-member records, as __fastcall (ecx is arg 1) so the
    __thiscall dispatch /vmg /vmm emits reaches these cdecl bodies. */
-static int __fastcall vf_state0(void *s, void *)
-{ return func_ov022_021126ac((char *)s); }
-static int __fastcall vf_state1(void *s, void *)
+static int __fastcall vf_state_init(void *s, void *)
 { return func_ov022_02112710((char *)s); }
+static int __fastcall vf_state_tick(void *s, void *)
+{ return func_ov022_021126ac((char *)s); }
 extern "C" void hal_fill_volcano_fire_vtable(void)
 {
     ov22e_bringup();
@@ -638,16 +651,22 @@ extern "C" void hal_fill_volcano_fire_vtable(void)
     vt[3]  = (void *)vf_clean;
     vt[6]  = (void *)vf_behavior;
     vt[9]  = (void *)vf_render;
-    vt[16] = (void *)PORT_D16(hal_cppd1_RollingLogLll);
+    vt[16] = (void *)PORT_D16(vf_d1);
     vt[17] = (void *)vf_d0;
     /* ov22e_fill_shared wrote slot 30; this table has no slot 31 and the fill
        never touches one. */
     /* THE STATE-RECORD RE-SEAT. __sinit_ov022_021130bc ran in ov22e_bringup
        above and copied the ROM's two {fn, 0} pairs -- DS code addresses -- into
        0x02114690. Overwrite both function words with the host thunks and write
-       the deltas back as the ROM's zero. */
+       the deltas back as the ROM's zero. IN THE SINIT'S ORDER: +0 is the init
+       half func_ov022_02112710 (ChangeState runs it once: the 0x3c-frame timer
+       and the random throw), +8 the per-frame half func_ov022_021126ac
+       (Behavior runs it: the kill checks and the burn). Seated the other way
+       round, ChangeState ran the kill check on a timer still at zero and
+       every fireball destroyed itself the frame it spawned, before its
+       Behavior ever lit particle 0x129: the volcano erupted with no fire. */
     {
-        static void *const seat[2] = { (void *)vf_state0, (void *)vf_state1 };
+        static void *const seat[2] = { (void *)vf_state_init, (void *)vf_state_tick };
         int i;
         for (i = 0; i < 2; ++i) {
             *(void *volatile *)(data_ov022_02114690 + i * 8) = seat[i];

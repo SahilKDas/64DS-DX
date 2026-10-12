@@ -1,31 +1,31 @@
-_ZN14daObjSm_Lift_cD1Ev kind:function(arm,size=0x44) addr:0x021111a0
-_ZN14daObjSm_Lift_cD0Ev kind:function(arm,size=0x58) addr:0x021111e4
-_ZN14daObjSm_Lift_c15OnHitByMegaCharER6Player kind:function(arm,size=0x3c) addr:0x0211123c
+_ZN7SkiLiftD1Ev kind:function(arm,size=0x44) addr:0x021111a0
+_ZN7SkiLiftD0Ev kind:function(arm,size=0x58) addr:0x021111e4
+_ZN7SkiLift15OnHitByMegaCharER6Player kind:function(arm,size=0x3c) addr:0x0211123c
 func_ov018_02111278 kind:function(arm,size=0x84) addr:0x02111278
-_ZN14daObjSm_Lift_c16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x021112fc
-_ZN14daObjSm_Lift_c6RenderEv kind:function(arm,size=0x28) addr:0x02111340
-_ZN14daObjSm_Lift_c8BehaviorEv kind:function(arm,size=0x34c) addr:0x02111368
-_ZN14daObjSm_Lift_c13InitResourcesEv kind:function(arm,size=0x134) addr:0x021116b4
+_ZN7SkiLift16CleanupResourcesEv kind:function(arm,size=0x44) addr:0x021112fc
+_ZN7SkiLift6RenderEv kind:function(arm,size=0x28) addr:0x02111340
+_ZN7SkiLift8BehaviorEv kind:function(arm,size=0x34c) addr:0x02111368
+_ZN7SkiLift13InitResourcesEv kind:function(arm,size=0x134) addr:0x021116b4
 func_ov018_021117e8 kind:function(arm,size=0x1c) addr:0x021117e8
 func_ov018_02111804 kind:function(arm,size=0x14) addr:0x02111804
 daObjSm_Lift_c_classInit kind:function(arm,size=0x30) addr:0x02111818
 _ZN10daPgMthr_cD1Ev kind:function(arm,size=0x50) addr:0x02111848
 _ZN10daPgMthr_cD0Ev kind:function(arm,size=0x64) addr:0x02111898
 func_ov018_021118fc kind:function(arm,size=0x6c) addr:0x021118fc
-_ZN10daPgMthr_c19func_ov018_02111968EPvPc kind:function(arm,size=0xe0) addr:0x02111968
-_ZN10daPgMthr_c19func_ov018_02111a48EPc kind:function(arm,size=0xf4) addr:0x02111a48
-_ZN10daPgMthr_c19func_ov018_02111b3cEv kind:function(arm,size=0xb4) addr:0x02111b3c
+func_ov018_02111968 kind:function(arm,size=0xe0) addr:0x02111968
+func_ov018_02111a48 kind:function(arm,size=0xf4) addr:0x02111a48
+func_ov018_02111b3c kind:function(arm,size=0xb4) addr:0x02111b3c
 func_ov018_02111bf0 kind:function(arm,size=0x138) addr:0x02111bf0
-_ZN10daPgMthr_c19func_ov018_02111d28Ev kind:function(arm,size=0x100) addr:0x02111d28
-_ZN10daPgMthr_c19func_ov018_02111e28Ev kind:function(arm,size=0xf4) addr:0x02111e28
-_ZN10daPgMthr_c19func_ov018_02111f1cEv kind:function(arm,size=0x90) addr:0x02111f1c
-_ZN10daPgMthr_c19func_ov018_02111facEv kind:function(arm,size=0x230) addr:0x02111fac
-_ZN10daPgMthr_c19func_ov018_021121dcEv kind:function(arm,size=0x58) addr:0x021121dc
-_ZN10daPgMthr_c19func_ov018_02112234Ev kind:function(arm,size=0xb8) addr:0x02112234
-_ZN10daPgMthr_c19func_ov018_021122ecEv kind:function(arm,size=0x70) addr:0x021122ec
+func_ov018_02111d28 kind:function(arm,size=0x100) addr:0x02111d28
+func_ov018_02111e28 kind:function(arm,size=0xf4) addr:0x02111e28
+func_ov018_02111f1c kind:function(arm,size=0x90) addr:0x02111f1c
+func_ov018_02111fac kind:function(arm,size=0x230) addr:0x02111fac
+func_ov018_021121dc kind:function(arm,size=0x58) addr:0x021121dc
+func_ov018_02112234 kind:function(arm,size=0xb8) addr:0x02112234
+func_ov018_021122ec kind:function(arm,size=0x70) addr:0x021122ec
 func_ov018_0211235c kind:function(arm,size=0x3c) addr:0x0211235c
 func_ov018_02112398 kind:function(arm,size=0x38) addr:0x02112398
-_ZN10daPgMthr_c19func_ov018_021123d0Ei kind:function(arm,size=0x1c) addr:0x021123d0
+func_ov018_021123d0 kind:function(arm,size=0x1c) addr:0x021123d0
 _ZN10daPgMthr_c16CleanupResourcesEv kind:function(arm,size=0x64) addr:0x021123ec
 _ZN10daPgMthr_c16OnPendingDestroyEv kind:function(arm,size=0x4) addr:0x02112450
 _ZN10daPgMthr_c6RenderEv kind:function(arm,size=0x2c) addr:0x02112454
@@ -128,7 +128,7 @@ _ZTS14daObjSm_Lift_c kind:data(any) addr:0x02113894
 g_profile_SM_LIFT kind:data(any) addr:0x021138a8 ambiguous
 data_ov018_021138bc kind:data(any) addr:0x021138bc ambiguous
 data_ov018_021138c4 kind:data(any) addr:0x021138c4 ambiguous
-_ZTV14daObjSm_Lift_c kind:data(any) addr:0x021138cc
+_ZTV7SkiLift kind:data(any) addr:0x021138cc
 data_ov018_021138d8 kind:data(any) addr:0x021138d8 ambiguous
 data_ov018_021138f0 kind:data(any) addr:0x021138f0 ambiguous
 data_ov018_021138fc kind:data(any) addr:0x021138fc ambiguous

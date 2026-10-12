@@ -18,6 +18,8 @@
 //   port_boot_rom_main_head()       src/main.c, its first three calls
 //   port_boot_rom_game_init_head()  src/func_0201a054.c, before the game heap
 //   port_boot_rom_game_init_tail()  src/func_0201a054.c, after the game heap
+//   port_boot_rom_worker()          src/func_0201a2f8.c, the boot worker's
+//                                   ov000 step, at main's loop seam
 //
 // THE RULE THIS FILE OBEYS. Nothing here calls a ROM function anywhere except
 // where the ROM calls it. Where a ROM step cannot run on the host the step is
@@ -387,11 +389,10 @@ int  func_02053be0(int enable);               // DISPSTAT VBlank-IRQ enable
 void func_0203d740(void);
 void func_0201a4e4(void);                     // install IRQ::VBlankHandler
 void func_0203bb5c(void);
-/* func_02042f68's FIRST ARM, two levels down: func_02060890 -> func_0206002c,
-   the card driver's bring-up and the ROM's own creation of the card thread.
-   The transcription note at its point in the boot below says which arms of
-   func_02042f68 and func_02060890 are skipped and why. */
-void func_0206002c(void);
+/* func_02042f68's FIRST ARM, the card driver's bring-up (src/func_02060890.c).
+   The transcription note at its point in the boot below says why it is
+   called there and why it does nothing on a default boot. */
+void func_02060890(void);
 void port_thread_create_proof(void);          // hal/thread_create.cpp
 void func_02018aa4(void);                     // the file-system bring-up
 void func_0203ad84(void);
@@ -408,6 +409,12 @@ void func_020233f0(void);
 void func_020196cc(void);                     // the channel-8 firmware read,
                                               // the RNG boot seed, SetSoundMode
 void func_0201a5cc(void);                     // the fatal-vector pair
+// --- src/func_0201a2f8.c, the boot worker's ov000 step ----------------------
+void func_ov000_020aa420(void);               // ov000's entry: the handle table
+void port_ov000_pack_check(void);             // host-src/ov000_syms.c, the mount
+void port_ov000_syms_patch(void);             //   of port/ov000_syms.txt
+double port_ov0_table_clock_ms(void);         // hal/s4ov0_ov0table.cpp
+void port_ov0_table_report(double ms);
 
 
 // Which arms actually ran, printed once so a boot log says what the ROM did
@@ -429,6 +436,7 @@ static void say(const char *what) {
 // ROM's own order puts it.
 // ---------------------------------------------------------------------------
 extern "C" void port_os_lock_words_seed(void);
+extern "C" void port_os_arena_seed(void);
 extern "C" void func_0205b858(void);
 extern "C" void func_02059e48(void);
 extern "C" void func_0205fde8(void);
@@ -438,7 +446,13 @@ void port_boot_rom_pre_main(void)
 {
     // func_02058c84's arms, in the ROM's order. The gaps are the PXI four;
     // see the header block for the measurement that closes them.
-    /* func_02058f28() -- the OS arena, owned by hal/os_arena.cpp */
+    /* func_02058f28() -- OS_InitArena. Its OS_ARENA_MAIN row, the only one a
+       linked ROM reader asks for, written from the port's arena block by
+       hal/os_arena.cpp (hi then lo, the ROM's order), here at the arm's own
+       point: after ntr::io_init holds the shared block the table lives in,
+       before the ROM's own OS_GetArenaLo (src/func_02058ea0.c) reads it at the
+       top of Heap::SetupRootHeap. Run linkfull wave 27, lane SMALLS1. */
+    port_os_arena_seed();
     func_0205b858();   /* call 2: PXI init (func_0205bad8); the ARM7 half is
                           hal/boot2_ipc.cpp's model, attached before main() */
     /* func_02057320() -- takes the 0x7e lock and spins on the shared block.
@@ -666,9 +680,24 @@ void port_boot_rom_game_init_head(void)
     /* func_0201fec8() -- the user settings block. Still refused; the blocker
        is func_0203db64's eight-name wireless run and not data_0209d574, which
        is sized now. The count is in the header block. */
-    /* func_02042f68(0xd01, data_0208ee50) -- ITS FIRST ARM RUNS NOW, and the
-       three things that refused it have each been retired by a named lane.
-       (run link100, lane THREAD; port/slice_gate223.txt.)
+    /* func_02042f68(0xd01, data_0208ee50) -- ARM 1 IS src/func_02060890.c
+       NOW (run linkfull, lane S4CARD), and the line below is the ROM's
+       bring-up itself, not its func_0206002c two levels down.
+
+       ON A DEFAULT BOOT IT RETURNS AT ONCE, and that is the ROM's order, not a
+       skip: hal/boot_arms.cpp's R2c arm runs func_02042f68 whole inside main's
+       func_0201a054 seam, before this line and before the first card read of
+       every run (the card reads finish on the thread it creates), so the
+       ROM's own `if (state != 0) return` guard is set by the time this runs.
+       The call stays for SM64DS_ROM_MAIN=0, whose transcribed head reaches no
+       a054 seam: there the same guard lets it bring the card up here -- late
+       for a scene run's reads, which that knob does not serve. The direct
+       func_0206002c() that stood here would build a second card thread over
+       the same record, so it is gone.
+
+       What follows is the note this line carried while it called
+       func_0206002c (run link100, lane THREAD; port/slice_gate223.txt),
+       kept for the storage and scheduler evidence.
 
        THE CHAIN, and where this line sits in it:
            src/func_0201a054.c    func_02042f68(0xd01, data_0208ee50)
@@ -723,6 +752,8 @@ void port_boot_rom_game_init_head(void)
        the two that matter to the lock -- owner = ~2 and depth = 0 -- along
        with the command-block pointer, the wait queue and the priority. So the
        skipped arm's effect is already there and this call adds the thread.
+       (SUPERSEDED, lane S4CARD: both statements link now and run in the R2c
+       arm; ntr/backup.cpp no longer seeds the state word.)
 
        WHAT IS STILL SKIPPED ABOVE THIS, and it is not threads:
          func_020603c8(0xd01)  the device identify, blocked on ntr/backup.cpp's
@@ -736,7 +767,7 @@ void port_boot_rom_game_init_head(void)
                                data_0208ee50 ("ds mario"), the other unmounted
                                .rodata span, and ntr/backup.cpp defines
                                data_020a4b40 with those eight bytes today. */
-    func_0206002c();
+    func_02060890();
     /* And the measurement, because a seat that links and never runs reads as
        progress. No-ops unless SM64DS_THREAD_CREATE_PROOF is set; see
        hal/thread_create.cpp and port/tools/thread_create_proof.py. */
@@ -850,6 +881,70 @@ void port_boot_rom_game_init_tail(void)
     func_020196cc();
     func_0201a5cc();
     say("game init tail (func_0201a054)");
+}
+
+// ---------------------------------------------------------------------------
+// src/func_0201a2f8.c, THE BOOT WORKER, its ov000 step (run linkfull, lane
+// S4OV0). The ROM's order on a cartridge boot (0x027ffc40 is not 2, which
+// ntr/io.cpp's io_init makes true here as well):
+//
+//     size = func_0205d94c(0, 0); ptr = Memory::Allocate(size);
+//     func_0205d94c(ptr, size);          the file-name tables, cached in RAM
+//     LoadOverlay(&overlay_0);
+//     func_ov001_020aa420();             ov000's entry          <-- THIS CALL
+//     UnloadOverlay(&overlay_0);
+//     func_0205c91c(func_0205d23c("rom", 3)); Memory::Deallocate(ptr);
+//     LoadOverlay(&overlay_1);
+//     Sound::LoadInitialGroup(0); LoadFont(0);
+//
+// WHAT THE ENTRY DOES. It allocates the game's ov0 handle table (0x80a u16s,
+// 4116 bytes, off the default heap) and fills it with the file id of each of
+// ov000's 2058 path strings, through the ROM's own FS_ConvertPathToFileID.
+// src/func_02018a24.c reads that table for every file the game asks for by
+// handle. Until this lane the port answered those lookups from
+// build/assets/handles.tsv in a host face (hal/fs.cpp) and never built the
+// table at all; the face is retired on the game targets.
+//
+// WHERE IT RUNS. On the cartridge the boot scene's InitResources starts this
+// worker (func_0201a244, a DS thread) in the first frame of main's loop, so
+// the worker's point is main's last call, after the whole of func_0201a054.
+// hal/rom_main.cpp's port_rom_loop_seam IS that call on the port, and it is on
+// every run shape, scene and level alike: after the a054 seam has brought the
+// card thread up (the lookups read the file-name table off the card) and
+// before tests/walk_window.cpp's ov002 static initialisers, which construct
+// SharedFilePtrs by handle and so already need the table. The two transcribed
+// func_0201a054 spans above run later than this in wall time, on the level
+// path only; the entry reads nothing they set up.
+//
+// WHAT IS CALLED, AND WHAT IS NOT:
+//   the entry        CALLED, by its ov000 name. src/func_0201a2f8.c spells the
+//                    call func_ov001_020aa420 (ov000 and ov001 share the base
+//                    0x020aa420 and config/arm9/relocs.txt:2834 cannot tell
+//                    them apart), and that spelling names ov001's bytes. What
+//                    the worker runs at that address is ov000's entry, loaded
+//                    by the line before it.
+//   LoadOverlay(0)   what it makes true is made true here without the loader:
+//                    ov000's code is compiled in (port/slice_w31_s4ov0.txt)
+//                    and its data is the per-symbol mount port/ov000_syms.txt,
+//                    whose patch below puts the table's 2058 pointers onto the
+//                    hosted path strings. The patch writes absolute values, so
+//                    running it on every boot is safe.
+//   the RAM tables   NOT CALLED. func_0205d94c / func_0205c91c only change
+//                    WHERE the 2058 lookups read the file-name table from (RAM
+//                    instead of the card); the ids are the same. The line the
+//                    report prints says what the card route costs here.
+//   the rest         UnloadOverlay(0), LoadOverlay(1), the sound group and the
+//                    font are not this step and nothing about them changes.
+// ---------------------------------------------------------------------------
+void port_boot_rom_worker(void)
+{
+    port_ov000_pack_check();
+    port_ov000_syms_patch();
+    const double t0 = port_ov0_table_clock_ms();
+    func_ov000_020aa420();
+    port_ov0_table_report(port_ov0_table_clock_ms() - t0);
+    say("boot worker: ov000's entry built the ov0 handle table "
+        "(func_0201a2f8's ov000 step)");
 }
 
 }  // extern "C"

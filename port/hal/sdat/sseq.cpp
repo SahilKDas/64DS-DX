@@ -112,6 +112,24 @@ struct Track {
     //            sweeps it over -0x300..0, exactly one octave down.
     int volDb10;
     int pitch;
+    /* PORTAMENTO AND SWEEP, the track half (SM64DS ARM7 track +0x14 portaKey,
+     * +0x15 portaTime, +0x16 sweepPitch, flags bit 5 portamento; TrackInit at
+     * 0x037FDA74 sets the key to 60 and the rest to 0). A note-on hands the
+     * channel a sweep made of them and the channel plays it out on its own;
+     * see note_sweep. */
+    int portaKey, portaOn, portaTime, sweepPitch;
+    /* MODULATION, the track's LFO parameters (track +0x18 target, +0x19
+     * speed, +0x1a depth, +0x1b range, +0x1c delay; TrackInit's 0x037FBFBC:
+     * target 0, speed 16, depth 0, range 1, delay 0). Written by 0xCA-0xCD /
+     * 0xE0 and by TRACK_PARAM 0x19 / 0x1a from the game, copied onto the
+     * track's sounding channels every frame; the channel runs the LFO. */
+    int modTarget, modSpeed, modDepth, modRange, modDelay;
+    /* THE TRACK'S ENVELOPE OVERRIDE (track +0x0e attack, +0x0f decay, +0x10
+     * sustain, +0x11 release; 0xFF = use the instrument's, TrackInit's
+     * 0x037FDB0C). 0xD0..0xD3 set them and every note-on after that hands
+     * each one that is not 0xFF to its channel (0x037FD568..0x037FD5B4),
+     * over whatever the instrument's own ADSR said. */
+    int envAttack, envDecay, envSustain, envRelease;
     int noteWait;           // C7: notes block the track for their duration
     // A note played with duration 0 under noteWait blocks the track until the
     // CHANNELS it owns have ended, rather than for a tick count. That is what
@@ -123,6 +141,13 @@ struct Track {
     int tie;
     int cmpFlag;
     int mono;
+    /* Allocated by the sequence's leading 0xFE mask at START and not opened
+       yet. The ARM7 builds those tracks (TrackInit) inside the START command
+       (0x037FE394), BEFORE the batch's TRACK_PARAM / MUTE commands run, and
+       the 0x93 open-track that comes later (0x037FCF44..0x037FCF6C) only
+       points the already-existing track at its code: no TrackInit, so a
+       volume or mute the game sent in the meantime survives. */
+    int allocd;
 };
 
 struct Player {
@@ -139,10 +164,34 @@ struct Player {
     // this to 64 flattened the opening's cpr-96..127 SFX down onto the BGM and
     // let the mixer steal between them at random.
     int cpr;
+    // The ARM7 player's PAUSE byte, +1 (PlayerInit clears it at 0x037FD9C4).
+    // Command 0x02 writes it (sd_seq_pause); while it is set SND_SeqMain skips
+    // PlayerSeqMain for this player and still runs PlayerUpdateChannel.
+    int paused;
     sd_s16 var[SD_VARS];
 };
 
 Player g_pl[SD_PLAYERS];
+
+/* TrackInit's defaults for a track opened by 0x93 on a sequence that did not
+   pre-allocate it (and the same values sd_seq_start gives track 0 and the
+   0xFE-allocated tracks). */
+static void track_init_open(Track &t2, sd_u32 off)
+{
+    memset(&t2, 0, sizeof t2);
+    t2.active = 1;
+    t2.pc = off;
+    t2.volume = 127; t2.expression = 127; t2.pan = 64;
+    // Opened tracks start at the player's base priority, the same
+    // as track 0; a 0xC6 in the opened track overrides it.
+    /* Same TrackInit default as track 0; 0xC6 overrides it. */
+    t2.bendRange = 2; t2.priority = 64; t2.noteWait = 1;
+    t2.portaKey = 60;       /* TrackInit, 0x037FDB28 */
+    t2.modSpeed = 16; t2.modRange = 1;      /* 0x037FBFBC */
+    t2.envAttack = t2.envDecay = 0xff;      /* 0x037FDB0C */
+    t2.envSustain = t2.envRelease = 0xff;
+    t2.prog = 0;
+}
 
 // A mixer channel while a TRACK owns it. This is SND_seq.c's channelLLHead
 // list turned inside out: the list is per track there, and here the ownership
@@ -169,6 +218,7 @@ struct NoteSlot {
     int ticks;
     int basePan;            // pan before the player's own bias
     int baseDb10;           // volume before the player's own attenuation
+    int velocity;           // ch+0x09, the note's own 0..127 level
     // Playback rate for (key - baseNote) ALONE -- the ROM's
     // (chn->midiKey - chn->rootMidiKey) * 0x40 term and nothing else. Every
     // other pitch input the track has is re-applied to this every frame by
@@ -318,6 +368,72 @@ double pitch_units_scale(int units)
     return pow(2.0, (double)units / 64.0 / 12.0);
 }
 
+/* THE SWEEP A NOTE STARTS WITH, SM64DS's note-on at 0x037FD5B8..0x037FD61C.
+ *
+ *   sweepPitch  = track sweep (0xE3), plus (portaKey - key) * 64 when
+ *                 portamento is on, stored back as an s16
+ *   sweepLength = portaTime == 0 ? the note's length in 192 Hz frames
+ *                                : (portaTime^2 * |sweepPitch|) >> 11
+ *
+ * and the channel then counts it down itself (mixer.cpp, 0x037FBC34). The
+ * note's length in frames is the note-on's own conversion at 0x037FD42C:
+ * (ticks * 240 + rate - 1) / rate with rate = tempo * tempoRatio >> 8, and
+ * the port's tempoRatio is the ROM's default 256, so rate is the tempo. A
+ * duration-0 note converts to 0 frames, so with portaTime 0 it does not
+ * sweep at all; that is the ROM's arithmetic too.
+ *
+ * WHAT THE PORT DID BEFORE: parsed 0xC9 / 0xCE / 0xCF / 0xE3 and dropped
+ * them, so every portamento and every sweep in the game played as a flat
+ * note at its target pitch. 424 SEQARC entries set a portamento key. */
+/* A note's own level before the two ext faders: the velocity term the
+ * channel update adds (0x037FC5E0) plus the track update's volume +
+ * expression + player volume (0x037FD694..0x037FD6B0), all through the
+ * ARM7's table. Computed at the note-on AND every frame after it while the
+ * track owns the channel -- see player_update_channels. */
+int note_level_db10(const Player &pl, const Track &tk, int vel)
+{
+    int db10 = sd_cnv_vol(vel) + sd_cnv_vol(tk.volume)
+             + sd_cnv_vol(tk.expression) + sd_cnv_vol(pl.volume);
+    return db10 < -723 ? -723 : db10;
+}
+
+/* The track's envelope override onto the channel it just started or tied
+ * onto, each field only when it is not 0xFF (0x037FD568..0x037FD5B4).
+ *
+ * WHAT THE PORT DID BEFORE: parsed 0xD0..0xD3 and dropped them, so every
+ * voice ran its INSTRUMENT's envelope. 454 SEQARC entries set one, and the
+ * ones the forum named are exactly this shape: the red coin (SSAR 2 entries
+ * 47..55) asks for sustain 0 and decay 124, the stair timer's tick (SSAR 2
+ * 56 / 57) for sustain 0 and decay 117 -- short blips that die away while
+ * the note is still held -- and without the override they held at the
+ * instrument's sustain for the note's whole length and then tailed off at
+ * the instrument's release. */
+void note_env(const Track &tk, int ch)
+{
+    if (tk.envAttack != 0xff || tk.envDecay != 0xff || tk.envSustain != 0xff
+        || tk.envRelease != 0xff)
+        sd_mix_set_env(ch, tk.envAttack == 0xff ? -1 : tk.envAttack,
+                       tk.envDecay == 0xff ? -1 : tk.envDecay,
+                       tk.envSustain == 0xff ? -1 : tk.envSustain,
+                       tk.envRelease == 0xff ? -1 : tk.envRelease);
+}
+
+void note_sweep(const Player &pl, const Track &tk, int ch, int key, int ticks)
+{
+    int sweep = tk.sweepPitch;
+    if (tk.portaOn) sweep += (sd_s16)((tk.portaKey - key) << 6);
+    sweep = (sd_s16)sweep;
+    int length;
+    if (tk.portaTime == 0) {
+        const int rate = pl.tempo;
+        length = rate > 0 ? (ticks * 240 + rate - 1) / rate : 0;
+    } else {
+        const int mag = sweep < 0 ? -sweep : sweep;
+        length = (tk.portaTime * tk.portaTime * mag) >> 11;
+    }
+    sd_mix_set_sweep(ch, sweep, length);
+}
+
 /* The channel this track owns, or -1. The ARM7 keeps a real linked list --
    head at track+0x3C, links through channel+0x50, prepended at 0x037FD55C --
    and this port scans instead, which finds the same channel because a track
@@ -395,6 +511,60 @@ void track_stop(int p, int t, const char *why)
 // the track on a channel that never ends. The two are told apart by that, not
 // by the tie.
 
+/* THE PSG VOICES. A type 2 note is the DS's pulse generator and a type 3 note
+ * its noise generator; neither has a wave in the archive. The channel start
+ * (0x037FE3C4) gives both the same base timer, 0x1F46 = 8006 (0x037FC468 /
+ * 0x037FC4BC, stored at ch+0x3C), so at the record's root key a hardware step
+ * comes every 8006 ticks of the 16.757 MHz clock: 2093 steps a second (the
+ * port's integer rate; the exact 2093.05 is 0.003 percent away). A pulse is 8
+ * steps to a cycle, so the root key sounds at 261.6 Hz, which is C4.
+ *
+ * PULSE: the record's first u16 is the duty, 0..6 = 1..7 high steps of 8, 7 =
+ * silent (GBATEK, "DS sound channels", and the same table in melonDS's SPU);
+ * the high steps are the last ones of the cycle, and the level is +-0x7FFF,
+ * a 16 bit sample at full scale that then runs the same volume path as a
+ * sampled voice.
+ *
+ * NOISE: the 15 bit shift register the hardware clocks once per step: start
+ * 0x7FFF, shift right, and when the bit that fell out was 1 xor 0x6000 in and
+ * output -0x7FFF, otherwise +0x7FFF. Its period is 32767 steps, so the whole
+ * cycle is one looping table.
+ *
+ * Both play as a looping table at the pulse's own rate with no interpolation
+ * (sd_mix_set_hold). WHAT THE PORT DID BEFORE: read the duty as an index into
+ * the linked SWAR and played that wave, so the red coin's jingle (SEQARC 2
+ * entries 47..55, program 128 of bank 1, a duty 3 pulse) and Balloon Mario's
+ * B (SEQARC 0 entry 190, program 107 of bank 0, also duty 3) sounded as a
+ * 2976 sample ADPCM click, and so does every other pulse instrument. */
+const sd_s16 *psg_table(const SdatNote &n, SdatWave *w)
+{
+    static sd_s16 pulse[8][8];
+    static sd_s16 noise[32767];
+    static int built;
+    if (!built) {
+        built = 1;
+        for (int d = 0; d < 8; d++)
+            for (int k = 0; k < 8; k++)
+                pulse[d][k] = (d < 7 && k >= 7 - d) ? 0x7fff : -0x7fff;
+        unsigned lfsr = 0x7fff;
+        for (int k = 0; k < 32767; k++) {
+            const unsigned out = lfsr & 1;
+            lfsr >>= 1;
+            if (out) lfsr ^= 0x6000;
+            noise[k] = out ? -0x7fff : 0x7fff;
+        }
+    }
+    w->loop = 1;
+    w->loopStart = 0;
+    w->sampleRate = 2093;
+    if (n.type == 3) {
+        w->totalSamples = 32767;
+        return noise;
+    }
+    w->totalSamples = 8;
+    return pulse[n.swav & 7];
+}
+
 void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
                 int ticks)
 {
@@ -415,15 +585,16 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
     }
 
     SdatWave w;
-    if (!sdat_swar_wave(swar, n.swav, &w)) {
+    const int psg = n.type == 2 || n.type == 3;
+    if (psg) {
+        w.pcm = psg_table(n, &w);
+    } else if (!sdat_swar_wave(swar, n.swav, &w)) {
         SD_VT("note p%d t%d key %d DROPPED: wave %d unresolvable\n", pi, ti,
               key, n.swav);
         return;
     }
 
-    int baseDb10 = sd_cnv_vol(vel) + sd_cnv_vol(tk.volume)
-                 + sd_cnv_vol(tk.expression) + sd_cnv_vol(pl.volume);
-    if (baseDb10 < -723) baseDb10 = -723;
+    int baseDb10 = note_level_db10(pl, tk, vel);
     int db10 = baseDb10 + pl.volDb10 + tk.volDb10;
     if (db10 < -723) db10 = -723;
 
@@ -527,11 +698,15 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
         if (held >= 0) {
             g_note[held].basePan   = basePan;
             g_note[held].baseDb10  = baseDb10;
+            g_note[held].velocity  = vel;
             g_note[held].baseRate  = baseRate;
             g_note[held].lastUnits = pitchUnits;
             g_note[held].ticks     = -1;   /* tie: no scheduled note-off */
             g_note[held].released  = 0;
             sd_mix_set(held, db10, pan, rate);
+            sd_mix_set_pitch_base(held, baseRate, pitchUnits);
+            note_env(tk, held);
+            note_sweep(pl, tk, held, key, ticks);
             SD_VT("note p%d t%d key %d TIED onto chan %d (no new voice)\n",
                   pi, ti, key, held);
             SD_PD("tie f=%d p=%d t=%d ch=%d key=%d\n", g_frame, pi, ti, held,
@@ -541,7 +716,10 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
     }
 
     const int prio = pl.cpr + tk.priority;
-    int ch = sd_mix_alloc(prio);
+    /* The channel set follows the note type: 0xFFFF sampled, 0x3F00 pulse,
+       0xC000 noise (0x037FD4A0..0x037FD4D0). */
+    int ch = sd_mix_alloc_mask(prio, n.type == 2 ? 0x3f00u
+                                     : n.type == 3 ? 0xc000u : 0xffffu);
     if (ch < 0) {
         SD_VT("note p%d t%d key %d DROPPED: no mixer channel free\n", pi, ti,
               key);
@@ -554,11 +732,16 @@ void start_note(Player &pl, int pi, int ti, Track &tk, int note, int vel,
               g_note[ch].player, g_note[ch].track);
 
     sd_mix_start(ch, &w, &n, db10, pan, rate, prio);
+    if (psg) sd_mix_set_hold(ch);
+    sd_mix_set_pitch_base(ch, baseRate, pitchUnits);
+    note_env(tk, ch);
+    note_sweep(pl, tk, ch, key, ticks);
     g_note[ch].active = 1;
     g_note[ch].player = pi;
     g_note[ch].track = ti;
     g_note[ch].basePan = basePan;
     g_note[ch].baseDb10 = baseDb10;
+    g_note[ch].velocity = vel;
     g_note[ch].baseRate = baseRate;
     g_note[ch].lastUnits = pitchUnits;
     // The numeric dump. Every input the DS's own pitch is made of, in the
@@ -657,6 +840,12 @@ int run_track(Player &pl, int pi, int ti)
             int vel = s[tk.pc++];
             sd_u32 dur = argVarlen();
             if (condition) start_note(pl, pi, ti, tk, op, vel, (int)dur);
+            /* 0x037FCCC0: every note that runs leaves its key as the next
+               portamento start, whether or not it found a voice. */
+            if (condition) {
+                int k = op + tk.transpose;
+                tk.portaKey = k < 0 ? 0 : (k > 127 ? 127 : k);
+            }
             // SND_seq.c lines 936 to 939. Duration 0 does not mean "wait no
             // time", it means "wait for the note itself", and that is what
             // holds a one-shot's track open until its sample has finished.
@@ -760,16 +949,15 @@ int run_track(Player &pl, int pi, int ti)
             sd_u32 off = rd24(s + tk.pc); tk.pc += 3;
             if (condition && n > 0 && n < SD_TRACKS && !pl.tr[n].active) {
                 Track &t2 = pl.tr[n];
-                int keepActive = 1;
-                memset(&t2, 0, sizeof t2);
-                t2.active = keepActive;
-                t2.pc = off;
-                t2.volume = 127; t2.expression = 127; t2.pan = 64;
-                // Opened tracks start at the player's base priority, the same
-                // as track 0; a 0xC6 in the opened track overrides it.
-                /* Same TrackInit default as track 0; 0xC6 overrides it. */
-                t2.bendRange = 2; t2.priority = 64; t2.noteWait = 1;
-                t2.prog = 0;
+                if (t2.allocd) {
+                    // Built at START by the 0xFE mask: just point it at its
+                    // code, keep everything the game already wrote to it.
+                    t2.allocd = 0;
+                    t2.active = 1;
+                    t2.pc = off;
+                } else {
+                    track_init_open(t2, off);
+                }
             }
             break;
         }
@@ -843,17 +1031,49 @@ int run_track(Player &pl, int pi, int ti)
             break; }
         case 0xd5: { int v = argU8(); if (condition) tk.expression = v; break; }
 
-        // Accepted and parsed, but not rendered: portamento, modulation and
-        // the per-track ADSR override. Argument lengths are correct so the
-        // stream stays in sync; the effect is simply not applied yet.
-        case 0xc9: case 0xca: case 0xcb: case 0xcc: case 0xcd:
-        case 0xce: case 0xcf: case 0xd0: case 0xd1: case 0xd2:
-        case 0xd3: case 0xd6:
+        /* PORTAMENTO, SM64DS's opcode table at 0x037FCE94. 0xC9 sets the key
+           the next note glides FROM (plus the track's transpose) and turns
+           portamento on; 0xCE turns it on or off; 0xCF sets its time. 0xC9
+           and 0xCE also release and free the track's voices -- both call
+           0x037FD948, the routine 0xC8 and 0xFF go through -- so they end
+           here the same way TIE does. */
+        case 0xc9: { int v = argU8();
+            if (condition) {
+                tk.portaKey = (sd_u8)(v + tk.transpose);
+                tk.portaOn = 1;
+                track_stop(pi, ti, "portamento key set");
+            }
+            break; }
+        case 0xce: { int v = argU8();
+            if (condition) {
+                tk.portaOn = v & 1;
+                track_stop(pi, ti, "portamento switched");
+            }
+            break; }
+        case 0xcf: { int v = argU8(); if (condition) tk.portaTime = v; break; }
+
+        /* MODULATION, the same table: 0xCA depth (+0x1a), 0xCB speed
+           (+0x19), 0xCC target (+0x18), 0xCD range (+0x1b), 0xE0 delay
+           (+0x1c). */
+        case 0xca: { int v = argU8(); if (condition) tk.modDepth = v & 0xff; break; }
+        case 0xcb: { int v = argU8(); if (condition) tk.modSpeed = v & 0xff; break; }
+        case 0xcc: { int v = argU8(); if (condition) tk.modTarget = v & 0xff; break; }
+        case 0xcd: { int v = argU8(); if (condition) tk.modRange = v & 0xff; break; }
+        case 0xe0:                              // modulation delay
+            { int v = argS16(); if (condition) tk.modDelay = v & 0xffff; }
+            break;
+
+        /* THE ENVELOPE OVERRIDE, the same table: 0xD0 attack (+0x0e), 0xD1
+           decay (+0x0f), 0xD2 sustain (+0x10), 0xD3 release (+0x11). */
+        case 0xd0: { int v = argU8(); if (condition) tk.envAttack = v & 0xff; break; }
+        case 0xd1: { int v = argU8(); if (condition) tk.envDecay = v & 0xff; break; }
+        case 0xd2: { int v = argU8(); if (condition) tk.envSustain = v & 0xff; break; }
+        case 0xd3: { int v = argU8(); if (condition) tk.envRelease = v & 0xff; break; }
+        case 0xd6:                              // print variable: debug only
             argU8();
             break;
-        case 0xe0:                              // modulation delay
-        case 0xe3:                              // sweep pitch
-            argS16();
+        case 0xe3:                              // sweep pitch, track +0x16
+            { int v = argS16(); if (condition) tk.sweepPitch = (sd_s16)v; }
             break;
         case 0xe1:                              // tempo
             { int v = argS16(); if (condition && v > 0) pl.tempo = v; }
@@ -1034,10 +1254,36 @@ int sd_seq_start(int p, const sd_u8 *seqBase, sd_u32 startOff,
     /* TrackInit at 0x037FDA74: mov r1,#0x40 / strb r1,[r4,#0x12]. The
        player's cpr is NOT folded in here; see the sum at the note-on. */
     t0.bendRange = 2; t0.priority = 64; t0.noteWait = 1;
+    t0.portaKey = 60;           /* TrackInit, 0x037FDB28 */
+    t0.modSpeed = 16; t0.modRange = 1;          /* 0x037FBFBC */
+    t0.envAttack = t0.envDecay = 0xff;          /* 0x037FDB0C */
+    t0.envSustain = t0.envRelease = 0xff;
 
     // A multi-track sequence opens with 0xFE <u16 mask>; track 0's own code
-    // follows the 0x93 open-track commands, so nothing special is needed
-    // here -- run_track walks them.
+    // follows the 0x93 open-track commands, run_track walks them.
+    //
+    // THE ARM7 BUILDS THE MASK'S TRACKS RIGHT HERE. The START command
+    // (0x037FE2C0) peeks the sequence's first byte and, when it is 0xFE, runs
+    // TrackInit on one track per mask bit 1..15 (loop at 0x037FE37C..0x037FE3A0)
+    // and files them in the player's track table, all before the next command
+    // of the batch. TRACK_PARAM and MUTE_TRACKS skip a track that is not in
+    // that table (GetPlayerTrack, 0x037FD9CC), so what the game sends in the
+    // same batch as the START reaches the tracks only because they already
+    // exist. Jolly Roger Bay / Dire Dire Docks send exactly that, a volume 0 and
+    // a mute for both layers, to start without the upbeat tracks.
+    {
+        const sd_u8 *q = seqBase + startOff;
+        if (q[0] == 0xfe) {
+            unsigned mask = (unsigned)q[1] | ((unsigned)q[2] << 8);
+            for (int t = 1; t < SD_TRACKS; t++) {
+                if (!(mask & (1u << t))) continue;
+                Track &tk = pl.tr[t];
+                track_init_open(tk, 0);
+                tk.active = 0;
+                tk.allocd = 1;
+            }
+        }
+    }
     return 1;
 }
 
@@ -1049,10 +1295,60 @@ void sd_seq_stop(int p)
     memset(&g_pl[p], 0, sizeof g_pl[p]);
 }
 
+/* COMMAND 0x02, PAUSE_SEQ: the ARM7's handler at 0x037FE09C (arm7.bin case 2
+ * of the command switch at 0x037FEBF0), in full:
+ *
+ *     player->pause = flag;                        strb r1, [r6, #1]
+ *     if (flag)
+ *         for (t = 0; t < 16; t++)
+ *             if ((track = GetPlayerTrack(player, t)) != NULL)
+ *                 ReleaseTrackChannels(track, player, 127);   0x037FD948
+ *
+ * ReleaseTrackChannels gives every channel the track holds release rate 127
+ * (the fastest fade), drops it to priority 1, releases it and takes it off the
+ * track: track_stop's release + detach, with the rate set first. Nothing is
+ * stopped and nothing is rewound, so the tracks keep their place in the
+ * stream. SND_SeqMain (0x037FE288) then tests the byte before it steps a
+ * player:
+ *
+ *     if (doPeriodic && !player->pause) PlayerSeqMain(player);
+ *     PlayerUpdateChannel(player);
+ *
+ * so a paused sequence stands still, and flag 0 carries on from the same tick.
+ * The game sends it from Sound::PauseMusic / Sound::UnpauseMusic through
+ * func_0204f958 -> func_0204f558 -> func_0205ad6c, on the pause menu's way in
+ * and out of a course. The player stays active the whole time (its status bit
+ * does not clear), which is what the ARM9 expects to read back. */
+void sd_seq_pause(int p, int flag)
+{
+    if (p < 0 || p >= SD_PLAYERS) return;
+    Player &pl = g_pl[p];
+    pl.paused = flag;
+    if (!flag || !pl.active) return;
+    SD_VT("play %2d pause\n", p);
+    for (int t = 0; t < SD_TRACKS; t++)
+        for (int i = 0; i < SD_CHANNELS; i++)
+            if (g_note[i].active && g_note[i].player == p &&
+                g_note[i].track == t) {
+                sd_mix_set_env(i, -1, -1, -1, 127);
+                note_release(i, "sequence paused");
+                note_detach(i);
+            }
+}
+
 void sd_seq_set_volume(int p, int v)
 {
     if (p < 0 || p >= SD_PLAYERS || !g_pl[p].active) return;
     g_pl[p].volume = v < 0 ? 0 : (v > 127 ? 127 : v);
+}
+
+/* PLAYER_PARAM 4, the byte at player +4: the channel priority every note of
+ * this player adds its track's to (0x037FD4E4). sd_seq_start seeds it from
+ * the SDAT record, and the game then sends the same record byte here. */
+void sd_seq_set_priority(int p, int prio)
+{
+    if (p < 0 || p >= SD_PLAYERS || !g_pl[p].active) return;
+    g_pl[p].cpr = prio & 0xff;
 }
 
 /* ONE PLACE THAT KNOWS HOW A SOUNDING VOICE'S PITCH IS MADE UP, the twin of
@@ -1081,13 +1377,12 @@ static void retune_note_pitch(int i)
               g_note[i].baseRate * pitch_units_scale(units));
         g_note[i].lastUnits = units;
     }
-    double rate = g_note[i].baseRate * pitch_units_scale(units);
-    /* The same refusal start_note applies, on the same side. A voice already
-       sounding is left at the rate it has rather than stopped: the ROM's own
-       driver clamps the timer reload (SND_CalcTimer returns 0xFFFF at the
-       ends), and dropping a live note here would turn an out-of-range trim
-       into a silence the DS does not have. */
-    if (rate > 0.0 && rate <= 64.0) sd_mix_set_rate(i, rate);
+    /* The channel turns it into a rate, together with its own sweep (see
+       sd_mix_set_user_pitch). The same refusal start_note applies happens
+       there: a voice already sounding is left at the rate it has rather than
+       stopped, as the ROM's own driver clamps the timer reload (SND_CalcTimer
+       returns 0xFFFF at the ends) rather than silencing a live note. */
+    sd_mix_set_user_pitch(i, units);
 }
 
 /* PlayerUpdateChannel: SND_SeqMain runs PlayerSeqMain (all this frame's ticks)
@@ -1097,11 +1392,32 @@ static void retune_note_pitch(int i)
  * The port has no per-track channel list -- ownership is recorded against the
  * channel instead (see NoteSlot) -- so the same relation is walked the other
  * way round: sixteen tests per player per frame. */
+static void retune_note_vol(int i);
+
 static void player_update_channels(int p)
 {
     for (int i = 0; i < SD_CHANNELS; i++) {
         if (!g_note[i].active || g_note[i].player != p) continue;
         retune_note_pitch(i);
+        /* The track's modulation fields onto the channel (0x037FD710..
+           0x037FD724), on the same channels the pitch reaches. */
+        if (!g_note[i].released) {
+            const Track &tk = g_pl[p].tr[g_note[i].track];
+            sd_mix_set_lfo(i, tk.modTarget, tk.modSpeed, tk.modDepth,
+                           tk.modRange, tk.modDelay);
+            /* AND THE TRACK'S VOLUME, the same update's first line
+               (0x037FD684..0x037FD6C0): SQ[player volume] + SQ[track volume]
+               + SQ[track expression] + both faders into ch+0x0C, every
+               frame. The port folded the three 0..127 levels into the note
+               once, at its note-on, so a 0xC1 / 0xD5 / 0xC2 ramp written
+               while a note held -- a fade-in, a fade-out, a swell -- never
+               reached the note; it only moved the NEXT note's level. */
+            const int b = note_level_db10(g_pl[p], tk, g_note[i].velocity);
+            if (b != g_note[i].baseDb10) {
+                g_note[i].baseDb10 = b;
+                retune_note_vol(i);
+            }
+        }
     }
 }
 
@@ -1209,6 +1525,22 @@ void sd_seq_set_track_pitch(int p, unsigned trackMask, int pitch)
     }
 }
 
+/* TRACK_PARAM 0x19 and 0x1a: the track's modulation SPEED and DEPTH (track
+ * +0x19 / +0x1a in SM64DS's ARM7, byte-wide: func_0205ac5c and func_0205ac84
+ * send them with size 1). Their caller is func_ov007_020bda8c, which ramps the
+ * depth 0..0x7f and the speed 5..0x28 on tracks 0xf of one voice every frame.
+ * Storing is the whole command; the next track update copies them onto the
+ * sounding channels. */
+void sd_seq_set_track_mod(int p, unsigned trackMask, int param, int value)
+{
+    if (p < 0 || p >= SD_PLAYERS || !g_pl[p].active) return;
+    for (int t = 0; t < SD_TRACKS; t++) {
+        if (!(trackMask & (1u << t))) continue;
+        if (param == 0x19) g_pl[p].tr[t].modSpeed = value & 0xff;
+        else if (param == 0x1a) g_pl[p].tr[t].modDepth = value & 0xff;
+    }
+}
+
 void sd_seq_set_pan(int p, int v)
 {
     if (p < 0 || p >= SD_PLAYERS || !g_pl[p].active) return;
@@ -1237,8 +1569,9 @@ void sd_seq_frame(void)
         Player &pl = g_pl[p];
         if (!pl.active) continue;
 
-        pl.tempoCount += pl.tempo;
-        while (pl.tempoCount >= 240) {
+        // A paused player is not stepped (sd_seq_pause), only updated.
+        if (!pl.paused) pl.tempoCount += pl.tempo;
+        while (!pl.paused && pl.tempoCount >= 240) {
             pl.tempoCount -= 240;
 
             // Note durations are in sequencer TICKS, so they expire here --

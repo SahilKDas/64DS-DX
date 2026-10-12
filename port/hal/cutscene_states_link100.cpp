@@ -98,7 +98,7 @@
  * load window -- and are not these tables.) port_ov002_patch, the generated
  * pointer rebase, writes 0 of the sixty-nine.
  *
- * ---- ONE FACE PER CELL, AND ONE OF THEM ABORTS ----------------------------
+ * ---- ONE FACE PER CELL --------------------------------------------------
  *
  * The faces are per CELL and not per body, which is lane PMFB5's rule: cells
  * 5..8 and 9..12 and 13..16 and 17..20 of data_ov002_02110f9c carry the same
@@ -112,11 +112,20 @@
  * (bare, next-symbol-delta sized -- both are 4-entry unsigned short tables,
  * 8 bytes each) and seated the two cells as ordinary ST_FACE1 rows below.
  *
- * data_ov002_02110eec[8] names func_ov002_020f3de4, for which there is still
- * NO src file anywhere in the tree -- it is not guess-marked, it is simply
- * not decompiled. That one cell alone gets an ABORTING face that names
- * itself. A cell with no matched TU is never given a neighbour's body or an
- * invented one.
+ * data_ov002_02110eec[8] names func_ov002_020f3de4, which still has NO src
+ * file: it does not byte-match yet (the banked near-miss sits at 44
+ * divergences on an ordering floor). It used to get an ABORTING face that
+ * named itself, and the ending reached it: with any unlocked character (one
+ * is enough; SM64DS_EVENT_SEED=2:1, 2:3, 2:7 and 2:f all enter it) the cast
+ * screen's last icon state is entered right after Peach's cake line, so a
+ * player who had finished the game got the abort there (0.5.2 report
+ * 3a4fb011; only a save with no character unlocked skips it). The cell now
+ * runs port/unmatched/func_ov002_020f3de4.c, the ROM body transcribed from
+ * that near-miss, whose mwccarm object is the ROM's instruction sequence up
+ * to register choice and one swapped independent pair (the file's header
+ * says which). It is the cartridge's own body, not a neighbour's or an
+ * invented one, and it retires when the function matches for real. ST_FACEX
+ * stays for any cell that has no body at all.
  *
  * PORT_HOST_ABI: the ROM's own {code, adjust} records hold DS code addresses,
  * so the port seats them with the host addresses of the faces above; the
@@ -169,6 +178,7 @@ void func_ov002_020f3ae8(void *, int);         /* src/func_ov002_020f3ae8.c */
 void func_ov002_020f3ba0(void *, int);         /* src/func_ov002_020f3ba0.c */
 void func_ov002_020f3d38(void *, int);         /* src/func_ov002_020f3d38.c */
 void func_ov002_020f3d98(void *, int);         /* src/func_ov002_020f3d98.cpp */
+void func_ov002_020f3de4(void *, int);         /* port/unmatched/func_ov002_020f3de4.c */
 void func_ov002_020f40fc(void *, int);         /* src/func_ov002_020f40fc.c */
 void func_ov002_020f43cc(void *, int);         /* src/func_ov002_020f43cc.c */
 void func_ov002_020f4710(void *, int);         /* src/func_ov002_020f4710.c */
@@ -424,7 +434,7 @@ ST_FACE1 (0210b738, 02110eec,  4, func_ov002_020f4a2c)
 ST_FACE1 (0210b730, 02110eec,  5, func_ov002_020f4710)
 ST_FACE1 (0210b8b0, 02110eec,  6, func_ov002_020f43cc)
 ST_FACE1 (0210b728, 02110eec,  7, func_ov002_020f40fc)
-ST_FACEX (0210b890, 02110eec,  8, 020f3de4)
+ST_FACE1 (0210b890, 02110eec,  8, func_ov002_020f3de4)
 
 /* ---- data_ov002_02110f34: 13 cells, read by func_ov002_020f5dd8, arity 0 */
 ST_FACE0 (0210b7f8, 02110f34,  0, func_ov002_020f5d34)

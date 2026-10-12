@@ -38,6 +38,12 @@ build/assets/nitrofs.tsv
 build/assets/nitrofs_fnt.bin
 build/assets/nitrofs_fat.bin
 
+# The cartridge's ARM9 overlay table. The game starts without it (it serves
+# 0xFF over that span and leaves the header mirror's overlay words at 0, so
+# the ROM's own overlay readers would answer "no such overlay"), but the exe
+# names it, so a player's extraction writes it like the dev catalog does.
+build/assets/nitrofs_ovt9.bin
+
 # ROM-CLEAN: the code-side data tables the exe no longer embeds, and the
 # manifest it verifies them against at boot.
 build/assets/romdata.bin

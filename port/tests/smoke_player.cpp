@@ -84,6 +84,7 @@ void __sinit_ov002_02107298(void);
 void __sinit_ov002_02107304(void);
 void __sinit_ov002_02107370(void);
 void port_cutscene_states_seat(void);  /* link100 PMFB6: the ten state tables */
+void port_player_states_seat(void);   /* hal/pmf3_player_states.cpp */
 void port_kuppa_cmd_seat(void);        /* link100 SMALLS: the fourteen kuppa command records */
 void __sinit_ov002_02107f88(void);
 void __sinit_ov002_0210804c(void);
@@ -169,11 +170,18 @@ static void render_walk_frame(void *player, const char *dir, int frame)
     ntr::ppu_write_bmp(path, fb);
 }
 
+/* hal/os_arena.cpp: OS_InitArena's OS_ARENA_MAIN row (run linkfull, SMALLS1) */
+extern "C" void port_os_arena_seed(void);
+
 int main(void)
 {
     PORT_INSTALL_FAULT_PROBE();
     setvbuf(stdout, NULL, _IONBF, 0);
     if (!ntr::io_init()) { fprintf(stderr, "io_init failed\n"); return 2; }
+    /* the ROM's order: the arena table after the shared block is held, before
+       SetupRootHeap's first read of it (walk_window does this in
+       port_boot_rom_pre_main; this harness has no pre-main span) */
+    port_os_arena_seed();
     CHECK(Heap::SetupRootHeap() != NULL);
     ident_fx(data_0209b3ec);
     hal_fill_model_vtable();
@@ -201,6 +209,10 @@ int main(void)
     __sinit_ov002_02101900();
     __sinit_ov002_02101968();
     __sinit_ov002_021019d0();
+    /* run linkfull lane PMF3: the Player::State cells hold the sinit's DS code
+       addresses; the matched Behavior / ChangeState call them as member
+       pointers, so the faces go in before the Player is built */
+    port_player_states_seat();
     __sinit_ov002_02106e40();
     __sinit_ov002_02107118();
     __sinit_ov002_021071f4();

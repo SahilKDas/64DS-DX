@@ -1,0 +1,32 @@
+# slice_w32_fileb.txt -- run linkfull wave 32, lane FILEB: THE FILE LOADER, PART B.
+#
+# The game's own SharedFilePtr::Load in place of hal/fs.cpp's host Load (which
+# resolved the id through the asset catalog, read the file from disk or from
+# fs.cpp's own copy of the NARC, decoded it and kept the decoded bytes in a
+# host cache). One TU:
+#
+#   src/_ZN13SharedFilePtr4LoadEv.cpp  publishes the id to data_0209d3bc, then
+#       an archive member (func_020186c0 finds it in the NARC the ROM's
+#       LoadArchive mounted, mounting it for the read when it is not resident):
+#       LZ77-decoded onto a fresh block, or copied onto a 0x20-aligned one; a
+#       loose file: opened through func_020185c0, read whole through
+#       func_02018d48 (FS off the card, hal/fs_names.cpp's image and its cache)
+#       and, when it carries the LZ77 magic, decoded onto a block of its own.
+#
+# Everything it calls is already compiled for these targets: func_020186c0 and
+# func_0204ede8 (port/slice_w31_s4file.txt), func_020185c0 / func_02018770
+# (port/slice_w31_s4arc.txt), func_02018568, func_02018ac4, FS_CloseFile,
+# func_02018d48, and the host CpuCopy8 / DecompressLZ16 / Memory / CP15 / Crash
+# stand-ins. Its flat name is a reverse face in port/faces_sync.txt, because the
+# matched body is a real member and SharedFilePtr::LoadFile calls it receiver
+# first.
+#
+# Mods: a mod's bytes are on the card, not in a seam above it. hal/fs_mods.cpp
+# and hal/stage_geom.cpp claim the ids their active filters change, and
+# hal/fs.cpp serves each one out of the card's patched range, an archive member
+# inside a rebuilt copy of its NARC (port_fs_card_patches).
+#
+# MATCHING at 2004/b56 with --strict-relocs (tools/match.py by ROM address) and
+# VERIFIED by tools/prepush_linkcheck.py; it has no #ifdef _MSC_VER arm and
+# needed none.
+src/_ZN13SharedFilePtr4LoadEv.cpp

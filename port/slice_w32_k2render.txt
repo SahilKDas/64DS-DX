@@ -1,0 +1,10 @@
+# K2RENDER (run linkfull, wave 32): THE ROM'S PHASE 5.
+#
+# src/func_020197b8.c's phase 5 is `data_0209d50c = 5; func_02019404();`: the
+# frame's graphics-block word 1 (a null test and one dispatch). hal/rom_frame.cpp's
+# port_frame_phase5 calls it from both host loops (tests/walk_window.cpp's
+# level loop, where the Stage block's word 1 is Stage::GraphCallback1, the
+# particle submission; hal/scene_boot.cpp's port_scene_tick), after the frame's
+# render walk and before phase 6. rom_frame.cpp is compiled by all three
+# hosting targets, so all three take the slice.
+src/func_02019404.c

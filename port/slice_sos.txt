@@ -164,16 +164,34 @@ src/actors/dScMgBomroom_c.cpp
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_021416c0, arity 1, member-pointer typed
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141680, arity 1, member-pointer typed
 # HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141708, arity 1, member-pointer typed through an Entry wrapper; ALSO state slot 6 of 02141730
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_02141730, arity 1, member-pointer typed
-# HOST-COPIED (SCENES2, run link100 wave 10 round 2): src/actors/dScMgBomroom_c.cpp is
-# REPLACED by port/unmatched/MgBomroom_Slot8408.c on the row below. Its line 202
-# calls the two-parameter func_ov006_020d66c4 through a one-parameter cast, which
-# is an ARM argument riding through r1 that the host never pushes; the callee then
-# indexes the scene object by stack garbage and scene 370 dies at
-# func_ov006_020d66c4+0xc. The host copy is the src TU with that one call spelled
-# with both arguments and nothing else changed; its header carries the
-# disassembly at 0x020d86e8 and the sed line that reproduces it. Taking BOTH rows
-# would be a duplicate symbol, so the src row is deliberately absent.
-port/unmatched/MgBomroom_Slot8408.c
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_021416a0, arity 0, OPEN-CODED IN INTS; neither the link nor a member-pointer source sweep can see it. ALSO state slot 3 of 021416e0
-# HOST-COPIED (SOS): src/actors/dScMgBomroom_c.cpp -- table data_ov006_021416e0, arity 0, member-pointer typed; VTABLE SLOT 6, Behavior
+src/func_ov006_020d7c4c.cpp
+src/func_ov006_020d7e7c.c
+src/func_ov006_020d7edc.c
+src/func_ov006_020d7f5c.c
+src/func_ov006_020d816c.c
+src/func_ov006_020d8324.c
+# HOST-COPIED (SOS): src/func_ov006_020d836c.cpp -- table data_ov006_02141730, arity 1, member-pointer typed
+# func_ov006_020d8408 is back (run linkfull, lane RS4PORT). SCENES2 (run link100
+# wave 10 round 2) host-copied it into port/unmatched/MgBomroom_Slot8408.c
+# because its call to the two-parameter func_ov006_020d66c4 went through a
+# one-parameter cast, the second argument riding ARM r1 (scene 370 died at
+# func_ov006_020d66c4+0xc). main #3107 passes both; this is main's blob,
+# byte-identical under mwccarm 2004/b56, and the host copy is retired.
+src/func_ov006_020d8408.c
+src/func_ov006_020d8904.c
+src/func_ov006_020d893c.c
+src/func_ov006_020d89c4.c
+src/func_ov006_020d8af8.c
+src/func_ov006_020d8c88.c
+src/func_ov006_020d8cc4.cpp
+src/func_ov006_020d8d84.c
+src/func_ov006_020d8f34.c
+# HOST-COPIED (SOS): src/func_ov006_020d8f98.cpp -- table data_ov006_021416a0, arity 0, OPEN-CODED IN INTS; neither the link nor a member-pointer source sweep can see it. ALSO state slot 3 of 021416e0
+src/func_ov006_020d8ff4.c
+src/func_ov006_020d9020.c
+src/func_ov006_020d904c.c
+src/func_ov006_020d907c.c
+src/_ZN14dScMgBomroom_c13OnYoshiTryEatEi.cpp
+src/_ZN14dScMgBomroom_c6RenderEv.cpp
+# HOST-COPIED (SOS): src/_ZN14dScMgBomroom_c8BehaviorEv.cpp -- table data_ov006_021416e0, arity 0, member-pointer typed; VTABLE SLOT 6, Behavior
+src/_ZN14dScMgBomroom_c13InitResourcesEv.cpp

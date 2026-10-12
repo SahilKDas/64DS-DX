@@ -91,25 +91,31 @@
 // 904 bytes: Model +0xd4, MovingCylinderClsn +0x124, WithMeshClsn +0x158,
 // ShadowModel +0x314.
 //
-// ---- THE SLOT-5 QUESTION, ANSWERED BEFORE IT COST ANYTHING -----------------
+// ---- THE SLOT-5 QUESTION ---------------------------------------------------
 //
-// Both Renders reach the object's Model through a LOCAL shadow class, and the
-// two shadow classes are shaped DIFFERENTLY, which is exactly the shape of the
-// MSVC destructor-slot shift:
+// Both Renders call Model::Render on the object's Model, ROM slot 5 (+0x14).
+// hal/cxxname_bridge.cpp's hal_fill_model_vtable fills _ZTV5Model in ROM
+// numbering ([2] DoSetFile, [3] UpdateVerts, [4] Virtual10, [5] Render; slots
+// 0 and 1 are the D1/D0 pair include/ModelBase.h spells as two plain virtuals
+// on the host), and there is no dual fill any more: [4] is Virtual10.
 //
 //   src/_ZN6Number6RenderEv.cpp  struct Obj { v0..v4; m(int); }
-//       no destructor -> MSVC counts m at 5, mwcc counts it at 5. Same slot.
-//   src/game/actors/daFeather_c/daFeather_c.cpp      struct Sub { ~Sub(); a; b; c; f4; }
-//       a VIRTUAL DESTRUCTOR -> MSVC folds D1/D0 into one and counts f4 at 4,
-//       while mwcc counts it at 5. One slot low against the ROM.
+//       a local shadow with no destructor, so MSVC and mwcc both count m at
+//       5. Model::Render on both.
+//   src/game/actors/WingFeather/_ZN11WingFeather6RenderEv.cpp
+//       mModel.Render(0) on the real Model member. It used to go through a
+//       local shadow `struct Sub { virtual ~Sub(); a; b; c; f4; }`, and a
+//       virtual destructor is the shape that breaks: mwcc gives it two
+//       entries and counts f4 at 5, MSVC gives it one and counted f4 at 4.
+//       That was harmless while [4] was dual-filled with Render; once the
+//       dual fill went, the feather's first on-screen draw ran Virtual10(0),
+//       faulted, and the quarantine froze it, so a ? block's feather never
+//       showed (lane FEATHER1). mwcc emits the same virtual call through +0x14
+//       for the member call, so the ROM bytes did not move.
 //
-// Neither is a hazard here, and the reason is a convention that already
-// exists: hal/cxxname_bridge.cpp's hal_fill_model_vtable fills _ZTV5Model in
-// MSVC numbering ([1] DoSetFile, [2] UpdateVerts, [3] Virtual10, [4] Render)
-// and DUAL-FILLS [5] with Render as well, so shadow TUs that count in ROM
-// numbering are served by the same array. Slot 4 and slot 5 both land on
-// Model::Render. Written down because it is the first thing to re-check if
-// either of these two ever renders wrong.
+// A local shadow class with a virtual destructor, dispatching past it into a
+// table the port fills in ROM numbering, is the thing to look for first if a
+// Render here ever draws wrong.
 #include "port_d16.h"
 
 #include <cstdio>

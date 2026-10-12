@@ -15,7 +15,10 @@
  *   +0x4  void *filePtr */
 #include "SharedFilePtr.h"
 
-extern "C" extern unsigned int data_0209d3bc;
+extern "C" {
+extern unsigned int data_0209d3bc;
+int _ZN13SharedFilePtr4LoadEv(SharedFilePtr *self);
+}
 
 void *SharedFilePtr::LoadFile()
 {
@@ -24,7 +27,7 @@ void *SharedFilePtr::LoadFile()
     data_0209d3bc = *(unsigned short *)self;
 
     if (*(unsigned char *)(self + 2) == 0) {
-        if (!Load())
+        if (!_ZN13SharedFilePtr4LoadEv(this))
             return 0;
     }
 

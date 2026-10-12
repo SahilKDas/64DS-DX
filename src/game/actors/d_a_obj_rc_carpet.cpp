@@ -20,6 +20,8 @@
  * Leftover: func_020393d4 is an 8-byte store into dBgW+0x18
  *   (beforeClsnCallback). This TU calls it; naming belongs with
  *   dBgW in arm9.
+ * Leftover: func_ov002_020efaf0 is the path-lift setup helper
+ *   (ROM label; symbols.txt has not renamed it to a method).
  * Leftover: func_ov036_021122c0 / 0211224c keep ROM labels.
  * Leftover: 021122c0 / 0211224c translation stores stay
  *   `(char *)self + 0x490/0x494/0x498` (mModelAnim.mat4x3.t) and
@@ -73,11 +75,12 @@ FlyingCarpetResources data_ov036_02113f58 = {
     &data_ov036_02112b28
 };
 
-extern void *_ZN10dBgActor_cC2Ev(dBgActor_c *actor);
-extern void *_ZN5ModelC1Ev(Model *model);
+extern void *_ZN7fBase_cnwEj(u32 size);
+extern void _ZN10dBgActor_cC2Ev(dBgActor_c *actor);
+extern void _ZN5ModelC1Ev(Model *model);
 extern void _ZN5ModelD1Ev(Model *model);
-extern void *_ZN7PathPtrC1Ev(PathPtr *path);
-extern void *_ZN9ModelAnimC1Ev(ModelAnim *model);
+extern void _ZN7PathPtrC1Ev(PathPtr *path);
+extern void _ZN9ModelAnimC1Ev(ModelAnim *model);
 extern void __cxa_vec_ctor(
     Model *models, int count, int size, void *ctor, void *dtor);
 extern int _ZTV15daObjRcCarpet_c[];
@@ -90,6 +93,7 @@ extern int _ZN10dBgW_KcMbg7SetFileEP8KCL_FileRK9Matrix4x35Fix12IiEsR10CLPS_Block
     dBgW_KcMbg *collider, KCL_File *file, const Matrix4x3 *matrix,
     Fix12i scale, s16 angle, CLPS_Block *clps);
 extern void func_020393d4(dBgW *collider, void *callback);
+extern void func_ov002_020efaf0(dPathLiftActor_c *lift);
 extern void _ZN10dBgActor_c13IsClsnInRangeE5Fix12IiES1_(
     dBgActor_c *actor, Fix12i low, Fix12i high);
 extern void Matrix4x3_FromRotationXYZExt(
@@ -150,7 +154,7 @@ int daObjRcCarpet_c::InitResources()
     func_020393d4(&mMeshCollider, (void *)&dBgW::UpdatePosAndAngs);
     mPathSpeed = 0xa000;
     mHorzSpeed = mPathSpeed;
-    BaseInitResources();
+    func_ov002_020efaf0(this);
     mPathDirection = 1;
     unk_42c = 1;
     return 1;
@@ -217,6 +221,3 @@ extern "C" void func_ov036_0211224c(daObjRcCarpet_c *self)
     *(s32 *)((char *)self + 0x318) = self->mPosZ;
     self->mMeshCollider.Transform(self->mClsnMat, self->mAngleY);
 }
-/* ROM ordinals 0/1 are emitted by the inline virtual destructor:*/
-// @symbol _ZN15daObjRcCarpet_cD1Ev
-// @symbol _ZN15daObjRcCarpet_cD0Ev

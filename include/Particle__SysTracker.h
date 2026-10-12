@@ -3,11 +3,11 @@
  *
  * This is the C++ spelling of the object that include/Particle.h still models
  * as a flat C `struct Particle` (kept for the thirteen C99 files that reach it
- * through that name and cannot see a namespace at all). It is the only C++
- * definition: Stage (at +0x50) and dScMgSingle3DBase_c (at +0x471c) embed this
- * class directly. The two declarations agree field for field; only this one is
- * the class the ROM's mangled names actually describe, so the members whose
- * symbols are _ZN8Particle10SysTracker* are defined against it.
+ * through that name and cannot see a namespace at all) and that include/Stage.h
+ * carries a fourth-wall copy of, embedded at Stage+0x50. The three declarations
+ * agree field for field and name for name; only this one is the class the ROM's
+ * mangled names actually describe, so the members whose symbols are
+ * _ZN8Particle10SysTracker* are defined against it.
  *
  * Per-field evidence: notes/system-provenance.md and include/Particle.h's own
  * header comment, which carries the full derivation of the callback bank. In
@@ -132,10 +132,64 @@ struct SysTracker {
    these stand in for it: 0x81c is the whole object include/Particle.h models and
    0x748 is Contents' span from FindData's +0x708 bucket array to the callback
    bank at object offset 0x750. */
+#ifdef SM64DS_PLATFORM_PC
+/* HOST layout, pinned member by member.
+ *
+ * The bank below is the part of this object the cartridge's own code reaches
+ * by RAW OFFSET off data_0209ee74, not through a field name: src/func_02022864.c
+ * and its neighbours write + 0x7b0, + 0x7ba and + 0x7bc and pass + 0x7b4 as
+ * the callback, and Particle::System::NewUnkCallback818 takes the one at
+ * + 0x818. So a host offset that drifts by four does not read a wrong value,
+ * it hands the particle engine a different sub-object.
+ *
+ * The ROM guard below is spelled Particle_SysTracker_size_must_be_0x81c while
+ * MSVC reports this class as Particle::SysTracker, so a name-matched size
+ * census never asked about it and the object was 0x82c here for weeks. These
+ * are static_asserts instead: the compiler answers, nothing has to go looking.
+ * The four scaleCallback_c members at 0x7b4..0x7e4 were the whole difference;
+ * see the pack(2) block in include/dPa_c.h. */
+ROM_OFFSET_ASSERT(SysTracker, mResourceFile, 0x000);
+ROM_OFFSET_ASSERT(SysTracker, mManager, 0x004);
+ROM_OFFSET_ASSERT(SysTracker, mContents, 0x008);
+ROM_OFFSET_ASSERT(SysTracker, mRunningSlidingDustSystemID, 0x750);
+ROM_OFFSET_ASSERT(SysTracker, mRunningSlidingDustCallback, 0x754);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_75c, 0x75c);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_760, 0x760);
+ROM_OFFSET_ASSERT(SysTracker, mBigSplashSystemID, 0x768);
+ROM_OFFSET_ASSERT(SysTracker, mBigSplashCallback, 0x76c);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_774, 0x774);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_778, 0x778);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_780, 0x780);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_784, 0x784);
+ROM_OFFSET_ASSERT(SysTracker, mRippleSystemID, 0x78c);
+ROM_OFFSET_ASSERT(SysTracker, mRippleCallback, 0x790);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_798, 0x798);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_79c, 0x79c);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_7a4, 0x7a4);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7a8, 0x7a8);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_7b0, 0x7b0);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7b4, 0x7b4);
+ROM_OFFSET_ASSERT(SysTracker, mSystemID_7c0, 0x7c0);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7c4, 0x7c4);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7d4, 0x7d4);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7e4, 0x7e4);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7f0, 0x7f0);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7f4, 0x7f4);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_7f8, 0x7f8);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_800, 0x800);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_808, 0x808);
+ROM_OFFSET_ASSERT(SysTracker, mWeatherCallback, 0x810);
+ROM_OFFSET_ASSERT(SysTracker, mCallback_818, 0x818);
+static_assert(sizeof(SysTracker) == 0x81c,
+              "Particle::SysTracker is not the ROM's 0x81c on the host");
+static_assert(sizeof(SysTracker::Contents) == 0x748,
+              "Particle::SysTracker::Contents is not the ROM's 0x748 on the host");
+#endif
+
 #ifndef SM64DS_PLATFORM_PC
 /* ROM layout under mwccarm; host ABI divergence is tracked separately. */
 typedef char Particle_SysTracker_size_must_be_0x81c[
-    sizeof(Particle::SysTracker) == 0x81c ? 1 : -1];
+    sizeof(SysTracker) == 0x81c ? 1 : -1];
 typedef char Particle_SysTracker_Contents_size_must_be_0x748[
     sizeof(SysTracker::Contents) == 0x748 ? 1 : -1];
 #endif

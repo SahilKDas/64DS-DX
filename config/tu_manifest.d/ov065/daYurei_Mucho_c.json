@@ -35,84 +35,84 @@
       "ordinal": 1
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_02115f84Ev",
+      "symbol": "func_ov065_02115f84",
       "address": "0x02115f84",
       "size": "0x0000006c",
       "legacy_source": "src/func_ov065_02115f84.c",
       "ordinal": 2
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_02115ff0Ev",
+      "symbol": "func_ov065_02115ff0",
       "address": "0x02115ff0",
       "size": "0x000002d0",
       "legacy_source": "src/func_ov065_02115ff0.c",
       "ordinal": 3
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_021162c0Ev",
+      "symbol": "func_ov065_021162c0",
       "address": "0x021162c0",
       "size": "0x00000068",
       "legacy_source": "src/func_ov065_021162c0.c",
       "ordinal": 4
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_02116328Ev",
+      "symbol": "func_ov065_02116328",
       "address": "0x02116328",
       "size": "0x0000003c",
       "legacy_source": "src/func_ov065_02116328.c",
       "ordinal": 5
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_02116364Ev",
+      "symbol": "func_ov065_02116364",
       "address": "0x02116364",
       "size": "0x00000224",
       "legacy_source": "src/func_ov065_02116364.cpp",
       "ordinal": 6
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_02116588Ev",
+      "symbol": "func_ov065_02116588",
       "address": "0x02116588",
       "size": "0x00000050",
       "legacy_source": "src/func_ov065_02116588.cpp",
       "ordinal": 7
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_021165d8Ev",
+      "symbol": "func_ov065_021165d8",
       "address": "0x021165d8",
       "size": "0x00000154",
       "legacy_source": "src/func_ov065_021165d8.cpp",
       "ordinal": 8
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_0211672cEv",
+      "symbol": "func_ov065_0211672c",
       "address": "0x0211672c",
       "size": "0x00000018",
       "legacy_source": "src/func_ov065_0211672c.c",
       "ordinal": 9
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_02116744Ev",
+      "symbol": "func_ov065_02116744",
       "address": "0x02116744",
       "size": "0x00000164",
       "legacy_source": "src/func_ov065_02116744.c",
       "ordinal": 10
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_021168a8Ev",
+      "symbol": "func_ov065_021168a8",
       "address": "0x021168a8",
       "size": "0x00000074",
       "legacy_source": "src/func_ov065_021168a8.cpp",
       "ordinal": 11
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_0211691cEPNS_5StateE",
+      "symbol": "func_ov065_0211691c",
       "address": "0x0211691c",
       "size": "0x00000050",
       "legacy_source": "src/func_ov065_0211691c.cpp",
       "ordinal": 12
     },
     {
-      "symbol": "_ZN15daYurei_Mucho_c19func_ov065_0211696cEv",
+      "symbol": "func_ov065_0211696c",
       "address": "0x0211696c",
       "size": "0x0000017c",
       "legacy_source": "src/func_ov065_0211696c.c",

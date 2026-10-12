@@ -21,10 +21,9 @@
  *
  * include/daObjKuruma_c.h's own banner explains why this file does not
  * carry _ZTV13daObjKuruma_c / _ZTI13daObjKuruma_c: the class's key function
- * is Render, declared first, and Render is defined in
- * src/actors/daObjKuruma_c.cpp, so THAT translation unit is the one that
- * emits the vtable. This file merely includes the header, which emits
- * nothing, and the forcing call below reaches only the destructor.
+ * is Render, declared first and still unmigrated, so no TU currently
+ * defines the vtable and none of this class's out-of-line member files --
+ * Behavior's or this one -- pull it in.
  */
 #include "daObjKuruma_c.h"
 

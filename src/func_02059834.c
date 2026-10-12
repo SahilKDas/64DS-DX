@@ -4,6 +4,11 @@ extern u64 func_02059650(void);
 extern void func_02059c18(void *p);
 extern void func_02059a60(void *p, u64 key);
 
+#ifdef _MSC_VER
+/* The ROM's 4-byte layout for the 64-bit field(s) of the alarm record (see
+ * src/func_02059a60.c); mwccarm never sees this arm. */
+#pragma pack(push, 4)
+#endif
 struct Node {
     void (*f0)(int);   /* 0x0 */
     int f4;            /* 0x4 */
@@ -13,6 +18,9 @@ struct Node {
     struct Node *next; /* 0x18 */
     u64 key;           /* 0x1c, 0x20 */
 };
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 struct List {
     struct Node *head;
     struct Node *tail;

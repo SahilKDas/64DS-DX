@@ -92,7 +92,7 @@ struct daDgr_c : dBgActor_c {
      * teardowns from the base clause alone.
      *
      * (This header previously declared it out of line, reasoning by analogy
-     * with include/daObjBlockL_c.h. The analogy is wrong for this class: the
+     * with include/BigBrickBlock.h. The analogy is wrong for this class: the
      * ROM's own D1/D0 addresses settle it, and the one-function shards could
      * not see the ordering because each held only one variant.)
      *
@@ -104,7 +104,18 @@ struct daDgr_c : dBgActor_c {
      * way and the promotion's compiler_only_output stays at 12 rows; the
      * correction did not move the eligibility bracket. Declaring a new virtual
      * ABOVE InitResources would move the key function again. */
-    virtual ~daDgr_c() {}
+    /* The destructor pair spelled as two plain virtuals on the host, plus
+       the non-virtual destructor declaration the src/ definitions need; the
+       whole ruling is in include/ModelBase.h. An override takes its base's
+       slots, so these carry the SAME TWO NAMES the base declares -- a fresh
+       name would append a slot instead of claiming one. */
+#ifdef _MSC_VER
+    virtual void Destructor1();   /* D1 */
+    virtual void Destructor0();   /* D0 */
+    ~daDgr_c() {}   /* no slot */
+#else
+    virtual ~daDgr_c() {}   /* D1 and D0 */
+#endif
 
     /* --- overrides of inherited fBase_c slots. Each takes its base's index
      *     (see include/fBase_c.h for the full 32-slot table). --- */
@@ -112,10 +123,6 @@ struct daDgr_c : dBgActor_c {
     virtual s32 CleanupResources();    /* slot 3 */
     virtual s32 Behavior();            /* slot 6 */
     virtual s32 Render();              /* slot 9 */
-
-    int func_ov025_0211123c();
-    void func_ov025_021112e0();
-    void func_ov025_02111344();
 
     /* slot 31 (Kill) is NOT overridden: the vtable word at data_ov025_02113760
        + 0x7c is 0x020ee55c, identical to dBgActor_c's own slot 31 -- confirmed

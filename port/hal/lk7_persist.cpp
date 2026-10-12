@@ -169,6 +169,16 @@ extern void *data_0209f318;
 unsigned port_hw_regions_size(void);
 void port_hw_regions_copy_out(void *dst);
 void port_hw_regions_copy_in(const void *src);
+/* hal/lk6_savestate.cpp: the hardware blob = those stores + the display-register
+   latches (SSFADE1); the disk state carries the same blob as the slot. */
+unsigned lk6_hw_blob_size(void);
+void lk6_hw_blob_copy_out(void *dst);
+void lk6_hw_blob_copy_in(const void *src);
+
+// DS timer 0 (ntr/rt.cpp): the disk state's .dsstate carries the record lk6
+// filled at save; it goes back into the timer before the slot round-trip
+// below re-captures it (run hunt3, lane POLISH1).
+void port_timer0_state_load(void);
 
 // lk6: the in-memory slot this layer mirrors to and from disk.
 int lk6_savestate_save(void);
@@ -262,7 +272,7 @@ int fill_header(Header *hdr)
     hdr->arena_cursor = (uint64_t)(uintptr_t)port_arena_cursor();
     hdr->dsstate_base = (uint64_t)(uintptr_t)&dsstate_lo;
     hdr->dsstate_size = (uint64_t)dsstate_size_live();
-    hdr->hw_size      = (uint64_t)port_hw_regions_size();
+    hdr->hw_size      = (uint64_t)lk6_hw_blob_size();
     /* format 3: WHICH GAME DATA this world was built out of. Read straight off
        hal/romdata_loader.cpp's record of the blob it verified at boot. */
     snprintf(hdr->romdata_sha, sizeof hdr->romdata_sha, "%s", port_romdata_sha);
@@ -579,6 +589,23 @@ int lk7_persist_available(void)
     return port_arena_is_fixed();
 }
 
+// 1 if a savestate.bin is sitting beside the exe. Asks nothing about whether
+// it would LOAD -- that is lk7_persist_read's job and it costs a full header
+// check plus a refusal message. This is the cheap question the startup line
+// and the debug menu's load row need: is there a file there at all, so the
+// player can be told F9 would reach it. Opening and closing the file is the
+// only portable way to ask; the header is deliberately not read here.
+int lk7_persist_present(void)
+{
+    if (!lk7_persist_available()) return 0;
+    char path[512];
+    if (!state_path(path, sizeof path)) return 0;
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
 // Write the current live world to <exedir>\savestate.bin. The caller invokes
 // this right after a successful lk6_savestate_save, so live memory IS the slot
 // content. Returns 1 if the file was written, 0 otherwise (disk states off, no
@@ -626,7 +653,7 @@ int lk7_persist_write(void)
     if (hsz) {
         hbuf = (char *)malloc(hsz);
         if (!hbuf) { fprintf(stderr, "[savestate] out of memory for disk save; skipped\n"); return 0; }
-        port_hw_regions_copy_out(hbuf);
+        lk6_hw_blob_copy_out(hbuf);
     }
 
     // Write to a temp file then rename, so a crash mid-write cannot leave a
@@ -811,6 +838,7 @@ int lk7_persist_read(void)
     const int norg = port_ss_rollguard_begin();
     if (asz) memcpy(base, abuf, asz);
     if (dsz) memcpy(&dsstate_lo, dbuf, dsz);
+    port_timer0_state_load();
     port_ss_rollguard_end(norg);
     free(abuf);
     free(dbuf);
@@ -823,7 +851,7 @@ int lk7_persist_read(void)
             fclose(f);
             return 0;
         }
-        port_hw_regions_copy_in(hbuf);   /* also drops the texture decode cache */
+        lk6_hw_blob_copy_in(hbuf);   /* also drops the texture decode cache */
         free(hbuf);
     }
     fclose(f);

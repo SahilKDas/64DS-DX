@@ -64,8 +64,17 @@ void _ZN8dActor_c15GivePlayerCoinsER6Playerhj(void *actor, void *player,
                                            unsigned int kind);
 int  func_ov002_020d82f0(void *player);   /* Player::Hurt's own entry gate */
 void sdat_host_tick(void);
+int  IsLevelInsideCastle(int level);           /* seat_course_sound's two   */
+int  IsLevelTinyHugeIslandOutside(int level);  /* same-area music guards    */
+void _ZN5Sound22StopLoadedMusic_Layer1Ej(unsigned int frames);
+void _ZN5Sound8SetMusicEjj(unsigned int player, unsigned int seqId);
+void _ZN5Sound10PauseMusicEv(void);            /* Stage::PS_Init's own call */
 
 // ---- the globals it reads and seats ----------------------------------------
+extern int          data_0209fc48;    /* the running cutscene script, 0 = none */
+extern int          data_0209b4ac;    /* layer 1's current song (in .dsstate)   */
+extern int          data_0208e43c;    /* layer 1's loaded base song (romdata,
+                                         outside .dsstate)                      */
 extern signed char  data_0209f2f8;    /* current sublevel */
 extern signed char  data_0209f2f4[];  /* lives */
 extern short        data_02092144[];  /* per-player health: HP<<8 | fraction */
@@ -160,6 +169,17 @@ namespace {
 
 int g_seated;
 int g_course_music = -1;
+/* seat_course_sound's prevLevel: data_0209f2f8 as it stood when the port's
+   latch replaced it (hal/level_change.cpp port_level_latch, the ROM's :226).
+   -1 until the first latch; the cartridge's bss zero is not a castle level
+   either. */
+int g_music_prev_level = -1;
+
+/* What seat_course_sound worked out for the level music, kept for
+   seat_course_music: the ROM makes the music call later in
+   Stage::InitResources than the sound group / bank statements, so the two
+   halves run at two points of the boot. */
+int g_boot_group, g_boot_bank, g_boot_vs, g_boot_bgm;
 
 /* THE QUEUED SWAP TRAP. data_02092114 is the in-level character swap request
    and -1 means "nothing queued"; SetPlayerGlobals is the only thing that ever
@@ -309,6 +329,34 @@ void seat_course_sound(int level)
                 bgm);
     }
 
+    g_boot_group = group;
+    g_boot_bank = bank;
+    g_boot_vs = vs;
+    g_boot_bgm = bgm;
+}
+
+/* THE LAYER-1 MUSIC CALL, WHERE STAGE::INITRESOURCES MAKES IT.
+ *
+ * src/_ZN5Stage13InitResourcesEv.cpp:380-391: the music statement comes AFTER
+ * Stage::LoadClsnAndObjects (the call that builds the level's actors, the
+ * Player among them), and the sound group / bank statements that
+ * seat_course_sound still makes up front come well before it. The port ran
+ * both together, before the Player existed. That matters for the songs whose
+ * variant follows the Player: LoadAndSetMusic_Layer1 ends in func_02011dcc,
+ * which asks func_02013078 for the variant and applies it at once with
+ * func_0204921c, and func_02013078 reads the Player (underwater flag, height)
+ * and answers -1 when there is none. So the cartridge starts Jolly Roger Bay
+ * and Dire Dire Docks (NCS_BGM_WATER, layer A = tracks 0-1, layer B = tracks
+ * 2-13) with the variant for where Mario is already in place, and the port
+ * started with every track at full volume (the upbeat mix) and only then let
+ * func_020132d8 ramp the unwanted layers down over about a hundred frames.
+ * Measured on both: the cartridge sends the INITMODE pair (volume 0 and a
+ * mute on each layer) in the frame of the START; the port sent none. */
+void seat_course_music(int level)
+{
+    const int group = g_boot_group, bank = g_boot_bank, vs = g_boot_vs;
+    const int bgm = g_boot_bgm;
+
     /* THE LAYER-1 CALL IS NOT PART OF THE VS ROW, AND THE PORT WAS MAKING IT.
      *
      * The block above is InitResources' sound-GROUP statement, which the ROM
@@ -332,24 +380,71 @@ void seat_course_sound(int level)
      *                             which the DS never plays in a match.
      *
      * The arena's real music is Stage::Behavior's, at the end of the 3-2-1 --
-     * see port_vs_countdown_tick below. Only the ROM's VS guard is added here:
-     * the other four preconditions (the cutscene flag, the two same-area
-     * transitions and the level-2 event bit) are separate port gaps and
-     * changing them would move adventure levels, which this does not. */
+     * see port_vs_countdown_tick below.
+     *
+     * THE OTHER FOUR PRECONDITIONS are what keeps the castle theme playing
+     * from room to room (src/_ZN5Stage13InitResourcesEv.cpp:386-391):
+     *
+     *     if (data_0209fc48 == 0)                               no cutscene
+     *     if (!IsLevelInsideCastle(level) || !IsLevelInsideCastle(prevLevel))
+     *     if (!IsLevelTinyHugeIslandOutside(level) ||
+     *         !IsLevelTinyHugeIslandOutside(prevLevel))
+     *     if (level != 2 || (data_0209caa0[2] & 0x200))         castle 1F seen
+     *         Sound::LoadAndSetMusic_Layer1(data_0207576a[level * 3]);
+     *
+     * So walking between two castle rooms (sublevels 2, 4, 5 and 0x32, all
+     * row 57) or between the two Tiny-Huge Island outsides makes NO music
+     * call and the song already playing carries on. Without them the port
+     * restarted the castle theme at every door. Level 2 before event bit
+     * 0x200 is the first castle entry: Player::St_Talk_Cleanup starts 0x39
+     * itself once the welcome message closes. prevLevel is data_0209f2f8
+     * before InitResources re-latches it (:226); the port's latch runs in
+     * hal/level_change.cpp before this boot and hands the old value to
+     * port_music_note_prev_level below. It is the global, not the last level
+     * booted: ExitMinigameMenu writes 6 into it on the way back to the Rec
+     * Room, so that return is not castle to castle and the castle song, which
+     * the minigame menu stopped, starts again. */
     const int vs_mode = (data_0209f2d8 == 1);
+    const int prev = g_music_prev_level;
+    const char *skip = 0;
+    if (vs_mode)
+        skip = "VS: the ROM does not read this column";
+    else if (data_0209fc48 != 0)
+        skip = "a cutscene script is running: no call";
+    else if (IsLevelInsideCastle(level) && IsLevelInsideCastle(prev))
+        skip = "castle room to castle room: no call, the song carries on";
+    else if (IsLevelTinyHugeIslandOutside(level) &&
+             IsLevelTinyHugeIslandOutside(prev))
+        skip = "Tiny-Huge Island outside to outside: no call, the song "
+               "carries on";
+    else if (level == 2 && !(((const int *)data_0209caa0)[2] & 0x200))
+        skip = "first castle entry: no call, the welcome message starts it";
 
     /* g_course_music is only read by port_course_sound_probe, and it means
        "what this file last asked layer 1 for". In a match nothing is asked for
        here, and func_ov075_02116c8c's StopLoadedMusic_Layer1 has already run,
-       so -1 is the true state until the countdown starts 0x4d. */
-    g_course_music = vs_mode ? -1 : bgm;
+       so -1 is the true state until the countdown starts 0x4d. A skipped
+       adventure call asks for nothing, so the value stays as it was. */
+    if (vs_mode)
+        g_course_music = -1;
+    else if (!skip)
+        g_course_music = bgm;
     fprintf(stderr, "[course] sublevel %d sound row: group=%d bank=0x%02x "
-            "bgm=%d (%s) [%s branch, star=%d]\n", level, group, bank, bgm,
-            vs_mode ? "VS: the ROM does not read this column"
-                    : bgm < 0 ? "no layer-1 track" : "start",
-            vs ? "VS arena" : "adventure table", (int)data_0209f220);
-    if (!vs_mode)
+            "bgm=%d (%s) [%s branch, star=%d, from sublevel %d]\n", level,
+            group, bank, bgm,
+            skip ? skip : bgm < 0 ? "no layer-1 track" : "start",
+            vs ? "VS arena" : "adventure table", (int)data_0209f220, prev);
+    if (!skip) {
         _ZN5Sound22LoadAndSetMusic_Layer1Ei(bgm);
+        /* The ROM's next statement (src/_ZN5Stage13InitResourcesEv.cpp:
+           391-395): the local player index, and when that Player's byte
+           0x6ff is set (the cap-start sublevels) SetMusic(index, 0x33), the
+           cap song over the row song. Sublevel 31 ends on it. */
+        const unsigned char sndIdx = data_0209f250;
+        if (data_0209f394[sndIdx] &&
+            ((const unsigned char *)data_0209f394[sndIdx])[0x6ff] != 0)
+            _ZN5Sound8SetMusicEjj(sndIdx, 0x33);
+    }
     /* Push the START the music call just queued at the ARM9 half through the
        hosted ARM7, so the first frame already has voices allocated rather
        than a batch sitting in the ring. */
@@ -531,7 +626,17 @@ void seat_engine_a_layers(void)
      * calling the ROM's own SetGraphicsMode instead is worse: its `a` and `b`
      * arguments also set the display mode and the BG mode, two fields the port
      * deliberately leaves at zero because it does not drive engine A. One bit,
-     * which is the one bit of that call the port can honour. */
+     * which is the one bit of that call the port can honour.
+     *
+     * "THE PORT NEVER CALLS SetGraphicsMode" IS HISTORY ON THE LEVEL PATH (run
+     * linkfull, lane HUDQUIT1). hal/level_boot.cpp's port_stage_boot_body now
+     * makes Stage::InitResources' own first call, dScene_c::Initialise3dGraphics,
+     * on every Stage build, and that function calls GX::SetGraphicsMode(1, 0,
+     * 1) after its register reset: the ROM sets bit 3 itself, and the
+     * display-mode and BG-mode fields it writes are its own values. The store below therefore finds the bit set
+     * and changes nothing on a level boot; it is kept because it is harmless,
+     * and retiring it is a separate change. The layer mask and the BG0CNT
+     * priority are still this seat's alone. */
     *(volatile unsigned int *)0x04000000 |= 8;
     /* AND THE 3D LAYER'S PRIORITY, WHICH IS WHY HALF THE VS HUD WAS INVISIBLE.
      *
@@ -639,6 +744,93 @@ void port_boot_course_sound(int level)
        that puts the VS scoreboard and the match clock on screen; see its own
        block above for why it is the mask and not the HUD that was missing */
     seat_engine_a_layers();
+}
+
+/* The music half of the sound row, run after Stage::LoadClsnAndObjects (see
+   seat_course_music). level_boot.cpp calls it at that point of the boot. */
+void port_boot_course_music(int level)
+{
+    seat_course_music(level);
+}
+
+/* Stage::InitResources' prevLevel (:226), handed over by the port's latch
+   (hal/level_change.cpp port_level_latch) at the moment it replaces
+   data_0209f2f8. seat_course_sound's same-area music guard reads it. */
+void port_music_note_prev_level(int level)
+{
+    g_music_prev_level = level;
+}
+
+/* THE MUSIC AFTER A SAVE-STATE RESTORE (a port feature, run hunt3 lane MUSIC1).
+ *
+ * lk6_savestate_load silences the sequencer and the mixer and re-seeds the
+ * hosted ARM7's command pool, because a live sequencer cannot be copied back
+ * a few frames out of phase. Sound effects come back on their own: the game
+ * asks for them again. The level's song does not: the cartridge asks for it
+ * once, at the stage boot (seat_course_sound above), so after an F9 the world
+ * ran on in silence until something else started a song.
+ *
+ * So the restore asks for it here, through the same ROM calls the boot and
+ * the game use, and it asks for the song the SNAPSHOT was playing:
+ *
+ *   base     the restored sublevel's layer-1 row, the song a fresh boot of
+ *            that level picks (every castle room is 57, so this is also what
+ *            a carried castle song was)
+ *   current  data_0209b4ac, layer 1's current song, which lives in .dsstate
+ *            and so came back with the snapshot. Sound::SetMusic moves it
+ *            off the base for a temporary song and Sound::EndMusic puts the
+ *            base back; StopLoadedMusic_Layer1 sets it to -1 (silence).
+ *
+ * LoadAndSetMusic_Layer1(base) seats the base and starts it. If the snapshot
+ * was on a different song, SetMusic(player, current) puts that one on over
+ * the base, as the game did, so its own EndMusic later returns to the base;
+ * if the snapshot had layer 1 stopped, StopLoadedMusic_Layer1 stops it again.
+ * Songs start from their beginning.
+ *
+ * data_0208e43c (layer 1's loaded base) is romdata, outside .dsstate, so it
+ * still describes the world before the restore, and LoadAndSetMusic_Layer1
+ * can skip its start when that value equals the song asked for. The
+ * sequencer that value described has just been reset, so nothing is loaded:
+ * -1 is written first so the call starts the song. Layer 2, layer 3 and the
+ * sub-song player are not captured either; LoadAndSetMusic_Layer1 clears them
+ * itself (func_02011b7c), the state a fresh boot leaves them in.
+ *
+ * VS mode is left alone: the ROM does not read the row there and the arena's
+ * song belongs to its countdown. */
+void port_course_music_after_restore(void)
+{
+    const int level = data_0209f2f8;
+    if (level < 0 || level >= 0x34 || data_0209f2d8 == 1)
+        return;
+    const int base = (signed char)data_02075768[level * 3 + 2];
+    const int current = data_0209b4ac;
+    data_0208e43c = -1;
+    _ZN5Sound22LoadAndSetMusic_Layer1Ei(base);
+    if (current != base) {
+        if (current < 0)
+            _ZN5Sound22StopLoadedMusic_Layer1Ej(0);
+        else
+            _ZN5Sound8SetMusicEjj(data_0209f250, (unsigned)current);
+    }
+    /* A snapshot taken on the pause screen comes back on it (data_0209f2c4 is
+       in .dsstate), and the song just started has not been through the pause
+       the game put the old one through. Stage::PS_Init sends Sound::PauseMusic
+       on the way in and PS_Cleanup sends UnpauseMusic (or stops layer 1) on
+       the way out, so the song is paused here the same way, and the pause
+       screen's own exit lets it go. */
+    if (data_0209f2c4 != 0) {
+        _ZN5Sound10PauseMusicEv();
+        fprintf(stderr, "[course] restore: the snapshot is on the pause "
+                "screen (state %d): the song is paused with it\n",
+                data_0209f2c4);
+    }
+    g_course_music = current;
+    fprintf(stderr, "[course] restore: sublevel %d, base song %d, song %d "
+            "(%s)\n", level, base, current,
+            current == base ? (current < 0 ? "no layer-1 track" : "restarted")
+            : current < 0 ? "layer 1 was stopped in the snapshot"
+                          : "the snapshot's own song over the base");
+    sdat_host_tick();
 }
 
 /* ---- THE ARENA'S OWN MUSIC ------------------------------------------------
