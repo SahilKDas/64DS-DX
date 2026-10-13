@@ -347,6 +347,23 @@ void open_sandbox(lua_State *L)
     lua_pushnil(L); lua_setglobal(L, "dofile");
     lua_pushnil(L); lua_setglobal(L, "loadfile");
     lua_pushnil(L); lua_setglobal(L, "load");
+    lua_pushnil(L); lua_setglobal(L, "pcall");
+    lua_pushnil(L); lua_setglobal(L, "xpcall");
+    lua_pushnil(L); lua_setglobal(L, "print");
+}
+
+int api_healthbar(lua_State *L)
+{
+    if (lua_gettop(L)) return fail(L, "healthbar() takes no arguments; health is read-only");
+    context(L)->summary.show_healthbar = true;
+    return 0;
+}
+
+int api_hitbox(lua_State *L)
+{
+    if (lua_gettop(L)) return fail(L, "hitbox() takes no arguments; collision is read-only");
+    context(L)->summary.show_hitbox = true;
+    return 0;
 }
 
 void register_api(lua_State *L, LoadContext *ctx)
@@ -354,13 +371,15 @@ void register_api(lua_State *L, LoadContext *ctx)
     lua_createtable(L, 0, 5);
     lua_pushlightuserdata(L, ctx); lua_pushcclosure(L, api_pack, 1);
     lua_setfield(L, -2, "pack");
-    lua_pushlightuserdata(L, ctx); lua_pushcclosure(L, api_character, 1);
-    lua_setfield(L, -2, "character");
+    lua_pushlightuserdata(L, ctx); lua_pushcclosure(L, api_healthbar, 1);
+    lua_setfield(L, -2, "healthbar");
+    lua_pushlightuserdata(L, ctx); lua_pushcclosure(L, api_hitbox, 1);
+    lua_setfield(L, -2, "hitbox");
     lua_pushlightuserdata(L, ctx); lua_pushcclosure(L, api_texture, 1);
     lua_setfield(L, -2, "texture");
     lua_pushlightuserdata(L, ctx); lua_pushcclosure(L, api_log, 1);
     lua_setfield(L, -2, "log");
-    lua_pushinteger(L, 2); lua_setfield(L, -2, "api_version");
+    lua_pushinteger(L, 3); lua_setfield(L, -2, "api_version");
     lua_setglobal(L, "sm64ds");
 }
 

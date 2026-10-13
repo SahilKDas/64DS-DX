@@ -7,18 +7,8 @@ sm64ds.pack {
   provenance = "generated test fixture"
 }
 
-sm64ds.character {
-  id = 4,
-  key = "probe",
-  name = "Probe",
-  base = 2,
-  body = "body.bmd",
-  head_cap = "head-cap.bmd",
-  head_no_cap = "head-no-cap.bmd",
-  hitbox = { radius = 61, height = 110, hurt_radius = 59, hurt_height = 117 },
-  animations = { idle = "idle.bca", run = "run.bca" },
-  preview = { animation = "idle", icon = "icon.png", yaw = 0, pitch = 0 }
-}
+sm64ds.healthbar()
+sm64ds.hitbox()
 
 sm64ds.texture {
   target = "0123456789abcdef",

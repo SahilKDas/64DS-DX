@@ -47,6 +47,8 @@
 #include <vector>
 
 namespace ntr {
+void hdtex_register(uint64_t name, const char *png_path);
+void hdtex_clear_registered(void);
 
 // THE SEAM (run hd1, lane RES). Called once at boot beside configure_aspect,
 // with the HdTextures settings value and the pack directory. `enabled` 0 is

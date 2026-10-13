@@ -1,89 +1,35 @@
-# Lua resource packs
+# Client-side Lua resource packs (API 3)
 
-Resource packs use the sandboxed declarative Lua API. They cannot open files,
-use the network, start processes, inspect game memory, or run general gameplay
-scripts. Models and animations must use the port's native BMD/BCA renderer;
-texture replacements are PNG files consumed by the existing HD-texture path.
-
-## API v2
-
-Each pack lives in `mods/resource-packs/<pack-id>/pack.lua`. The directory name
-is its stable ID. IDs and character-local keys contain only letters, digits,
-`-`, and `_`.
+Put each pack in `mods/resource-packs/<id>/pack.lua` beside the game. Set
+`SM64DS_RESOURCE_PACKS` to select another root. Packs load at startup in both
+single-player and multiplayer, independently of Tango's gameplay mods.
 
 ```lua
-sm64ds.pack {
-  id = "example-pack",
-  name = "Example Pack",
-  author = "Example Author",
-  version = "1.0.0",
-  license = "CC-BY-4.0",
-  provenance = "https://example.invalid/revision/abc123"
-}
-
-sm64ds.character {
-  key = "example",              -- stable network/save key is example-pack:example
-  name = "Example Character",
-  base = 2,                      -- retail gameplay profile; 0..3 only
-  body = "models/body.bmd",
-  head_cap = "models/head_cap.bmd",
-  head_no_cap = "models/head_no_cap.bmd",
-  hitbox = { radius = 48, height = 116, hurt_radius = 48, hurt_height = 116 },
-  animations = { idle = "anims/idle.bca", run = "anims/run.bca" },
-  preview = { animation = "idle", icon = "icon.png", yaw = 15, distance = 320 }
-}
+sm64ds.pack { id = "my-pack", name = "My Pack", version = "1" }
+sm64ds.texture { target = "0123456789abcdef", source = "assets/texture.png" }
+sm64ds.healthbar()
+sm64ds.hitbox()
 ```
 
-Numeric `id` remains accepted for v1 packs, but stable keys are authoritative.
-The loader assigns runtime IDs 4..255 in enabled pack order and permanently
-reserves 0..3 for Mario, Luigi, Wario, and Yoshi. Duplicate keys, texture
-hashes, invalid paths, missing assets, oversized scripts, and runaway scripts
-reject only the offending pack.
+`texture` replaces a local renderer texture identified by its 16-digit content
+hash. Paths must stay inside the pack. `healthbar()` requests a local-player
+health display; `hitbox()` requests the projected bounds of the local player's
+live body collision cylinder. Both display calls take no arguments: Lua cannot
+choose health, radius, height, collision flags, or other gameplay values.
+The outline is a screen-space bounding rectangle, not a cylinder wireframe.
 
-The registry stores enable state and ordering in `resource-packs.state`.
-Its reload API supports queued reloads at a safe menu boundary.
+Only metadata, textures, those two display requests, and diagnostic logging are
+exposed. There are no character-profile, movement, damage, ability, spawn,
+game-memory, networking, filesystem, process, or native-plugin APIs. There are
+no per-frame Lua callbacks: scripts finish at startup, and the host draws from
+live read-only values. Scripts cannot send pack state to a server or peer.
 
-This is the supported high-level mod format in 64DS-DX. It is asset-oriented,
-not a general gameplay scripting API, and it contains no Zig component.
+Each script has a 1 MiB source limit, 16 MiB Lua memory limit, and 1,000,000
+instruction limit. Dynamic loading and protected Lua calls are unavailable.
+One invalid pack is rejected independently; valid packs continue loading.
+Conflicting texture hashes reject the conflicting pack. Registry ordering and
+enabled preferences use the existing `resource-packs.state` file.
 
-Each enabled subdirectory contains a `pack.lua`. Prefix the directory with
-`off_` to disable it. Lua is deliberately declarative: it registers native
-SM64DS resources and metadata, but cannot access the filesystem, network,
-process, debug library, game memory, or arbitrary native code.
-Each manifest is also capped at 1 MiB, 1,000,000 VM instructions, and 16 MiB
-of Lua-managed memory, so a broken pack cannot hang startup or consume memory
-without limit.
-
-```lua
-sm64ds.character {
-  id = 4,
-  name = "Example character",
-  base = 2, -- 0 Mario, 1 Luigi, 2 Wario, 3 Yoshi
-  body = "assets/body.bmd",
-  head_cap = "assets/head-cap.bmd",
-  head_no_cap = "assets/head-no-cap.bmd",
-  hitbox = {
-    radius = 50,
-    height = 100,
-    hurt_radius = 45,
-    hurt_height = 95,
-  },
-  animations = {
-    idle = "assets/idle.bca",
-    run = "assets/run.bca",
-  },
-}
-
-sm64ds.texture {
-  -- Content hash printed by SM64DS_HD_TEXTURES_DUMP/INDEX.
-  target = "0123456789abcdef",
-  source = "assets/body.png",
-}
-```
-
-Models must be native `.bmd`, animations native `.bca`, and replacement
-textures PNG. Texture targets are the existing v0.4 content hashes, so Lua
-packs travel through the established HD-texture renderer. Paths cannot leave
-the pack directory. Character IDs 0 through 3 remain reserved for Mario,
-Luigi, Wario, and Yoshi.
-
+API 2 character registration is deliberately unavailable in API 3. Existing
+packs using `sm64ds.character` fail validation rather than changing gameplay.
+All clients may use different packs without changing simulation or packets.

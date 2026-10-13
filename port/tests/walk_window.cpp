@@ -3794,6 +3794,55 @@ static int ovl_text(const OvlSurface &fb, int x0, int y0, const char *s,
    OvlSurface and sizes itself off OVL_SCALE, both of which are above; its own
    banner carries the font decode, the projection and the slot rules. */
 #include "nametag.h"
+#include "hal/resource_pack.h"
+
+static void resource_pack_overlay(const OvlSurface &fb, const char *player)
+{
+    if (!player || !fb.px) return;
+    bool health = false, hitbox = false;
+    for (const auto &pack : sm64ds::packs::packs()) {
+        if (!pack.loaded) continue;
+        health |= pack.show_healthbar;
+        hitbox |= pack.show_hitbox;
+    }
+    if (health) {
+        char label[64];
+        const int hp = (std::max)(0, (std::min)(8, port_course_hud_health()));
+        snprintf(label, sizeof label, "Health %d / 8", hp);
+        ovl_text(fb, 8, 8, label, 0xff60ff80u);
+        for (int y = 20; y < 25; ++y)
+            for (int x = 8; x < 88; ++x)
+                fb.px[y * fb.stride + x] = x - 8 < hp * 10 ? 0xff60ff80u : 0xff303030u;
+    }
+    if (!hitbox) return;
+    int pos[3], radius, height;
+    memcpy(pos, player + 0x308, sizeof pos);
+    memcpy(&radius, player + 0x2d8, sizeof radius);
+    memcpy(&height, player + 0x2dc, sizeof height);
+    if (radius <= 0 || radius > 4096 * 1024 || height <= 0 || height > 4096 * 1024) return;
+    int minx = ntr::SCREEN_W, miny = ntr::SCREEN_H, maxx = 0, maxy = 0;
+    for (int i = 0; i < 8; ++i) {
+        int point[3] = {pos[0] + ((i & 1) ? radius : -radius),
+                        pos[1] + ((i & 2) ? height : 0),
+                        pos[2] + ((i & 4) ? radius : -radius)};
+        float x, y, depth;
+        if (!nt_project(point, &x, &y, &depth)) return;
+        minx = (std::min)(minx, (int)x); maxx = (std::max)(maxx, (int)x);
+        miny = (std::min)(miny, (int)y); maxy = (std::max)(maxy, (int)y);
+    }
+    minx = (std::max)(0, minx); miny = (std::max)(0, miny);
+    maxx = (std::min)(ntr::SCREEN_W - 1, maxx);
+    maxy = (std::min)(ntr::SCREEN_H - 1, maxy);
+    if (minx > maxx || miny > maxy) return;
+    for (int x = minx; x <= maxx; ++x) {
+        fb.px[miny * fb.stride + x] = 0xffffc040u;
+        fb.px[maxy * fb.stride + x] = 0xffffc040u;
+    }
+    for (int y = miny; y <= maxy; ++y) {
+        fb.px[y * fb.stride + minx] = 0xffffc040u;
+        fb.px[y * fb.stride + maxx] = 0xffffc040u;
+    }
+}
 
 /* the per-phase clock. One QueryPerformanceCounter pair per phase and a
    1-second exponential average, so the numbers are readable instead of
@@ -12452,6 +12501,15 @@ int main(void)
        because they answer one question. */
     ntr::hdtex_configure(host_setting_hd_textures(),
                          host_setting_hd_textures_dir());
+    {
+        const char *root = getenv("SM64DS_RESOURCE_PACKS");
+        std::string error;
+        if (!sm64ds::packs::load_all(root ? root : "mods/resource-packs", error))
+            fprintf(stderr, "[resource-pack] %s\n", error.c_str());
+        ntr::hdtex_clear_registered();
+        for (const auto &texture : sm64ds::packs::textures())
+            ntr::hdtex_register(texture.target_hash, texture.source.c_str());
+    }
     ntr::smooth_configure(host_setting_smooth_models());
     /* AND RUN hd2's SAMPLING MODE, in the same place and for the same reason:
        it decides whether the texture cache builds a mip chain as each texture
@@ -19609,6 +19667,7 @@ int main(void)
            which is why no adventure selftest BMP moves. */
         if (!rb_skip_render()) {
         nt_draw(surf);
+        resource_pack_overlay(surf, c);
         if (menu_on) menu_draw(surf);
         }
         /* THE WINNER, once a VS match is over. Centred, over everything, for

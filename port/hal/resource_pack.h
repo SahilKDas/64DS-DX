@@ -59,6 +59,8 @@ struct PackSummary {
     bool enabled = true;
     bool loaded = false;
     int order = 0;
+    bool show_healthbar = false;
+    bool show_hitbox = false;
     std::vector<std::string> character_keys;
     std::vector<PackIssue> warnings;
     std::vector<PackIssue> errors;
