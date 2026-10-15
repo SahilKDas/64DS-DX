@@ -105,6 +105,8 @@ class Scanner(object):
             cached = self._reach.get(key)
             if cached is True:
                 return True
+            if cached is False:
+                continue
             incs, mentions = self.scan(cur)
             if mentions:
                 self._reach[key] = True

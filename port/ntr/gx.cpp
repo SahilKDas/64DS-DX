@@ -2752,11 +2752,12 @@ void bind_from_vram() {
            (run hd2). Both hang off the cache miss for hdtex's reason one
            block up: the cost is then proportional to the number of DISTINCT
            textures a level has rather than to the hundreds of binds a frame
-           makes. Under TextureFilter 0 or 1 neither line does any work worth
-           naming -- the registry insert is one pointer into a map, and the
-           chain is not built at all. */
-        if (g_tex_filter >= 2) build_mip_chain(it->second);
-        g_tex_by_px[it->second.px.data()] = &it->second;
+           makes. TextureFilter 0 and 1 need neither the mip chain nor its
+           reverse lookup, so avoid allocating registry nodes for them. */
+        if (g_tex_filter >= 2) {
+            build_mip_chain(it->second);
+            g_tex_by_px[it->second.px.data()] = &it->second;
+        }
     }
     /* The bound buffer's REAL dimensions, which are the DS texture's unless a
        pack replaced it; the scale beside them is what lets the sampler put the

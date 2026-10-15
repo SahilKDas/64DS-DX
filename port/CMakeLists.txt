@@ -1537,10 +1537,15 @@ endif()
 
 # The ntr platform layer: imported host DS hardware (see ntr/README.md).
 # Compiled as its own lib so every gate binary can link the pieces it needs.
+add_library(ntr_assets STATIC ntr/texture.cpp ntr/lz77.cpp ntr/fs.cpp)
+target_include_directories(ntr_assets PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
+# These sources and their project headers have no render-tier dependencies.
+# Keep their object files and archive once across the three ntr variants.
 add_library(ntr STATIC
-    ntr/io.cpp ntr/gx.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
-    ntr/rt.cpp ntr/runtime.cpp ntr/fs.cpp ntr/bmd.cpp ntr/ipc.cpp
+    ntr/io.cpp ntr/gx.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp
+    ntr/rt.cpp ntr/runtime.cpp ntr/bmd.cpp ntr/ipc.cpp
     ntr/hdtex.cpp ntr/smooth.cpp)
+target_link_libraries(ntr PUBLIC ntr_assets)
 target_include_directories(ntr PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 # ntr/runtime.cpp hosts two DS DMA globals (data_020a60c4/data_020a6460) that
 # are real save state, so it needs hal/dsstate_seg.h. PRIVATE: only this
@@ -1567,9 +1572,10 @@ endif()
 # sources (ppu.h's dims, the runtime widescreen branches) exactly as the tier
 # defines above reach their targets.
 add_library(ntr_wide_rt STATIC
-    ntr/io.cpp ntr/gx.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
-    ntr/rt.cpp ntr/runtime.cpp ntr/fs.cpp ntr/bmd.cpp ntr/ipc.cpp
+    ntr/io.cpp ntr/gx.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp
+    ntr/rt.cpp ntr/runtime.cpp ntr/bmd.cpp ntr/ipc.cpp
     ntr/hdtex.cpp ntr/smooth.cpp)
+target_link_libraries(ntr_wide_rt PUBLIC ntr_assets)
 target_include_directories(ntr_wide_rt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 target_include_directories(ntr_wide_rt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_definitions(ntr_wide_rt PUBLIC NTR_WIDE_RT)
@@ -1580,9 +1586,10 @@ endif()
 # The same layer at 1024x768 for the interactive window; the smokes keep
 # the DS-native lib (their reference pixel counts depend on 256x192).
 add_library(ntr_hires STATIC
-    ntr/io.cpp ntr/gx.cpp ntr/texture.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp ntr/lz77.cpp
-    ntr/rt.cpp ntr/runtime.cpp ntr/fs.cpp ntr/bmd.cpp ntr/ipc.cpp
+    ntr/io.cpp ntr/gx.cpp ntr/ppu.cpp ntr/ppu_sub.cpp ntr/ppu_audit.cpp
+    ntr/rt.cpp ntr/runtime.cpp ntr/bmd.cpp ntr/ipc.cpp
     ntr/hdtex.cpp ntr/smooth.cpp)
+target_link_libraries(ntr_hires PUBLIC ntr_assets)
 target_include_directories(ntr_hires PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ntr/include")
 # ntr/runtime.cpp hosts two DS DMA globals (data_020a60c4/data_020a6460) that
 # are real save state, so it needs hal/dsstate_seg.h. PRIVATE: only this
