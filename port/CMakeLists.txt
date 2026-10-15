@@ -24503,6 +24503,10 @@ if(WIN32 AND MSVC AND TARGET walk_window AND TARGET walk_window_hires)
     set(SDL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3")
     include("${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3_glue/sdl_build.cmake")
     set(_sdlpad1_glue "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL3_glue")
+    # These import thunks install no exception handlers. Mark the MASM object
+    # compatible instead of disabling SAFESEH on the entire executable.
+    set_source_files_properties("${_sdlpad1_glue}/sdl_imports_shim.asm"
+        PROPERTIES COMPILE_OPTIONS "/safeseh")
     foreach(_sdlpad1_t IN ITEMS walk_window walk_window_hires)
         target_sources(${_sdlpad1_t} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/hal/pad_sdl.cpp"
