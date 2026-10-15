@@ -16,7 +16,7 @@ try {
     if ($LASTEXITCODE) { throw 'Could not create the temporary short build path' }
     $taskMapped = $true
     $taskVswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-    $taskVs = & $taskVswhere -latest -products '*' `
+    $taskVs = & $taskVswhere -latest -version '[17.0,18.0)' -products '*' `
         -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
     if ($LASTEXITCODE -or -not $taskVs) { throw 'Visual Studio C++ tools were not found' }
     $taskCmakeRoot = Join-Path $taskVs 'Common7/IDE/CommonExtensions/Microsoft/CMake'
@@ -32,6 +32,9 @@ try {
         $taskHome = Get-Content $taskCache | Where-Object { $_ -like 'CMAKE_HOME_DIRECTORY:INTERNAL=*' }
         $taskExpected = 'CMAKE_HOME_DIRECTORY:INTERNAL=' + $taskDrive + '/port'
         if ($taskHome -ne $taskExpected) { $taskFresh = '--fresh' }
+        $taskCompiler = Get-Content $taskCache | Where-Object { $_ -like 'CMAKE_C_COMPILER:FILEPATH=*' }
+        $taskCompilerPrefix = 'CMAKE_C_COMPILER:FILEPATH=' + $taskVs.Replace('\', '/') + '/VC/'
+        if ($taskCompiler -notlike ($taskCompilerPrefix + '*')) { $taskFresh = '--fresh' }
     }
     Push-Location ($taskDrive + '/port')
     $taskPushed = $true
