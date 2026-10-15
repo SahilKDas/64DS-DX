@@ -1,0 +1,24 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "lean-release",
+      "displayName": "ROM-clean single-configuration release (x86 developer shell)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../build/lean-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PORT_ROM_CLEAN": "ON",
+        "PORT_LINK_ONLY": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "lean-release",
+      "configurePreset": "lean-release",
+      "targets": ["walk_window"],
+      "jobs": 2
+    }
+  ]
+}
